@@ -1,0 +1,45 @@
+= MOHPC
+
+:toc:
+
+== Introduction
+
+This library helps you to read Medal of Honor: Allied Assault (all versions) assets using C++. It has been well-tested on a big project https://moh-rises.com/[MOHUE] and is considered stable.
+
+== Requirements
+
+All::
+- CMake 3.1 or higher
+
+Windows::
+- A compiler, like Visual Studio, thats support C++17
+
+Unix::
+- GCC 8.x or higher
+- Library stdc++fs on Unix
+
+Third-party components will be downloaded and compiled automatically.
+
+== Compatibility
+
+This library can be build on Windows and Unix systems, for any architecture.
+
+.Compatibility list
+|===
+| Platform | Windows | Linux | Mac
+| x86      | Best    | Good  | Unknown
+| x64      | Best    | Good  | Unknown 
+| ARM      | Unknown | Good  | Unknown
+|===
+
+=== Legend
+
+Best:: Fully working with no encountered crashes or bugs.
+
+Good:: Starts and load some assets, but was not tested enough.
+
+Unknown:: Absence of testing, but this does not mean the library will not work.
+
+=== TODO
+
+This README will change over time.
