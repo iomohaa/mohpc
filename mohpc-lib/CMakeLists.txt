@@ -6,6 +6,7 @@ file(GLOB_RECURSE SRC "*.cpp" "*.h")
 
 include_directories(./)
 include_directories(../thirdparty)
+include_directories(../thirdparty/zlib)
 
 add_library(MOHPC SHARED ${SRC})
 

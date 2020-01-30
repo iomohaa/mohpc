@@ -3,7 +3,7 @@
 #include <unordered_map>
 #include <set>
 #include <MOHPC/Managers/FileManager.h>
-#include <unzip/unzip.h>
+#include <zlib/contrib/minizip/unzip.h>
 #include <filesystem>
 #include "../Misc/decompression_streambuf.h"
 #include <string.h>

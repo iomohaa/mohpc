@@ -1,11 +1,14 @@
 #pragma once
 
 #include <streambuf>
-#include <unzip/unzip.h>
+#include <zlib/contrib/minizip/unzip.h>
 #include <algorithm>
 #include <string.h>
 
 #undef min
+
+// function from patched unzip
+extern "C" int ZEXPORT unzseek64(unzFile file, ZPOS64_T offset, int origin);
 
 template<
 	typename char_type,
