@@ -16,13 +16,13 @@ Windows::
 
 Unix::
 - GCC 8.x or higher
-- Library stdc++fs on Unix
+- stdc++fs library on Unix
 
 Third-party components will be downloaded and compiled automatically.
 
 == Compatibility
 
-This library can be build on Windows and Unix systems, for any architecture.
+This library can be built on Windows and Unix systems, for any architecture.
 
 .Compatibility list
 |===
