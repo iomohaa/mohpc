@@ -120,7 +120,7 @@ bool EmitterManager::ParseEmitters(const TIKI* Tiki, EmitterResults& Results)
 {
 	size_t cursor = 0;
 
-	int32_t animNum = Results.animNum;
+	uint32_t animNum = Results.animNum;
 	Results = EmitterResults();
 
 	bool bProcessedCommands = true;
@@ -209,7 +209,7 @@ bool EmitterManager::ProcessCommand(const std::vector<std::string>& Arguments, E
 	Event* ev = GetManager<EventManager>()->NewEvent(Arguments[0].c_str());
 
 	const size_t numArgs = Arguments.size();
-	for (int32_t j = 1; j < numArgs; j++)
+	for (size_t j = 1; j < numArgs; j++)
 	{
 		ev->AddToken(Arguments[j].c_str());
 	}

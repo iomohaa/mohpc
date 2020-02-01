@@ -220,7 +220,6 @@ const TIKIAnim::AnimDef* TIKI::GetRandomAnimation(const char *name) const
 void TIKI::GetAllAnimations(const char* name, std::vector<TIKIAnim::AnimDef*>& out) const
 {
 	TIKIAnim::AnimDef *panimdef;
-	int i;
 	vector<TIKIAnim::AnimDef*> anims;
 	size_t len;
 	int diff;
@@ -232,7 +231,7 @@ void TIKI::GetAllAnimations(const char* name, std::vector<TIKIAnim::AnimDef*>& o
 	}
 
 	const size_t numAnims = tikianim->animdefs.size();
-	for (i = 0; i < numAnims; i++)
+	for (size_t i = 0; i < numAnims; i++)
 	{
 		panimdef = &tikianim->animdefs[i];
 		diff = strnicmp(panimdef->alias.c_str(), name, len);

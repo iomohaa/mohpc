@@ -575,7 +575,7 @@ std::string FileManager::GetFileHash(const char* Filename, const char* CategoryN
 			size_t length = 64 * 1024;
 			char *buf = new char[length];
 			stream->read(buf, length);
-			Context.Update((unsigned char*)buf, stream->gcount());
+			Context.Update((unsigned char*)buf, (size_t)stream->gcount());
 			delete[] buf;
 		}
 

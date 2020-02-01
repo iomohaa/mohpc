@@ -332,7 +332,7 @@ GameScript* ScriptManager::GetGameScriptInternal(const str& filename)
 	if (File)
 	{
 		void* sourceBuffer;
-		std::streamsize sourceLength = File->ReadBuffer(&sourceBuffer);
+		size_t sourceLength = (size_t)File->ReadBuffer(&sourceBuffer);
 
 		scr->Load(sourceBuffer, sourceLength);
 

@@ -171,7 +171,7 @@ enum mad_flow error(void *data,
 {
 	buffer_s *buffer = (buffer_s*)data;
 
-	fprintf(stderr, "decoding error 0x%04x (%s) at byte offset %llu\n",
+	fprintf(stderr, "decoding error 0x%04x (%s) at byte offset %zd\n",
 		stream->error, mad_stream_errorstr(stream),
 		stream->this_frame - buffer->start);
 
@@ -233,7 +233,7 @@ bool Sound::Load()
 	}
 
 	void *buf = nullptr;
-	dataLen = File->ReadBuffer(&buf);
+	dataLen = (size_t)File->ReadBuffer(&buf);
 	if (dataLen <= 0)
 	{
 		return false;
@@ -412,7 +412,7 @@ bool Sound::DecodeLAME(void *buf, std::streamsize len)
 
 		if (buffer.stream.good())
 		{
-			dataLen = buffer.stream.tellp();
+			dataLen = (size_t)buffer.stream.tellp();
 			data = new uint8_t[dataLen];
 			buffer.stream.read((char*)data, dataLen);
 

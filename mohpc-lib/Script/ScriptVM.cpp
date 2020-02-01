@@ -149,7 +149,7 @@ void ScriptVM::error(const char *format, ...)
 executeCommand
 ====================
 */
-void ScriptVM::executeCommand(Listener *listener, int iParamCount, int eventnum, bool bMethod, bool bReturn)
+void ScriptVM::executeCommand(Listener *listener, uint16_t iParamCount, int eventnum, bool bMethod, bool bReturn)
 {
 	Event ev;
 	ScriptVariable *var;
@@ -178,14 +178,14 @@ void ScriptVM::executeCommand(Listener *listener, int iParamCount, int eventnum,
 
 	if (!bMethod)
 	{
-		for (int i = 0; i < iParamCount; i++)
+		for (uint16_t i = 0; i < iParamCount; i++)
 		{
 			ev.data[i] = var[i];
 		}
 	}
 	else
 	{
-		for (int i = 0; i < iParamCount; i++)
+		for (uint16_t i = 0; i < iParamCount; i++)
 		{
 			ev.data[i] = var[i + 1];
 		}

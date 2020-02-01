@@ -738,7 +738,6 @@ void EventManager::DumpClass(FILE * class_file, const char * className)
 	ClassDef		*c;
 	ResponseDef<Class> *r;
 	int			ev;
-	int			i;
 	size_t		num, num2;
 	Event       **events;
 
@@ -758,7 +757,7 @@ void EventManager::DumpClass(FILE * class_file, const char * className)
 	r = c->responses;
 	if (r)
 	{
-		for (i = 0; r[i].event != NULL; i++)
+		for (size_t i = 0; r[i].event != NULL; i++)
 		{
 			ev = (int)r[i].event->eventnum;
 			if (r[i].response)
@@ -788,7 +787,7 @@ void EventManager::DumpClass(FILE * class_file, const char * className)
 	ClassDef::dump_numclasses++;
 
 	CLASS_Print(class_file, "<BLOCKQUOTE>\n");
-	for (i = 0; i < num; i++)
+	for (size_t i = 0; i < num; i++)
 	{
 		intptr_t index;
 

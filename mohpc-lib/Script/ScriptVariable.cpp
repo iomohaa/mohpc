@@ -205,7 +205,7 @@ void ScriptPointer::Archive(Archiver& arc, ScriptPointer *& pointerValue)
 
 void ScriptPointer::Clear()
 {
-	for (int i = 0; i < list.NumObjects(); i++)
+	for (size_t i = 0; i < list.NumObjects(); i++)
 	{
 		ScriptVariable *variable = list[i];
 
@@ -1256,7 +1256,7 @@ void ScriptVariable::setArrayAtRef(ScriptVariable& index, ScriptVariable& value)
 		intValue = index.intValue();
 		string = stringValue();
 
-		if (intValue >= strlen(string)) {
+		if (intValue >= (intptr_t)strlen(string)) {
 			ScriptError("String index '%d' out of range", intValue);
 		}
 

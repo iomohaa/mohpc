@@ -1268,7 +1268,7 @@ void TikiScript::Parse(char *data, streamsize length, const char *name)
 */
 bool TikiScript::LoadFile(const char *name)
 {
-	std::streamoff length;
+	std::streamsize length;
 	char *buf;
 
 	Close();

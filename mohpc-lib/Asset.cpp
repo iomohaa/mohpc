@@ -364,7 +364,7 @@ void Asset::HashGetHash(uint8_t* Destination) const
 	}
 }
 
-void Asset::HashUpdate(const uint8_t* Data, size_t Length)
+void Asset::HashUpdate(const uint8_t* Data, std::streamsize Length)
 {
 	if (!Hash)
 	{

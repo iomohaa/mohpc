@@ -1168,14 +1168,12 @@ void ScriptThread::CharToInt(Event* ev)
 
 void ScriptThread::FileOpen(Event* ev)
 {
-	int numArgs = -1;
 	str filename;
 	str accesstype;
 	FILE *f = NULL;
 	char buf[16] = { 0 };
 
-
-	numArgs = ev->NumArgs();
+	size_t numArgs = ev->NumArgs();
 
 	if (numArgs != 2)
 		ScriptError("Wrong arguments count for fopen!\n");
@@ -1213,12 +1211,11 @@ void ScriptThread::FileRead(Event* ev)
 void ScriptThread::FileClose(Event* ev)
 {
 	int id = 0;
-	int numArgs = 0;
 	int ret = 0;
 	FILE *f = NULL;
 	char buf[16] = { 0 };
 
-	numArgs = ev->NumArgs();
+	size_t numArgs = ev->NumArgs();
 
 	if (numArgs != 1)
 		ScriptError("Wrong arguments count for fclose!\n");
@@ -1274,11 +1271,10 @@ void ScriptThread::FileClose(Event* ev)
 void ScriptThread::FileEof(Event* ev)
 {
 	int id = 0;
-	int numArgs = 0;
 	int ret = 0;
 	FILE *f = NULL;
 
-	numArgs = ev->NumArgs();
+	size_t numArgs = ev->NumArgs();
 
 	if (numArgs != 1) {
 		ScriptError("Wrong arguments count for feof!\n");
@@ -1296,13 +1292,12 @@ void ScriptThread::FileEof(Event* ev)
 void ScriptThread::FileSeek(Event* ev)
 {
 	int id = 0;
-	int numArgs = 0;
 	int pos = 0;
 	long int offset = 0;
 	int ret = 0;
 	FILE *f = NULL;
 
-	numArgs = ev->NumArgs();
+	size_t numArgs = ev->NumArgs();
 
 	if (numArgs != 3) {
 		ScriptError("Wrong arguments count for fseek!\n");
@@ -1334,11 +1329,10 @@ void ScriptThread::FileSeek(Event* ev)
 void ScriptThread::FileTell(Event* ev)
 {
 	int id = 0;
-	int numArgs = 0;
 	long int ret = 0;
 	FILE *f = NULL;
 
-	numArgs = ev->NumArgs();
+	size_t numArgs = ev->NumArgs();
 
 	if (numArgs != 1) {
 		ScriptError("Wrong arguments count for ftell!\n");
@@ -1356,11 +1350,10 @@ void ScriptThread::FileTell(Event* ev)
 void ScriptThread::FileRewind(Event* ev)
 {
 	int id = 0;
-	int numArgs = 0;
 	long int ret = 0;
 	FILE *f = NULL;
 
-	numArgs = ev->NumArgs();
+	size_t numArgs = ev->NumArgs();
 
 	if (numArgs != 1) {
 		ScriptError("Wrong arguments count for frewind!\n");
@@ -1377,12 +1370,11 @@ void ScriptThread::FileRewind(Event* ev)
 void ScriptThread::FilePutc(Event* ev)
 {
 	int id = 0;
-	int numArgs = 0;
 	int ret = 0;
 	FILE *f = NULL;
 	int c = 0;
 
-	numArgs = ev->NumArgs();
+	size_t numArgs = ev->NumArgs();
 
 	if (numArgs != 2) {
 		ScriptError("Wrong arguments count for fputc!\n");
@@ -1402,12 +1394,11 @@ void ScriptThread::FilePutc(Event* ev)
 void ScriptThread::FilePuts(Event* ev)
 {
 	int id = 0;
-	int numArgs = 0;
 	int ret = 0;
 	FILE *f = NULL;
 	str c;
 
-	numArgs = ev->NumArgs();
+	size_t numArgs = ev->NumArgs();
 
 	if (numArgs != 2) {
 		ScriptError("Wrong arguments count for fputs!\n");
@@ -1427,11 +1418,10 @@ void ScriptThread::FilePuts(Event* ev)
 void ScriptThread::FileGetc(Event* ev)
 {
 	int id = 0;
-	int numArgs = 0;
 	int ret = 0;
 	FILE *f = NULL;
 
-	numArgs = ev->NumArgs();
+	size_t numArgs = ev->NumArgs();
 
 	if (numArgs != 1) {
 		ScriptError("Wrong arguments count for fgetc!\n");
@@ -1449,13 +1439,12 @@ void ScriptThread::FileGetc(Event* ev)
 void ScriptThread::FileGets(Event* ev)
 {
 	int id = 0;
-	int numArgs = 0;
 	int maxCount = 0;
 	FILE *f = NULL;
 	char *c = NULL;
 	char *buff = NULL;
 
-	numArgs = ev->NumArgs();
+	size_t numArgs = ev->NumArgs();
 
 	if (numArgs != 2) {
 		ScriptError("Wrong arguments count for fgets!\n");
@@ -1494,11 +1483,10 @@ void ScriptThread::FileGets(Event* ev)
 void ScriptThread::FileError(Event* ev)
 {
 	int id = 0;
-	int numArgs = 0;
 	int ret = 0;
 	FILE *f = NULL;
 
-	numArgs = ev->NumArgs();
+	size_t numArgs = ev->NumArgs();
 
 	if (numArgs != 1) {
 		ScriptError("Wrong arguments count for ferror!\n");
@@ -1516,11 +1504,10 @@ void ScriptThread::FileError(Event* ev)
 void ScriptThread::FileFlush(Event* ev)
 {
 	int id = 0;
-	int numArgs = 0;
 	int ret = 0;
 	FILE *f = NULL;
 
-	numArgs = ev->NumArgs();
+	size_t numArgs = ev->NumArgs();
 
 	if (numArgs != 1)
 	{
@@ -1540,11 +1527,10 @@ void ScriptThread::FileFlush(Event* ev)
 void ScriptThread::FileExists(Event* ev)
 {
 	int id = 0;
-	int numArgs = 0;
 	FILE *f = 0;
 	str filename;
 
-	numArgs = ev->NumArgs();
+	size_t numArgs = ev->NumArgs();
 
 	if (numArgs != 1)
 	{
@@ -1574,14 +1560,13 @@ void ScriptThread::FileExists(Event* ev)
 void ScriptThread::FileReadAll(Event* ev)
 {
 	int id = 0;
-	int numArgs = 0;
 	FILE *f = NULL;
 	char *ret = NULL;
 	long currentPos = 0;
 	size_t size = 0;
 	size_t sizeRead = 0;
 
-	numArgs = ev->NumArgs();
+	size_t numArgs = ev->NumArgs();
 
 	if (numArgs != 1)
 	{
@@ -1616,12 +1601,11 @@ void ScriptThread::FileReadAll(Event* ev)
 void ScriptThread::FileSaveAll(Event* ev)
 {
 	int id = 0;
-	int numArgs = 0;
 	FILE *f = NULL;
 	size_t sizeWrite = 0;
 	str text;
 
-	numArgs = ev->NumArgs();
+	size_t numArgs = ev->NumArgs();
 
 	if (numArgs != 2)
 	{
@@ -1647,11 +1631,10 @@ void ScriptThread::FileSaveAll(Event* ev)
 void ScriptThread::FileRemove(Event* ev)
 {
 	int id = 0;
-	int numArgs = 0;
 	int ret = 0;
 	str filename;
 
-	numArgs = ev->NumArgs();
+	size_t numArgs = ev->NumArgs();
 
 	if (numArgs != 1)
 	{
@@ -1674,11 +1657,10 @@ void ScriptThread::FileRemove(Event* ev)
 void ScriptThread::FileRename(Event* ev)
 {
 	int id = 0;
-	int numArgs = 0;
 	int ret = 0;
 	str oldfilename, newfilename;
 
-	numArgs = ev->NumArgs();
+	size_t numArgs = ev->NumArgs();
 
 	if (numArgs != 2)
 	{
@@ -1707,13 +1689,12 @@ void ScriptThread::FileRename(Event* ev)
 void ScriptThread::FileCopy(Event* ev)
 {
 	size_t n = 0;
-	int numArgs = 0;
 	unsigned int ret = 0;
 	str filename, copyfilename;
 	FILE *f = NULL, *fCopy = NULL;
 	char buffer[4096];
 
-	numArgs = ev->NumArgs();
+	size_t numArgs = ev->NumArgs();
 
 	if (numArgs != 2)
 	{
@@ -1779,10 +1760,9 @@ void ScriptThread::FileReadPak(Event* ev)
 {
 	str filename;
 	const char *content = NULL;
-	int numArgs = 0;
 	int ret = 0;
 
-	numArgs = ev->NumArgs();
+	size_t numArgs = ev->NumArgs();
 
 	if (numArgs != 1)
 	{
@@ -1816,7 +1796,6 @@ void ScriptThread::FileReadPak(Event* ev)
 
 void ScriptThread::FileList(Event* ev)
 {
-	int i = 0, numArgs = 0;
 	const char *path = NULL;
 	str extension;
 	bool wantSubs = 0;
@@ -1825,7 +1804,7 @@ void ScriptThread::FileList(Event* ev)
 	ScriptVariable *ref = new ScriptVariable;
 	ScriptVariable *array = new ScriptVariable;
 
-	numArgs = ev->NumArgs();
+	size_t numArgs = ev->NumArgs();
 
 	if (numArgs != 3)
 	{
@@ -1849,12 +1828,12 @@ void ScriptThread::FileList(Event* ev)
 
 	ref->setRefValue(array);
 
-	for (i = 0; i < numFiles; i++)
+	for (size_t i = 0; i < numFiles; i++)
 	{
 		ScriptVariable *indexes = new ScriptVariable;
 		ScriptVariable *values = new ScriptVariable;
 
-		indexes->setIntValue(i);
+		indexes->setIntValue((int)i);
 		values->setStringValue(list.GetFileEntry(i)->GetRawName());
 
 		ref->setArrayAt(*indexes, *values);
@@ -1869,10 +1848,9 @@ void ScriptThread::FileList(Event* ev)
 void ScriptThread::FileNewDirectory(Event* ev)
 {
 	str path;
-	int numArgs = 0;
 	int ret = 0;
 
-	numArgs = ev->NumArgs();
+	size_t numArgs = ev->NumArgs();
 
 	if (numArgs != 1)
 	{
@@ -1901,10 +1879,9 @@ void ScriptThread::FileNewDirectory(Event* ev)
 void ScriptThread::FileRemoveDirectory(Event* ev)
 {
 	str path;
-	int numArgs = 0;
 	int ret = 0;
 
-	numArgs = ev->NumArgs();
+	size_t numArgs = ev->NumArgs();
 
 	if (numArgs != 1)
 	{
@@ -2223,10 +2200,9 @@ void ScriptThread::UnLock(Event* ev)
 
 void ScriptThread::MathCos(Event* ev)
 {
-	int numArgs = 0;
 	double x = 0.0f, res = 0.0f;
 
-	numArgs = ev->NumArgs();
+	size_t numArgs = ev->NumArgs();
 
 	if (numArgs != 1)
 	{
@@ -2242,10 +2218,9 @@ void ScriptThread::MathCos(Event* ev)
 
 void ScriptThread::MathSin(Event* ev)
 {
-	int numArgs = 0;
 	double x = 0.0f, res = 0.0f;
 
-	numArgs = ev->NumArgs();
+	size_t numArgs = ev->NumArgs();
 
 	if (numArgs != 1)
 	{
@@ -2261,10 +2236,9 @@ void ScriptThread::MathSin(Event* ev)
 
 void ScriptThread::MathTan(Event* ev)
 {
-	int numArgs = 0;
 	double x = 0.0f, res = 0.0f;
 
-	numArgs = ev->NumArgs();
+	size_t numArgs = ev->NumArgs();
 
 	if (numArgs != 1)
 	{
@@ -2280,10 +2254,9 @@ void ScriptThread::MathTan(Event* ev)
 
 void ScriptThread::MathACos(Event* ev)
 {
-	int numArgs = 0;
 	double x = 0.0f, res = 0.0f;
 
-	numArgs = ev->NumArgs();
+	size_t numArgs = ev->NumArgs();
 
 	if (numArgs != 1)
 	{
@@ -2299,10 +2272,9 @@ void ScriptThread::MathACos(Event* ev)
 
 void ScriptThread::MathASin(Event* ev)
 {
-	int numArgs = 0;
 	double x = 0.0f, res = 0.0f;
 
-	numArgs = ev->NumArgs();
+	size_t numArgs = ev->NumArgs();
 
 	if (numArgs != 1)
 	{
@@ -2318,10 +2290,9 @@ void ScriptThread::MathASin(Event* ev)
 
 void ScriptThread::MathATan(Event* ev)
 {
-	int numArgs = 0;
 	double x = 0.0f, res = 0.0f;
 
-	numArgs = ev->NumArgs();
+	size_t numArgs = ev->NumArgs();
 
 	if (numArgs != 1)
 	{
@@ -2337,10 +2308,9 @@ void ScriptThread::MathATan(Event* ev)
 
 void ScriptThread::MathATan2(Event* ev)
 {
-	int numArgs = 0;
 	double x = 0.0f, y = 0.0f, res = 0.0f;
 
-	numArgs = ev->NumArgs();
+	size_t numArgs = ev->NumArgs();
 
 	if (numArgs != 2)
 	{
@@ -2358,10 +2328,9 @@ void ScriptThread::MathATan2(Event* ev)
 
 void ScriptThread::MathCosH(Event* ev)
 {
-	int numArgs = 0;
 	double x = 0.0f, res = 0.0f;
 
-	numArgs = ev->NumArgs();
+	size_t numArgs = ev->NumArgs();
 
 	if (numArgs != 1)
 	{
@@ -2377,10 +2346,9 @@ void ScriptThread::MathCosH(Event* ev)
 
 void ScriptThread::MathSinH(Event* ev)
 {
-	int numArgs = 0;
 	double x = 0.0f, res = 0.0f;
 
-	numArgs = ev->NumArgs();
+	size_t numArgs = ev->NumArgs();
 
 	if (numArgs != 1)
 	{
@@ -2396,10 +2364,9 @@ void ScriptThread::MathSinH(Event* ev)
 
 void ScriptThread::MathTanH(Event* ev)
 {
-	int numArgs = 0;
 	double x = 0.0f, res = 0.0f;
 
-	numArgs = ev->NumArgs();
+	size_t numArgs = ev->NumArgs();
 
 	if (numArgs != 1)
 	{
@@ -2415,10 +2382,9 @@ void ScriptThread::MathTanH(Event* ev)
 
 void ScriptThread::MathExp(Event* ev)
 {
-	int numArgs = 0;
 	double x = 0.0f, res = 0.0f;
 
-	numArgs = ev->NumArgs();
+	size_t numArgs = ev->NumArgs();
 
 	if (numArgs != 1)
 	{
@@ -2434,7 +2400,6 @@ void ScriptThread::MathExp(Event* ev)
 
 void ScriptThread::MathFrexp(Event* ev)
 {
-	int numArgs = 0;
 	double x = 0.0f, res = 0.0f;
 	int exp = 0;
 	ScriptVariable *ref = new ScriptVariable;
@@ -2444,7 +2409,7 @@ void ScriptThread::MathFrexp(Event* ev)
 	ScriptVariable *SignificandVal = new ScriptVariable;
 	ScriptVariable *ExponentVal = new ScriptVariable;
 
-	numArgs = ev->NumArgs();
+	size_t numArgs = ev->NumArgs();
 
 	if (numArgs != 1)
 	{
@@ -2471,11 +2436,10 @@ void ScriptThread::MathFrexp(Event* ev)
 
 void ScriptThread::MathLdexp(Event* ev)
 {
-	int numArgs = 0;
 	double x = 0.0f, res = 0.0f;
 	int exp = 0;
 
-	numArgs = ev->NumArgs();
+	size_t numArgs = ev->NumArgs();
 
 	if (numArgs != 2)
 	{
@@ -2493,10 +2457,9 @@ void ScriptThread::MathLdexp(Event* ev)
 
 void ScriptThread::MathLog(Event* ev)
 {
-	int numArgs = 0;
 	double x = 0.0f, res = 0.0f;
 
-	numArgs = ev->NumArgs();
+	size_t numArgs = ev->NumArgs();
 
 	if (numArgs != 1)
 	{
@@ -2512,10 +2475,9 @@ void ScriptThread::MathLog(Event* ev)
 
 void ScriptThread::MathLog10(Event* ev)
 {
-	int numArgs = 0;
 	double x = 0.0f, res = 0.0f;
 
-	numArgs = ev->NumArgs();
+	size_t numArgs = ev->NumArgs();
 
 	if (numArgs != 1)
 	{
@@ -2531,7 +2493,6 @@ void ScriptThread::MathLog10(Event* ev)
 
 void ScriptThread::MathModf(Event* ev)
 {
-	int numArgs = 0;
 	double x = 0.0f, res = 0.0f;
 	double intpart = 0;
 	ScriptVariable *array = new ScriptVariable;
@@ -2541,7 +2502,7 @@ void ScriptThread::MathModf(Event* ev)
 	ScriptVariable *FractionalVal = new ScriptVariable;
 	ScriptVariable *IntpartVal = new ScriptVariable;
 
-	numArgs = ev->NumArgs();
+	size_t numArgs = ev->NumArgs();
 
 	if (numArgs != 1)
 	{
@@ -2567,11 +2528,10 @@ void ScriptThread::MathModf(Event* ev)
 
 void ScriptThread::MathPow(Event* ev)
 {
-	int numArgs = 0;
 	double base = 0.0f, res = 0.0f;
 	int exponent = 0;
 
-	numArgs = ev->NumArgs();
+	size_t numArgs = ev->NumArgs();
 
 	if (numArgs != 2)
 	{
@@ -2588,10 +2548,9 @@ void ScriptThread::MathPow(Event* ev)
 
 void ScriptThread::MathSqrt(Event* ev)
 {
-	int numArgs = 0;
 	double x = 0.0f, res = 0.0f;
 
-	numArgs = ev->NumArgs();
+	size_t numArgs = ev->NumArgs();
 
 	if (numArgs != 1)
 	{
@@ -2607,10 +2566,9 @@ void ScriptThread::MathSqrt(Event* ev)
 
 void ScriptThread::MathCeil(Event* ev)
 {
-	int numArgs = 0;
 	double x = 0.0f, res = 0.0f;
 
-	numArgs = ev->NumArgs();
+	size_t numArgs = ev->NumArgs();
 
 	if (numArgs != 1)
 	{
@@ -2626,10 +2584,9 @@ void ScriptThread::MathCeil(Event* ev)
 
 void ScriptThread::MathFloor(Event* ev)
 {
-	int numArgs = 0;
 	double x = 0.0f, res = 0.0f;
 
-	numArgs = ev->NumArgs();
+	size_t numArgs = ev->NumArgs();
 
 	if (numArgs != 1)
 	{
@@ -2645,10 +2602,9 @@ void ScriptThread::MathFloor(Event* ev)
 
 void ScriptThread::MathFmod(Event* ev)
 {
-	int numArgs = 0;
 	double numerator = 0.0f, denominator = 0.0f, res = 0.0f;
 
-	numArgs = ev->NumArgs();
+	size_t numArgs = ev->NumArgs();
 
 	if (numArgs != 2)
 	{
@@ -2814,11 +2770,10 @@ void ScriptThread::Md5String(Event* ev)
 
 void ScriptThread::TypeOfVariable(Event* ev)
 {
-	int numArgs = 0;
 	char *type = NULL;
 	ScriptVariable * variable;
 
-	numArgs = ev->NumArgs();
+	size_t numArgs = ev->NumArgs();
 
 	if (numArgs != 1)
 	{
@@ -3151,7 +3106,7 @@ void ScriptThread::MPrint(Event* ev)
 		return;
 	}
 
-	for (int i = 1; i <= ev->NumArgs(); i++)
+	for (size_t i = 1; i <= ev->NumArgs(); i++)
 	{
 		m_Self->MPrintf(ev->GetString(i));
 	}
@@ -3799,7 +3754,7 @@ void ScriptMutex::StoppedNotify(void)
 
 Flag *FlagList::FindFlag(const char * name)
 {
-	for (int i = 0; i < m_Flags.NumObjects(); i++)
+	for (size_t i = 0; i < m_Flags.NumObjects(); i++)
 	{
 		Flag * index = m_Flags[i];
 
@@ -3849,7 +3804,7 @@ void Flag::Set()
 
 	bSignaled = true;
 
-	for (int i = 0; i < m_WaitList.NumObjects(); i++)
+	for (size_t i = 0; i < m_WaitList.NumObjects(); i++)
 	{
 		ScriptVM *Thread = m_WaitList[i];
 

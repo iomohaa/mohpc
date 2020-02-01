@@ -94,7 +94,7 @@ namespace MOHPC
 	private:
 		void error(const char *format, ...);
 
-		void executeCommand(Listener *listener, int iParamCount, int eventnum, bool bMethod = false, bool bReturn = false);
+		void executeCommand(Listener *listener, uint16_t iParamCount, int eventnum, bool bMethod = false, bool bReturn = false);
 		bool executeGetter(Listener *listener, const_str name);
 		bool executeSetter(Listener *listener, const_str name);
 

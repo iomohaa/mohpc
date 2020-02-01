@@ -295,7 +295,6 @@ void EventDef::Error(const char *format, ...)
 
 void EventDef::PrintDocumentation(FILE *event_file, bool html)
 {
-	int i;
 	int p;
 	str text;
 	const char *name = command.c_str();
@@ -348,7 +347,7 @@ void EventDef::PrintDocumentation(FILE *event_file, bool html)
 			EV_Print(event_file, "( ");
 		}
 
-		for (i = 1; i <= definition->NumObjects(); i++)
+		for (size_t i = 1; i <= definition->NumObjects(); i++)
 		{
 			definition->ObjectAt(i).PrintArgument(event_file);
 
@@ -384,10 +383,9 @@ void EventDef::PrintDocumentation(FILE *event_file, bool html)
 	if (documentation)
 	{
 		char new_doc[1024];
-		int old_index;
 		int new_index = 0;
 
-		for (old_index = 0; old_index < strlen(documentation); old_index++)
+		for (size_t old_index = 0; old_index < strlen(documentation); old_index++)
 		{
 			if (documentation[old_index] == '\n')
 			{
@@ -475,7 +473,7 @@ void EventDef::SetupDocumentation(void)
 			const char  *namePtr;
 			const char  *specPtr;
 			size_t       specLength;
-			int          index;
+			size_t       index;
 			Container<str> argNames;
 
 			specLength = strlen(formatspec);
@@ -882,7 +880,7 @@ const char* Event::GetFormat()
 	return nullptr;
 }
 
-int Event::NumArgs()
+size_t Event::NumArgs()
 {
 	return dataSize;
 }

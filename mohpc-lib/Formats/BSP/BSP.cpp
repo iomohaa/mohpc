@@ -339,7 +339,7 @@ const MOHPC::Vector& BSP::Brush::GetMaxs() const
 	return bounds[1];
 }
 
-int32_t BSP::Brush::GetNumSides() const
+size_t BSP::Brush::GetNumSides() const
 {
 	return numsides;
 }
@@ -2073,7 +2073,7 @@ void BSP::MapBrushes()
 				bool bFound = false;
 
 				// Finds at least one valid brush side that matches the parent's brush sides
-				for (int bs = 0; bs < brush->numsides; bs++)
+				for (size_t bs = 0; bs < brush->numsides; bs++)
 				{
 					BrushSide* brushside = &brush->sides[bs];
 					if (brushside->surfaceFlags & SURF_NODRAW)
@@ -2081,7 +2081,7 @@ void BSP::MapBrushes()
 						continue;
 					}
 
-					for (int bs2 = 0; bs2 < brush2->numsides; bs2++)
+					for (size_t bs2 = 0; bs2 < brush2->numsides; bs2++)
 					{
 						BrushSide* brushside2 = &brush2->sides[bs2];
 						if (brushside2->surfaceFlags & SURF_NODRAW)
@@ -2160,7 +2160,7 @@ void BSP::MapBrushes()
 					&& surf->centroid[1] >= mins[1] && surf->centroid[1] <= maxs[1]
 					&& surf->centroid[2] >= mins[2] && surf->centroid[2] <= maxs[2])
 				{
-					for (int s = 0; s < brush->numsides; s++)
+					for (size_t s = 0; s < brush->numsides; s++)
 					{
 						const BrushSide* side = &brush->sides[s];
 						if (!stricmp(side->shader->shaderName.c_str(), surf->shader->shaderName.c_str()))

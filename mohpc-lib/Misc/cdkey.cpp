@@ -67,7 +67,7 @@ int GetKeyHash(const char *key, int32_t gameProduct)
 	return mod1 * 100 + mod2;
 }
 
-int GetKeyHash2(const char* keyPart, int length)
+int GetKeyHash2(const char* keyPart, size_t length)
 {
 	int hash1 = 1;
 	int hash2 = 0;

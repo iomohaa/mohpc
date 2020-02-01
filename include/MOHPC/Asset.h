@@ -2,6 +2,7 @@
 
 #include "Global.h"
 #include <string>
+#include <ios>
 #include "Class.h"
 
 namespace MOHPC
@@ -33,7 +34,7 @@ namespace MOHPC
 		void HashFinalize();
 
 	protected:
-		void HashUpdate(const uint8_t* Data, size_t Length);
+		void HashUpdate(const uint8_t* Data, std::streamsize Length);
 		void HashCopy(const Asset* A);
 
 		virtual bool Load();

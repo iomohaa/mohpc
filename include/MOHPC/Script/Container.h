@@ -27,14 +27,14 @@ namespace MOHPC
 
 		uintptr_t			AddObject(const Type& obj);
 		uintptr_t			AddUniqueObject(const Type& obj);
-		void				AddObjectAt(int index, const Type& obj);
-		Type				*AddressOfObjectAt(int index);
+		void				AddObjectAt(size_t index, const Type& obj);
+		Type				*AddressOfObjectAt(size_t index);
 		//	void				Archive( Archiver &arc );
 		void				ClearObjectList(void);
 		void				Fix(void);
 		void				FreeObjectList(void);
 		uintptr_t			IndexOfObject(const Type& obj);
-		void				InsertObjectAt(int index, const Type& obj);
+		void				InsertObjectAt(size_t index, const Type& obj);
 		uintptr_t			MaxObjects(void) const;
 		uintptr_t			NumObjects(void) const;
 		Type&				ObjectAt(const size_t index) const;
@@ -43,9 +43,9 @@ namespace MOHPC
 		void				RemoveObject(const Type& obj);
 		void				Reset(void);
 		void				Resize(size_t maxelements);
-		void				SetObjectAt(int index, const Type& obj);
+		void				SetObjectAt(size_t index, const Type& obj);
 		void				Sort(int(*compare)(const void *elem1, const void *elem2));
-		Type&				operator[](const int index) const;
+		Type&				operator[](const size_t index) const;
 		Container<Type>&	operator=(const Container<Type>& container);
 	};
 
@@ -101,7 +101,7 @@ namespace MOHPC
 	}
 
 	template< class Type >
-	void Container<Type>::AddObjectAt(int index, const Type& obj)
+	void Container<Type>::AddObjectAt(size_t index, const Type& obj)
 	{
 		if (index > maxobjects)
 			Resize(index);
@@ -113,7 +113,7 @@ namespace MOHPC
 	}
 
 	template< class Type >
-	Type *Container<Type>::AddressOfObjectAt(int index)
+	Type *Container<Type>::AddressOfObjectAt(size_t index)
 	{
 		assert(index <= maxobjects);
 
@@ -197,13 +197,11 @@ namespace MOHPC
 	template< class Type >
 	uintptr_t Container<Type>::IndexOfObject(const Type& obj)
 	{
-		int i;
-
 		if (!objlist) {
 			return 0;
 		}
 
-		for (i = 0; i < numobjects; i++)
+		for (size_t i = 0; i < numobjects; i++)
 		{
 			if (objlist[i] == obj)
 			{
@@ -215,7 +213,7 @@ namespace MOHPC
 	}
 
 	template< class Type >
-	void Container<Type>::InsertObjectAt(int index, const Type& obj)
+	void Container<Type>::InsertObjectAt(size_t index, const Type& obj)
 	{
 		if ((index <= 0) || (index > numobjects + 1))
 		{
@@ -344,7 +342,6 @@ namespace MOHPC
 	void Container<Type>::Resize(size_t maxelements)
 	{
 		Type* temp;
-		int i;
 
 		if (maxelements <= 0)
 		{
@@ -369,7 +366,7 @@ namespace MOHPC
 
 			objlist = new Type[maxobjects];
 
-			for (i = 0; i < numobjects; i++) {
+			for (size_t i = 0; i < numobjects; i++) {
 				objlist[i] = temp[i];
 			}
 
@@ -378,7 +375,7 @@ namespace MOHPC
 	}
 
 	template< class Type >
-	void Container<Type>::SetObjectAt(int index, const Type& obj)
+	void Container<Type>::SetObjectAt(size_t index, const Type& obj)
 	{
 		if (!objlist)
 			return;
@@ -403,7 +400,7 @@ namespace MOHPC
 	}
 
 	template< class Type >
-	Type& Container<Type>::operator[](const int index) const
+	Type& Container<Type>::operator[](const size_t index) const
 	{
 		return ObjectAt(index + 1);
 	}
@@ -411,8 +408,6 @@ namespace MOHPC
 	template< class Type >
 	void Container<Type>::Copy(const Container<Type>& container)
 	{
-		int i;
-
 		if (&container == this) {
 			return;
 		}
@@ -433,7 +428,7 @@ namespace MOHPC
 			return;
 		}
 
-		for (i = 0; i < container.numobjects; i++) {
+		for (size_t i = 0; i < container.numobjects; i++) {
 			objlist[i] = container.objlist[i];
 		}
 

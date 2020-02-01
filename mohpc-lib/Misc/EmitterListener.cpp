@@ -1334,7 +1334,7 @@ void EmitterListener::StartSFXInternal(Event* ev, bool bDelayed)
 	str commandName = ev->GetString(bDelayed + 1);
 
 	Event* newEvent = GetEventManager()->NewEvent(commandName);
-	for (int32_t i = bDelayed + 2; i < ev->NumArgs(); i++)
+	for (size_t i = bDelayed + 2; i < ev->NumArgs(); i++)
 	{
 		newEvent->AddToken(ev->GetToken(i));
 	}

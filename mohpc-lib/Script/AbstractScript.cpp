@@ -23,12 +23,12 @@ bool AbstractScript::GetSourceAt(size_t sourcePos, str &sourceLine, int &column,
 
 	line = 1;
 	column = 0;
-	int posLine = 0;
+	size_t posLine = 0;
 
 	char *p = m_SourceBuffer;
 	char old_token;
 
-	for (int i = 0; i < sourcePos; i++, p++)
+	for (size_t i = 0; i < sourcePos; i++, p++)
 	{
 		column++;
 
@@ -87,7 +87,7 @@ void AbstractScript::PrintSourcePos(size_t sourcePos, bool dev)
 	}
 	else
 	{
-		printf("file '%s', source pos %lld:\n", Filename().c_str(), sourcePos);
+		printf("file '%s', source pos %zd:\n", Filename().c_str(), sourcePos);
 	}
 }
 

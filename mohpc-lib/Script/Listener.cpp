@@ -713,7 +713,7 @@ ScriptVariable Listener::ProcessEventReturn(Event *ev)
 
 	response = responses->response;
 
-	int previousArgs = ev->NumArgs();
+	size_t previousArgs = ev->NumArgs();
 
 	if (response)
 	{
@@ -1497,7 +1497,7 @@ void Listener::CommandDelay(Event *ev)
 
 	Event *e = GetEventManager()->NewEvent(ev->GetString(2));
 
-	for (int i = 3; i <= ev->NumArgs(); i++)
+	for (size_t i = 3; i <= ev->NumArgs(); i++)
 	{
 		e->AddValue(ev->GetValue(i));
 	}
@@ -1599,7 +1599,7 @@ void Listener::WaitTillAny(Event *ev)
 		ScriptError("cannot waittill any on the current thread!");
 	}
 
-	for (int i = 1; i <= ev->NumArgs(); i++)
+	for (size_t i = 1; i <= ev->NumArgs(); i++)
 	{
 		name = ev->GetConstString(i);
 
@@ -1624,7 +1624,7 @@ void Listener::WaitTillAnyTimeout(Event *ev)
 
 	timeout_time = ev->GetFloat(1);
 
-	for (int i = 1; i <= ev->NumArgs(); i++)
+	for (size_t i = 1; i <= ev->NumArgs(); i++)
 	{
 		name = ev->GetConstString(i);
 
@@ -1787,7 +1787,7 @@ void Listener::CreateThread(Event *ev)
 		ScriptThread *pThread = CreateThreadInternal(ev->GetValue(1));
 		Event event;
 
-		for (int i = 2; i <= ev->NumArgs(); i++)
+		for (size_t i = 2; i <= ev->NumArgs(); i++)
 		{
 			event.AddValue(ev->GetValue(i));
 		}
@@ -1823,7 +1823,7 @@ void Listener::ExecuteScript(Event *ev)
 		ScriptThread *pThread = CreateScriptInternal(ev->GetValue(1));
 		Event event;
 
-		for (int i = 2; i <= ev->NumArgs(); i++)
+		for (size_t i = 2; i <= ev->NumArgs(); i++)
 		{
 			event.AddValue(ev->GetValue(i));
 		}

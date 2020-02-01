@@ -186,7 +186,7 @@ namespace MOHPC
 	public:
 		bool fromScript;
 		uintptr_t eventnum;
-		short unsigned int dataSize;
+		uint16_t dataSize;
 		ScriptVariable *data;
 
 #ifdef _DEBUG
@@ -266,7 +266,7 @@ namespace MOHPC
 		bool IsFromScript(void);
 
 		const char *GetFormat();
-		int NumArgs();
+		size_t NumArgs();
 	};
 
 #define					NODE_CANCEL				1

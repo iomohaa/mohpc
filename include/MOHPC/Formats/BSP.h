@@ -210,7 +210,7 @@ namespace MOHPC
 			const Shader* shader;
 			int32_t contents;
 			Vector bounds[2];
-			int32_t numsides;
+			size_t numsides;
 			BrushSide* sides;
 			Brush* parent;
 			std::vector<const Surface *> surfaces;
@@ -221,7 +221,7 @@ namespace MOHPC
 			MOHPC_EXPORTS int32_t GetContents() const;
 			MOHPC_EXPORTS const Vector& GetMins() const;
 			MOHPC_EXPORTS const Vector& GetMaxs() const;
-			MOHPC_EXPORTS int32_t GetNumSides() const;
+			MOHPC_EXPORTS size_t GetNumSides() const;
 			MOHPC_EXPORTS BrushSide* GetSide(size_t Index) const;
 			MOHPC_EXPORTS Brush* GetParent() const;
 			MOHPC_EXPORTS Vector GetOrigin() const;
