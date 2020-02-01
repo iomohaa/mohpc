@@ -1664,7 +1664,7 @@ void Shader::ParseSurfaceParm(Script& script)
 		{ "lava",			0,					CONTENTS_LAVA },
 		{ "playerclip",		0,					CONTENTS_PLAYERCLIP },
 		{ "monsterclip",	0,					CONTENTS_MONSTERCLIP },
-		{ "nodrop",			0,					CONTENTS_NODROP },
+		{ "nodrop",			0,					(uint32_t)CONTENTS_NODROP },
 		{ "nonsolid",		SURF_NONSOLID,		0 },
 
 		{ "origin",			0,					CONTENTS_ORIGIN },

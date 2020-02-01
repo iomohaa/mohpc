@@ -84,7 +84,7 @@ void EventManager::LoadEvents()
 	EventDef *e = lastEventDef;
 	str lower;
 	EventDef *cmd;
-	uint16_t index;
+	uintptr_t index;
 	command_t c;
 	const command_t *i;
 	Entry< command_t, command_t > *entry;

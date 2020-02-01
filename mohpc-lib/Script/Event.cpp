@@ -90,7 +90,7 @@ void EventArgDef::Setup(const char *eventName, const char *argName, const char *
 				bool second;
 				// one or two parameters
 				// see if there is anything behind the ','
-				if (strlen(scratch) > (tokptr - scratch + 1))
+				if (strlen(scratch) > size_t(tokptr - scratch + 1))
 					second = true;
 				else
 					second = false;

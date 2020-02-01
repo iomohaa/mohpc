@@ -689,7 +689,7 @@ void ScriptCompiler::EmitFunction( int iParamCount, sval_t val, uint32_t sourceP
 void ScriptCompiler::EmitIfElseJump( sval_t if_stmt, sval_t else_stmt, uint32_t sourcePos )
 {
 	unsigned char *jmp1, *jmp2;
-	int label1, label2;
+	int label1;
 
 	label1 = EmitNot( sourcePos );
 	jmp1 = code_pos;
@@ -856,9 +856,9 @@ void ScriptCompiler::EmitLabelPrivate( str name, uint32_t sourcePos )
 void ScriptCompiler::EmitLogicJump( sval_t logic_stmt, bool isOr, uint32_t sourcePos )
 {
 	unsigned char *jmp;
-	int label;
 
 	/*
+	int label;
 	if( showopcodes->integer )
 	{
 		label = current_label++;
@@ -921,7 +921,7 @@ void ScriptCompiler::EmitMethodExpression( int iParamCount, uintptr_t eventnum, 
 		EmitOpcode( OP_EXEC_METHOD0 + iParamCount, sourcePos );
 	}
 
-	*reinterpret_cast< uint32_t * >( code_pos ) = eventnum;
+	*reinterpret_cast<uint32_t *>( code_pos ) = (uint32_t)eventnum;
 	code_pos += sizeof( uint32_t );
 }
 
@@ -1297,7 +1297,7 @@ __emit:
 				EmitOpcode( OP_EXEC_CMD0 + iParamCount, val.node[ 3 ].sourcePosValue );
 			}
 
-			*reinterpret_cast<uint32_t *>(code_pos) = eventnum;
+			*reinterpret_cast<uint32_t *>(code_pos) = (uint32_t)eventnum;
 			code_pos += sizeof( uint32_t );
 		}
 		break;
@@ -1362,7 +1362,7 @@ __emit:
 				EmitOpcode( OP_EXEC_CMD_METHOD0 + iParamCount, val.node[ 4 ].sourcePosValue );
 			}
 
-			*reinterpret_cast< uint32_t * >( code_pos ) = eventnum;
+			*reinterpret_cast<uint32_t*>(code_pos) = (uint32_t)eventnum;
 			code_pos += sizeof( uint32_t );
 		}
 		break;
@@ -1520,9 +1520,10 @@ void ScriptCompiler::EmitVarToBool( uint32_t sourcePos )
 void ScriptCompiler::EmitWhileJump( sval_t while_expr, sval_t while_stmt, sval_t inc_stmt, uint32_t sourcePos )
 {
 	unsigned char *pos = code_pos;
-	int label1, label2;
+	int label2;
 
 	/*
+	int label1;
 	if( showopcodes->integer )
 	{
 		label1 = current_label++;
@@ -1955,7 +1956,6 @@ void ScriptCompiler::CompileAssemble( const char *filename, const char *outputfi
 {
 	ScriptManager* Director = GetScriptManager();
 	GameScript *gameScript = Director->GetGameScript( filename );
-	Archiver arc;
 
 	if( !gameScript->m_ProgBuffer || !gameScript->m_ProgLength )
 	{

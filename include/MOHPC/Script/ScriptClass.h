@@ -12,7 +12,7 @@ namespace MOHPC
 	class ScriptClass;
 	class Event;
 
-	typedef unsigned int const_str;
+	typedef uint32_t const_str;
 
 #define isSubclassOf(classname) inheritsFrom(&classname::ClassInfo)
 #define isSuperclassOf(classname) isInheritedBy(&classname::ClassInfo)

@@ -79,18 +79,17 @@ void ScriptManager::InitConstStrings()
 
 const_str ScriptManager::AddString(const char *s)
 {
-	return StringDict.addKeyIndex(s);
+	return (const_str)StringDict.addKeyIndex(s);
 }
 
 const_str ScriptManager::AddString(const str& s)
 {
-	return StringDict.addKeyIndex(s);
+	return (const_str)StringDict.addKeyIndex(s);
 }
 
 const_str ScriptManager::GetString(const char *s)
 {
-	const_str cs = StringDict.findKeyIndex(s);
-
+	const_str cs = (const_str)StringDict.findKeyIndex(s);
 	return cs ? cs : STRING_EMPTY;
 }
 
@@ -203,7 +202,7 @@ ScriptThread* ScriptManager::CreateThread(GameScript *scr, const str& label, Lis
 	{
 		return CreateScriptThread(scr, self, label);
 	}
-	catch (ScriptException& exc)
+	catch (ScriptException&)
 	{
 		//glbs.DPrintf("ScriptMaster::CreateThread: %s\n", exc.string.c_str());
 		return NULL;
@@ -248,7 +247,7 @@ void ScriptManager::ExecuteThread(GameScript *scr, const str& label)
 			Thread->Execute();
 		}
 	}
-	catch (ScriptException& exc)
+	catch (ScriptException&)
 	{
 		//glbs.DPrintf("ScriptMaster::ExecuteThread: %s\n", exc.string.c_str());
 	}
@@ -274,7 +273,7 @@ void ScriptManager::ExecuteThread(GameScript *scr, const str& label, Event &parm
 	{
 		Thread->Execute(parms);
 	}
-	catch (ScriptException& exc)
+	catch (ScriptException&)
 	{
 		//glbs.DPrintf("ScriptMaster::ExecuteThread: %s\n", exc.string.c_str());
 	}
@@ -352,7 +351,7 @@ GameScript* ScriptManager::GetGameScriptInternal(const str& filename)
 
 GameScript* ScriptManager::GetGameScript(const str& filename, bool recompile)
 {
-	const_str s = StringDict.findKeyIndex(filename);
+	const_str s = (const_str)StringDict.findKeyIndex(filename);
 	GameScript *scr = m_GameScripts[s];
 
 	if (scr != NULL && !recompile)
@@ -405,7 +404,7 @@ GameScript* ScriptManager::GetScript(const str& filename, bool recompile)
 	{
 		return GetGameScript(filename, recompile);
 	}
-	catch (ScriptException& exc)
+	catch (ScriptException&)
 	{
 		//glbs.Printf("ScriptMaster::GetScript: %s\n", exc.string.c_str());
 	}
@@ -419,7 +418,7 @@ GameScript* ScriptManager::GetScript(const_str filename, bool recompile)
 	{
 		return GetGameScript(filename, recompile);
 	}
-	catch (ScriptException& exc)
+	catch (ScriptException&)
 	{
 		//glbs.Printf("ScriptMaster::GetScript: %s\n", exc.string.c_str());
 	}

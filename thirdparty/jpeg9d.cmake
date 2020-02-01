@@ -89,4 +89,5 @@ list(FILTER SRCS EXCLUDE REGEX ".*/rdjpgcom.c$")
 list(FILTER SRCS EXCLUDE REGEX ".*/wrjpgcom.c$")
 
 add_library(jpeg9d STATIC ${SRCS})
+target_compile_definitions(jpeg9d PRIVATE _CRT_SECURE_NO_WARNINGS)
 set_property(TARGET jpeg9d PROPERTY POSITION_INDEPENDENT_CODE ON)

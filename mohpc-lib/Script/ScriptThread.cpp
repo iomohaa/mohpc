@@ -1963,7 +1963,7 @@ void ScriptThread::GetArrayKeys(Event* ev)
 
 		ScriptVariable *newIndex = new ScriptVariable, *newValue = new ScriptVariable;
 
-		newIndex->setIntValue(i);
+		newIndex->setIntValue((int)i);
 		newValue->setStringValue("NIL");
 
 		//name.removeRef();
@@ -2006,7 +2006,7 @@ void ScriptThread::GetArrayValues(Event* ev)
 
 		ScriptVariable *newIndex = new ScriptVariable;
 
-		newIndex->setIntValue(i - 1);
+		newIndex->setIntValue((int)(i - 1));
 
 		ref->setArrayAt(*newIndex, *value);
 	}

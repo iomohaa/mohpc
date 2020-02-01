@@ -665,7 +665,7 @@ bool Listener::ProcessEvent(Event *ev)
 			(this->*response)(ev);
 		}
 	}
-	catch (ScriptException& exc)
+	catch (ScriptException&)
 	{
 		//ev->ErrorInternal(this, exc.string);
 		//glbs.DPrintf("%s\n", exc.string.c_str());
@@ -1884,7 +1884,7 @@ void Listener::ExecuteThread(const str& scriptName, const str& labelName, Event 
 
 		thread->Execute(params);
 	}
-	catch (ScriptException& exc)
+	catch (ScriptException&)
 	{
 		//glbs.DPrintf("Listener::ExecuteThread: %s\n", exc.string.c_str());
 	}
@@ -1903,7 +1903,7 @@ void Listener::ExecuteThread(const str& scriptName, const str& labelName, Event&
 
 		thread->Execute(params);
 	}
-	catch (ScriptException& exc)
+	catch (ScriptException&)
 	{
 		//glbs.DPrintf("Listener::ExecuteThread: %s\n", exc.string.c_str());
 	}
