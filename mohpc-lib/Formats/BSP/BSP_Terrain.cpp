@@ -3,11 +3,35 @@
 #include <MOHPC/Managers/AssetManager.h>
 #include <MOHPC/Managers/ShaderManager.h>
 
+namespace MOHPC
+{
+	struct worknode_t {
+		int32_t i0;
+		int32_t j0;
+		int32_t i1;
+		int32_t j1;
+		int32_t i2;
+		int32_t j2;
+	};
+}
+
 using namespace MOHPC;
 
 #define MAX_TERRAIN_LOD 6
 
 const float BSP::lightmapTerrainLength = (16.f / lightmapSize);
+
+static int modeTable[] =
+{
+	2,
+	2,
+	5,
+	6,
+	4,
+	3,
+	0,
+	0
+};
 
 BSP::TerrainVert::TerrainVert()
 {
@@ -1289,5 +1313,257 @@ void BSP::TR_ShrinkData()
 		{
 			trVerts.erase(trVerts.begin() + n);
 		}
+	}
+}
+
+void BSP::TR_CalculateTerrainIndices(struct worknode_t* worknode, int iDiagonal, int iTree)
+{
+	int i;
+	int i2;
+	int j2;
+	varnodeIndex* vni;
+
+	for (i = 0; i <= 30; i++)
+	{
+		i2 = worknode[i + 1].i0 + worknode[i + 1].i1;
+		j2 = worknode[i + 1].j0 + worknode[i + 1].j1;
+		worknode[i * 2 + 2].i0 = worknode[i + 1].i1;
+		worknode[i * 2 + 2].j0 = worknode[i + 1].j1;
+		worknode[i * 2 + 2].i1 = worknode[i + 1].i2;
+		worknode[i * 2 + 2].j1 = worknode[i + 1].j2;
+		worknode[i * 2 + 2].i2 = i2 >> 1;
+		worknode[i * 2 + 2].j2 = j2 >> 1;
+		worknode[i * 2 + 2 + 1].i0 = worknode[i + 1].i2;
+		worknode[i * 2 + 2 + 1].j0 = worknode[i + 1].j2;
+		worknode[i * 2 + 2 + 1].i1 = worknode[i + 1].i0;
+		worknode[i * 2 + 2 + 1].j1 = worknode[i + 1].j0;
+		worknode[i * 2 + 2 + 1].i2 = i2 >> 1;
+		worknode[i * 2 + 2 + 1].j2 = j2 >> 1;
+	}
+
+	for (i = 32; i < 64; i++)
+	{
+		i2 = (worknode[i].i0 + worknode[i].i1) >> 1;
+		j2 = (worknode[i].j0 + worknode[i].j1) >> 1;
+
+		if (worknode[i].i0 == worknode[i].i1)
+		{
+			if (worknode[i].j0 <= worknode[i].j1)
+			{
+				vni = &varnodeIndexes[iDiagonal][i2][j2][1];
+				vni->iNode = i - 1;
+				vni->iTreeAndMask = iTree | 0x2000;
+
+				vni = &varnodeIndexes[iDiagonal][i2][j2 - 1][0];
+				vni->iNode = i - 1;
+				vni->iTreeAndMask = iTree | 0x1000;
+			}
+			else
+			{
+				vni = &varnodeIndexes[iDiagonal][i2 - 1][j2][1];
+				vni->iNode = i - 1;
+				vni->iTreeAndMask = iTree | 0x1000;
+
+				vni = &varnodeIndexes[iDiagonal][i2 - 1][j2 - 1][0];
+				vni->iNode = i - 1;
+				vni->iTreeAndMask = iTree | 0x2000;
+			}
+		}
+		else
+		{
+			if (worknode[i].i0 <= worknode[i].i1)
+			{
+				vni = &varnodeIndexes[iDiagonal][i2][j2 - 1][0];
+				vni->iNode = i - 1;
+				vni->iTreeAndMask = iTree | 0x2000;
+
+				vni = &varnodeIndexes[iDiagonal][i2 - 1][j2 - 1][0];
+				vni->iNode = i - 1;
+				vni->iTreeAndMask = iTree | 0x1000;
+			}
+			else
+			{
+				vni = &varnodeIndexes[iDiagonal][i2][j2][1];
+				vni->iNode = i - 1;
+				vni->iTreeAndMask = iTree | 0x1000;
+
+				vni = &varnodeIndexes[iDiagonal][i2 - 1][j2][1];
+				vni->iNode = i - 1;
+				vni->iTreeAndMask = iTree | 0x2000;
+			}
+		}
+
+	}
+}
+
+void BSP::TR_PrepareGerrainCollide()
+{
+	worknode_t worknode[64];
+
+	memset(&varnodeIndexes, 0, sizeof(varnodeIndexes));
+
+	worknode[1].i0 = 8;
+	worknode[1].j0 = 8;
+	worknode[1].i1 = 0;
+	worknode[1].j1 = 0;
+	worknode[1].i2 = 0;
+	worknode[1].j2 = 8;
+
+	TR_CalculateTerrainIndices(worknode, 0, 0);
+
+	worknode[1].i0 = 0;
+	worknode[1].j0 = 0;
+	worknode[1].i1 = 8;
+	worknode[1].j1 = 8;
+	worknode[1].i2 = 8;
+	worknode[1].j2 = 0;
+
+	TR_CalculateTerrainIndices(worknode, 0, 1);
+
+	worknode[1].i0 = 8;
+	worknode[1].j0 = 0;
+	worknode[1].i1 = 0;
+	worknode[1].j1 = 8;
+	worknode[1].i2 = 8;
+	worknode[1].j2 = 8;
+
+	TR_CalculateTerrainIndices(worknode, 1, 0);
+
+	worknode[1].i0 = 0;
+	worknode[1].j0 = 8;
+	worknode[1].i1 = 8;
+	worknode[1].j1 = 0;
+	worknode[1].i2 = 0;
+	worknode[1].j2 = 0;
+
+	TR_CalculateTerrainIndices(worknode, 1, 1);
+}
+
+void BSP::GenerateTerrainCollide(const TerrainPatch* patch, TerrainCollide& collision)
+{
+	int i;
+	int j;
+	int x0, y0, z0;
+	float fMaxHeight;
+	float heightmap[9][9];
+	TerrainCollideSquare* square;
+	vec3_t v1;
+	vec3_t v2;
+	vec3_t v3;
+	vec3_t v4;
+
+	TerrainCollide* tc = &collision;
+	x0 = patch->x0;
+	y0 = patch->y0;
+	z0 = patch->z0;
+
+	fMaxHeight = (float)z0;
+
+	for (j = 0; j < 9; j++)
+	{
+		for (i = 0; i < 9; i++)
+		{
+			heightmap[i][j] = (float)(z0 + 2 * patch->heightmap[j * 9 + i]);
+		}
+	}
+
+	for (j = 0; j < 8; j++)
+	{
+		for (i = 0; i < 8; i++)
+		{
+			v1[0] = (float)((i << 6) + x0);
+			v1[1] = (float)((j << 6) + y0);
+			v1[2] = (float)heightmap[i][j];
+
+			v2[0] = (float)((i << 6) + x0) + 64;
+			v2[1] = (float)((j << 6) + y0);
+			v2[2] = (float)heightmap[i + 1][j];
+
+			v3[0] = (float)((i << 6) + x0) + 64;
+			v3[1] = (float)((j << 6) + y0) + 64;
+			v3[2] = (float)heightmap[i + 1][j + 1];
+
+			v4[0] = (float)((i << 6) + x0);
+			v4[1] = (float)((j << 6) + y0) + 64;
+			v4[2] = (float)heightmap[i][j + 1];
+
+			if (fMaxHeight < v1[2]) {
+				fMaxHeight = v1[2];
+			}
+
+			if (fMaxHeight < v2[2]) {
+				fMaxHeight = v2[2];
+			}
+
+			if (fMaxHeight < v3[2]) {
+				fMaxHeight = v3[2];
+			}
+
+			if (fMaxHeight < v4[2]) {
+				fMaxHeight = v4[2];
+			}
+
+			square = &tc->squares[i][j];
+
+			if ((i + j) & 1)
+			{
+				if (patch->flags & 0x40)
+				{
+					PlaneFromPoints(square->plane[0], v4, v2, v3);
+					PlaneFromPoints(square->plane[1], v2, v4, v1);
+				}
+				else
+				{
+					PlaneFromPoints(square->plane[0], v2, v4, v3);
+					PlaneFromPoints(square->plane[1], v4, v2, v1);
+				}
+				TR_PickTerrainSquareMode(square, v1, i, j, patch);
+			}
+			else
+			{
+				if (patch->flags & 0x40)
+				{
+					PlaneFromPoints(square->plane[0], v1, v3, v4);
+					PlaneFromPoints(square->plane[1], v3, v1, v2);
+				}
+				else
+				{
+					PlaneFromPoints(square->plane[0], v3, v1, v4);
+					PlaneFromPoints(square->plane[1], v1, v3, v2);
+				}
+				TR_PickTerrainSquareMode(square, v2, i, j, patch);
+			}
+		}
+	}
+
+	tc->vBounds[0][0] = (float)x0;
+	tc->vBounds[0][1] = (float)y0;
+	tc->vBounds[0][2] = (float)z0;
+	tc->vBounds[1][0] = (float)(x0 + 512);
+	tc->vBounds[1][1] = (float)(y0 + 512);
+	tc->vBounds[1][2] = fMaxHeight;
+}
+
+void BSP::TR_PickTerrainSquareMode(TerrainCollideSquare* square, const MOHPC::Vector& vTest, terraInt i, terraInt j, const TerrainPatch* patch)
+{
+	int flags0, flags1;
+	varnodeIndex* vni;
+
+	vni = &varnodeIndexes[(patch->flags & 0x80) ? 1 : 0][i][j][0];
+
+	flags0 = ((unsigned short)(patch->varTree[vni->iTreeAndMask & 1][vni->iNode].s.flags & 0xFFFE & vni->iTreeAndMask) != 0);
+	flags1 = ((unsigned short)(patch->varTree[vni[1].iTreeAndMask & 1][vni[1].iNode].s.flags & 0xFFFE & vni[1].iTreeAndMask) != 0);
+
+	square->eMode = modeTable[(j + i) & 1 | 2 * flags0 | 4 * flags1];
+
+	if (square->eMode == 2)
+	{
+		if(Vector::Dot(vTest, square->plane[0]) < square->plane[0][3]) {
+			square->eMode = 1;
+		}
+	}
+	else if (square->eMode == 5 || square->eMode == 6)
+	{
+		Vec4Copy(square->plane[1], square->plane[0]);
 	}
 }

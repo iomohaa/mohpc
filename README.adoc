@@ -1,6 +1,6 @@
 = MOHPC
-
 :toc:
+:sectnums:
 
 == Introduction
 
@@ -26,14 +26,15 @@ This library can be built on Windows and Unix systems, for any architecture.
 
 .Compatibility list
 |===
-| Platform | Windows | Linux | Mac
-| x86      | Best    | Good  | Unknown
-| x64      | Best    | Good  | Unknown 
-| ARM      | Unknown | Good  | Unknown
+| Platform | x86     | x64      | ARM
+| Windows  | Best    | Best     | Best
+| Linux    | Good    | Good     | Unknown 
+| MAC      | Unknown | Unknown  | Unknown
 |===
 
 === Legend
 
+[horizontal]
 Best:: Fully working with no encountered crashes or bugs.
 
 Good:: Starts and load some assets, but was not tested enough.

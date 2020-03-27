@@ -233,6 +233,42 @@ namespace MOHPC
 		uint8_t heightmap[9 * 9];
 	};
 
+	struct BSP::File_Node {
+		int			planeNum;
+		int			children[2];
+		int			mins[3];
+		int			maxs[3];
+	};
+
+	struct BSP::File_Leaf {
+		int32_t cluster;
+		int32_t area;
+		uint32_t mins[3];
+		uint32_t maxs[3];
+		uint32_t firstLeafSurface;
+		uint32_t numLeafSurfaces;
+		uint32_t firstLeafBrush;
+		uint32_t numLeafBrushes;
+		uint32_t firstTerraPatch;
+		uint32_t numTerraPatches;
+		uint32_t firstStaticModel;
+		uint32_t numStaticModels;
+	};
+
+	// old leaf version
+	struct BSP::File_Leaf_Ver17 {
+		int32_t cluster;
+		int32_t area;
+		uint32_t mins[3];
+		uint32_t maxs[3];
+		uint32_t firstLeafSurface;
+		uint32_t numLeafSurfaces;
+		uint32_t firstLeafBrush;
+		uint32_t numLeafBrushes;
+		uint32_t firstTerraPatch;
+		uint32_t numTerraPatches;
+	};
+
 	struct Patch
 	{
 		Patch* parent;
@@ -432,7 +468,7 @@ size_t BSP::Surface::GetNumIndexes() const
 	return indexes.size();
 }
 
-int32_t BSP::Surface::GetIndice(size_t index) const
+size_t BSP::Surface::GetIndice(size_t index) const
 {
 	if (index < indexes.size())
 	{
@@ -610,8 +646,11 @@ static bool BrushIsTouching(BSP::Brush* b1, BSP::Brush* b2)
 }
 
 CLASS_DEFINITION(BSP);
+
 BSP::BSP()
 {
+	numClusters = 0;
+	numAreas = 0;
 	entityString = NULL;
 	entityStringLength = 0;
 }
@@ -736,6 +775,61 @@ bool BSP::Load()
 		FreeLump(&GameLump);
 	});
 
+	ProfilableCode("leaf brushes",
+	[&]()
+	{
+		BSP::GameLump GameLump;
+
+		LoadLump(file, &Header.lumps[LUMP_LEAFBRUSHES], &GameLump, 0);
+		LoadLeafsBrushes(&GameLump);
+		FreeLump(&GameLump);
+	});
+
+	ProfilableCode("leaf surfaces",
+	[&]()
+	{
+		BSP::GameLump GameLump;
+
+		LoadLump(file, &Header.lumps[LUMP_LEAFSURFACES], &GameLump, 0);
+		LoadLeafSurfaces(&GameLump);
+		FreeLump(&GameLump);
+	});
+
+	ProfilableCode("leafs",
+	[&]()
+	{
+		BSP::GameLump GameLump;
+
+		LoadLump(file, &Header.lumps[LUMP_LEAFS], &GameLump, 0);
+		if (Header.version > BSP_BETA_VERSION) {
+			LoadLeafs(&GameLump);
+		}
+		else {
+			LoadLeafsOld(&GameLump);
+		}
+		FreeLump(&GameLump);
+	});
+
+	ProfilableCode("nodes",
+	[&]()
+	{
+		BSP::GameLump GameLump;
+
+		LoadLump(file, &Header.lumps[LUMP_NODES], &GameLump, 0);
+		LoadNodes(&GameLump);
+		FreeLump(&GameLump);
+	});
+
+	ProfilableCode("visibility",
+	[&]()
+	{
+		BSP::GameLump GameLump;
+
+		LoadLump(file, &Header.lumps[LUMP_VISIBILITY], &GameLump, 0);
+		LoadVisibility(&GameLump);
+		FreeLump(&GameLump);
+	});
+
 	ProfilableCode("models",
 	[&]()
 	{
@@ -776,6 +870,16 @@ bool BSP::Load()
 		FreeLump(&GameLump);
 	});
 
+	ProfilableCode("terrain indexes",
+	[&]()
+	{
+		BSP::GameLump GameLump;
+
+		LoadLump(file, &Header.lumps[LUMP_TERRAININDEXES], &GameLump, 0);
+		LoadTerrainIndexes(&GameLump);
+		FreeLump(&GameLump);
+	});
+
 	if (Header.version > BSP_BETA_VERSION)
 	{
 		ProfilableCode("static models",
@@ -793,6 +897,12 @@ bool BSP::Load()
 	[&]()
 	{
 		CreateTerrainSurfaces();
+	});
+
+	ProfilableCode("generation of terrain collision",
+	[&]()
+	{
+		TR_PrepareGerrainCollide();
 	});
 	
 	ProfilableCode("brush mapping",
@@ -973,6 +1083,74 @@ const BSP::Brush *BSP::GetBrush(size_t brushNum) const
 	{
 		return nullptr;
 	}
+}
+
+const BSP::Leaf* BSP::GetLeaf(size_t leafNum) const
+{
+	if (leafNum < leafs.size())
+	{
+		return &leafs.at(leafNum);
+	}
+	else
+	{
+		return nullptr;
+	}
+}
+
+size_t BSP::GetNumLeafs() const
+{
+	return leafs.size();
+}
+
+const BSP::Node* BSP::GetNode(size_t nodeNum) const
+{
+	if (nodeNum < nodes.size())
+	{
+		return &nodes.at(nodeNum);
+	}
+	else
+	{
+		return nullptr;
+	}
+}
+
+size_t BSP::GetNumNodes() const
+{
+	return nodes.size();
+}
+
+uintptr_t BSP::GetLeafBrush(size_t leafBrushNum) const
+{
+	if (leafBrushNum < leafBrushes.size())
+	{
+		return leafBrushes.at(leafBrushNum);
+	}
+	else
+	{
+		return 0;
+	}
+}
+
+size_t BSP::GetNumLeafBrushes() const
+{
+	return leafBrushes.size();
+}
+
+uintptr_t BSP::GetLeafSurface(size_t leafSurfNum) const
+{
+	if (leafSurfNum < leafSurfaces.size())
+	{
+		return leafSurfaces.at(leafSurfNum);
+	}
+	else
+	{
+		return 0;
+	}
+}
+
+size_t BSP::GetNumLeafSurfaces() const
+{
+	return leafSurfaces.size();
 }
 
 size_t BSP::GetNumSubmodels() const
@@ -1241,9 +1419,9 @@ void BSP::ParseMesh(const File_Surface* InSurface, const File_Vertice* InVertice
 
 void BSP::ParseFace(const File_Surface* InSurface, const File_Vertice* InVertices, const int32_t* InIndices, Surface* Out)
 {
-	int32_t *tri;
-	int32_t i, j;
-	int32_t numVerts, numIndexes, badTriangles;
+	size_t*tri;
+	size_t i, j;
+	size_t numVerts, numIndexes, badTriangles;
 
 	numVerts = InSurface->numVerts;
 	numIndexes = InSurface->numIndexes;
@@ -1324,9 +1502,9 @@ void BSP::ParseFace(const File_Surface* InSurface, const File_Vertice* InVertice
 
 void BSP::ParseTriSurf(const File_Surface* InSurface, const File_Vertice* InVertices, const int32_t* InIndices, Surface* Out)
 {
-	int32_t *tri;
-	int32_t i, j;
-	int32_t numVerts, numIndexes, badTriangles;
+	size_t *tri;
+	size_t i, j;
+	size_t numVerts, numIndexes, badTriangles;
 
 	numVerts = InSurface->numVerts;
 	numIndexes = InSurface->numIndexes;
@@ -1589,6 +1767,165 @@ void BSP::LoadBrushes(const GameLump* GameLump)
 	}
 }
 
+void BSP::LoadLeafs(const GameLump* GameLump)
+{
+	numClusters = 0;
+	numAreas = 0;
+
+	if (GameLump->Length % sizeof(File_Leaf))
+	{
+		return;
+	}
+
+	size_t Count = GameLump->Length / sizeof(File_Leaf);
+	if (Count)
+	{
+		leafs.resize(Count);
+
+		const File_Leaf* in = (File_Leaf*)GameLump->Buffer;
+		Leaf* out = leafs.data();
+
+		for (size_t i = 0; i < Count; ++i, ++in, ++out)
+		{
+			out->cluster = in->cluster;
+			out->area = in->area;
+			out->firstLeafBrush = in->firstLeafBrush;
+			out->numLeafBrushes = in->numLeafBrushes;
+			out->firstLeafSurface =in->firstLeafSurface;
+			out->numLeafSurfaces = in->numLeafSurfaces;
+			out->firstLeafTerrain = in->firstTerraPatch;
+			out->numLeafTerrains = in->numTerraPatches;
+
+			if (out->cluster >= numClusters) numClusters = out->cluster + 1;
+			if (out->area >= numAreas) numAreas = out->area + 1;
+		}
+	}
+
+	areas.resize(numAreas);
+	areaPortals.resize(numAreas * numAreas);
+}
+
+void BSP::LoadLeafsOld(const GameLump* GameLump)
+{
+	numClusters = 0;
+	numAreas = 0;
+
+	if (GameLump->Length % sizeof(File_Leaf))
+	{
+		return;
+	}
+
+	size_t Count = GameLump->Length / sizeof(File_Leaf_Ver17);
+	if (Count)
+	{
+		leafs.resize(Count);
+
+		const File_Leaf_Ver17* in = (File_Leaf_Ver17*)GameLump->Buffer;
+		Leaf* out = leafs.data();
+
+		for (size_t i = 0; i < Count; ++i, ++in, ++out)
+		{
+			out->cluster = in->cluster;
+			out->area = in->area;
+			out->firstLeafBrush = in->firstLeafBrush;
+			out->numLeafBrushes = in->numLeafBrushes;
+			out->firstLeafSurface = in->firstLeafSurface;
+			out->numLeafSurfaces = in->numLeafSurfaces;
+
+			if (out->cluster >= numClusters) numClusters = out->cluster + 1;
+			if (out->area >= numAreas) numAreas = out->area + 1;
+		}
+	}
+
+	areas.resize(numAreas);
+	areaPortals.resize(numAreas * numAreas);
+}
+
+void BSP::LoadLeafsBrushes(const GameLump* GameLump)
+{
+	if (GameLump->Length % sizeof(uint32_t))
+	{
+		return;
+	}
+
+	size_t count = GameLump->Length / sizeof(uint32_t);
+	if (count)
+	{
+		leafBrushes.resize(count);
+
+		uint32_t* in = (uint32_t*)GameLump->Buffer;
+
+		for (size_t i = 0; i < count; ++i) {
+			leafBrushes[i] = in[i];
+		}
+	}
+}
+
+void BSP::LoadLeafSurfaces(const GameLump* GameLump)
+{
+	if (GameLump->Length % sizeof(uint32_t))
+	{
+		return;
+	}
+
+	size_t count = GameLump->Length / sizeof(uint32_t);
+	if (count)
+	{
+		leafSurfaces.resize(count);
+
+		uint32_t* in = (uint32_t*)GameLump->Buffer;
+
+		for (size_t i = 0; i < count; ++i) {
+			leafSurfaces[i] = in[i];
+		}
+	}
+}
+
+void BSP::LoadNodes(const GameLump* GameLump)
+{
+	if (GameLump->Length % sizeof(File_Node))
+	{
+		return;
+	}
+
+	size_t count = GameLump->Length / sizeof(File_Node);
+	if (count)
+	{
+		nodes.resize(count);
+
+		File_Node* in = (File_Node*)GameLump->Buffer;
+		Node* out = nodes.data();
+
+		for (size_t i = 0; i < count; ++i, ++in, ++out)
+		{
+			out->plane = &planes[in->planeNum];
+
+			for (int j = 0; j < 2; ++j) {
+				out->children[j] = in->children[j];
+			}
+		}
+	}
+}
+
+#define	VIS_HEADER	8
+
+void BSP::LoadVisibility(const GameLump* GameLump)
+{
+	size_t count = GameLump->Length;
+	if (!count)
+	{
+		clusterBytes = (numClusters + 31) & ~31;
+		visibility.resize(clusterBytes);
+		memset(visibility.data(), 255, clusterBytes);
+		return;
+	}
+
+	visibility.resize(count);
+	numClusters = ((uint32_t*)GameLump->Buffer)[0];
+	clusterBytes = ((uint32_t*)GameLump->Buffer)[1];
+	memcpy(visibility.data(), (uint32_t*)GameLump->Buffer + VIS_HEADER, count - VIS_HEADER);
+}
+
 void BSP::LoadSubmodels(const GameLump* GameLump)
 {
 	if (GameLump->Length % sizeof(File_BrushModel))
@@ -1788,6 +2125,72 @@ void BSP::LoadTerrain(const GameLump* GameLump)
 		{
 			UnpackTerraPatch(In, Out);
 		}
+	}
+}
+
+
+void BSP::LoadTerrainIndexes(const GameLump* GameLump)
+{
+	if (!GameLump->Length) {
+		return;
+	}
+
+	if (GameLump->Length % sizeof(uint16_t)) {
+		return;
+	}
+
+	size_t count = GameLump->Length / sizeof(uint16_t);
+	if (count > 0)
+	{
+		leafTerrains.resize(count);
+
+		uint16_t* in = (uint16_t*)GameLump->Buffer;
+
+		for (size_t i = 0; i < count; ++i) {
+			leafTerrains[i] = &terrainPatches[in[i]];
+		}
+	}
+}
+
+void BSP::FloodArea(uint32_t areaNum, uint32_t floodNum, uint32_t& floodValid)
+{
+	Area* area = &areas[areaNum];
+
+	if(area->floodValid == floodValid)
+	{
+		if (area->floodNum == floodNum) {
+			return;
+		}
+
+		// FIXME: Should throw exception "FloodArea_r: reflooded"
+		return;
+	}
+
+	area->floodNum = floodNum;
+	area->floodValid = floodValid;
+	uintptr_t* con = &areaPortals[areaNum * numAreas];
+	for (size_t i = 0; i < numAreas; ++i)
+	{
+		if (con[i] > 0) {
+			FloodArea(i, floodNum, floodValid);
+		}
+	}
+}
+
+void BSP::FloodAreaConnections()
+{
+	uint32_t floodValid = 1;
+	uint32_t floodNum = 0;
+
+	for (size_t i = 0; i < areas.size(); ++i)
+	{
+		Area* area = &areas[i];
+		if (area->floodValid == floodValid) {
+			continue;
+		}
+
+		++floodNum;
+		FloodArea(i, floodNum, floodValid);
 	}
 }
 
@@ -2342,4 +2745,38 @@ void BSP::MapBrushes()
 
 	surfacesGroups.shrink_to_fit();
 	delete[] mappedSurfaces;
+}
+
+uintptr_t BSP::PointLeafNum(const MOHPC::Vector p)
+{
+	if (!nodes.size()) {
+		return 0;
+	}
+
+	return PointLeafNum_r(p, 0);
+}
+
+uintptr_t BSP::PointLeafNum_r(const MOHPC::Vector p, intptr_t num)
+{
+	float d;
+
+	while (num >= 0)
+	{
+		const Node* node = nodes.data() + num;
+		const Plane* plane = node->plane;
+
+		if (plane->type < Plane::PLANE_NON_AXIAL) {
+			d = p[plane->type] - plane->distance;
+		} else {
+			d = DotProduct(plane->normal, p) - plane->distance;
+		}
+
+		if (d < 0) {
+			num = node->children[1];
+		} else {
+			num = node->children[0];
+		}
+	}
+
+	return -1 - num;
 }

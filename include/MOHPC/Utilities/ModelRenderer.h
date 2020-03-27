@@ -90,6 +90,7 @@ namespace MOHPC
 		skelBone_Base** skelBones;
 		std::vector<ModelSurface> surfaces;
 		Vector delta;
+		SkeletonChannelList m_morphTargetList;
 
 	public:
 		MOHPC_EXPORTS ModelRenderer();
@@ -168,10 +169,12 @@ namespace MOHPC
 		void CacheBones();
 		void MarkAllBonesAsDirty();
 		void ClearBonesCache();
+		void LoadMorphTargetNames(const Skeleton* skelmodel);
 
 		void SkelVertGetNormal(const Skeleton::SkeletorVertex *vert, const ModelBoneTransform *bone, Vector& out);
 		void SkelWeightGetXyz(const Skeleton::SkeletorWeight *weight, const ModelBoneTransform *bone, Vector& out);
 		void SkelWeightMorphGetXyz(const Skeleton::SkeletorWeight *weight, const ModelBoneTransform *bone, const Vector& totalmorph, Vector& out);
 		void SkelMorphGetXyz(const Skeleton::SkeletorMorph *morph, int *morphcache, Vector& out);
+		const ModelSurfaceMaterial* FindMaterialByName(const std::string& name);
 	};
 }

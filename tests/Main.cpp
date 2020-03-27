@@ -77,13 +77,13 @@ int main(int argc, char *argv[])
 
 		MOHPC::FileEntryList entries = FM->ListFilteredFiles("/", "", true, false);
 
+		TestLevel(AM);
 		TestShader(AM);
 		TestCDKey();
 		TestEmitter(AM);
 		TestAnimRendering(AM);
 		TestTiki(AM);
 		TestSoundAlias(AM);
-		TestLevel(AM);
 	}
 	
 #ifdef _WIN32

@@ -24,7 +24,8 @@ namespace MOHPC
 		float		z;
 
 		Vector();
-		Vector(const float x, const float y, const float z);
+		//Vector(const float x, const float y, const float z);
+		constexpr Vector(const float x, const float y, const float z);
 		Vector(const float xyz[3]);
 		explicit	Vector(const char *text);
 
@@ -122,7 +123,7 @@ namespace MOHPC
 		return (&x)[index];
 	}
 
-	inline void  Vector::setXYZ(const float new_x, const float new_y, const float new_z)
+	inline void Vector::setXYZ(const float new_x, const float new_y, const float new_z)
 	{
 		x = new_x;
 		y = new_y;
@@ -133,7 +134,7 @@ namespace MOHPC
 	{
 	}
 
-	inline Vector::Vector(const float init_x, const float init_y, const float init_z) : x(init_x), y(init_y), z(init_z)
+	constexpr Vector::Vector(const float init_x, const float init_y, const float init_z) : x(init_x), y(init_y), z(init_z)
 	{
 	}
 

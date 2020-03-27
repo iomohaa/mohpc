@@ -13,6 +13,7 @@
 
 namespace MOHPC
 {
+	struct worknode_t;
 
 	class File;
 	class Shader;
@@ -36,6 +37,9 @@ namespace MOHPC
 		struct File_SphereLight;
 		struct File_StaticModel;
 		struct File_TerrainPatch;
+		struct File_Node;
+		struct File_Leaf;
+		struct File_Leaf_Ver17;
 
 	public:
 		static const int32_t lightmapSize = 128;
@@ -134,7 +138,7 @@ namespace MOHPC
 		private:
 			const Shader* shader;
 			std::vector<Vertice> vertices;
-			std::vector<int32_t> indexes;
+			std::vector<size_t> indexes;
 			Vector centroid;
 			bool bIsPatch;
 			int32_t lightmapNum;
@@ -173,7 +177,7 @@ namespace MOHPC
 			MOHPC_EXPORTS const Vertice *GetVertice(size_t index) const;
 
 			MOHPC_EXPORTS size_t GetNumIndexes() const;
-			MOHPC_EXPORTS int32_t GetIndice(size_t index) const;
+			MOHPC_EXPORTS size_t GetIndice(size_t index) const;
 
 			MOHPC_EXPORTS int32_t GetLightmapNum() const;
 			MOHPC_EXPORTS int32_t GetLightmapX() const;
@@ -225,6 +229,30 @@ namespace MOHPC
 			MOHPC_EXPORTS BrushSide* GetSide(size_t Index) const;
 			MOHPC_EXPORTS Brush* GetParent() const;
 			MOHPC_EXPORTS Vector GetOrigin() const;
+		};
+
+		struct Node
+		{
+			Plane* plane;
+			int32_t children[2];
+		};
+
+		struct Leaf
+		{
+			int32_t cluster;
+			int32_t area;
+			uint32_t firstLeafBrush;
+			uint32_t numLeafBrushes;
+			uint32_t firstLeafSurface;
+			uint32_t numLeafSurfaces;
+			uint32_t firstLeafTerrain;
+			uint32_t numLeafTerrains;
+		};
+
+		struct Area
+		{
+			uint32_t floodNum;
+			uint32_t floodValid;
 		};
 
 		class SurfacesGroup
@@ -377,6 +405,16 @@ namespace MOHPC
 			TerrainTri();
 		};
 
+		struct TerrainCollideSquare {
+			vec4_t plane[2];
+			int32_t eMode;
+		};
+
+		struct TerrainCollide {
+			Vector vBounds[2];
+			TerrainCollideSquare squares[8][8];
+		};
+
 		struct PoolInfo
 		{
 			terraInt iFreeHead;
@@ -389,6 +427,12 @@ namespace MOHPC
 				, nFree(0)
 			{
 			}
+		};
+
+	private:
+		struct varnodeIndex {
+			short unsigned int iTreeAndMask;
+			short unsigned int iNode;
 		};
 
 	public:
@@ -440,6 +484,30 @@ namespace MOHPC
 		/** Returns the number of submodels. */
 		MOHPC_EXPORTS size_t GetNumSubmodels() const;
 
+		/** Returns the leaf at the specified number. */
+		MOHPC_EXPORTS const Leaf *GetLeaf(size_t leafNum) const;
+
+		/** Returns the number of leafs. */
+		MOHPC_EXPORTS size_t GetNumLeafs() const;
+
+		/** Returns the node at the specified number. */
+		MOHPC_EXPORTS const Node* GetNode(size_t nodeNum) const;
+
+		/** Returns the number of nodes. */
+		MOHPC_EXPORTS size_t GetNumNodes() const;
+
+		/** Returns the leaf brush at the specified number. */
+		MOHPC_EXPORTS uintptr_t GetLeafBrush(size_t leafBrushNum) const;
+
+		/** Returns the number of leaf brushes. */
+		MOHPC_EXPORTS size_t GetNumLeafBrushes() const;
+
+		/** Returns the leaf surface at the specified number. */
+		MOHPC_EXPORTS uintptr_t GetLeafSurface(size_t leafSurfNum) const;
+
+		/** Returns the number of leaf surfaces. */
+		MOHPC_EXPORTS size_t GetNumLeafSurfaces() const;
+
 		/** Returns the submodel at the specified number. */
 		MOHPC_EXPORTS const Model *GetSubmodel(size_t submodelNum) const;
 
@@ -488,11 +556,20 @@ namespace MOHPC
 		/** Returns the grouped surface at the specified number. */
 		MOHPC_EXPORTS const SurfacesGroup *GetSurfacesGroup(size_t surfsGroupNum) const;
 
+		/** Generate planes of collision from a terrain patch. */
+		MOHPC_EXPORTS void GenerateTerrainCollide(const TerrainPatch* patch, TerrainCollide& collision);
+
+		/** Return the leaf number of the point at the specified location. */
+		MOHPC_EXPORTS uintptr_t PointLeafNum(const MOHPC::Vector p);
+
+		static bool PlaneFromPoints(vec4_t plane, vec3_t a, vec3_t b, vec3_t c);
+
 	protected:
 		bool Load() override;
 
 	private:
 		Plane::PlaneType PlaneTypeForNormal(const Vector& Normal);
+		uintptr_t PointLeafNum_r(const MOHPC::Vector p, intptr_t num);
 
 		//void PreAllocateLevelData(const File_Header *Header);
 		void LoadShaders(const GameLump* GameLump);
@@ -510,11 +587,20 @@ namespace MOHPC
 		void LoadSideEquations(const GameLump* GameLump);
 		void LoadBrushSides(const GameLump* GameLump);
 		void LoadBrushes(const GameLump* GameLump);
+		void LoadLeafs(const GameLump* GameLump);
+		void LoadLeafsOld(const GameLump* GameLump);
+		void LoadLeafsBrushes(const GameLump* GameLump);
+		void LoadLeafSurfaces(const GameLump* GameLump);
+		void LoadNodes(const GameLump* GameLump);
+		void LoadVisibility(const GameLump* GameLump);
 		void LoadSubmodels(const GameLump* GameLump);
 		void LoadEntityString(const GameLump* GameLump);
 		void LoadSphereLights(const GameLump* GameLump);
 		void LoadStaticModelDefs(const GameLump* GameLump);
 		void LoadTerrain(const GameLump* GameLump);
+		void LoadTerrainIndexes(const GameLump* GameLump);
+		void FloodArea(uint32_t areaNum, uint32_t floodNum, uint32_t& floodValid);
+		void FloodAreaConnections();
 
 		// terrain
 		terraInt TR_AllocateVert(TerrainPatch *patch);
@@ -539,6 +625,11 @@ namespace MOHPC
 		void TR_DoTriMerging();
 		void TR_ShrinkData();
 
+		// terrain collision
+		void TR_CalculateTerrainIndices(worknode_t* worknode, int iDiagonal, int iTree);
+		void TR_PrepareGerrainCollide();
+		void TR_PickTerrainSquareMode(TerrainCollideSquare* square, const MOHPC::Vector& vTest, terraInt i, terraInt j, const TerrainPatch* patch);
+
 		void GenerateTerrainPatch(const TerrainPatch* Patch, Surface* Out);
 		void GenerateTerrainPatch2(const TerrainPatch* Patch, Surface* Out);
 		void UnpackTerraPatch(const File_TerrainPatch* Packed, TerrainPatch* Unpacked) const;
@@ -562,6 +653,13 @@ namespace MOHPC
 		std::vector<SideEquation> sideEquations;
 		std::vector<BrushSide> brushSides;
 		std::vector<Brush> brushes;
+		std::vector<Node> nodes;
+		std::vector<Leaf> leafs;
+		std::vector<uintptr_t> leafBrushes;
+		std::vector<uintptr_t> leafSurfaces;
+		std::vector<TerrainPatch*> leafTerrains;
+		std::vector<Area> areas;
+		std::vector<uintptr_t> areaPortals;
 		std::vector<Model> brushModels;
 		std::vector<SphereLight> lights;
 		std::vector<StaticModel> staticModels;
@@ -570,6 +668,10 @@ namespace MOHPC
 		std::vector<class LevelEntity*> entities;
 		std::unordered_map<std::string, std::vector<class LevelEntity*>> targetList;
 		std::vector<SurfacesGroup*> surfacesGroups;
+		size_t numClusters;
+		size_t numAreas;
+		size_t clusterBytes;
+		std::vector<uint8_t> visibility;
 		char* entityString;
 		size_t entityStringLength;
 
@@ -577,6 +679,7 @@ namespace MOHPC
 		std::vector<TerrainTri> trTris;
 		PoolInfo trpiTri;
 		PoolInfo trpiVert;
+		varnodeIndex varnodeIndexes[2][8][8][2];
 	};
 	typedef std::shared_ptr<BSP> BSPPtr;
 }

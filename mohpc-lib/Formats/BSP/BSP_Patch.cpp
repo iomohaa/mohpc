@@ -122,7 +122,8 @@ int PlaneEqual(BSP::PatchPlane *p, float plane[4], int *flipped) {
 	return false;
 }
 
-static bool PlaneFromPoints(vec4_t plane, vec3_t a, vec3_t b, vec3_t c) {
+bool BSP::PlaneFromPoints(vec4_t plane, vec3_t a, vec3_t b, vec3_t c)
+{
 	vec3_t	d1, d2;
 
 	VecSubtract(b, a, d1);
@@ -184,7 +185,7 @@ static int FindPlane(float *p1, float *p2, float *p3) {
 	int		i;
 	float	d;
 
-	if (!PlaneFromPoints(plane, p1, p2, p3)) {
+	if (!BSP::PlaneFromPoints(plane, p1, p2, p3)) {
 		return -1;
 	}
 

@@ -20,6 +20,7 @@ void TestAnimRendering(MOHPC::AssetManager& AM)
 		{
 			ModelRenderer.SetActionPose(Animation.get(), 0, i);
 			ModelRenderer.BuildBonesTransform();
+			ModelRenderer.BuildRenderData();
 		}
 	}
 }

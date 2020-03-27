@@ -323,7 +323,7 @@ bool Skeleton::LoadModel(const char *path)
 		}
 	}
 
-	if (pHeader->version >= TIKI_SKB_HEADER_VERSION)
+	if (pHeader->version > TIKI_SKB_HEADER_VER_3)
 	{
 		if (pHeader->numBoxes)
 		{
@@ -340,7 +340,7 @@ bool Skeleton::LoadModel(const char *path)
 			}
 		}
 
-		if (pHeader->version >= TIKI_SKD_HEADER_IDENT)
+		if (pHeader->version > TIKI_SKB_HEADER_VERSION)
 		{
 			if (pHeader->numMorphTargets)
 			{
@@ -348,7 +348,7 @@ bool Skeleton::LoadModel(const char *path)
 
 				if (pHeader->ofsMorphTargets > 0 || (pHeader->ofsMorphTargets + pHeader->numMorphTargets) < length)
 				{
-					char* pMorphTargets = (char *)pHeader + pHeader->ofsMorphTargets;
+					const char* pMorphTargets = (const char *)pHeader + pHeader->ofsMorphTargets;
 
 					for (uint32_t i = 0; i < pHeader->numMorphTargets; i++)
 					{
@@ -362,16 +362,16 @@ bool Skeleton::LoadModel(const char *path)
 					nMorphBytes = pHeader->numMorphTargets;
 				}
 
-				if (pHeader->ofsMorphTargets >= 0 && (uint32_t)(pHeader->ofsMorphTargets + nMorphBytes) < length)
+				if (pHeader->ofsMorphTargets >= 0 && (uint32_t)(pHeader->ofsMorphTargets + nMorphBytes) <= length)
 				{
 					MorphTargets.resize(pHeader->numMorphTargets);
 
-					char* pMorphTargets = (char *)pHeader + pHeader->ofsMorphTargets;
+					const char* pMorphTargets = (const char *)pHeader + pHeader->ofsMorphTargets;
 
 					for (uint32_t i = 0; i < pHeader->numMorphTargets; i++)
 					{
 						size_t nLen = strlen(pMorphTargets) + 1;
-						MorphTargets[i] = pMorphTargets[i];
+						MorphTargets[i] = pMorphTargets;
 						pMorphTargets += nLen;
 					}
 				}

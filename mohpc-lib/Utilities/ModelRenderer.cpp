@@ -126,6 +126,7 @@ void ModelRenderer::AddModel(const TIKI* Tiki)
 		{
 			const MOHPC::Skeleton* Skel = Tiki->GetMesh(i);
 			meshes.push_back(Skel);
+			LoadMorphTargetNames(Skel);
 		}
 
 		const size_t numSurfaces = Tiki->GetNumSurfaces();
@@ -133,21 +134,26 @@ void ModelRenderer::AddModel(const TIKI* Tiki)
 		{
 			const TIKI::TIKISurface* Surface = Tiki->GetSurface(i);
 
-			ModelSurfaceMaterial Mat;
-			Mat.name = Surface->name;
-
-			const size_t numShaders = Surface->shaders.size();
-			Mat.shaders.reserve(numShaders);
-
-			for (size_t j = 0; j < numShaders; j++)
+			if (!FindMaterialByName(Surface->name))
 			{
-				const std::string& shaderName = Surface->shaders[j];
-				Mat.shaders.push_back(shaderMan->GetShader(shaderName.c_str()));
-			}
+				ModelSurfaceMaterial Mat;
+				Mat.name = Surface->name;
 
-			materials.push_back(Mat);
+				const size_t numShaders = Surface->shaders.size();
+				Mat.shaders.reserve(numShaders);
+
+				for (size_t j = 0; j < numShaders; j++)
+				{
+					const std::string& shaderName = Surface->shaders[j];
+					Mat.shaders.push_back(shaderMan->GetShader(shaderName.c_str()));
+				}
+
+				materials.push_back(Mat);
+			}
 		}
 	}
+
+	m_morphTargetList.PackChannels();
 
 	if (poses[MAX_ANIM_MOVEMENTS_POSES].animation == nullptr && Tiki->GetNumAnimations())
 	{
@@ -327,15 +333,71 @@ void ModelRenderer::BuildRenderData()
 	}
 
 	size_t numSurfaces = 0;
+	//size_t numTotalMorphs = 0;
 	const size_t numMeshes = meshes.size();
 	for (size_t i = 0; i < numMeshes; i++)
 	{
 		const Skeleton* Skel = meshes[i];
 		numSurfaces += Skel->GetNumSurfaces();
+		//numTotalMorphs += Skel->GetNumMorphTargets();
 	}
 
 	surfaces.clear();
 	surfaces.reserve(numSurfaces);
+
+	/*
+	std::vector<float> morphData;
+	morphData.insert(morphData.begin(), numTotalMorphs, 0);
+
+	size_t morphDataNum = 0;
+
+	for (size_t i = 0; i < numMeshes; i++)
+	{
+		const Skeleton* Skel = meshes[i];
+		
+		for (uint32_t blendNum = 0; blendNum < MAX_ANIM_MOVEMENTS_POSES; blendNum++)
+		{
+			const Pose& pose = poses[blendNum];
+			const float weight = pose.weight;
+
+			if (weight > 0.001)
+			{
+				for (uint32_t modelChannelNum = 0; modelChannelNum < m_morphTargetList.NumChannels(); modelChannelNum++)
+				{
+					uint32_t animChannelNum = m_morphTargetList.GlobalChannel(modelChannelNum);
+					animChannelNum = m_morphTargetList.GetLocalFromGlobal(animChannelNum);
+
+					if (animChannelNum >= 0)
+					{
+						const vec4_t* channelData = DecodeFrameValue(pose.animation->GetAryChannel(animChannelNum), pose.frameNum);
+						morphData[modelChannelNum] += (int)((*channelData)[0] * weight);
+					}
+				}
+			}
+		}
+
+		for (uint32_t blendNum = 32; blendNum < MAX_ANIM_ACTIONS_POSES + 32; blendNum++)
+		{
+			const Pose& pose = poses[blendNum];
+			const float weight = pose.weight;
+
+			if (weight > 0.001)
+			{
+				for (uint32_t modelChannelNum = 0; modelChannelNum < m_morphTargetList.NumChannels(); modelChannelNum++)
+				{
+					uint32_t animChannelNum = m_morphTargetList.GlobalChannel(modelChannelNum);
+					animChannelNum = m_morphTargetList.GetLocalFromGlobal(animChannelNum);
+
+					if (animChannelNum >= 0)
+					{
+						const vec4_t* channelData = DecodeFrameValue(pose.animation->GetAryChannel(animChannelNum), pose.frameNum);
+						morphData[modelChannelNum] += (int)((*channelData)[0] * weight);
+					}
+				}
+			}
+		}
+	}
+	*/
 
 	size_t materialIdx = 0;
 
@@ -352,7 +414,7 @@ void ModelRenderer::BuildRenderData()
 			const size_t numIndexes = skelSurface->Triangles.size();
 
 			ModelSurface Surface;
-			Surface.material = &materials[materialIdx++];
+			Surface.material = FindMaterialByName(skelSurface->name);
 			Surface.vertices.reserve(numVertices);
 			Surface.indexes.reserve(numIndexes);
 
@@ -381,7 +443,7 @@ void ModelRenderer::BuildRenderData()
 				if (numMorphs > 0)
 				{
 					Vector totalMorph;
-					const Skeleton::SkeletorMorph* morphs = skelVertex->Morphs.data();
+					const Skeleton::SkeletorMorph* skelMorph = skelVertex->Morphs.data();
 
 					/*
 					for (size_t morphNum = 0; morphNum < numMorphs; morphNum++)
@@ -396,6 +458,15 @@ void ModelRenderer::BuildRenderData()
 						morph++;
 					}
 					*/
+
+					for (size_t morphNum = 0; morphNum < numMorphs; morphNum++, skelMorph++)
+					{
+						ModelMorph morph;
+						morph.morphIndex = skelMorph->morphIndex;
+						morph.offset = skelMorph->offset;
+
+						Vertice.morphs.push_back(morph);
+					}
 
 					for (size_t weightNum = 0; weightNum < numWeights; weightNum++, skelWeight++)
 					{
@@ -527,6 +598,42 @@ const ModelSurface* ModelRenderer::GetSurface(size_t index) const
 	return nullptr;
 }
 
+void ModelRenderer::LoadMorphTargetNames(const Skeleton* skelmodel)
+{
+	size_t numTargets = skelmodel->GetNumMorphTargets();
+
+	for (size_t i = 0; i < numTargets; i++)
+	{
+		const char* newTargetName = skelmodel->GetMorphTarget(i).c_str();
+
+		size_t newChannel = GetAssetManager()->GetManager<SkeletorManager>()->GetChannelNamesTable()->RegisterChannel(newTargetName);
+		size_t morphTargetIndex = m_morphTargetList.AddChannel(newChannel);
+
+		/*
+		if (!strncmp(newTargetName, "EYES_left", 9))
+		{
+			m_targetLookLeft = morphTargetIndex;
+		}
+		else if (!strncmp(newTargetName, "EYES_right", 10))
+		{
+			m_targetLookRight = morphTargetIndex;
+		}
+		else if (!strncmp(newTargetName, "EYES_up", 70))
+		{
+			m_targetLookUp = morphTargetIndex;
+		}
+		else if (!strncmp(newTargetName, "EYES_down", 9))
+		{
+			m_targetLookDown = morphTargetIndex;
+		}
+		else if (!strncmp(newTargetName, "EYES_blink", 9))
+		{
+			m_targetBlink = morphTargetIndex;
+		}
+		*/
+	}
+}
+
 void ModelRenderer::SkelVertGetNormal(const Skeleton::SkeletorVertex *vert, const ModelBoneTransform *bone, Vector& out)
 {
 	out[0] = vert->normal[0] * bone->matrix[0][0] +
@@ -598,4 +705,16 @@ void ModelRenderer::SkelMorphGetXyz(const Skeleton::SkeletorMorph *morph, int *m
 const MOHPC::Vector& MOHPC::ModelRenderer::GetDelta() const
 {
 	return delta;
+}
+
+const MOHPC::ModelSurfaceMaterial* MOHPC::ModelRenderer::FindMaterialByName(const std::string& name)
+{
+	for (const ModelSurfaceMaterial& material : materials)
+	{
+		if (!stricmp(material.name.c_str(), name.c_str()))
+		{
+			return &material;
+		}
+	}
+	return nullptr;
 }

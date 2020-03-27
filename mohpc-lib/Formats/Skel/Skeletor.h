@@ -134,3 +134,5 @@ namespace MOHPC
 		void SkeletorLoadBonesFromBuffer(skelChannelList_c *boneList, skelHeaderGame_t *buffer, skelBone_Base **bone);
 	*/
 };
+
+const vec4_t* DecodeFrameValue(const SkeletonAnimation::SkanChannelHdr* channelFrames, size_t desiredFrameNum);

@@ -279,8 +279,8 @@ void BSP::CreateSurfaceGridMesh(int32_t width, int32_t height, BSP::Vertice *ctr
 	grid->indexes.resize(numIndexes);
 	grid->vertices.resize(width * height);
 
-	int32_t *outIndexes = grid->indexes.data();
-	for (int32_t i = 0; i < numIndexes; i++)
+	size_t *outIndexes = grid->indexes.data();
+	for (size_t i = 0; i < numIndexes; i++)
 	{
 		outIndexes[i] = indexes[i];
 	}
