@@ -144,7 +144,6 @@ void Skeleton::LoadBoneFromBuffer2(const BoneFileData *fileData, BoneData *boneD
 bool Skeleton::LoadModel(const char *path)
 {
 	File_SkelHeader *pHeader;
-	File_Surface *oldSurf;
 
 	FilePtr file = GetFileManager()->OpenFile(path);
 	if (!file)
@@ -172,210 +171,38 @@ bool Skeleton::LoadModel(const char *path)
 	name = pHeader->name;
 	pLOD = NULL;
 
-	for (int32_t i = 0; i < sizeof(pHeader->lodIndex) / sizeof(pHeader->lodIndex[0]); i++)
-	{
+	// Import LODs
+	for (int32_t i = 0; i < sizeof(pHeader->lodIndex) / sizeof(pHeader->lodIndex[0]); i++) {
 		lodIndex[i] = pHeader->lodIndex[i];
 	}
 
-	// Setup surfaces
-	Surfaces.resize(pHeader->numSurfaces);
-
-	oldSurf = (File_Surface *)((uint8_t *)pHeader + pHeader->ofsSurfaces);
-
-	for (uint32_t i = 0; i < pHeader->numSurfaces; i++)
-	{
-		Surface surf;
-
-		surf.name = oldSurf->name;
-		surf.Triangles.resize(oldSurf->numTriangles * 3);
-		surf.Vertices.resize(oldSurf->numVerts);
-		surf.Collapse.resize(oldSurf->numVerts);
-
-		if (version <= TIKI_SKB_HEADER_VERSION)
-		{
-			File_SKB_Vertex *oldVerts = (File_SKB_Vertex *)((uint8_t *)oldSurf + oldSurf->ofsVerts);
-			int32_t* oldCollapse = (int32_t *)((uint8_t *)oldSurf + oldSurf->ofsCollapse);
-
-			for (int32_t j = 0; j < oldSurf->numVerts; j++)
-			{
-				SkeletorVertex newVert;
-				newVert.normal = oldVerts->normal;
-				newVert.textureCoords[0] = oldVerts->texCoords[0];
-				newVert.textureCoords[1] = oldVerts->texCoords[1];
-				newVert.Weights.resize(oldVerts->numWeights);
-
-				for (int32_t k = 0; k < oldVerts->numWeights; k++)
-				{
-					SkeletorWeight& newWeight = newVert.Weights[k];
-					newWeight.boneIndex = oldVerts->weights[k].boneIndex;
-					newWeight.boneWeight = oldVerts->weights[k].boneWeight;
-					newWeight.offset = oldVerts->weights[k].offset;
-				}
-
-				surf.Vertices[j] = newVert;
-				surf.Collapse[j] = *oldCollapse;
-
-				oldVerts = (File_SKB_Vertex *)((uint8_t *)oldVerts + sizeof(File_Weight) * oldVerts->numWeights + (sizeof(File_SKB_Vertex) - sizeof(File_Weight)));
-				oldCollapse++;
-			}
-		}
-		else
-		{
-			File_SKD_Vertex *oldVerts = (File_SKD_Vertex *)((uint8_t *)oldSurf + oldSurf->ofsVerts);
-			int32_t* oldCollapse = (int32_t *)((uint8_t *)oldSurf + oldSurf->ofsCollapse);
-
-			for (int32_t j = 0; j < oldSurf->numVerts; j++)
-			{
-				SkeletorVertex newVert;
-				newVert.normal = oldVerts->normal;
-				newVert.textureCoords[0] = oldVerts->texCoords[0];
-				newVert.textureCoords[1] = oldVerts->texCoords[1];
-				newVert.Morphs.reserve(oldVerts->numMorphs);
-				newVert.Weights.reserve(oldVerts->numWeights);
-
-				File_Morph *morph = (File_Morph*)((uint8_t*)oldVerts + sizeof(File_SKD_Vertex));
-
-				for (int32_t k = 0; k < oldVerts->numMorphs; k++)
-				{
-					SkeletorMorph newMorph;
-					newMorph.morphIndex = morph->morphIndex;
-					newMorph.offset = morph->offset;
-					newVert.Morphs.push_back(newMorph);
-					morph++;
-				}
-
-				File_Weight *weight = (File_Weight*)((uint8_t*)oldVerts + sizeof(File_SKD_Vertex) + sizeof(File_Morph) * oldVerts->numMorphs);
-
-				for (int32_t k = 0; k < oldVerts->numWeights; k++)
-				{
-					SkeletorWeight newWeight;
-					newWeight.boneIndex = weight->boneIndex;
-					newWeight.boneWeight = weight->boneWeight;
-					newWeight.offset = weight->offset;
-					newVert.Weights.push_back(newWeight);
-					weight++;
-				}
-
-				surf.Vertices[j] = newVert;
-				surf.Collapse[j] = *oldCollapse;
-
-				oldVerts = (File_SKD_Vertex *)((uint8_t *)oldVerts + sizeof(File_SKD_Vertex) + sizeof(File_Morph) * oldVerts->numMorphs + sizeof(File_Weight) * oldVerts->numWeights);
-				oldCollapse++;
-			}
-		}
-
-		int32_t* oldTriangles = (int32_t *)((uint8_t *)oldSurf + oldSurf->ofsTriangles);
-
-		for (int32_t j = 0; j < oldSurf->numTriangles * 3; j++)
-		{
-			surf.Triangles[j] = *oldTriangles;
-			oldTriangles++;
-		}
-
-		if (version > TIKI_SKB_HEADER_VER_3)
-		{
-			surf.CollapseIndex.resize(oldSurf->numVerts);
-
-			int32_t* oldCollapseIndex = (int32_t *)((uint8_t *)oldSurf + oldSurf->ofsCollapseIndex);
-
-			for (int32_t j = 0; j < oldSurf->numVerts; j++)
-			{
-				surf.CollapseIndex[j] = *oldCollapseIndex;
-				oldCollapseIndex++;
-			}
-		}
-
-		Surfaces[i] = surf;
-
-		oldSurf = (File_Surface *)((uint8_t *)oldSurf + oldSurf->ofsEnd);
+	// Import surfaces
+	if (version <= TIKI_SKB_HEADER_VERSION) {
+		LoadSKBSurfaces(pHeader, length);
+	}
+	else {
+		LoadSKDSurfaces(pHeader, length);
 	}
 
-	Bones.resize(pHeader->numBones);
+	// Import collapses
+	if (version > TIKI_SKB_HEADER_VER_3) {
+		LoadCollapses(pHeader, length);
+	}
 
 	// Create bones
-	if (pHeader->version <= TIKI_SKB_HEADER_VERSION)
-	{
-		File_SkelBoneName *TIKI_bones = (File_SkelBoneName *)((uint8_t *)pHeader + pHeader->ofsBones);
-		for (uint32_t i = 0; i < pHeader->numBones; i++)
-		{
-			const char *boneName;
-
-			if (TIKI_bones->parent == -1)
-			{
-				boneName = SKEL_BONENAME_WORLD;
-			}
-			else
-			{
-				boneName = TIKI_bones[TIKI_bones->parent].name;
-			}
-
-			CreatePosRotBoneData(TIKI_bones->name, boneName, &Bones[i]);
-			TIKI_bones++;
-		}
+	if (pHeader->version <= TIKI_SKB_HEADER_VERSION) {
+		LoadSKBBones(pHeader, length);
 	}
-	else
-	{
-		BoneFileData *boneBuffer = (BoneFileData *)((uint8_t *)pHeader + pHeader->ofsBones);
-		for (uint32_t i = 0; i < pHeader->numBones; i++)
-		{
-			LoadBoneFromBuffer2(boneBuffer, &Bones[i]);
-			boneBuffer = (BoneFileData *)((uint8_t *)boneBuffer + boneBuffer->ofsEnd);
-		}
+	else {
+		LoadSKDBones(pHeader, length);
 	}
 
 	if (pHeader->version > TIKI_SKB_HEADER_VER_3)
 	{
-		if (pHeader->numBoxes)
-		{
-			if (pHeader->ofsBoxes >= 0 && (uint32_t)(pHeader->ofsBoxes + pHeader->numBoxes * sizeof(uint32_t)) < length)
-			{
-				Boxes.resize(pHeader->numBoxes);
+		LoadBoxes(pHeader, length);
 
-				int32_t* pBoxes = (int32_t*)((uint8_t *)pHeader + pHeader->ofsBoxes);
-
-				for (uint32_t i = 0; i < pHeader->numBoxes; i++)
-				{
-					Boxes[i] = pBoxes[i];
-				}
-			}
-		}
-
-		if (pHeader->version > TIKI_SKB_HEADER_VERSION)
-		{
-			if (pHeader->numMorphTargets)
-			{
-				size_t nMorphBytes = 0;
-
-				if (pHeader->ofsMorphTargets > 0 || (pHeader->ofsMorphTargets + pHeader->numMorphTargets) < length)
-				{
-					const char* pMorphTargets = (const char *)pHeader + pHeader->ofsMorphTargets;
-
-					for (uint32_t i = 0; i < pHeader->numMorphTargets; i++)
-					{
-						size_t nLen = strlen(pMorphTargets) + 1;
-						nMorphBytes += nLen;
-						pMorphTargets += nLen;
-					}
-				}
-				else
-				{
-					nMorphBytes = pHeader->numMorphTargets;
-				}
-
-				if (pHeader->ofsMorphTargets >= 0 && (uint32_t)(pHeader->ofsMorphTargets + nMorphBytes) <= length)
-				{
-					MorphTargets.resize(pHeader->numMorphTargets);
-
-					const char* pMorphTargets = (const char *)pHeader + pHeader->ofsMorphTargets;
-
-					for (uint32_t i = 0; i < pHeader->numMorphTargets; i++)
-					{
-						size_t nLen = strlen(pMorphTargets) + 1;
-						MorphTargets[i] = pMorphTargets;
-						pMorphTargets += nLen;
-					}
-				}
-			}
+		if (pHeader->version > TIKI_SKB_HEADER_VERSION) {
+			LoadMorphs(pHeader, length);
 		}
 	}
 
@@ -392,15 +219,10 @@ bool Skeleton::Load()
 	const char* ext = length > 4 ? &Fname[length - 4] : NULL;
 	if (ext)
 	{
-		if (!stricmp(ext, ".skb") || !stricmp(ext, ".skd"))
-		{
-			if (!LoadModel(Fname))
-			{
-				return false;
-			}
+		if (!stricmp(ext, ".skb") || !stricmp(ext, ".skd")) {
+			return LoadModel(Fname);
 		}
-		else
-		{
+		else {
 			return false;
 		}
 	}
@@ -448,4 +270,244 @@ const string& Skeleton::GetMorphTarget(size_t index) const
 const char* MOHPC::Skeleton::GetName() const
 {
 	return name.c_str();
+}
+
+void MOHPC::Skeleton::LoadSKBSurfaces(File_SkelHeader* pHeader, size_t length)
+{
+	File_Surface* oldSurf = (File_Surface*)((uint8_t*)pHeader + pHeader->ofsSurfaces);
+
+	// Setup surfaces
+	Surfaces.resize(pHeader->numSurfaces);
+
+	for (uint32_t i = 0; i < pHeader->numSurfaces; i++)
+	{
+		Surface surf;
+
+		surf.name = oldSurf->name;
+		surf.Triangles.resize(oldSurf->numTriangles * 3);
+		surf.Vertices.resize(oldSurf->numVerts);
+
+		File_SKB_Vertex* oldVerts = (File_SKB_Vertex*)((uint8_t*)oldSurf + oldSurf->ofsVerts);
+
+		for (int32_t j = 0; j < oldSurf->numVerts; j++)
+		{
+			SkeletorVertex newVert;
+			newVert.normal = oldVerts->normal;
+			newVert.textureCoords[0] = oldVerts->texCoords[0];
+			newVert.textureCoords[1] = oldVerts->texCoords[1];
+			newVert.Weights.resize(oldVerts->numWeights);
+
+			for (int32_t k = 0; k < oldVerts->numWeights; k++)
+			{
+				SkeletorWeight& newWeight = newVert.Weights[k];
+				newWeight.boneIndex = oldVerts->weights[k].boneIndex;
+				newWeight.boneWeight = oldVerts->weights[k].boneWeight;
+				newWeight.offset = oldVerts->weights[k].offset;
+			}
+
+			surf.Vertices[j] = newVert;
+
+			oldVerts = (File_SKB_Vertex*)((uint8_t*)oldVerts + sizeof(File_Weight) * oldVerts->numWeights + (sizeof(File_SKB_Vertex) - sizeof(File_Weight)));
+		}
+
+		int32_t* oldTriangles = (int32_t*)((uint8_t*)oldSurf + oldSurf->ofsTriangles);
+
+		for (int32_t j = 0; j < oldSurf->numTriangles * 3; j++)
+		{
+			surf.Triangles[j] = *oldTriangles;
+			oldTriangles++;
+		}
+
+		Surfaces[i] = surf;
+
+		oldSurf = (File_Surface*)((uint8_t*)oldSurf + oldSurf->ofsEnd);
+	}
+}
+
+void MOHPC::Skeleton::LoadSKDSurfaces(File_SkelHeader* pHeader, size_t length)
+{
+	File_Surface* oldSurf = (File_Surface*)((uint8_t*)pHeader + pHeader->ofsSurfaces);
+
+	// Setup surfaces
+	Surfaces.resize(pHeader->numSurfaces);
+
+	for (uint32_t i = 0; i < pHeader->numSurfaces; i++)
+	{
+		Surface surf;
+
+		surf.name = oldSurf->name;
+		surf.Triangles.resize(oldSurf->numTriangles * 3);
+		surf.Vertices.resize(oldSurf->numVerts);
+
+		File_SKD_Vertex* oldVerts = (File_SKD_Vertex*)((uint8_t*)oldSurf + oldSurf->ofsVerts);
+
+		for (int32_t j = 0; j < oldSurf->numVerts; j++)
+		{
+			SkeletorVertex newVert;
+			newVert.normal = oldVerts->normal;
+			newVert.textureCoords[0] = oldVerts->texCoords[0];
+			newVert.textureCoords[1] = oldVerts->texCoords[1];
+			newVert.Morphs.reserve(oldVerts->numMorphs);
+			newVert.Weights.reserve(oldVerts->numWeights);
+
+			File_Morph* morph = (File_Morph*)((uint8_t*)oldVerts + sizeof(File_SKD_Vertex));
+
+			for (int32_t k = 0; k < oldVerts->numMorphs; k++)
+			{
+				SkeletorMorph newMorph;
+				newMorph.morphIndex = morph->morphIndex;
+				newMorph.offset = morph->offset;
+				newVert.Morphs.push_back(newMorph);
+				morph++;
+			}
+
+			File_Weight* weight = (File_Weight*)((uint8_t*)oldVerts + sizeof(File_SKD_Vertex) + sizeof(File_Morph) * oldVerts->numMorphs);
+
+			for (int32_t k = 0; k < oldVerts->numWeights; k++)
+			{
+				SkeletorWeight newWeight;
+				newWeight.boneIndex = weight->boneIndex;
+				newWeight.boneWeight = weight->boneWeight;
+				newWeight.offset = weight->offset;
+				newVert.Weights.push_back(newWeight);
+				weight++;
+			}
+
+			surf.Vertices[j] = newVert;
+
+			oldVerts = (File_SKD_Vertex*)((uint8_t*)oldVerts + sizeof(File_SKD_Vertex) + sizeof(File_Morph) * oldVerts->numMorphs + sizeof(File_Weight) * oldVerts->numWeights);
+		}
+
+		int32_t* oldTriangles = (int32_t*)((uint8_t*)oldSurf + oldSurf->ofsTriangles);
+
+		for (int32_t j = 0; j < oldSurf->numTriangles * 3; j++)
+		{
+			surf.Triangles[j] = *oldTriangles;
+			oldTriangles++;
+		}
+
+		Surfaces[i] = surf;
+
+		oldSurf = (File_Surface*)((uint8_t*)oldSurf + oldSurf->ofsEnd);
+	}
+}
+
+void MOHPC::Skeleton::LoadCollapses(File_SkelHeader* pHeader, size_t length)
+{
+	File_Surface* oldSurf = (File_Surface*)((uint8_t*)pHeader + pHeader->ofsSurfaces);
+
+	for (uint32_t i = 0; i < pHeader->numSurfaces; i++)
+	{
+		Surface& surf = Surfaces[i];
+
+		surf.Collapse.resize(oldSurf->numVerts);
+		surf.CollapseIndex.resize(oldSurf->numVerts);
+
+		int32_t* oldCollapse = (int32_t*)((uint8_t*)oldSurf + oldSurf->ofsCollapse);
+		for (int32_t j = 0; j < oldSurf->numVerts; j++)
+		{
+			surf.Collapse[j] = *oldCollapse;
+			oldCollapse++;
+		}
+
+		int32_t* oldCollapseIndex = (int32_t*)((uint8_t*)oldSurf + oldSurf->ofsCollapseIndex);
+		for (int32_t j = 0; j < oldSurf->numVerts; j++)
+		{
+			surf.CollapseIndex[j] = *oldCollapseIndex;
+			oldCollapseIndex++;
+		}
+
+		oldSurf = (File_Surface*)((uint8_t*)oldSurf + oldSurf->ofsEnd);
+	}
+}
+
+void MOHPC::Skeleton::LoadSKBBones(File_SkelHeader* pHeader, size_t length)
+{
+	Bones.resize(pHeader->numBones);
+
+	File_SkelBoneName* TIKI_bones = (File_SkelBoneName*)((uint8_t*)pHeader + pHeader->ofsBones);
+	for (uint32_t i = 0; i < pHeader->numBones; i++)
+	{
+		const char* boneName;
+
+		if (TIKI_bones->parent == -1)
+		{
+			boneName = SKEL_BONENAME_WORLD;
+		}
+		else
+		{
+			boneName = TIKI_bones[TIKI_bones->parent].name;
+		}
+
+		CreatePosRotBoneData(TIKI_bones->name, boneName, &Bones[i]);
+		TIKI_bones++;
+	}
+}
+
+void MOHPC::Skeleton::LoadSKDBones(File_SkelHeader* pHeader, size_t length)
+{
+	Bones.resize(pHeader->numBones);
+
+	BoneFileData* boneBuffer = (BoneFileData*)((uint8_t*)pHeader + pHeader->ofsBones);
+	for (uint32_t i = 0; i < pHeader->numBones; i++)
+	{
+		LoadBoneFromBuffer2(boneBuffer, &Bones[i]);
+		boneBuffer = (BoneFileData*)((uint8_t*)boneBuffer + boneBuffer->ofsEnd);
+	}
+}
+
+void MOHPC::Skeleton::LoadBoxes(File_SkelHeader* pHeader, size_t length)
+{
+	if (pHeader->numBoxes)
+	{
+		if (pHeader->ofsBoxes >= 0 && (uint32_t)(pHeader->ofsBoxes + pHeader->numBoxes * sizeof(uint32_t)) < length)
+		{
+			Boxes.resize(pHeader->numBoxes);
+
+			int32_t* pBoxes = (int32_t*)((uint8_t*)pHeader + pHeader->ofsBoxes);
+
+			for (uint32_t i = 0; i < pHeader->numBoxes; i++)
+			{
+				Boxes[i] = pBoxes[i];
+			}
+		}
+	}
+}
+
+void MOHPC::Skeleton::LoadMorphs(File_SkelHeader* pHeader, size_t length)
+{
+	if (pHeader->numMorphTargets)
+	{
+		size_t nMorphBytes = 0;
+
+		if (pHeader->ofsMorphTargets > 0 || (pHeader->ofsMorphTargets + pHeader->numMorphTargets) < length)
+		{
+			const char* pMorphTargets = (const char*)pHeader + pHeader->ofsMorphTargets;
+
+			for (uint32_t i = 0; i < pHeader->numMorphTargets; i++)
+			{
+				size_t nLen = strlen(pMorphTargets) + 1;
+				nMorphBytes += nLen;
+				pMorphTargets += nLen;
+			}
+		}
+		else
+		{
+			nMorphBytes = pHeader->numMorphTargets;
+		}
+
+		if (pHeader->ofsMorphTargets >= 0 && (uint32_t)(pHeader->ofsMorphTargets + nMorphBytes) <= length)
+		{
+			MorphTargets.resize(pHeader->numMorphTargets);
+
+			const char* pMorphTargets = (const char*)pHeader + pHeader->ofsMorphTargets;
+
+			for (uint32_t i = 0; i < pHeader->numMorphTargets; i++)
+			{
+				size_t nLen = strlen(pMorphTargets) + 1;
+				MorphTargets[i] = pMorphTargets;
+				pMorphTargets += nLen;
+			}
+		}
+	}
 }

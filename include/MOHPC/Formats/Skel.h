@@ -139,12 +139,11 @@ namespace MOHPC
 		std::vector<int32_t> Boxes;
 		LodControl* pLOD;
 		std::vector<std::string> MorphTargets;
-
 	public:
 		MOHPC_EXPORTS Skeleton();
 		virtual bool Load() override;
 
-		MOHPC_EXPORTS bool LoadModel(const char *path);
+		MOHPC_EXPORTS bool LoadModel(const char* path);
 
 		MOHPC_EXPORTS const char* GetName() const;
 
@@ -172,6 +171,14 @@ namespace MOHPC
 			Skeleton::HoseRotType hoseRotType, SkelVec3 basePos, Skeleton::BoneFileData *fileData);
 		int32_t CreateAvRotBoneFileData(char *newBoneName, char *newBoneParentName, char *baseBoneName, char *targetBoneName, float rotRatio,
 				SkelVec3 basePos, Skeleton::BoneFileData *fileData);
+
+		void LoadCollapses(File_SkelHeader* pHeader, size_t length);
+		void LoadSKBBones(File_SkelHeader* pHeader, size_t length);
+		void LoadSKDBones(File_SkelHeader* pHeader, size_t length);
+		void LoadBoxes(File_SkelHeader* pHeader, size_t length);
+		void LoadMorphs(File_SkelHeader* pHeader, size_t length);
+		void LoadSKBSurfaces(File_SkelHeader* pHeader, size_t length);
+		void LoadSKDSurfaces(File_SkelHeader* pHeader, size_t length);
 	};
 };
 

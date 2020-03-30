@@ -106,7 +106,7 @@ void Skeleton::CreatePosRotBoneData( const char *newBoneName, const char *newBon
 
 	ConvertToRotationName( newBoneName, rotChannelName );
 	boneData->channelIndex[0] = GetAssetManager()->GetManager<SkeletorManager>()->GetChannelNamesTable()->RegisterChannel(rotChannelName.c_str());
-	if( boneData->channelIndex[ 0 ] )
+	if(boneData->channelIndex[ 0 ] < 0)
 	{
 		//SKEL_Warning( "Channel named %s not added. (Bone will not work without it)\n", rotChannelName );
 		boneData->boneType = Skeleton::SKELBONE_ZERO;
@@ -114,7 +114,7 @@ void Skeleton::CreatePosRotBoneData( const char *newBoneName, const char *newBon
 
 	ConvertToPositionName( newBoneName, posChannelName );
 	boneData->channelIndex[1] = GetAssetManager()->GetManager<SkeletorManager>()->GetChannelNamesTable()->RegisterChannel(posChannelName.c_str());
-	if( boneData->channelIndex[ 0 ] )
+	if(boneData->channelIndex[ 1 ] < 0)
 	{
 		//SKEL_Warning( "Channel named %s not added. (Bone will not work without it)\n", posChannelName );
 		boneData->boneType = Skeleton::SKELBONE_ZERO;
