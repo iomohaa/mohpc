@@ -206,7 +206,7 @@ bool Skeleton::LoadModel(const char *path)
 
 				for (int32_t k = 0; k < oldVerts->numWeights; k++)
 				{
-					SkeletorWeight newWeight;
+					SkeletorWeight& newWeight = newVert.Weights[k];
 					newWeight.boneIndex = oldVerts->weights[k].boneIndex;
 					newWeight.boneWeight = oldVerts->weights[k].boneWeight;
 					newWeight.offset = oldVerts->weights[k].offset;
