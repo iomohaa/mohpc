@@ -4,7 +4,6 @@
 #include <chrono>
 
 using namespace MOHPC;
-using namespace std;
 
 #define EPSILON		0.000000000001f
 
@@ -464,7 +463,7 @@ SkelMat4 GlobalToLocal(skelBone_Base *bone, SkelMat4 pGlobalPosition)
 	return lLocalPosition;
 }
 
-void BoneGetFrames(Skeleton *skelmodel, SkeletonAnimation *animData, SkeletonChannelList *boneList, int boneNum, vector<SkanAnimFrame>& outFrames)
+void BoneGetFrames(Skeleton *skelmodel, SkeletonAnimation *animData, SkeletonChannelList *boneList, int boneNum, Container<SkanAnimFrame>& outFrames)
 {
 	skelBone_Base **bone;
 	SkanAnimFrame frame;

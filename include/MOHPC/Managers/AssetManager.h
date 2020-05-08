@@ -2,11 +2,10 @@
 
 #include "../Global.h"
 #include "../Asset.h"
+#include "../Utilities/SharedPtr.h"
+#include "../Utilities/WeakPtr.h"
+#include "../Script/con_set.h"
 #include "Manager.h"
-#include <map>
-#include <unordered_map>
-#include <unordered_set>
-#include <memory>
 #include <typeinfo>
 #include <typeindex>
 #include "../Class.h"
@@ -123,14 +122,13 @@ namespace MOHPC
 
 		/** Loads an asset from disk/paks. */
 		template<class T>
-		std::shared_ptr<T> LoadAsset(const char *Filename)
+		SharedPtr<T> LoadAsset(const char *Filename)
 		{
-			std::shared_ptr<T> A = std::dynamic_pointer_cast<T>(CacheFindAsset(Filename));
+			SharedPtr<T> A = staticPointerCast<T>(CacheFindAsset(Filename));
 			if (!A)
 			{
-				A = std::shared_ptr<T>(T::CreateInstance());
-				if (!CacheLoadAsset(Filename, std::static_pointer_cast<Asset>(A)))
-				{
+				A = SharedPtr<T>(T::CreateInstance());
+				if (!CacheLoadAsset(Filename, A)) {
 					return nullptr;
 				}
 			}
@@ -148,8 +146,8 @@ namespace MOHPC
 	private:
 		MOHPC_EXPORTS void AddManager(const std::type_index& ti, Manager* manager);
 		MOHPC_EXPORTS Manager* GetManager(const std::type_index& ti) const;
-		MOHPC_EXPORTS std::shared_ptr<Asset> CacheFindAsset(const char *Filename);
-		MOHPC_EXPORTS bool CacheLoadAsset(const char *Filename, std::shared_ptr<Asset> A);
+		MOHPC_EXPORTS SharedPtr<Asset> CacheFindAsset(const char *Filename);
+		MOHPC_EXPORTS bool CacheLoadAsset(const char *Filename, SharedPtr<Asset> A);
 		void CacheUnloadAsset(Asset* A);
 		void DeleteUnreferencedAssets();
 		void *AllocObject(size_t ObjectSize);
@@ -162,10 +160,10 @@ namespace MOHPC
 
 		bool bPendingDestroy;
 		mutable FileManager* FM;
-		std::map<const std::type_index, Manager*> m_managers;
-		std::unordered_map<std::string, std::weak_ptr<Asset>> m_assetCache;
-		std::unordered_set<void*> m_allocatedObjects;
-		std::unordered_set<void*> m_allocatedArrayObjects;
+		con_set<std::type_index, Manager*> m_managers;
+		con_set<str, WeakPtr<Asset>> m_assetCache;
+		//std::unordered_set<void*> m_allocatedObjects;
+		//std::unordered_set<void*> m_allocatedArrayObjects;
 	};
 
 	template<class T>

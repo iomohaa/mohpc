@@ -1302,7 +1302,8 @@ void BSP::TR_ShrinkData()
 		TerrainTri* pTri = &trTris[n];
 		if (!pTri->patch)
 		{
-			trTris.erase(trTris.begin() + n);
+			//trTris.erase(trTris.begin() + n);
+			trTris.RemoveObjectAt(n);
 		}
 	}
 
@@ -1311,7 +1312,8 @@ void BSP::TR_ShrinkData()
 		TerrainVert* pVert = &trVerts[n];
 		if (!pVert->nRef)
 		{
-			trVerts.erase(trVerts.begin() + n);
+			//trVerts.erase(trVerts.begin() + n);
+			trVerts.RemoveObjectAt(n);
 		}
 	}
 }
@@ -1453,9 +1455,9 @@ void BSP::GenerateTerrainCollide(const TerrainPatch* patch, TerrainCollide& coll
 	vec3_t v4;
 
 	TerrainCollide* tc = &collision;
-	x0 = patch->x0;
-	y0 = patch->y0;
-	z0 = patch->z0;
+	x0 = (int)patch->x0;
+	y0 = (int)patch->y0;
+	z0 = (int)patch->z0;
 
 	fMaxHeight = (float)z0;
 

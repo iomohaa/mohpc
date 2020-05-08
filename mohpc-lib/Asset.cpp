@@ -2,14 +2,26 @@
 #include <MOHPC/Asset.h>
 #include <MOHPC/Managers/AssetManager.h>
 #include <MOHPC/Managers/FileManager.h>
+#include <MOHPC/Log.h>
+#include <MOHPC/Version.h>
 #include "Misc/SHA1.h"
 
 using namespace MOHPC;
+
+#define MOHPC_LOG_NAMESPACE "assetmanager"
+
+template<>
+intptr_t MOHPC::HashCode<std::type_index>(const std::type_index& key)
+{
+	return key.hash_code();
+}
 
 AssetManager::AssetManager()
 {
 	FM = NULL;
 	bPendingDestroy = false;
+
+	MOHPC_LOG(Verbose, "MOHPC %s version %s build %d", VERSION_ARCHITECTURE, VERSION_SHORT_STRING, VERSION_BUILD);
 }
 
 AssetManager::~AssetManager()
@@ -49,6 +61,7 @@ AssetManager::~AssetManager()
 	}
 #endif
 
+	/*
 	// Delete managers last
 	for (auto& it : m_managers)
 	{
@@ -56,6 +69,18 @@ AssetManager::~AssetManager()
 		if (A)
 		{
 			it.second = nullptr;
+			delete A;
+		}
+	}
+	*/
+
+	con_set_enum en(m_managers);
+	for (auto it = en.NextElement(); it; it = en.NextElement())
+	{
+		Manager* A = it->value;
+		if (A)
+		{
+			it->value = nullptr;
 			delete A;
 		}
 	}
@@ -83,11 +108,13 @@ void AssetManager::SetFileManager(FileManager* FileManager)
 
 void AssetManager::AddManager(const std::type_index& ti, Manager* manager)
 {
-	m_managers[ti] = manager;
+	//m_managers[ti] = manager;
+	m_managers.addKeyValue(ti) = manager;
 }
 
 Manager* AssetManager::GetManager(const std::type_index& ti) const
 {
+	/*
 	auto it = m_managers.find(ti);
 	if (it != m_managers.end())
 	{
@@ -97,19 +124,33 @@ Manager* AssetManager::GetManager(const std::type_index& ti) const
 	{
 		return nullptr;
 	}
+	*/
+	Manager* const* manager = m_managers.findKeyValue(ti);
+	if (manager) {
+		return *manager;
+	}
+	return nullptr;
 }
 
-std::shared_ptr<Asset> AssetManager::CacheFindAsset(const char *Filename)
+SharedPtr<Asset> AssetManager::CacheFindAsset(const char *Filename)
 {
+	/*
 	auto it = m_assetCache.find(Filename);
 	if (it == m_assetCache.end())
 	{
 		return NULL;
 	}
-	return it->second.lock();
+	return it->second.Lock();
+	*/
+
+	WeakPtr<Asset>* asset = m_assetCache.findKeyValue(Filename);
+	if (asset && !asset->expired()) {
+		return asset->lock();
+	}
+	return nullptr;
 }
 
-bool AssetManager::CacheLoadAsset(const char *Filename, std::shared_ptr<Asset> A)
+bool AssetManager::CacheLoadAsset(const char *Filename, SharedPtr<Asset> A)
 {
 	A->AM = this;
 	A->Init(Filename);
@@ -120,7 +161,8 @@ bool AssetManager::CacheLoadAsset(const char *Filename, std::shared_ptr<Asset> A
 
 	A->HashFinalize();
 
-	m_assetCache[Filename] = A;
+	//m_assetCache[Filename] = A;
+	m_assetCache.addKeyValue(Filename) = A;
 	return true;
 }
 
@@ -350,22 +392,25 @@ bool Asset::Load()
 	return false;
 }
 
-const std::string& Asset::GetFilename() const
+const str& Asset::GetFilename() const
 {
 	return Filename;
 }
 
 void Asset::HashGetHash(uint8_t* Destination) const
 {
+	/*
 	if (Hash)
 	{
 		CSHA1* SHA1 = (CSHA1*)Hash;
 		SHA1->GetHash(Destination);
 	}
+	*/
 }
 
 void Asset::HashUpdate(const uint8_t* Data, std::streamsize Length)
 {
+	/*
 	if (!Hash)
 	{
 		Hash = (class Hasher*)new CSHA1;
@@ -373,10 +418,12 @@ void Asset::HashUpdate(const uint8_t* Data, std::streamsize Length)
 
 	CSHA1* SHA1 = (CSHA1*)Hash;
 	SHA1->Update(Data, (UINT_32)Length);
+	*/
 }
 
 void Asset::HashCopy(const Asset* A)
 {
+	/*
 	if (A->Hash)
 	{
 		if (!Hash)
@@ -392,6 +439,7 @@ void Asset::HashCopy(const Asset* A)
 		delete (CSHA1*)Hash;
 		Hash = nullptr;
 	}
+	*/
 }
 
 void Asset::HashFinalize()

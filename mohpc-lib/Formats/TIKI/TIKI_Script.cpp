@@ -7,7 +7,6 @@
 #define TIKI_Error
 
 using namespace MOHPC;
-using namespace std;
 
 TikiScript::~TikiScript()
 {
@@ -328,10 +327,10 @@ void TikiScript::SkipExtendedComment(void)
 =
 ==============
 */
-void TikiScript::SetCurrentScript(std::shared_ptr<TikiScript> Script)
+void TikiScript::SetCurrentScript(SharedPtr<TikiScript> Script)
 {
 	TikiScript* i = this;
-	while(i->parent != NULL)
+	while(i->parent)
 	{
 		i = i->parent.get();
 	}
@@ -381,7 +380,7 @@ void TikiScript::Uninclude(void)
 		//delete include;
 		//include = TikiScriptPtr();
 		//GetAssetManager()->UnloadAsset(include);
-		include = NULL;
+		include = nullptr;
 	}
 }
 
@@ -700,7 +699,7 @@ const char *TikiScript::GetToken(bool crossline)
 	char macro[256];
 	char temptoken[256];
 
-	std::shared_ptr<TikiScript> i = shared_from_this();
+	SharedPtr<TikiScript> i = shared_from_this();
 	while (1)
 	{
 		if (i->include)
@@ -847,7 +846,7 @@ const char *TikiScript::GetLine(bool crossline)
 	const char *start;
 	size_t size;
 
-	std::shared_ptr<TikiScript> i = shared_from_this();
+	SharedPtr<TikiScript> i = shared_from_this();
 	while (1)
 	{
 		if (i->include)
@@ -1023,7 +1022,7 @@ const char *TikiScript::GetString(bool crossline)
 	int startline;
 	char *token_p;
 
-	std::shared_ptr<TikiScript> i = shared_from_this();
+	SharedPtr<TikiScript> i = shared_from_this();
 	while (1)
 	{
 		if (i->include)
@@ -1248,7 +1247,7 @@ int TikiScript::LinesInFile(void)
 =
 ==============
 */
-void TikiScript::Parse(char *data, streamsize length, const char *name)
+void TikiScript::Parse(char *data, uintmax_t length, const char *name)
 {
 	Close();
 

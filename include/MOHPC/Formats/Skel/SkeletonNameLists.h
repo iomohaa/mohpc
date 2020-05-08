@@ -1,8 +1,9 @@
 #pragma once
 
 #include "../../Global.h"
-#include <map>
-#include <vector>
+#include "../../Script/Container.h"
+#include "../../Script/str.h"
+#include "../../Script/con_set.h"
 #include <stdint.h>
 
 #define MAX_CHANNELS 200
@@ -11,14 +12,14 @@ namespace MOHPC
 {
 	struct SkeletonChannelName
 	{
-		std::string name;
+		str name;
 		intptr_t channelNum;
 	};
 
 	class SkeletonChannelNameTable
 	{
-		std::vector<SkeletonChannelName> m_Channels;
-		std::vector<intptr_t> m_lookup;
+		Container<SkeletonChannelName> m_Channels;
+		Container<intptr_t> m_lookup;
 
 	public:
 		SkeletonChannelNameTable();
@@ -54,8 +55,8 @@ namespace MOHPC
 		short int m_chanGlobalFromLocal[MAX_CHANNELS];
 	*/
 	private:
-		std::map<intptr_t, intptr_t> m_chanLocalFromGlobal;
-		std::vector<intptr_t> m_chanGlobalFromLocal;
+		con_set<intptr_t, intptr_t> m_chanLocalFromGlobal;
+		Container<intptr_t> m_chanGlobalFromLocal;
 
 	public:
 		MOHPC_EXPORTS intptr_t NumChannels(void) const;

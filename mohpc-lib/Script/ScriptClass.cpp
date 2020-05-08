@@ -14,8 +14,8 @@ size_t ClassDef::numclasses;
 
 size_t ClassDef::dump_numclasses;
 size_t ClassDef::dump_numevents;
-std::vector<intptr_t> ClassDef::sortedList;
-std::vector<ClassDef *> ClassDef::sortedClassList;
+Container<intptr_t> ClassDef::sortedList;
+Container<ClassDef *> ClassDef::sortedClassList;
 
 static void CLASS_Printf(const char *format, ...)
 {
@@ -362,10 +362,10 @@ void ClassDef::AddWaitTill(const_str s)
 {
 	if (!waitTillSet)
 	{
-		waitTillSet = new std::set<const_str>;
+		waitTillSet = new con_arrayset<const_str, const_str>;
 	}
 
-	waitTillSet->insert(s);
+	waitTillSet->addKeyIndex(s);
 }
 
 void ClassDef::RemoveWaitTill(const str& s)
@@ -377,7 +377,7 @@ void ClassDef::RemoveWaitTill(const_str s)
 {
 	if (waitTillSet)
 	{
-		waitTillSet->erase(s);
+		waitTillSet->remove(s);
 	}
 }
 
@@ -393,7 +393,7 @@ bool ClassDef::WaitTillDefined(const_str s)
 		return false;
 	}
 
-	return waitTillSet->find(s) != waitTillSet->end();
+	return waitTillSet->findKeyIndex(s) != 0;
 }
 
 EventDef *ClassDef::GetDef(uintptr_t eventnum)

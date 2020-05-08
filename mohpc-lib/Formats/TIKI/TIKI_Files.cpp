@@ -5,7 +5,6 @@
 #include <string.h>
 
 using namespace MOHPC;
-using namespace std;
 
 bool TIKI::Load()
 {
@@ -30,7 +29,7 @@ bool TIKI::Load()
 	if (loaddef.tikiFile)
 	{
 		HashCopy(loaddef.tikiFile.get());
-		loaddef.tikiFile->SetCurrentScript(NULL);
+		loaddef.tikiFile->SetCurrentScript(nullptr);
 	}
 
 	FreeStorage(&loaddef);
@@ -83,7 +82,7 @@ bool MOHPC::TIKI::LoadTIKIAnim(const char* Filename, dloaddef_t* ld)
 	TIKIAnim* TikiAnim = NULL;
 	const char *token;
 	Vector tempVec;
-	string s;
+	str s;
 
 	InitSetup(ld);
 
@@ -192,7 +191,7 @@ bool MOHPC::TIKI::LoadTIKIAnim(const char* Filename, dloaddef_t* ld)
 
 bool TIKI::LoadTIKIModel(const char* Filename, const dloaddef_t* ld)
 {
-	vector<dloadsurface_t> loadsurfaces;
+	Container<dloadsurface_t> loadsurfaces;
 
 	LoadSetup(Filename, ld, loadsurfaces);
 	if (!meshes.size())
@@ -295,7 +294,7 @@ void TIKI::FreeStorage(dloaddef_t* ld)
 	if (ld->tikiFile)
 	{
 		//GetAssetManager()->UnloadAsset(ld->tikiFile);
-		ld->tikiFile = NULL;
+		ld->tikiFile = nullptr;
 	}
 }
 
@@ -307,7 +306,7 @@ TIKIAnim *TIKI::InitTiki(dloaddef_t *ld)
 	TIKIAnim *panim;
 	dloadanim_t *anim;
 	bool bModelBoundsSet = false;
-	vector<size_t> order;
+	Container<size_t> order;
 
 	panim = new TIKIAnim;
 	ClearBounds(panim->mins, panim->maxs);
@@ -348,7 +347,7 @@ TIKIAnim *TIKI::InitTiki(dloaddef_t *ld)
 	for (i = 0; i < numAnims; i++)
 	{
 		anim = &ld->loadanims[order[i]];
-		std::shared_ptr<SkeletonAnimation> data = GetAssetManager()->LoadAsset<SkeletonAnimation>(anim->name.c_str()); //SkeletonAnimation::RegisterAnim(anim->name.c_str());
+		SkeletonAnimationPtr data = GetAssetManager()->LoadAsset<SkeletonAnimation>(anim->name.c_str()); //SkeletonAnimation::RegisterAnim(anim->name.c_str());
 
 		if (!data)
 		{

@@ -5,7 +5,6 @@
 #include <string.h>
 
 using namespace MOHPC;
-using namespace std;
 
 Script::~Script()
 {
@@ -479,7 +478,7 @@ bool Script::AtAssignment( bool crossline )
 
 const char *Script::GetToken( bool crossline )
 {
-	string token_p = token;
+	str token_p = token;
 	bool is_Macro = false;
 	
 	// is a token already waiting?
@@ -547,18 +546,18 @@ const char *Script::GrabNextToken( bool crossline )
 			script_p++;
 			switch( *script_p )
 			{
-			case 'n' :	token.push_back('\n'); break;
-			case 'r' :	token.push_back('\n'); break;
-			case '\'' : token.push_back('\''); break;
-			case '\"' : token.push_back('\"'); break;
-			case '\\' : token.push_back('\\'); break;
-			default:	token.push_back(*script_p); break;
+			case 'n' :	token.append('\n'); break;
+			case 'r' :	token.append('\n'); break;
+			case '\'' : token.append('\''); break;
+			case '\"' : token.append('\"'); break;
+			case '\\' : token.append('\\'); break;
+			default:	token.append(*script_p); break;
 			}
 			script_p++;
 		}
 		else
 		{
-			token.push_back(*script_p++);
+			token.append(*script_p++);
 		}
 
 		if ( script_p == end_p )
@@ -590,7 +589,7 @@ void Script::AddMacroDefinition( bool crossline )
 	theMacro->macroName.append( "$" ); //<-- Adding closing ($) to keep formatting consistant
 	
 	//Grab the macro string
-	string tmpstr;
+	str tmpstr;
 	tmpstr = GrabNextToken(crossline);
 	//Check to see if we need return any defines strings
 	if( ( tmpstr != "$include" ) && ( tmpstr[tmpstr.length() - 1] == '$' ) )
@@ -618,7 +617,7 @@ const char *Script::GetMacroString( const char *theMacroName )
 	{
 		theMacro = macrolist[i];
 		
-		if(!theMacro->macroName.compare(theMacroName))
+		if(str::cmp(theMacro->macroName.c_str(), theMacroName))
 		{
 			const char *text = theMacro->macroText.c_str();
 			
@@ -856,18 +855,18 @@ const char *Script::GetString( bool crossline )
 			script_p++;
 			switch( *script_p )
 			{
-			case 'n' :	token.push_back('\n'); break;
-			case 'r' :	token.push_back('\n'); break;
-			case '\'' : token.push_back('\''); break;
-			case '\"' : token.push_back('\"'); break;
-			case '\\' : token.push_back('\\'); break;
-			default:	token.push_back(*script_p); break;
+			case 'n' :	token.append('\n'); break;
+			case 'r' :	token.append('\n'); break;
+			case '\'' : token.append('\''); break;
+			case '\"' : token.append('\"'); break;
+			case '\\' : token.append('\\'); break;
+			default:	token.append(*script_p); break;
 			}
 			script_p++;
 		}
 		else
 		{
-			token.push_back(*script_p++);
+			token.append(*script_p++);
 		}
 		
 		if ( script_p >= end_p )
@@ -1009,7 +1008,7 @@ int Script::LinesInFile( void )
 	bool temp_tokenready;
 	const char *temp_script_p;
 	int temp_line;
-	string temp_token;
+	str temp_token;
 	int numentries;
 	
 	temp_tokenready = tokenready;
@@ -1042,7 +1041,7 @@ int Script::LinesInFile( void )
 ==============
 */
 
-void Script::Parse( const char *data, streamsize length, const char *name )
+void Script::Parse( const char *data, uintmax_t length, const char *name )
 {
 	Close();
 	
@@ -1080,7 +1079,7 @@ bool Script::LoadFile( const char *name )
 		hasError = false;
 	}
 
-	streamsize length = file->ReadBuffer((void**)&tempbuf);
+	uintmax_t length = file->ReadBuffer((void**)&tempbuf);
 
 	hasError = false;
 

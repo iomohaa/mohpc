@@ -5,7 +5,6 @@
 #include <algorithm>
 
 using namespace MOHPC;
-using namespace std;
 
 bool TIKI::ParseSetup(dloaddef_t* ld)
 {
@@ -43,7 +42,7 @@ bool TIKI::ParseSetup(dloaddef_t* ld)
 		else if (!stricmp(token, "skelmodel"))
 		{
 			token = ld->tikiFile->GetToken(false);
-			ld->loaddata.skelmodel.push_back(string(ld->tikiFile->currentScript->path) + token);
+			ld->loaddata.skelmodel.push_back(str(ld->tikiFile->currentScript->path) + token);
 		}
 		else if (!stricmp(token, "path"))
 		{
@@ -102,7 +101,7 @@ bool TIKI::ParseSetup(dloaddef_t* ld)
 					token = ld->tikiFile->GetToken(false);
 					if (strstr(token, "."))
 					{
-						surf.shader.push_back(string(ld->tikiFile->currentScript->path) + token);
+						surf.shader.push_back(str(ld->tikiFile->currentScript->path) + token);
 					}
 					else
 					{
@@ -136,10 +135,10 @@ bool TIKI::ParseSetup(dloaddef_t* ld)
 	return true;
 }
 
-void TIKI::ParseInitCommands(dloaddef_t* ld, vector<dloadinitcmd_t>& cmdlist)
+void TIKI::ParseInitCommands(dloaddef_t* ld, MOHPC::Container<dloadinitcmd_t>& cmdlist)
 {
 	const char *token;
-	vector<string> szArgs;
+	Container<str> szArgs;
 
 	// Skip current token
 	ld->tikiFile->GetToken(true);
@@ -207,7 +206,7 @@ bool TIKI::ParseCase(dloaddef_t* ld)
 
 __newcase:
 	token = ld->tikiFile->GetToken(false);
-	string key = token;
+	str key = token;
 	isheadmodel = (!stricmp(token, "headmodel")) ? true : false;
 	isheadskin = (!stricmp(token, "headskin")) ? true : false;
 
@@ -229,7 +228,7 @@ __newcase:
 			break;
 		}
 
-		ld->keyvalues[key] = token;
+		ld->keyvalues.addKeyValue(key) = token;
 
 		if (isheadmodel && std::find(ld->headmodels.begin(), ld->headmodels.end(), token) == ld->headmodels.end())
 		{
@@ -251,7 +250,7 @@ __newcase:
 	return true;
 }
 
-void TIKI::ParseFrameCommands(dloaddef_t* ld, vector<dloadframecmd_t>& cmdlist)
+void TIKI::ParseFrameCommands(dloaddef_t* ld, Container<dloadframecmd_t>& cmdlist)
 {
 	bool usecurrentframe = false;
 	const char *token;
@@ -324,7 +323,7 @@ void TIKI::ParseFrameCommands(dloaddef_t* ld, vector<dloadframecmd_t>& cmdlist)
 		if (ld->tikiFile->currentScript)
 		{
 			cmd.location = ld->tikiFile->Filename();
-			cmd.location += string(", line: ");
+			cmd.location += str(", line: ");
 			cmd.location += ld->tikiFile->GetLineNumber();
 		}
 
@@ -587,13 +586,13 @@ void TIKI::ParseAnimations(dloaddef_t* ld)
 				anim.alias = token;
 
 				token = ld->tikiFile->GetToken(false);
-				anim.name = string(ld->tikiFile->currentScript->path) + token;
+				anim.name = str(ld->tikiFile->currentScript->path) + token;
 
 				if (ld->tikiFile->currentScript)
 				{
 					anim.location += ld->tikiFile->currentScript->Filename();
 					anim.location += ", line: ";
-					anim.location += std::to_string(ld->tikiFile->currentScript->GetLineNumber());
+					anim.location += str(ld->tikiFile->currentScript->GetLineNumber()); //std::to_string(ld->tikiFile->currentScript->GetLineNumber());
 				}
 
 				ParseAnimationFlags(ld, &anim);
@@ -693,7 +692,7 @@ int32_t TIKI::ParseSurfaceFlag(const char* token)
 
 void TIKI::InitSetup(dloaddef_t* ld)
 {
-	ld->tikiFile = NULL;
+	ld->tikiFile = nullptr;
 	ld->bInIncludesSection = false;
 	ld->bIsCharacter = false;
 
@@ -705,7 +704,7 @@ void TIKI::InitSetup(dloaddef_t* ld)
 	ld->loaddata.radius = 0.f;
 }
 
-bool TIKI::LoadSetupCase(const char *filename, const dloaddef_t* ld, vector<dloadsurface_t>& loadsurfaces)
+bool TIKI::LoadSetupCase(const char *filename, const dloaddef_t* ld, Container<dloadsurface_t>& loadsurfaces)
 {
 	this->loadScale = ld->loaddata.load_scale;
 	this->lodScale = ld->loaddata.lod_scale;
@@ -720,7 +719,7 @@ bool TIKI::LoadSetupCase(const char *filename, const dloaddef_t* ld, vector<dloa
 
 	for (auto& skelmodel : ld->loaddata.skelmodel)
 	{
-		std::shared_ptr<Skeleton> Mesh = GetAssetManager()->LoadAsset<Skeleton>(skelmodel.c_str()); //Skeleton::RegisterSkel(skelmodel.c_str());
+		SkeletonPtr Mesh = GetAssetManager()->LoadAsset<Skeleton>(skelmodel.c_str()); //Skeleton::RegisterSkel(skelmodel.c_str());
 		if (Mesh)
 		{
 			meshes.push_back(Mesh);
@@ -733,7 +732,7 @@ bool TIKI::LoadSetupCase(const char *filename, const dloaddef_t* ld, vector<dloa
 	return true;
 }
 
-bool TIKI::LoadSetup(const char *filename, const dloaddef_t* ld, vector<dloadsurface_t>& loadsurfaces)
+bool TIKI::LoadSetup(const char *filename, const dloaddef_t* ld, Container<dloadsurface_t>& loadsurfaces)
 {
 	return LoadSetupCase(filename, ld, loadsurfaces);
 }

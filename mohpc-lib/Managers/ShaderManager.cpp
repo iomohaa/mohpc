@@ -4,11 +4,9 @@
 #include <MOHPC/Script.h>
 #include <MOHPC/Managers/FileManager.h>
 #include <MOHPC/Formats/Image.h>
-#include <algorithm>
-#include <string.h>
+#include <MOHPC/Utilities/SharedPtr.h>
 
 using namespace MOHPC;
-using namespace std;
 
 static unsigned NameToAFunc(const char *funcname)
 {
@@ -156,7 +154,7 @@ ImageCache::ImageCache()
 	bCached = false;
 }
 
-ImageCache::ImageCache(ShaderManager *s, const std::string& i)
+ImageCache::ImageCache(ShaderManager *s, const str& i)
 	: ImageCache()
 {
 	shaderManager = s;
@@ -261,6 +259,10 @@ TextureBundle::TextureBundle()
 	flags = 0;
 }
 
+TextureBundle::~TextureBundle()
+{
+}
+
 ShaderStage::ShaderStage()
 {
 	rgbGen = ColorGen::CGEN_IDENTITY_LIGHTING;
@@ -279,6 +281,10 @@ ShaderStage::ShaderStage()
 	alphaConstMin = -1;
 
 	bundle.push_back(TextureBundle());
+}
+
+ShaderStage::~ShaderStage()
+{
 }
 
 Shader::Shader(ShaderContainer* Container)
@@ -307,12 +313,12 @@ Shader::~Shader()
 {
 }
 
-const std::string& Shader::GetFilename() const
+const str& Shader::GetFilename() const
 {
 	return shaderContainer->GetFilename();
 }
 
-const std::string& Shader::GetName() const
+const str& Shader::GetName() const
 {
 	return m_name;
 }
@@ -536,9 +542,10 @@ void Shader::ParseShader(Script& script)
 		// stage definition
 		else if (token[0] == '{')
 		{
-			ShaderStage& shaderStage = *m_stages.insert(m_stages.end(), ShaderStage());
+			//ShaderStage& shaderStage = *m_stages.insert(m_stages.end(), ShaderStage());
+			ShaderStage* shaderStage = new(m_stages) ShaderStage();
 
-			ParseStage(script, &shaderStage);
+			ParseStage(script, shaderStage);
 		}
 		// end of shader definition
 		else if (token[0] == '}')
@@ -597,7 +604,7 @@ void Shader::ParseWaveForm(Script& script, WaveForm *wave)
 void Shader::ParseTexMod(Script& script, ShaderStage *stage)
 {
 	stage->bundle[0].texMods.push_back(TextureModInfo());
-	TextureModInfo* tmi = &stage->bundle[0].texMods.back();
+	TextureModInfo* tmi = stage->bundle[0].texMods.Data();
 
 	const char *token = script.GetToken(false);
 
@@ -1157,12 +1164,12 @@ bool Shader::ParseStage(Script& script, ShaderStage *stage)
 				stage->alphaMax = 1.0;
 				stage->alphaGen = AGEN_DOT;
 
-				script.GetToken(false);
+				token = script.GetToken(false);
 				if (token[0])
 				{
 					stage->alphaMin = (float)atof(token);
 
-					script.GetToken(false);
+					token = script.GetToken(false);
 					if (token[0])
 					{
 						stage->alphaMax = (float)atof(token);
@@ -1430,7 +1437,7 @@ void Shader::ParseDeform(Script& script)
 	}
 
 	m_deforms.push_back(DeformStage());
-	DeformStage* ds = &m_deforms.back();
+	DeformStage* ds = m_deforms.Data();
 
 	if (!stricmp(token, "projectionShadow"))
 	{
@@ -1595,7 +1602,7 @@ void Shader::ParseSkyParms(Script& script)
 	{
 		for (int32_t i = 0; i < 6; i++)
 		{
-			const std::string imagename = std::string(token) + "_" + std::string(suf[i]) + std::string(".tga");
+			const str imagename = str(token) + "_" + str(suf[i]) + str(".tga");
 			sky.outerbox[i] = GetShaderManager()->FindImage(imagename.c_str());
 
 			/*
@@ -1634,7 +1641,7 @@ void Shader::ParseSkyParms(Script& script)
 	{
 		for (int32_t i = 0; i < 6; i++)
 		{
-			const std::string imagename = std::string(token) + "_" + std::string(suf[i]) + std::string(".tga");
+			const str imagename = str(token) + "_" + str(suf[i]) + str(".tga");
 			sky.innerbox[i] = GetShaderManager()->FindImage(imagename.c_str());
 
 			/*
@@ -1938,19 +1945,20 @@ const ShaderContainer* Shader::GetShaderContainer() const
 	return shaderContainer;
 }
 
-ShaderContainer::ShaderContainer(ShaderManager* shaderManager, const string& filename)
+ShaderContainer::ShaderContainer(ShaderManager* shaderManager, const str& filename)
 	: m_filename(filename)
 	, m_shaderManager(shaderManager)
 {
 }
 
-void ShaderContainer::AddShader(Shader* Shader)
+void ShaderContainer::AddShader(const ShaderPtr& Shader)
 {
-	m_shaderList.push_back(Shader);
+	m_shaderList.AddObject(Shader);
 }
 
-void ShaderContainer::RemoveShader(Shader* Shader)
+void ShaderContainer::RemoveShader(const ShaderPtr& Shader)
 {
+	/*
 	for (auto it = m_shaderList.begin(); it != m_shaderList.end(); ++it)
 	{
 		if (*it == Shader)
@@ -1959,21 +1967,23 @@ void ShaderContainer::RemoveShader(Shader* Shader)
 			break;
 		}
 	}
+	*/
+	m_shaderList.RemoveObject(Shader);
 }
 
 size_t ShaderContainer::GetNumShaders() const
 {
-	return m_shaderList.size();
+	return m_shaderList.NumObjects();
 }
 
 const Shader* ShaderContainer::GetShader(size_t num) const
 {
-	if (num >= m_shaderList.size())
+	if (num >= m_shaderList.NumObjects())
 	{
 		return nullptr;
 	}
 
-	return m_shaderList.at(num);
+	return m_shaderList.ObjectAt(num + 1).get();
 }
 
 ShaderManager *ShaderContainer::GetShaderManager() const
@@ -1981,7 +1991,7 @@ ShaderManager *ShaderContainer::GetShaderManager() const
 	return m_shaderManager;
 }
 
-const std::string& ShaderContainer::GetFilename() const
+const str& ShaderContainer::GetFilename() const
 {
 	return m_filename;
 }
@@ -1995,6 +2005,7 @@ ShaderManager::ShaderManager()
 
 ShaderManager::~ShaderManager(void)
 {
+	/*
 	for (auto it : m_nametoshader)
 	{
 		Shader* shader = it.second;
@@ -2006,11 +2017,7 @@ ShaderManager::~ShaderManager(void)
 		ImageCache* cachedImage = it.second;
 		delete cachedImage;
 	}
-
-	for (ShaderContainer* shaderContainer : m_shaderContainers)
-	{
-		delete shaderContainer;
-	}
+	*/
 }
 
 void ShaderManager::Init()
@@ -2028,8 +2035,8 @@ void ShaderManager::Init()
 	//g_defaultshader = AllocShader();
 
 	// reserve at least 7000 shader objects
-	m_nametoshader.reserve(7000);
-	m_images.reserve(7000);
+	m_nametoshader.resize(7000);
+	m_images.Resize(7000);
 
 	// Parse all shaders
 	ParseShaders(entryList);
@@ -2048,28 +2055,27 @@ void ShaderManager::ParseShaders(const FileEntryList& files)
 	const char *buffer;
 
 	const size_t numFiles = files.GetNumFiles();
-	m_shaderContainers.reserve(numFiles);
+	m_shaderContainers.Resize(numFiles);
 
 	for (size_t i = 0; i < numFiles; i++)
 	{
 		//FS_ReadFile(string("scripts/") + files[i], (void **)&buffer);
-		const string& filename = *files.GetFileEntry(i);
+		const str& filename = files.GetFileEntry(i)->GetStr();
 
 		FilePtr file = GetFileManager()->OpenFile(filename.c_str());
-		if (!file)
-		{
+		if (!file) {
 			continue;
 		}
 
 		std::streamsize length = file->ReadBuffer((void**)&buffer);
 
-		ShaderContainer *shaderContainer = new ShaderContainer(this, filename);
+		ShaderContainerPtr shaderContainer = makeShared<ShaderContainer>(this, filename);
 
 		// Parse the shader
-		ParseShaderContainer(shaderContainer, filename.c_str(), buffer, length);
+		ParseShaderContainer(shaderContainer.get(), filename.c_str(), buffer, length);
 
-		m_shaderContainers.push_back(shaderContainer);
-		m_fileShaderMap.insert_or_assign(filename, shaderContainer);
+		m_shaderContainers.AddObject(shaderContainer);
+		m_fileShaderMap.addKeyValue(filename) = shaderContainer;
 	}
 }
 
@@ -2080,7 +2086,7 @@ void ShaderManager::ParseShaderContainer(ShaderContainer *shaderContainer, const
 	Script script;
 	script.Parse(buffer, length, "");
 
-	string filename = name;
+	str filename = name;
 
 	while (script.TokenAvailable(true))
 	{
@@ -2108,7 +2114,7 @@ void ShaderManager::ParseShaderContainer(ShaderContainer *shaderContainer, const
 			continue;
 		}
 
-		const string shadername = token;
+		const str shadername = token;
 
 		token = script.GetToken(false);
 
@@ -2117,9 +2123,10 @@ void ShaderManager::ParseShaderContainer(ShaderContainer *shaderContainer, const
 			return;
 		}
 
-		Shader *shader = AllocShader(shaderContainer);
+		ShaderPtr shader = AllocShader(shaderContainer);
 		shader->m_name = shadername;
-		std::transform(shader->m_name.begin(), shader->m_name.end(), shader->m_name.begin(), &shader_tolower);
+		shader->m_name.tolower();
+		//std::transform(shader->m_name.begin(), shader->m_name.end(), shader->m_name.begin(), &shader_tolower);
 
 		shaderContainer->AddShader(shader);
 
@@ -2151,18 +2158,18 @@ string ShaderManager::ParseTextureExtension(const string& name)
 }
 */
 
-Shader* ShaderManager::AllocShader(ShaderContainer *shaderContainer)
+ShaderPtr ShaderManager::AllocShader(ShaderContainer *shaderContainer)
 {
-	Shader *shader = new Shader(shaderContainer);
-	return shader;
+	return makeShared<Shader>(shaderContainer);
 }
 
-void ShaderManager::FreeShader( Shader *shader )
+void ShaderManager::FreeShader(const ShaderPtr& shader)
 {
-	delete shader;
+	//m_shaders.RemoveObject(shader);
+	m_nametoshader.remove(shader->GetName());
 }
 
-void ShaderManager::AddShader( Shader *shader )
+void ShaderManager::AddShader(const ShaderPtr &shader)
 {
 	//bool bHasTexture = true;
 
@@ -2180,8 +2187,7 @@ void ShaderManager::AddShader( Shader *shader )
 	}
 	*/
 
-	if (!shader->m_stages.size() && !shader->bIsSky && !shader->m_editorimage)
-	{
+	if (!shader->m_stages.size() && !shader->bIsSky && !shader->m_editorimage) {
 		shader->m_editorimage = FindImage(shader->m_name.c_str());
 	}
 
@@ -2224,6 +2230,15 @@ void ShaderManager::AddShader( Shader *shader )
 	}
 	*/
 
+	ShaderPtr* pExistingShader = m_nametoshader.findKeyValue(shader->m_name);
+	if (pExistingShader) {
+		pExistingShader->get()->GetShaderContainer()->RemoveShader(*pExistingShader);
+	}
+	else {
+		m_nametoshader.addNewKeyValue(shader->m_name) = shader;
+	}
+
+	/*
 	auto it = m_nametoshader.find(shader->m_name);
 	if (it != m_nametoshader.end())
 	{
@@ -2236,11 +2251,12 @@ void ShaderManager::AddShader( Shader *shader )
 	{
 		m_nametoshader.emplace(shader->m_name, shader);
 	}
+	*/
 }
 
 ShaderRef ShaderManager::GetShader(const char *name) const
 {
-	string newname;
+	str newname;
 
 	if( !name || !*name )
 	{
@@ -2248,16 +2264,23 @@ ShaderRef ShaderManager::GetShader(const char *name) const
 	}
 
 	newname = name;
-	std::transform(newname.begin(), newname.end(), newname.begin(), &shader_tolower);
+	newname.tolower();
+	//std::transform(newname.begin(), newname.end(), newname.begin(), &shader_tolower);
 
+	const ShaderPtr* pShader = m_nametoshader.findKeyValue(newname);
+	if (!pShader) {
+		return NULL;
+	}
+
+	/*
 	auto it = m_nametoshader.find(newname);
 	if(it == m_nametoshader.end())
 	{
 		return NULL;
 	}
+	*/
 
-	Shader* shader = it->second;
-	return shader;
+	return pShader->get();
 }
 
 ShaderRef ShaderManager::GetDefaultShader() const
@@ -2267,37 +2290,46 @@ ShaderRef ShaderManager::GetDefaultShader() const
 
 ImageCache* ShaderManager::FindImage(const char *name)
 {
-	auto it = m_images.find(name);
-	if (it != m_images.end())
-	{
-		return it->second;
+	ImageCachePtr* pCachedImage = m_nametoimage.findKeyValue(name);
+	if (pCachedImage) {
+		return pCachedImage->get();
 	}
 
-	ImageCache* cachedImage = new ImageCache(this, name);
+	ImageCachePtr cachedImage = makeShared<ImageCache>(this, name);
 	//Image* image = GetAssetManager()->LoadAsset<Image>(imagename.c_str());
 
-	m_images[name] = cachedImage;
+	m_nametoimage.addNewKeyValue(name) = cachedImage;
+	m_images.AddObject(cachedImage);
 
-	return cachedImage;
+	return cachedImage.get();
 }
 
 size_t ShaderManager::GetNumShaderContainers() const
 {
-	return m_shaderContainers.size();
+	return m_shaderContainers.NumObjects();
 }
 
 const ShaderContainer* ShaderManager::GetShaderContainer(size_t num) const
 {
-	if (num >= m_shaderContainers.size())
+	if (num >= m_shaderContainers.NumObjects())
 	{
 		return nullptr;
 	}
 
-	return m_shaderContainers.at(num);
+	return m_shaderContainers.ObjectAt(num + 1).get();
 }
 
 const ShaderContainer* ShaderManager::GetShaderContainer(const char* Filename) const
 {
+	const ShaderContainerPtr* pContainer = m_fileShaderMap.findKeyValue(Filename);
+	if (pContainer) {
+		return pContainer->get();
+	}
+	else {
+		return nullptr;
+	}
+
+	/*
 	auto it = m_fileShaderMap.find(Filename);
 	if (it != m_fileShaderMap.end())
 	{
@@ -2307,4 +2339,5 @@ const ShaderContainer* ShaderManager::GetShaderContainer(const char* Filename) c
 	{
 		return nullptr;
 	}
+	*/
 }

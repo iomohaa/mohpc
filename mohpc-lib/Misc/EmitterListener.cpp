@@ -1431,7 +1431,7 @@ void EmitterListener::SetModel(Event* ev)
 			auto Tiki = GetAssetManager()->LoadAsset<TIKI>(resourceName);
 			if (Tiki)
 			{
-				emitter->sprite.Tiki = new std::shared_ptr<TIKI>(std::move(Tiki));
+				emitter->sprite.Tiki = new SharedPtr<TIKI>(std::move(Tiki));
 			}
 		}
 	}

@@ -5,8 +5,20 @@
 #include <MOHPC/Managers/AssetManager.h>
 #include <MOHPC/Managers/EventManager.h>
 #include <stdarg.h>
+#include <string>
 
 using namespace MOHPC;
+
+class EventDefDeconstructor
+{
+public:
+	~EventDefDeconstructor()
+	{
+		EventManager::UnloadEvents();
+	}
+};
+
+EventDefDeconstructor Deconstructor;
 
 void EventArgDef::Setup(const char *eventName, const char *argName, const char *argType, const char *argRange)
 {

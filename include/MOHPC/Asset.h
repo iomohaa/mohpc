@@ -1,9 +1,8 @@
 #pragma once
 
 #include "Global.h"
-#include <string>
-#include <ios>
 #include "Class.h"
+#include "Script/str.h"
 
 namespace MOHPC
 {
@@ -14,19 +13,20 @@ namespace MOHPC
 	friend AssetManager;
 
 	private:
-		std::string Filename;
+		str Filename;
 		class Hasher* Hash;
 
 	public:
+		virtual ~Asset();
+
 		/** Returns the filename of the asset. */
-		MOHPC_EXPORTS const std::string& GetFilename() const;
+		MOHPC_EXPORTS const str& GetFilename() const;
 
 		/** Returns the 20-bit hash for this asset. */
 		MOHPC_EXPORTS void HashGetHash(uint8_t* Destination) const;
 
 	protected:
 		MOHPC_EXPORTS Asset();
-		virtual ~Asset();
 
 	private:
 		// Called by the asset manager

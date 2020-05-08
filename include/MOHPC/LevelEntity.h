@@ -1,24 +1,22 @@
 #pragma once
 
-#include "Global.h"
-#include <string>
-#include <map>
-#include <vector>
 #include "Vector.h"
+#include "Script/str.h"
+#include <map>
 
 namespace MOHPC
 {
-	MOHPC_EXPORTS std::string CanonicalModelName(const char* ModelName);
+	MOHPC_EXPORTS str CanonicalModelName(const char* ModelName);
 
 	class PropertyDef
 	{
 	private:
-		std::string propertyName;
+		str propertyName;
 
 	public:
 		PropertyDef(const char* inPropertyName);
-		PropertyDef(std::string&& inPropertyName);
-		PropertyDef(const std::string& inPropertyName);
+		PropertyDef(str&& inPropertyName);
+		PropertyDef(const str& inPropertyName);
 
 		bool operator<(const PropertyDef& right) const;
 
@@ -28,20 +26,20 @@ namespace MOHPC
 	private:
 		bool IsKeyed() const;
 	};
-	typedef std::map<PropertyDef, std::string> PropertyMap;
+	using PropertyMap = std::map<PropertyDef, str>;
 
 	class LevelEntity
 	{
 	private:
 		size_t entnum;
-		std::string classname;
+		str classname;
 		int32_t spawnflags;
-		std::string targetname;
-		std::string target;
-		std::map<PropertyDef, std::string> keyValues;
+		str targetname;
+		str target;
+		PropertyMap keyValues;
 
 	public:
-		std::string model;
+		str model;
 		Vector origin;
 		Vector angles;
 
@@ -63,7 +61,7 @@ namespace MOHPC
 
 		MOHPC_EXPORTS bool HasProperty(const char* Key) const;
 		MOHPC_EXPORTS const char* GetPropertyRawValue(const char* Key) const;
-		MOHPC_EXPORTS const std::string& GetPropertyStringValue(const char* Key, const std::string& defaultValue = "") const;
+		MOHPC_EXPORTS const str& GetPropertyStringValue(const char* Key, const str& defaultValue = "") const;
 		MOHPC_EXPORTS int8_t GetPropertyCharValue(const char* Key, int8_t defaultValue = 0) const;
 		MOHPC_EXPORTS int16_t GetPropertyShortValue(const char* Key, int16_t defaultValue = 0) const;
 		MOHPC_EXPORTS int32_t GetPropertyIntegerValue(const char* Key, int32_t defaultValue = 0) const;
@@ -78,10 +76,10 @@ namespace MOHPC
 		MOHPC_EXPORTS Vector GetPropertyVectorValue(const char* Key, const Vector& defaultValue = Vector(0, 0, 0)) const;
 		MOHPC_EXPORTS bool TrySetMemberValue(const char* Key, const char* Value);
 		MOHPC_EXPORTS void SetPropertyValue(const char* Key, const char* Value);
-		void SetPropertyDef(const PropertyDef& Key, std::string&& Value);
+		void SetPropertyDef(const PropertyDef& Key, str&& Value);
 		MOHPC_EXPORTS const PropertyMap& GetPropertyMap() const;
 
 	private:
-		const std::string* GetPropertyValuePointer(const char* Key) const;
+		const str* GetPropertyValuePointer(const char* Key) const;
 	};
 }

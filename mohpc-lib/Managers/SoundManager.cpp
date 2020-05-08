@@ -54,19 +54,18 @@ static SoundChannel_e S_ChannelNameToNum(const char *pszName)
 	}
 }
 
-size_t SoundHash::operator()(const std::string& Keyval) const
+size_t SoundHash::operator()(const str& Keyval) const
 {
 	size_t h = 0;
 
-	std::for_each(Keyval.begin(), Keyval.end(), [&](char c)
-	{
-		h = tolower(c) + h * 31;
-	});
+	for (size_t i = 0; i < Keyval.length(); ++i) {
+		h = tolower(Keyval[i]) + h * 31;
+	}
 
 	return h;
 }
 
-bool SoundEqual::operator()(const std::string& Left, const std::string& Right) const
+bool SoundEqual::operator()(const str& Left, const str& Right) const
 {
 	return Left.length() == Right.length() ? !stricmp(Left.c_str(), Right.c_str()) : false;
 }
@@ -145,7 +144,7 @@ const char* SoundNode::GetChannelName() const
 	}
 }
 
-std::string SoundNode::GetAliasNameNotRandom() const
+str SoundNode::GetAliasNameNotRandom() const
 {
 	const char* name = GetAliasName();
 	const char* aliasNameEnd = name + strlen(name) - 1;
@@ -155,7 +154,9 @@ std::string SoundNode::GetAliasNameNotRandom() const
 
 	if (p != aliasNameEnd)
 	{
-		return std::string(name, p - name + 1);
+		str newStr;
+		newStr.assign(name, p - name + 1);
+		return newStr;
 	}
 	else
 	{
@@ -211,7 +212,7 @@ void SoundManager::Init()
 	size_t totalSize = 0;
 	SoundResults results;
 
-	std::vector<const char*> categoryList;
+	Container<const char*> categoryList;
 	GetFileManager()->GetCategoryList(categoryList);
 
 	const size_t numCategory = categoryList.size();
@@ -492,11 +493,11 @@ void SoundManager::SortList()
 
 			if (p != aliasNameEnd)
 			{
-				const std::string newAliasName(aliasName, p - aliasName + 1);
+				const str newAliasName(aliasName, p - aliasName + 1);
 
 				if (soundNodeMap.find(newAliasName) == soundNodeMap.end())
 				{
-					soundNodeMap.insert(std::pair<std::string, SoundNode*>(newAliasName, soundNode));
+					soundNodeMap.insert(std::pair<str, SoundNode*>(newAliasName, soundNode));
 				}
 			}
 

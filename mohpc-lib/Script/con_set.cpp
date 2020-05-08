@@ -78,13 +78,25 @@ int MOHPC::HashCode< unsigned_short3 >( const unsigned_short3& key )
 */
 
 template<>
-intptr_t MOHPC::HashCode< int >( const int& key )
+intptr_t MOHPC::HashCode<int>( const int& key )
 {
 	return key;
 }
 
 template<>
-intptr_t MOHPC::HashCode< unsigned int >( const unsigned int& key )
+intptr_t MOHPC::HashCode<unsigned int>( const unsigned int& key )
+{
+	return key;
+}
+
+template<>
+intptr_t MOHPC::HashCode<long long>(const long long& key)
+{
+	return key;
+}
+
+template<>
+intptr_t MOHPC::HashCode<unsigned long long>(const unsigned long long& key)
 {
 	return key;
 }

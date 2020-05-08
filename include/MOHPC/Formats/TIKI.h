@@ -4,10 +4,6 @@
 #include "../Asset.h"
 #include "../Vector.h"
 #include "Skel.h"
-#include <string>
-#include <vector>
-#include <map>
-#include <memory>
 
 // animation flags
 #define TAF_RANDOM					0x1		// random
@@ -52,41 +48,41 @@ namespace MOHPC
 		struct Command
 		{
 			intptr_t frame_num;
-			std::vector<std::string> args;
+			MOHPC::Container<MOHPC::str> args;
 		};
 
 		struct AnimDef
 		{
-			std::string alias;
+			MOHPC::str alias;
 			float weight;
 			float blendtime;
 			int flags;
-			std::vector<Command> client_cmds;
-			std::vector<Command> server_cmds;
-			std::shared_ptr<SkeletonAnimation> animData;
+			MOHPC::Container<Command> client_cmds;
+			MOHPC::Container<Command> server_cmds;
+			SharedPtr<SkeletonAnimation> animData;
 		};
 
 	public:
-		std::string name;
-		std::vector<Command> client_initcmds;
-		std::vector<Command> server_initcmds;
+		MOHPC::str name;
+		MOHPC::Container<Command> client_initcmds;
+		MOHPC::Container<Command> server_initcmds;
 		Vector mins;
 		Vector maxs;
-		std::vector<std::string> headmodels;
-		std::vector<std::string> headskins;
+		MOHPC::Container<MOHPC::str> headmodels;
+		MOHPC::Container<MOHPC::str> headskins;
 		bool bIsCharacter;
-		std::vector<AnimDef> animdefs;
+		MOHPC::Container<AnimDef> animdefs;
 	};
 
-	typedef std::shared_ptr<class TIKI> TIKIPtr;
+	typedef SharedPtr<class TIKI> TIKIPtr;
 
 	struct QuakedSection
 	{
-		std::string name;
+		MOHPC::str name;
 		Vector color;
 		Vector mins;
 		Vector maxs;
-		std::vector<std::string> spawnFlags;
+		MOHPC::Container<MOHPC::str> spawnFlags;
 	};
 
 	class TIKI : public Asset
@@ -96,16 +92,16 @@ namespace MOHPC
 	public:
 		struct TIKISurface
 		{
-			std::string name;
-			std::vector<std::string> shaders;
+			MOHPC::str name;
+			MOHPC::Container<MOHPC::str> shaders;
 			int32_t flags;
 			float damageMultiplier;
 		};
 
 	private:
-		std::string name;
+		MOHPC::str name;
 		class TIKIAnim* tikianim;
-		std::vector<TIKISurface> surfaces;
+		MOHPC::Container<TIKISurface> surfaces;
 		float loadScale;
 		float lodScale;
 		float lodBias;
@@ -113,7 +109,7 @@ namespace MOHPC
 		Vector loadOrigin;
 		float radius;
 		SkeletonChannelList boneList;
-		std::vector<std::shared_ptr<Skeleton>> meshes;
+		MOHPC::Container<SharedPtr<Skeleton>> meshes;
 		QuakedSection quakedSection;
 
 	public:
@@ -137,7 +133,7 @@ namespace MOHPC
 		MOHPC_EXPORTS SkeletonAnimation* GetAnimationByName(const char *name) const;
 		MOHPC_EXPORTS const TIKIAnim::AnimDef* GetAnimDefByName(const char *name) const;
 		MOHPC_EXPORTS const TIKIAnim::AnimDef* GetRandomAnimation(const char *name) const;
-		MOHPC_EXPORTS void GetAllAnimations(const char *name, std::vector<TIKIAnim::AnimDef*>& out) const;
+		MOHPC_EXPORTS void GetAllAnimations(const char *name, MOHPC::Container<TIKIAnim::AnimDef*>& out) const;
 		MOHPC_EXPORTS bool IsStaticModel() const;
 
 		// commands
@@ -167,10 +163,10 @@ namespace MOHPC
 		void FreeStorage(dloaddef_t* ld);
 
 		bool ParseSetup(dloaddef_t* ld);
-		void ParseInitCommands(dloaddef_t* ld, std::vector<dloadinitcmd_t>& cmdlist);
+		void ParseInitCommands(dloaddef_t* ld, MOHPC::Container<dloadinitcmd_t>& cmdlist);
 		void ParseInit(dloaddef_t* ld);
 		bool ParseCase(dloaddef_t* ld);
-		void ParseFrameCommands(dloaddef_t* ld, std::vector<dloadframecmd_t>& cmdlist);
+		void ParseFrameCommands(dloaddef_t* ld, MOHPC::Container<dloadframecmd_t>& cmdlist);
 		void ParseAnimationCommands(dloaddef_t* ld, dloadanim_t* anim);
 		void ParseAnimationFlags(dloaddef_t* ld, dloadanim_t* anim);
 		void ParseAnimationsFail(dloaddef_t* ld);
@@ -179,8 +175,8 @@ namespace MOHPC
 		void ParseQuaked(dloaddef_t* ld);
 		int32_t ParseSurfaceFlag(const char* token);
 		void InitSetup(dloaddef_t* ld);
-		bool LoadSetupCase(const char *filename, const dloaddef_t* ld, std::vector<dloadsurface_t>& loadsurfaces);
-		bool LoadSetup(const char *filename, const dloaddef_t* ld, std::vector<dloadsurface_t>& loadsurfaces);
+		bool LoadSetupCase(const char *filename, const dloaddef_t* ld, MOHPC::Container<dloadsurface_t>& loadsurfaces);
+		bool LoadSetup(const char *filename, const dloaddef_t* ld, MOHPC::Container<dloadsurface_t>& loadsurfaces);
 
 		void FixFrameNum(TIKIAnim *ptiki, SkeletonAnimation *animData, TIKIAnim::Command *cmd, const char *alias);
 		void LoadAnim(TIKIAnim *ptiki);
@@ -188,7 +184,7 @@ namespace MOHPC
 		void RemoveTiki(TIKIAnim *ptiki);
 
 		// animations
-		void GetAnimOrder(const dloaddef_t *ld, std::vector<size_t>& order) const;
+		void GetAnimOrder(const dloaddef_t *ld, MOHPC::Container<size_t>& order) const;
 
 		// main
 		void SetupIndividualSurface(const char *filename, TIKISurface* surf, const char *name, const dloadsurface_t *loadsurf);

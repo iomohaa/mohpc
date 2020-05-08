@@ -2,13 +2,8 @@
 #include <MOHPC/Formats/Skel.h>
 #include "SkelPrivate.h"
 #include "../TIKI/TIKI_Private.h"
+#include <MOHPC/Utilities/SharedPtr.h>
 #include <MOHPC/Managers/FileManager.h>
-#include <map>
-#include <memory>
-
-using namespace std;
-
-map<string, weak_ptr<Skeleton>> g_skelCache;
 
 MOHPC_EXPORTS void MOHPC::AddToBounds(SkelVec3 *bounds, const SkelVec3 *newBounds)
 {
@@ -262,9 +257,9 @@ size_t Skeleton::GetNumMorphTargets() const
 	return MorphTargets.size();
 }
 
-const string& Skeleton::GetMorphTarget(size_t index) const
+const char* Skeleton::GetMorphTarget(size_t index) const
 {
-	return MorphTargets.at(index);
+	return MorphTargets.at(index).c_str();
 }
 
 const char* MOHPC::Skeleton::GetName() const
@@ -277,35 +272,33 @@ void MOHPC::Skeleton::LoadSKBSurfaces(File_SkelHeader* pHeader, size_t length)
 	File_Surface* oldSurf = (File_Surface*)((uint8_t*)pHeader + pHeader->ofsSurfaces);
 
 	// Setup surfaces
-	Surfaces.resize(pHeader->numSurfaces);
+	Surfaces.reserve(pHeader->numSurfaces);
 
 	for (uint32_t i = 0; i < pHeader->numSurfaces; i++)
 	{
-		Surface surf;
+		Surface* surf = new(Surfaces) Surface();
 
-		surf.name = oldSurf->name;
-		surf.Triangles.resize(oldSurf->numTriangles * 3);
-		surf.Vertices.resize(oldSurf->numVerts);
+		surf->name = oldSurf->name;
+		surf->Triangles.resize(oldSurf->numTriangles * 3);
+		surf->Vertices.reserve(oldSurf->numVerts);
 
 		File_SKB_Vertex* oldVerts = (File_SKB_Vertex*)((uint8_t*)oldSurf + oldSurf->ofsVerts);
 
 		for (int32_t j = 0; j < oldSurf->numVerts; j++)
 		{
-			SkeletorVertex newVert;
-			newVert.normal = oldVerts->normal;
-			newVert.textureCoords[0] = oldVerts->texCoords[0];
-			newVert.textureCoords[1] = oldVerts->texCoords[1];
-			newVert.Weights.resize(oldVerts->numWeights);
+			SkeletorVertex* newVert = new(surf->Vertices) SkeletorVertex();
+			newVert->normal = oldVerts->normal;
+			newVert->textureCoords[0] = oldVerts->texCoords[0];
+			newVert->textureCoords[1] = oldVerts->texCoords[1];
+			newVert->Weights.reserve(oldVerts->numWeights);
 
 			for (int32_t k = 0; k < oldVerts->numWeights; k++)
 			{
-				SkeletorWeight& newWeight = newVert.Weights[k];
-				newWeight.boneIndex = oldVerts->weights[k].boneIndex;
-				newWeight.boneWeight = oldVerts->weights[k].boneWeight;
-				newWeight.offset = oldVerts->weights[k].offset;
+				SkeletorWeight* newWeight = new (newVert->Weights) SkeletorWeight();
+				newWeight->boneIndex = oldVerts->weights[k].boneIndex;
+				newWeight->boneWeight = oldVerts->weights[k].boneWeight;
+				newWeight->offset = oldVerts->weights[k].offset;
 			}
-
-			surf.Vertices[j] = newVert;
 
 			oldVerts = (File_SKB_Vertex*)((uint8_t*)oldVerts + sizeof(File_Weight) * oldVerts->numWeights + (sizeof(File_SKB_Vertex) - sizeof(File_Weight)));
 		}
@@ -314,11 +307,9 @@ void MOHPC::Skeleton::LoadSKBSurfaces(File_SkelHeader* pHeader, size_t length)
 
 		for (int32_t j = 0; j < oldSurf->numTriangles * 3; j++)
 		{
-			surf.Triangles[j] = *oldTriangles;
+			surf->Triangles[j] = *oldTriangles;
 			oldTriangles++;
 		}
-
-		Surfaces[i] = surf;
 
 		oldSurf = (File_Surface*)((uint8_t*)oldSurf + oldSurf->ofsEnd);
 	}
@@ -329,51 +320,47 @@ void MOHPC::Skeleton::LoadSKDSurfaces(File_SkelHeader* pHeader, size_t length)
 	File_Surface* oldSurf = (File_Surface*)((uint8_t*)pHeader + pHeader->ofsSurfaces);
 
 	// Setup surfaces
-	Surfaces.resize(pHeader->numSurfaces);
+	Surfaces.reserve(pHeader->numSurfaces);
 
 	for (uint32_t i = 0; i < pHeader->numSurfaces; i++)
 	{
-		Surface surf;
+		Surface* surf = new(Surfaces) Surface();
 
-		surf.name = oldSurf->name;
-		surf.Triangles.resize(oldSurf->numTriangles * 3);
-		surf.Vertices.resize(oldSurf->numVerts);
+		surf->name = oldSurf->name;
+		surf->Triangles.resize(oldSurf->numTriangles * 3);
+		surf->Vertices.reserve(oldSurf->numVerts);
 
 		File_SKD_Vertex* oldVerts = (File_SKD_Vertex*)((uint8_t*)oldSurf + oldSurf->ofsVerts);
 
 		for (int32_t j = 0; j < oldSurf->numVerts; j++)
 		{
-			SkeletorVertex newVert;
-			newVert.normal = oldVerts->normal;
-			newVert.textureCoords[0] = oldVerts->texCoords[0];
-			newVert.textureCoords[1] = oldVerts->texCoords[1];
-			newVert.Morphs.reserve(oldVerts->numMorphs);
-			newVert.Weights.reserve(oldVerts->numWeights);
+			SkeletorVertex* newVert = new(surf->Vertices) SkeletorVertex();
+			newVert->normal = oldVerts->normal;
+			newVert->textureCoords[0] = oldVerts->texCoords[0];
+			newVert->textureCoords[1] = oldVerts->texCoords[1];
+			newVert->Morphs.reserve(oldVerts->numMorphs);
+			newVert->Weights.reserve(oldVerts->numWeights);
 
 			File_Morph* morph = (File_Morph*)((uint8_t*)oldVerts + sizeof(File_SKD_Vertex));
 
 			for (int32_t k = 0; k < oldVerts->numMorphs; k++)
 			{
-				SkeletorMorph newMorph;
-				newMorph.morphIndex = morph->morphIndex;
-				newMorph.offset = morph->offset;
-				newVert.Morphs.push_back(newMorph);
-				morph++;
+				SkeletorMorph* newMorph = new(newVert->Morphs) SkeletorMorph();
+				newMorph->morphIndex = morph->morphIndex;
+				newMorph->offset = morph->offset;
+				++morph;
 			}
 
 			File_Weight* weight = (File_Weight*)((uint8_t*)oldVerts + sizeof(File_SKD_Vertex) + sizeof(File_Morph) * oldVerts->numMorphs);
 
 			for (int32_t k = 0; k < oldVerts->numWeights; k++)
 			{
-				SkeletorWeight newWeight;
-				newWeight.boneIndex = weight->boneIndex;
-				newWeight.boneWeight = weight->boneWeight;
-				newWeight.offset = weight->offset;
-				newVert.Weights.push_back(newWeight);
-				weight++;
+				SkeletorWeight* newWeight = new(newVert->Weights) SkeletorWeight();
+				newWeight->boneIndex = weight->boneIndex;
+				newWeight->boneWeight = weight->boneWeight;
+				newWeight->offset = weight->offset;
+				++weight;
 			}
-
-			surf.Vertices[j] = newVert;
 
 			oldVerts = (File_SKD_Vertex*)((uint8_t*)oldVerts + sizeof(File_SKD_Vertex) + sizeof(File_Morph) * oldVerts->numMorphs + sizeof(File_Weight) * oldVerts->numWeights);
 		}
@@ -382,11 +369,9 @@ void MOHPC::Skeleton::LoadSKDSurfaces(File_SkelHeader* pHeader, size_t length)
 
 		for (int32_t j = 0; j < oldSurf->numTriangles * 3; j++)
 		{
-			surf.Triangles[j] = *oldTriangles;
+			surf->Triangles[j] = *oldTriangles;
 			oldTriangles++;
 		}
-
-		Surfaces[i] = surf;
 
 		oldSurf = (File_Surface*)((uint8_t*)oldSurf + oldSurf->ofsEnd);
 	}
@@ -430,12 +415,10 @@ void MOHPC::Skeleton::LoadSKBBones(File_SkelHeader* pHeader, size_t length)
 	{
 		const char* boneName;
 
-		if (TIKI_bones->parent == -1)
-		{
+		if (TIKI_bones->parent == -1) {
 			boneName = SKEL_BONENAME_WORLD;
 		}
-		else
-		{
+		else {
 			boneName = TIKI_bones[TIKI_bones->parent].name;
 		}
 

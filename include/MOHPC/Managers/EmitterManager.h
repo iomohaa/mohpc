@@ -3,8 +3,9 @@
 #include "../Global.h"
 #include "Manager.h"
 #include "../Vector.h"
-#include <vector>
-#include <memory>
+#include "../Script/Container.h"
+#include "../Script/str.h"
+#include "../Utilities/SharedPtr.h"
 
 namespace MOHPC
 {
@@ -19,7 +20,7 @@ namespace MOHPC
 
 		spriteType_e spriteType;
 		union {
-			std::shared_ptr<class TIKI>* Tiki;
+			SharedPtr<class TIKI>* Tiki;
 			class ShaderRef* Shader;
 			void* pointerValue;
 		};
@@ -57,7 +58,7 @@ namespace MOHPC
 			EST_Circle
 		};
 
-		std::string emitterName;
+		str emitterName;
 		bool bIsEmitter;
 		int32_t flags;
 		emitterSpawnType_e spawnType;
@@ -98,9 +99,9 @@ namespace MOHPC
 
 	struct EmitterResults
 	{
-		std::vector<Emitter> Emitters;
+		Container<Emitter> Emitters;
 		int32_t animNum;
-		std::string animName;
+		str animName;
 
 		MOHPC_EXPORTS EmitterResults();
 
@@ -121,6 +122,6 @@ namespace MOHPC
 		MOHPC_EXPORTS bool ParseEmitters(const TIKI* Tiki, EmitterResults& Results);
 
 	private:
-		bool ProcessCommand(const std::vector<std::string>& Arguments, class EmitterListener& Listener);
+		bool ProcessCommand(const Container<str>& Arguments, class EmitterListener& Listener);
 	};
 }

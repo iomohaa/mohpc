@@ -41,6 +41,20 @@ Good:: Starts and load some assets, but was not tested enough.
 
 Unknown:: Absence of testing, but this does not mean the library will not work.
 
+=== Features
+
+==== Supported assets
+
+* BSP
+* DCL
+* Models
+** SKB
+** SKD from all expansions
+** SKC from all expansions
+** TIKI files
+* Images
+* Sounds
+
 === TODO
 
 This README will change over time.

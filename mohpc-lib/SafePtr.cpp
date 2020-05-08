@@ -2,7 +2,7 @@
 
 void SafePtrBase::AddReference(SafePtrClass* classPtr)
 {
-	std::unique_lock<std::mutex> lock(m_mutex);
+	//std::unique_lock<std::mutex> lock(m_mutex);
 
 	if (!classPtr->SafePtrList)
 	{
@@ -22,7 +22,7 @@ void SafePtrBase::AddReference(SafePtrClass* classPtr)
 
 void SafePtrBase::RemoveReference(SafePtrClass* classPtr)
 {
-	std::unique_lock<std::mutex> lock(m_mutex);
+	//std::unique_lock<std::mutex> lock(m_mutex);
 
 	if (classPtr->SafePtrList == this)
 	{

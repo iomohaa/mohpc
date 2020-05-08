@@ -3,6 +3,7 @@
 #include "../Global.h"
 #include "../Formats/Skel.h"
 #include "../Managers/ShaderManager.h"
+#include "../Script/str.h"
 
 namespace MOHPC
 {
@@ -12,8 +13,8 @@ namespace MOHPC
 
 	struct ModelSurfaceMaterial
 	{
-		std::string name;
-		std::vector<ShaderRef> shaders;
+		str name;
+		Container<ShaderRef> shaders;
 	};
 
 	struct ModelMorph
@@ -34,15 +35,15 @@ namespace MOHPC
 		Vector normal;
 		float st[2];
 		Vector xyz;
-		std::vector<ModelWeight> weights;
-		std::vector<ModelMorph> morphs;
+		Container<ModelWeight> weights;
+		Container<ModelMorph> morphs;
 	};
 
 	struct ModelSurface
 	{
 		const ModelSurfaceMaterial* material;
-		std::vector<ModelVertice> vertices;
-		std::vector<intptr_t> indexes;
+		Container<ModelVertice> vertices;
+		Container<intptr_t> indexes;
 	};
 
 	struct ModelBone
@@ -81,14 +82,14 @@ namespace MOHPC
 		};
 
 	private:
-		std::vector<SafePtr<const Skeleton>> meshes;
+		Container<SafePtr<const Skeleton>> meshes;
 		SkeletonChannelList boneList;
-		std::vector<ModelSurfaceMaterial> materials;
+		Container<ModelSurfaceMaterial> materials;
 		Pose poses[MAX_ANIM_POSES];
-		std::vector<ModelBoneTransform> bonesTransform;
-		std::vector<ModelBone> bones;
+		Container<ModelBoneTransform> bonesTransform;
+		Container<ModelBone> bones;
 		skelBone_Base** skelBones;
-		std::vector<ModelSurface> surfaces;
+		Container<ModelSurface> surfaces;
 		Vector delta;
 		SkeletonChannelList m_morphTargetList;
 
@@ -175,6 +176,6 @@ namespace MOHPC
 		void SkelWeightGetXyz(const Skeleton::SkeletorWeight *weight, const ModelBoneTransform *bone, Vector& out);
 		void SkelWeightMorphGetXyz(const Skeleton::SkeletorWeight *weight, const ModelBoneTransform *bone, const Vector& totalmorph, Vector& out);
 		void SkelMorphGetXyz(const Skeleton::SkeletorMorph *morph, int *morphcache, Vector& out);
-		const ModelSurfaceMaterial* FindMaterialByName(const std::string& name);
+		const ModelSurfaceMaterial* FindMaterialByName(const str& name);
 	};
 }

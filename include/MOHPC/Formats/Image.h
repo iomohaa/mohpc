@@ -2,7 +2,7 @@
 
 #include "../Global.h"
 #include "../Asset.h"
-#include <memory>
+#include "../Utilities/SharedPtr.h"
 
 namespace MOHPC
 {
@@ -44,5 +44,5 @@ namespace MOHPC
 		uint32_t height;
 		PixelFormat pixelFormat;
 	};
-	using ImagePtr = std::shared_ptr<Image>;
+	using ImagePtr = SharedPtr<Image>;
 }

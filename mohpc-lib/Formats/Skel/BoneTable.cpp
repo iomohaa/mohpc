@@ -2,7 +2,6 @@
 #include "SkelPrivate.h"
 
 using namespace MOHPC;
-using namespace std;
 
 void SkeletonChannelNameTable::CopyChannel(SkeletonChannelName *dest, const SkeletonChannelName *source )
 {
@@ -20,10 +19,10 @@ SkeletonChannelNameTable::SkeletonChannelNameTable()
 
 void SkeletonChannelNameTable::PrintContents()
 {
-	string channelList;
+	str channelList;
 	int i;
 
-	intptr_t numChannels = m_Channels.size();
+	intptr_t numChannels = m_Channels.NumObjects();
 	for( i = 0; i < numChannels; i++ )
 	{
 		if( !m_Channels[ i ].name[ 0 ] )
@@ -31,7 +30,7 @@ void SkeletonChannelNameTable::PrintContents()
 			continue;
 		}
 
-		channelList += string( "c" ) + string(std::to_string(m_Channels[ i ].channelNum)) + string(":") + string( m_Channels[ i ].name ) + "\n";
+		channelList += str( "c" ) + str(m_Channels[ i ].channelNum) + str(":") + str( m_Channels[ i ].name ) + "\n";
 	}
 }
 
@@ -42,7 +41,7 @@ bool SkeletonChannelNameTable::FindIndexFromName( const char *name, intptr_t *in
 	intptr_t upperBound;
 	intptr_t index;
 
-	intptr_t numChannels = m_Channels.size();
+	intptr_t numChannels = m_Channels.NumObjects();
 
 	lowerBound = 0;
 	upperBound = numChannels - 1;
@@ -96,7 +95,7 @@ void SkeletonChannelNameTable::SortIntoTable(intptr_t index)
 {
 	SkeletonChannelName tempName;
 
-	intptr_t numChannels = m_Channels.size() - 1;
+	intptr_t numChannels = m_Channels.NumObjects() - 1;
 
 	CopyChannel(&tempName, &m_Channels[numChannels]);
 
@@ -308,9 +307,9 @@ intptr_t SkeletonChannelNameTable::RegisterChannel( const char *name )
 		return m_Channels[index].channelNum;
 	}
 
-	intptr_t numChannels = m_Channels.size();
+	intptr_t numChannels = m_Channels.NumObjects();
 
-	m_Channels.resize(numChannels + 1);
+	m_Channels.SetNumObjects(numChannels + 1);
 	m_lookup.resize(numChannels + 1);
 
 	SetChannelName(&m_Channels[numChannels], name);
@@ -321,7 +320,7 @@ intptr_t SkeletonChannelNameTable::RegisterChannel( const char *name )
 
 const char *SkeletonChannelNameTable::FindNameFromLookup( intptr_t index )
 {
-	if (index < (intptr_t)m_Channels.size())
+	if (index < (intptr_t)m_Channels.NumObjects())
 	{
 		return m_Channels[index].name.c_str();
 	}

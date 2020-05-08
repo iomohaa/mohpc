@@ -2,7 +2,7 @@
 #include <MOHPC/Managers/AssetManager.h>
 #include <MOHPC/Asset.h>
 
-void Example()
+void ExampleCode()
 {
 	MOHPC::AssetManager AM;
 
@@ -22,7 +22,7 @@ void Example()
 	// Open bar.tik, it will be the bar.tik from Pak6, because it is lastly present in pak6 rather than pak0
 	MOHPC::FilePtr File = FM->OpenFile("models/weapons/bar.tik");
 
-	char *Buffer = nullptr;
+	char* Buffer = nullptr;
 
 	// Puts the content of bar.tik into a buffer...
 	std::streamsize Size = File->ReadBuffer((void**)&Buffer);

@@ -2,6 +2,7 @@
 
 #include "../Global.h"
 #include "Manager.h"
+#include "../Script/str.h"
 #include <stdint.h>
 #include <unordered_map>
 #include <algorithm>
@@ -54,19 +55,19 @@ namespace MOHPC
 		const char* GetRealName() const;
 		const char* GetSubtitle() const;
 		const char* GetChannelName() const;
-		std::string GetAliasNameNotRandom() const;
+		str GetAliasNameNotRandom() const;
 		size_t GetAliasNameNotRandomLength() const;
 		bool IsRandomized() const;
 	};
 
 	struct SoundHash
 	{
-		size_t operator()(const std::string& Keyval) const;
+		size_t operator()(const str& Keyval) const;
 	};
 
 	struct SoundEqual
 	{
-		bool operator()(const std::string& Left, const std::string& Right) const;
+		bool operator()(const str& Left, const str& Right) const;
 	};
 
 	struct SoundLess
@@ -90,7 +91,7 @@ namespace MOHPC
 		CLASS_BODY(SoundManager);
 
 	private:
-		std::unordered_map<std::string, SoundNode*, SoundHash, SoundEqual> soundNodeMap;
+		std::unordered_map<str, SoundNode*, SoundHash, SoundEqual> soundNodeMap;
 		SoundNode* rootSoundNode;
 		SoundNode* startSoundNode;
 		size_t numNodes;

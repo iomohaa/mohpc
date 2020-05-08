@@ -2,7 +2,7 @@
 
 #include "../Global.h"
 #include "../Asset.h"
-#include <memory>
+#include "../Utilities/SharedPtr.h"
 
 namespace MOHPC
 {
@@ -28,5 +28,5 @@ namespace MOHPC
 	private:
 		bool DecodeLAME(void *buf, std::streamsize len);
 	};
-	using SoundPtr = std::shared_ptr<Sound>;
+	using SoundPtr = SharedPtr<Sound>;
 }

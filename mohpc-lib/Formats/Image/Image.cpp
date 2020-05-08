@@ -45,7 +45,7 @@ bool Image::Load()
 		{ ".dds", &Image::LoadDDS }
 	};
 
-	std::string ext = fs::path(GetFilename()).extension().generic_string();
+	std::string ext = fs::path(GetFilename().c_str()).extension().generic_string();
 
 	ExtensionWrapper::_ExtensionFunction ExtensionFunction = nullptr;
 

@@ -1,16 +1,31 @@
 #include <MOHPC/Formats/Image.h>
 #include <MOHPC/Managers/AssetManager.h>
 #include <MOHPC/Managers/ShaderManager.h>
+#include "UnitTest.h"
 
-void TestShader(MOHPC::AssetManager& AM)
+class CShaderTest : public IUnitTest, public TAutoInst<CShaderTest>
 {
-	printf("Loading shaders...\n");
-
-	MOHPC::ShaderManager* SM = AM.GetManager<MOHPC::ShaderManager>();
-
-	auto Shader = SM->GetShader("textures/common/caulk");
-	if (Shader && Shader->GetNumStages())
+public:
+	virtual unsigned int priority() override
 	{
-		const MOHPC::Image* img = Shader->GetStage(0)->bundle[0].image[0]->GetImage();
+		return 1;
 	}
-}
+
+	virtual const char* name() override
+	{
+		return "Shader";
+	}
+
+	virtual void run(MOHPC::AssetManager& AM) override
+	{
+		printf("Loading shaders...\n");
+
+		MOHPC::ShaderManager* SM = AM.GetManager<MOHPC::ShaderManager>();
+
+		auto Shader = SM->GetShader("textures/common/caulk");
+		if (Shader && Shader->GetNumStages())
+		{
+			const MOHPC::Image* img = Shader->GetStage(0)->bundle[0].image[0]->GetImage();
+		}
+	}
+};

@@ -2,7 +2,6 @@
 #include "TIKI_Private.h"
 
 using namespace MOHPC;
-using namespace std;
 
 static float randweight()
 {
@@ -19,7 +18,7 @@ static int AnimCompareFunc(const void *a, const void *b, void *context)
 	return stricmp(ld->loadanims[*(int *)a].alias.c_str(), ld->loadanims[*(int *)b].alias.c_str());
 }
 
-void TIKI::GetAnimOrder(const dloaddef_t *ld, vector<size_t>& order) const
+void TIKI::GetAnimOrder(const dloaddef_t *ld, Container<size_t>& order) const
 {
 	for (size_t i = 0; i < ld->loadanims.size(); i++)
 	{
@@ -77,7 +76,7 @@ const TIKIAnim::AnimDef* TIKI::GetAnimDefByName(const char *name) const
 	intptr_t iMiddle;
 	intptr_t iComp;
 	TIKIAnim::AnimDef *panimdef;
-	vector<float> fAnimWeights;
+	Container<float> fAnimWeights;
 	float fWeight;
 	float fTotalWeight;
 	intptr_t i, k;
@@ -186,7 +185,7 @@ const TIKIAnim::AnimDef* TIKI::GetAnimDefByName(const char *name) const
 
 const TIKIAnim::AnimDef* TIKI::GetRandomAnimation(const char *name) const
 {
-	vector<TIKIAnim::AnimDef*> anims;
+	Container<TIKIAnim::AnimDef*> anims;
 	GetAllAnimations(name, anims);
 
 	// animation name found
@@ -217,10 +216,10 @@ const TIKIAnim::AnimDef* TIKI::GetRandomAnimation(const char *name) const
 	return nullptr;
 }
 
-void TIKI::GetAllAnimations(const char* name, std::vector<TIKIAnim::AnimDef*>& out) const
+void TIKI::GetAllAnimations(const char* name, Container<TIKIAnim::AnimDef*>& out) const
 {
 	TIKIAnim::AnimDef *panimdef;
-	vector<TIKIAnim::AnimDef*> anims;
+	Container<TIKIAnim::AnimDef*> anims;
 	size_t len;
 	int diff;
 

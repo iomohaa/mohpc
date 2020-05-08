@@ -40,9 +40,9 @@ namespace MOHPC
 
 		MOHPC_EXPORTS void ClearEventList();
 		MOHPC_EXPORTS bool EventSystemStarted();
-		MOHPC_EXPORTS void InitEvents();
-		MOHPC_EXPORTS void LoadEvents();
-		MOHPC_EXPORTS void UnloadEvents();
+		void InitEvents();
+		void LoadEvents();
+		static void UnloadEvents();
 		MOHPC_EXPORTS static size_t NumEventCommands();
 		MOHPC_EXPORTS void ProcessPendingEvents();
 		MOHPC_EXPORTS void ShutdownEvents(void);

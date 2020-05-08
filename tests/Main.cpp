@@ -1,6 +1,9 @@
 #include <MOHPC/Managers/AssetManager.h>
 #include <MOHPC/Managers/FileManager.h>
+#include <MOHPC/Managers/ShaderManager.h>
+#include "UnitTest.h"
 
+extern void TestMSG();
 extern void TestAnimRendering(MOHPC::AssetManager& AM);
 extern void TestCDKey();
 extern void TestEmitter(MOHPC::AssetManager& AM);
@@ -74,21 +77,32 @@ int main(int argc, char *argv[])
 		FM->AddPakFile("/mnt/i/Jeux/Mohaa/maintt/Pak3.pk3");
 		FM->AddPakFile("/mnt/i/Jeux/Mohaa/maintt/Pak4.pk3");
 #endif
+		{
+			MOHPC::FileEntryList entries = FM->ListFilteredFiles("/", "", true, false);
+		}
 
-		MOHPC::FileEntryList entries = FM->ListFilteredFiles("/", "", true, false);
-
-		TestLevel(AM);
-		TestShader(AM);
-		TestCDKey();
-		TestEmitter(AM);
-		TestAnimRendering(AM);
-		TestTiki(AM);
-		TestSoundAlias(AM);
+		IUnitTest::runAll(AM);
 	}
 	
 #ifdef _WIN32
-	_CrtDumpMemoryLeaks();
+	//_CrtDumpMemoryLeaks();
 #endif
+
+	// The leak detector may output the following :
+	//
+	// Detected memory leaks!
+	// Dumping objects ->
+	// {4111180} normal block at 0x0000013D5C656E00, 8 bytes long.
+	//  Data: <   ]=   > 00 04 03 5D 3D 01 00 00 
+	// {4111011} normal block at 0x0000013D5C6504B0, 8 bytes long.
+	//  Data: <   ]=   > 80 AB 03 5D 3D 01 00 00 
+	// {4110656} normal block at 0x0000013D5C651360, 8 bytes long.
+	//  Data: < z ]=   > C0 7A 03 5D 3D 01 00 00 
+	// {315813} normal block at 0x0000013D5B59AB30, 2480 bytes long.
+	//  Data: <                > 00 00 00 00 00 00 00 00 00 CD CD CD 00 00 00 00
+	//
+	// This is due to the event system allocating memory at initialization
+	// And it is destroyed during destruction (after leak detection)
 
 	return 0;
 }

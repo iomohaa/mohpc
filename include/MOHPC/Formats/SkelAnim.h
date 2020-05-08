@@ -1,15 +1,14 @@
 #pragma once
 
 #include "../Global.h"
+#include "../Utilities/SharedPtr.h"
+#include "../Script/con_set.h"
 #include <stdint.h>
-#include <vector>
-#include <string>
-#include <map>
 
 namespace MOHPC
 {
-	typedef std::shared_ptr<class SkeletonAnimation> SkeletonAnimationPtr;
-	typedef std::shared_ptr<const class SkeletonAnimation> ConstSkeletonAnimationPtr;
+	typedef SharedPtr<class SkeletonAnimation> SkeletonAnimationPtr;
+	typedef SharedPtr<const class SkeletonAnimation> ConstSkeletonAnimationPtr;
 
 #define MAX_ANIM_POSES 64
 #define MAX_ANIM_MOVEMENTS_POSES (MAX_ANIM_POSES >> 1)
@@ -51,7 +50,7 @@ namespace MOHPC
 
 		struct SkanChannelHdr
 		{
-			std::vector<SkanGameFrame> ary_frames;
+			Container<SkanGameFrame> ary_frames;
 		};
 
 	private:
@@ -65,8 +64,8 @@ namespace MOHPC
 		float frameTime;
 		SkeletonChannelList channelList;
 		SkelVec3 bounds[2];
-		std::vector<AnimFrame> m_frame;
-		std::vector<SkanChannelHdr> ary_channels;
+		Container<AnimFrame> m_frame;
+		Container<SkanChannelHdr> ary_channels;
 
 	public:
 		virtual bool Load() override;
@@ -123,13 +122,14 @@ namespace MOHPC
 	private:
 		void EncodeFrames(SkeletonChannelList *channelList, SkeletonChannelNameTable *channelNames);
 		void ConvertSkelFileToGame(File_AnimDataHeader *pHeader, size_t iBuffLength, const char *path);
-		void WriteEncodedFrames(struct msg_s *msg);
+		void WriteEncodedFrames(class MSG* msg);
+		void WriteEncodedFramesEx(class MSG* msg);
 		void SaveProcessedAnim(const char *path, File_AnimDataHeader *pHeader);
-		void ReadEncodedFrames(struct msg_s *msg);
-		void ReadEncodedFramesEx(struct msg_s *msg);
+		void ReadEncodedFrames(class MSG* msg);
+		void ReadEncodedFramesEx(class MSG* msg);
 		void LoadProcessedAnim(const char *path, void *buffer, size_t len, const char *name);
 		void LoadProcessedAnimEx(const char *path, void *buffer, size_t len, const char *name);
 
-		static std::map<std::string, std::weak_ptr<SkeletonAnimation>> g_skelAnimCache;
+		static con_set<str, WeakPtr<SkeletonAnimation>> g_skelAnimCache;
 	};
 };

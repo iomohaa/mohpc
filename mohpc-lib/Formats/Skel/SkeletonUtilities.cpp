@@ -10,13 +10,13 @@ intptr_t SkeletonChannelList::GlobalChannel(intptr_t localchannel) const
 
 intptr_t SkeletonChannelList::LocalChannel(intptr_t globalChannel) const
 {
-	auto it = m_chanLocalFromGlobal.find(globalChannel);
-	return it->second;
+	const intptr_t* channel = m_chanLocalFromGlobal.findKeyValue(globalChannel);
+	return channel ? *channel : -1;
 }
 
 intptr_t SkeletonChannelList::GetGlobalFromLocal(intptr_t channel) const
 {
-	if (channel >= 0 && channel < (intptr_t)m_chanGlobalFromLocal.size())
+	if (channel >= 0 && channel < (intptr_t)m_chanGlobalFromLocal.NumObjects())
 	{
 		return GlobalChannel(channel);
 	}
@@ -28,21 +28,14 @@ intptr_t SkeletonChannelList::GetGlobalFromLocal(intptr_t channel) const
 
 intptr_t SkeletonChannelList::GetLocalFromGlobal(intptr_t globalChannel) const
 {
-	auto it = m_chanLocalFromGlobal.find(globalChannel);
-	if (it != m_chanLocalFromGlobal.end())
-	{
-		return it->second;
-	}
-	else
-	{
-		return -1;
-	}
+	const intptr_t* channel = m_chanLocalFromGlobal.findKeyValue(globalChannel);
+	return channel ? *channel : -1;
 }
 
 intptr_t SkeletonChannelList::NumChannels( void ) const
 {
 	//return m_numChannels;
-	return m_chanGlobalFromLocal.size();
+	return m_chanGlobalFromLocal.NumObjects();
 }
 
 void SkeletonChannelList::ZeroChannels()
@@ -60,7 +53,7 @@ void SkeletonChannelList::ZeroChannels()
 	*/
 
 	m_chanLocalFromGlobal.clear();
-	m_chanGlobalFromLocal.clear();
+	m_chanGlobalFromLocal.ClearObjectList();
 }
 
 void SkeletonChannelList::PackChannels()
@@ -109,8 +102,8 @@ void SkeletonChannelList::CleanUpChannels()
 	m_numLocalFromGlobal = 0;
 	*/
 
-	m_chanGlobalFromLocal.clear();
 	m_chanLocalFromGlobal.clear();
+	m_chanGlobalFromLocal.ClearObjectList();
 }
 
 void SkeletonChannelList::InitChannels()
@@ -128,8 +121,9 @@ intptr_t SkeletonChannelList::AddChannel(intptr_t newGlobalChannelNum )
 	if (newGlobalChannelNum == -1)
 	{
 		//return m_numChannels++;
-		iLocalChannel = m_chanGlobalFromLocal.size();
-		m_chanGlobalFromLocal.push_back(-1);
+		iLocalChannel = m_chanGlobalFromLocal.NumObjects();
+		//m_chanGlobalFromLocal.push_back(-1);
+		m_chanGlobalFromLocal.AddObject(-1);
 		return iLocalChannel;
 	}
 
@@ -139,9 +133,10 @@ intptr_t SkeletonChannelList::AddChannel(intptr_t newGlobalChannelNum )
 	{
 		//iLocalChannel = m_numChannels++;
 		//m_chanGlobalFromLocal[ iLocalChannel ] = newGlobalChannelNum;
-		iLocalChannel = m_chanGlobalFromLocal.size();
-		m_chanGlobalFromLocal.push_back(newGlobalChannelNum);
-		m_chanLocalFromGlobal[newGlobalChannelNum] = iLocalChannel;
+		iLocalChannel = m_chanGlobalFromLocal.NumObjects();
+		//m_chanGlobalFromLocal.push_back(newGlobalChannelNum);
+		m_chanGlobalFromLocal.AddObject(newGlobalChannelNum);
+		m_chanLocalFromGlobal.addKeyValue(newGlobalChannelNum) = iLocalChannel;
 	}
 
 	return iLocalChannel;
@@ -153,15 +148,8 @@ bool SkeletonChannelList::HasChannel(SkeletonChannelNameTable *nameTable, const 
 
 	if( iGlobalChannel >= 0 )
 	{
-		auto it = m_chanLocalFromGlobal.find(iGlobalChannel);
-		if (it != m_chanLocalFromGlobal.end())
-		{
-			return (uint32_t)~it->second >> 31;
-		}
-		else
-		{
-			return true;
-		}
+		const intptr_t* channel = m_chanLocalFromGlobal.findKeyValue(iGlobalChannel);
+		return channel ? (~*channel >> 31) : true;
 	}
 	else
 	{
@@ -172,7 +160,7 @@ bool SkeletonChannelList::HasChannel(SkeletonChannelNameTable *nameTable, const 
 
 const char *SkeletonChannelList::ChannelName(SkeletonChannelNameTable *nameTable, intptr_t localChannelNum) const
 {
-	if (localChannelNum >= 0 && localChannelNum < (intptr_t)m_chanGlobalFromLocal.size())
+	if (localChannelNum >= 0 && localChannelNum < (intptr_t)m_chanGlobalFromLocal.NumObjects())
 	{
 		return nameTable->FindName(m_chanGlobalFromLocal[localChannelNum]);
 	}

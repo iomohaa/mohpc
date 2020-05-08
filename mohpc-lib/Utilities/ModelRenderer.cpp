@@ -144,7 +144,7 @@ void ModelRenderer::AddModel(const TIKI* Tiki)
 
 				for (size_t j = 0; j < numShaders; j++)
 				{
-					const std::string& shaderName = Surface->shaders[j];
+					const str& shaderName = Surface->shaders[j];
 					Mat.shaders.push_back(shaderMan->GetShader(shaderName.c_str()));
 				}
 
@@ -604,7 +604,7 @@ void ModelRenderer::LoadMorphTargetNames(const Skeleton* skelmodel)
 
 	for (size_t i = 0; i < numTargets; i++)
 	{
-		const char* newTargetName = skelmodel->GetMorphTarget(i).c_str();
+		const char* newTargetName = skelmodel->GetMorphTarget(i);
 
 		size_t newChannel = GetAssetManager()->GetManager<SkeletorManager>()->GetChannelNamesTable()->RegisterChannel(newTargetName);
 		size_t morphTargetIndex = m_morphTargetList.AddChannel(newChannel);
@@ -707,7 +707,7 @@ const MOHPC::Vector& MOHPC::ModelRenderer::GetDelta() const
 	return delta;
 }
 
-const MOHPC::ModelSurfaceMaterial* MOHPC::ModelRenderer::FindMaterialByName(const std::string& name)
+const MOHPC::ModelSurfaceMaterial* MOHPC::ModelRenderer::FindMaterialByName(const str& name)
 {
 	for (const ModelSurfaceMaterial& material : materials)
 	{

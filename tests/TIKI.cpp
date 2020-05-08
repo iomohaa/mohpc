@@ -1,20 +1,41 @@
 #include <MOHPC/Formats/TIKI.h>
 #include <MOHPC/Managers/AssetManager.h>
+#include <MOHPC/Managers/FileManager.h>
 #include <MOHPC/Utilities/ModelRenderer.h>
+#include "UnitTest.h"
 
-void TestTiki(MOHPC::AssetManager& AM)
+class CTikiTest : public IUnitTest, public TAutoInst<CTikiTest>
 {
-	auto Asset = AM.LoadAsset<MOHPC::TIKI>("/models/weapons/m1_garand.tik");
-	Asset = AM.LoadAsset<MOHPC::TIKI>("/models/static/bush_full.tik");
-	Asset = AM.LoadAsset<MOHPC::TIKI>("/models/human/allied_airborne_soldier.tik");
-
-	MOHPC::TIKIPtr Tiki = AM.LoadAsset<MOHPC::TIKI>("/models/static/toilet.tik");
-	if (Tiki)
+public:
+	virtual const char* name() override
 	{
-		MOHPC::ModelRenderer ModelRenderer;
-		ModelRenderer.InitAssetManager(&AM);
-		ModelRenderer.AddModel(Tiki.get());
-		ModelRenderer.BuildBonesTransform();
-		ModelRenderer.BuildRenderData();
+		return "TIKI";
 	}
-}
+
+	virtual unsigned int priority()
+	{ 
+		return 0;
+	}
+
+	virtual void run(MOHPC::AssetManager& AM) override
+	{
+		MOHPC::Container<MOHPC::str> ExtensionsStd;
+		ExtensionsStd.AddObject("wav");
+
+		MOHPC::FileEntryList FilesStd = AM.GetFileManager()->ListFilteredFiles("/", ExtensionsStd, true, false);
+
+		auto Asset = AM.LoadAsset<MOHPC::TIKI>("/models/weapons/m1_garand.tik");
+		Asset = AM.LoadAsset<MOHPC::TIKI>("/models/static/bush_full.tik");
+		Asset = AM.LoadAsset<MOHPC::TIKI>("/models/human/allied_airborne_soldier.tik");
+
+		MOHPC::TIKIPtr Tiki = AM.LoadAsset<MOHPC::TIKI>("/models/static/toilet.tik");
+		if (Tiki)
+		{
+			MOHPC::ModelRenderer ModelRenderer;
+			ModelRenderer.InitAssetManager(&AM);
+			ModelRenderer.AddModel(Tiki.get());
+			ModelRenderer.BuildBonesTransform();
+			ModelRenderer.BuildRenderData();
+		}
+	}
+};

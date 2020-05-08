@@ -16,7 +16,7 @@
 #define BEGIN_LOAD_PROFILING(name) \
 	{ \
 		auto start = std::chrono::system_clock().now(); \
-		const std::string profileName = name
+		const str profileName = name
 
 #define END_LOAD_PROFILING() \
 		auto end = std::chrono::system_clock().now();
@@ -40,8 +40,6 @@ static void ProfilableCode(const char *profileName, std::function<void()> Lambda
 	Lambda();
 #endif
 }
-
-using namespace std;
 
 namespace MOHPC
 {
@@ -551,7 +549,7 @@ Vector BSP::Brush::GetOrigin() const
 	return (bounds[0] + bounds[1]) * 0.5f;
 }
 
-const string& BSP::SurfacesGroup::GetGroupName() const
+const str& BSP::SurfacesGroup::GetGroupName() const
 {
 	return name;
 }
@@ -1170,7 +1168,7 @@ const BSP::Model *BSP::GetSubmodel(size_t submodelNum) const
 	}
 }
 
-const BSP::Model *BSP::GetSubmodel(const std::string& submodelName) const
+const BSP::Model *BSP::GetSubmodel(const str& submodelName) const
 {
 	if (submodelName.length() > 1 && *submodelName.c_str() == '*')
 	{
@@ -1272,9 +1270,9 @@ const LevelEntity* BSP::GetEntity(size_t entityNum) const
 	}
 }
 
-const LevelEntity* BSP::GetEntity(const std::string& targetName) const
+const LevelEntity* BSP::GetEntity(const str& targetName) const
 {
-	const std::vector<LevelEntity *>* ents = GetEntities(targetName);
+	const Container<LevelEntity *>* ents = GetEntities(targetName);
 	if (ents && ents->size())
 	{
 		return ents->at(0);
@@ -1285,8 +1283,9 @@ const LevelEntity* BSP::GetEntity(const std::string& targetName) const
 	}
 }
 
-const std::vector<LevelEntity *>* BSP::GetEntities(const std::string& targetName) const
+const Container<LevelEntity *>* BSP::GetEntities(const str& targetName) const
 {
+	/*
 	auto it = targetList.find(targetName);
 	if (it != targetList.end())
 	{
@@ -1294,6 +1293,14 @@ const std::vector<LevelEntity *>* BSP::GetEntities(const std::string& targetName
 	}
 	else
 	{
+		return nullptr;
+	}
+	*/
+	const Container<LevelEntity*>* ents = targetList.findKeyValue(targetName);
+	if (ents) {
+		return ents;
+	}
+	else {
 		return nullptr;
 	}
 }
@@ -1419,12 +1426,10 @@ void BSP::ParseMesh(const File_Surface* InSurface, const File_Vertice* InVertice
 
 void BSP::ParseFace(const File_Surface* InSurface, const File_Vertice* InVertices, const int32_t* InIndices, Surface* Out)
 {
-	size_t*tri;
-	size_t i, j;
-	size_t numVerts, numIndexes, badTriangles;
+	uint32_t i, j;
 
-	numVerts = InSurface->numVerts;
-	numIndexes = InSurface->numIndexes;
+	size_t numVerts = InSurface->numVerts;
+	size_t numIndexes = InSurface->numIndexes;
 
 	Out->shader = GetShader(InSurface->shaderNum);
 
@@ -1465,8 +1470,9 @@ void BSP::ParseFace(const File_Surface* InSurface, const File_Vertice* InVertice
 	}
 
 	// copy triangles
-	badTriangles = 0;
+	size_t badTriangles = 0;
 	InIndices += InSurface->firstIndex;
+	size_t* tri;
 	for (i = 0, tri = Out->indexes.data(); i < numIndexes; i += 3, tri += 3)
 	{
 		for (j = 0; j < 3; j++)
@@ -1491,9 +1497,9 @@ void BSP::ParseFace(const File_Surface* InSurface, const File_Vertice* InVertice
 		Out->indexes.resize(Out->indexes.size() - badTriangles * 3);
 	}
 
-	for (j = 0; j < 3; j++)
+	for (i = 0; i < 3; i++)
 	{
-		Out->cullInfo.plane.normal[j] = InSurface->lightmapVecs[2][j];
+		Out->cullInfo.plane.normal[i] = InSurface->lightmapVecs[2][i];
 	}
 
 	Out->cullInfo.plane.distance = (float)Vector::Dot(Out->vertices[0].xyz, Out->cullInfo.plane.normal);
@@ -1502,12 +1508,9 @@ void BSP::ParseFace(const File_Surface* InSurface, const File_Vertice* InVertice
 
 void BSP::ParseTriSurf(const File_Surface* InSurface, const File_Vertice* InVertices, const int32_t* InIndices, Surface* Out)
 {
-	size_t *tri;
-	size_t i, j;
-	size_t numVerts, numIndexes, badTriangles;
-
-	numVerts = InSurface->numVerts;
-	numIndexes = InSurface->numIndexes;
+	uint32_t i, j;
+	size_t numVerts = InSurface->numVerts;
+	size_t numIndexes = InSurface->numIndexes;
 
 	Out->shader = GetShader(InSurface->shaderNum);
 
@@ -1548,7 +1551,8 @@ void BSP::ParseTriSurf(const File_Surface* InSurface, const File_Vertice* InVert
 	}
 
 	// copy triangles
-	badTriangles = 0;
+	size_t badTriangles = 0;
+	size_t* tri;
 	InIndices += InSurface->firstIndex;
 	for (i = 0, tri = Out->indexes.data(); i < numIndexes; i += 3, tri += 3)
 	{
@@ -1923,7 +1927,7 @@ void BSP::LoadVisibility(const GameLump* GameLump)
 	visibility.resize(count);
 	numClusters = ((uint32_t*)GameLump->Buffer)[0];
 	clusterBytes = ((uint32_t*)GameLump->Buffer)[1];
-	memcpy(visibility.data(), (uint32_t*)GameLump->Buffer + VIS_HEADER, count - VIS_HEADER);
+	memcpy(visibility.data(), (uint8_t*)GameLump->Buffer + VIS_HEADER, count - VIS_HEADER);
 }
 
 void BSP::LoadSubmodels(const GameLump* GameLump)
@@ -2152,7 +2156,7 @@ void BSP::LoadTerrainIndexes(const GameLump* GameLump)
 	}
 }
 
-void BSP::FloodArea(uint32_t areaNum, uint32_t floodNum, uint32_t& floodValid)
+void MOHPC::BSP::FloodArea(size_t areaNum, uint32_t floodNum, uint32_t& floodValid)
 {
 	Area* area = &areas[areaNum];
 
@@ -2312,10 +2316,11 @@ void BSP::CreateEntities()
 					break;
 				}
 
-				std::string key = token;
-				std::string value;
+				str key = token;
+				str value;
 
-				std::transform(key.begin(), key.end(), key.begin(), ::tolower);
+				key.tolower();
+				//std::transform(key.begin(), key.end(), key.begin(), ::tolower);
 
 				/*
 				if (!stricmp(token, "targetname"))
@@ -2351,7 +2356,7 @@ void BSP::CreateEntities()
 				else if (!stricmp(token, "angle"))
 				{
 					token = script.GetToken(false);
-					propertiesMap.insert_or_assign("angles", "0 " + std::string(token) + " 0");
+					propertiesMap.insert_or_assign("angles", "0 " + str(token) + " 0");
 				}
 				else
 				*/
@@ -2414,9 +2419,9 @@ void BSP::CreateEntities()
 			}
 
 			// Insert the entity to the list of named entities
-			if (*ent->GetTargetName())
-			{
-				targetList[ent->GetTargetName()].push_back(ent);
+			if (*ent->GetTargetName()) {
+				//targetList[ent->GetTargetName()].push_back(ent);
+				targetList.addKeyValue(ent->GetTargetName()).AddObject(ent);
 			}
 
 			entities.push_back(ent);
@@ -2442,7 +2447,7 @@ void BSP::MapBrushes()
 	for (size_t b = 0; b < numBrushes; b++)
 	{
 		Brush* brush = &brushesList[b];
-		brush->name = "brush" + std::to_string(b);
+		brush->name = "brush" + str(b); // std::to_string(b);
 		for (size_t i = 0; i < numBrushes; i++)
 		{
 			Brush* brush2 = &brushesList[i];
@@ -2546,7 +2551,7 @@ void BSP::MapBrushes()
 			rootbrush = rootbrush->parent;
 		}
 
-		//const string& brushname = rootbrush->name;
+		//const str& brushname = rootbrush->name;
 		const Vector& mins = brush->bounds[0];
 		const Vector& maxs = brush->bounds[1];
 
@@ -2574,7 +2579,7 @@ void BSP::MapBrushes()
 							if (it == brushToSurfaces.end())
 							{
 								sg = new SurfacesGroup;
-								sg->name = "surfacesgroup" + std::to_string(numSurfacesGroups);
+								sg->name = "surfacesgroup" + str(numSurfacesGroups); // std::to_string(numSurfacesGroups);
 								surfacesGroups.push_back(sg);
 								auto res = brushToSurfaces.emplace(rootbrush, sg);
 								assert(res.second);
@@ -2629,7 +2634,7 @@ void BSP::MapBrushes()
 
 	// Gather patches
 	{
-		std::vector<Patch> patchList;
+		Container<Patch> patchList;
 		patchList.reserve(numSurfaces);
 
 		for (size_t k = 0; k < numSurfaces; k++)
@@ -2680,7 +2685,7 @@ void BSP::MapBrushes()
 				if (!rootPatch->surfaceGroup)
 				{
 					rootPatch->surfaceGroup = new SurfacesGroup;
-					rootPatch->surfaceGroup->name = "meshpatch_grouped" + std::to_string(numGroupedPatches++);
+					rootPatch->surfaceGroup->name = "meshpatch_grouped" + str(numGroupedPatches++); // std::to_string(numGroupedPatches++);
 					surfacesGroups.push_back(rootPatch->surfaceGroup);
 				}
 
@@ -2708,7 +2713,7 @@ void BSP::MapBrushes()
 			const Surface *surf = &worldModel->surface[k];
 
 			SurfacesGroup *sg = new SurfacesGroup;
-			sg->name = "surfacesgroup_unmapped" + std::to_string(numUnmappedSurfaces);
+			sg->name = "surfacesgroup_unmapped" + str(numUnmappedSurfaces); // std::to_string(numUnmappedSurfaces);
 			sg->surfaces.push_back(surf);
 			surfacesGroups.push_back(sg);
 

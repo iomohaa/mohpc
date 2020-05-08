@@ -1,8 +1,10 @@
 #pragma once
 
 #include "../Global.h"
+#include "../Script/Container.h"
+#include "../Script/str.h"
+#include "../Utilities/SharedPtr.h"
 #include <istream>
-#include <memory>
 #include <vector>
 #include <string>
 #include <set>
@@ -12,18 +14,18 @@ namespace MOHPC
 	class FileEntry
 	{
 	private:
-		const std::string *Name;
+		str Name;
 		bool bIsDir;
-		bool bIsRef;
 
 	public:
 		MOHPC_EXPORTS FileEntry();
-		FileEntry(const char *Filename);
-		FileEntry(const std::string& Filename);
-		MOHPC_EXPORTS FileEntry(const FileEntry& Entry);
-		MOHPC_EXPORTS FileEntry(FileEntry&& Entry);
-		MOHPC_EXPORTS FileEntry& operator=(const FileEntry& Entry);
-		MOHPC_EXPORTS FileEntry& operator=(FileEntry&& Entry);
+		FileEntry(const char *Filename) noexcept;
+		FileEntry(const str& Filename) noexcept;
+		FileEntry(str&& Filename) noexcept;
+		FileEntry(const FileEntry& Entry) = default;
+		FileEntry& operator=(const FileEntry& Entry) = default;
+		FileEntry(FileEntry&& Entry) noexcept = default;
+		FileEntry& operator=(FileEntry&& Entry) noexcept = default;
 		MOHPC_EXPORTS ~FileEntry();
 
 		/** Return true if the path is a directory. */
@@ -33,17 +35,19 @@ namespace MOHPC
 		MOHPC_EXPORTS const char *GetExtension() const;
 
 		/** Return the file name. */
-		MOHPC_EXPORTS const char *GetRawName() const;
+		MOHPC_EXPORTS const char* GetRawName() const;
 
-		MOHPC_EXPORTS operator const std::string&() const;
-		MOHPC_EXPORTS operator const char *() const;
+		/** Return the file name. */
+		MOHPC_EXPORTS const str& GetStr() const;
 
-		friend bool operator==(const std::string& lhs, const FileEntry& rhs)
+		operator const str& () const;
+
+		friend bool operator==(const MOHPC::str& lhs, const FileEntry& rhs)
 		{
 			return lhs == *rhs.Name;
 		}
 
-		friend bool operator==(const FileEntry& lhs, const std::string& rhs)
+		friend bool operator==(const FileEntry& lhs, const MOHPC::str& rhs)
 		{
 			return *lhs.Name == rhs;
 		}
@@ -52,11 +56,15 @@ namespace MOHPC
 	class FileEntryList
 	{
 	private:
-		std::vector<FileEntry> fileList;
+		MOHPC::Container<FileEntry> fileList;
 
 	public:
 		MOHPC_EXPORTS FileEntryList();
-		FileEntryList(std::vector<FileEntry>&& inFileList);
+		FileEntryList(Container<FileEntry>&& inFileList) noexcept;
+		MOHPC_EXPORTS FileEntryList(const FileEntryList& other) = delete;
+		MOHPC_EXPORTS FileEntryList& operator=(const FileEntryList& other) = delete;
+		MOHPC_EXPORTS FileEntryList(FileEntryList&& other) noexcept = default;
+		MOHPC_EXPORTS FileEntryList& operator=(FileEntryList && other) noexcept = default;
 		MOHPC_EXPORTS ~FileEntryList();
 
 		MOHPC_EXPORTS size_t GetNumFiles() const;
@@ -94,7 +102,7 @@ namespace MOHPC
 	struct PakFileEntry;
 	struct PakFileEntryCompare;
 
-	typedef std::shared_ptr<File> FilePtr;
+	typedef SharedPtr<File> FilePtr;
 
 	class MOHPC_EXPORTS FileManager
 	{
@@ -149,7 +157,7 @@ namespace MOHPC
 		 * @param Filename - The game path to the file
 		 * @return the string of the hash from the file
 		 */
-		std::string GetFileHash(const char* Filename, const char* CategoryName = nullptr);
+		MOHPC::str GetFileHash(const char* Filename, const char* CategoryName = nullptr);
 		
 		/**
 		 * Return a list of files in a directory and optionally its sub-directories.
@@ -160,7 +168,7 @@ namespace MOHPC
 		 * @param bInPakOnly - True to list files that are only in paks
 		 * @return a list of files.
 		 */
-		FileEntryList ListFilteredFiles(const char* Directory, const std::vector<std::string>& Extensions = std::vector<std::string>(), bool bRecursive = true, bool bInPakOnly = true, const char* CategoryName = nullptr) const;
+		FileEntryList ListFilteredFiles(const char* Directory, const MOHPC::Container<str>& Extensions = MOHPC::Container<str>(), bool bRecursive = true, bool bInPakOnly = true, const char* CategoryName = nullptr) const;
 		FileEntryList ListFilteredFiles(const char* Directory, const char* Extension = "", bool bRecursive = true, bool bInPakOnly = true, const char* CategoryName = nullptr) const;
 		
 		/**
@@ -168,21 +176,21 @@ namespace MOHPC
 		 *
 		 * @param FileList - List of files
 		 */
-		void SortFileList(std::vector<FileEntry>& FileList);
+		void SortFileList(Container<FileEntry>& FileList);
 
 		/**
 		 * Return a corrected game path
 		 *
 		 * @param Path - Game path to correct
 		 */
-		std::string GetFixedPath(const std::string& Path) const;
+		str GetFixedPath(const str& Path) const;
 		
 		/**
 		 * Return the list of category names
 		 *
 		 * @param OutList - The list of category names.
 		 */
-		void GetCategoryList(std::vector<const char*>& OutList) const;
+		void GetCategoryList(Container<const char*>& OutList) const;
 
 		/**
 		 * Return the extension of the given filename (without the dot), an empty string is returned if there is no extension.
@@ -198,7 +206,7 @@ namespace MOHPC
 		 * @param Filename - The game path to the file
 		 * @return The file name with new extension
 		 */
-		static std::string SetFileExtension(const char* Filename, const char* NewExtension = "");
+		static str SetFileExtension(const char* Filename, const char* NewExtension = "");
 		
 		/**
 		 * Return the filename with a default extension if unspecified.
@@ -206,7 +214,7 @@ namespace MOHPC
 		 * @param Filename - The game path to the file
 		 * @return The file name with a default specified extension.
 		 */
-		static std::string GetDefaultFileExtension(const char* Filename, const char* DefaultExtension);
+		static str GetDefaultFileExtension(const char* Filename, const char* DefaultExtension);
 
 
 		/**
@@ -215,7 +223,7 @@ namespace MOHPC
 		 * @param Filename - The file name
 		 * @return The canonical file name.
 		 */
-		static std::string CanonicalFilename(const char* Filename);
+		static str CanonicalFilename(const char* Filename);
 
 	private:
 		FileManagerCategory* GetCategory(const char* CategoryName) const;

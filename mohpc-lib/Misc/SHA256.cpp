@@ -55,7 +55,7 @@ void SHA256::Update(const void* data, size_t len)
 	}
 }
 
-std::string SHA256::Final()
+str SHA256::Final()
 {
 	unsigned int i;
 
@@ -107,7 +107,7 @@ std::string SHA256::Final()
 	for (int i = 0; i < 32; i++)
 		sprintf(buf + i * 2, "%02x", hash[i]);
 
-	return std::string(buf);
+	return str(buf);
 }
 
 void SHA256::Transform(const void* data)

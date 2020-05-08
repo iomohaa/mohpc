@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../Global.h"
-#include <string>
+#include "../Script/str.h"
 
 namespace MOHPC
 {
@@ -17,11 +17,11 @@ namespace MOHPC
 	public:
 		void Init();
 		void Update(const void* data, size_t len);
-		std::string Final();
+		str Final();
 
 	private:
 		void Transform(const void* data);
 	};
 
-	std::string sha256(const char* input, size_t length);
+	str sha256(const char* input, size_t length);
 };

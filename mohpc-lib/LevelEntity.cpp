@@ -5,7 +5,7 @@
 
 using namespace MOHPC;
 
-std::string MOHPC::CanonicalModelName(const char* ModelName)
+str MOHPC::CanonicalModelName(const char* ModelName)
 {
 	if (*ModelName != '*')
 	{
@@ -29,13 +29,13 @@ PropertyDef::PropertyDef(const char* inPropertyName)
 	propertyName = inPropertyName;
 }
 
-PropertyDef::PropertyDef(std::string&& inPropertyName)
+PropertyDef::PropertyDef(str&& inPropertyName)
 	: propertyName(std::move(inPropertyName))
 {
 
 }
 
-PropertyDef::PropertyDef(const std::string& inPropertyName)
+PropertyDef::PropertyDef(const str& inPropertyName)
 	: propertyName(inPropertyName)
 {
 }
@@ -72,7 +72,7 @@ size_t LevelEntity::GetEntNum() const
 
 const char* LevelEntity::GetClassName() const
 {
-	return !classname.empty() ? classname.c_str() : "";
+	return !classname.isEmpty() ? classname.c_str() : "";
 }
 
 int32_t LevelEntity::GetSpawnflags() const
@@ -82,12 +82,12 @@ int32_t LevelEntity::GetSpawnflags() const
 
 const char* LevelEntity::GetTargetName() const
 {
-	return !targetname.empty() ? targetname.c_str() : "";
+	return !targetname.isEmpty() ? targetname.c_str() : "";
 }
 
 const char* LevelEntity::GetTarget() const
 {
-	return !target.empty() ? target.c_str() : "";
+	return !target.isEmpty() ? target.c_str() : "";
 }
 
 void MOHPC::LevelEntity::SetTargetName(const char* newTargetName)
@@ -97,7 +97,7 @@ void MOHPC::LevelEntity::SetTargetName(const char* newTargetName)
 
 const char* MOHPC::LevelEntity::GetModel() const
 {
-	return !model.empty() ? model.c_str() : "";
+	return !model.isEmpty() ? model.c_str() : "";
 }
 
 const Vector& MOHPC::LevelEntity::GetOrigin() const
@@ -127,7 +127,7 @@ bool LevelEntity::HasProperty(const char* Key) const
 
 const char* LevelEntity::GetPropertyRawValue(const char* Key) const
 {
-	const std::string* val = GetPropertyValuePointer(Key);
+	const str* val = GetPropertyValuePointer(Key);
 	if (!val)
 	{
 		return nullptr;
@@ -135,9 +135,9 @@ const char* LevelEntity::GetPropertyRawValue(const char* Key) const
 	return val->c_str();
 }
 
-const std::string& LevelEntity::GetPropertyStringValue(const char* Key, const std::string& defaultValue) const
+const str& LevelEntity::GetPropertyStringValue(const char* Key, const str& defaultValue) const
 {
-	const std::string* val = GetPropertyValuePointer(Key);
+	const str* val = GetPropertyValuePointer(Key);
 	if (!val)
 	{
 		return defaultValue;
@@ -147,7 +147,7 @@ const std::string& LevelEntity::GetPropertyStringValue(const char* Key, const st
 
 int8_t LevelEntity::GetPropertyCharValue(const char* Key, int8_t defaultValue) const
 {
-	const std::string* val = GetPropertyValuePointer(Key);
+	const str* val = GetPropertyValuePointer(Key);
 	if (!val)
 	{
 		return defaultValue;
@@ -157,37 +157,37 @@ int8_t LevelEntity::GetPropertyCharValue(const char* Key, int8_t defaultValue) c
 
 int16_t LevelEntity::GetPropertyShortValue(const char* Key, int16_t defaultValue) const
 {
-	const std::string* val = GetPropertyValuePointer(Key);
+	const str* val = GetPropertyValuePointer(Key);
 	if (!val)
 	{
 		return defaultValue;
 	}
-	return (int16_t)std::stoi(*val);
+	return (int16_t)std::stoi(val->c_str());
 }
 
 int32_t LevelEntity::GetPropertyIntegerValue(const char* Key, int32_t defaultValue) const
 {
-	const std::string* val = GetPropertyValuePointer(Key);
+	const str* val = GetPropertyValuePointer(Key);
 	if (!val)
 	{
 		return defaultValue;
 	}
-	return std::stoi(*val);
+	return std::stoi(val->c_str());
 }
 
 int64_t LevelEntity::GetPropertyLongValue(const char* Key, int64_t defaultValue) const
 {
-	const std::string* val = GetPropertyValuePointer(Key);
+	const str* val = GetPropertyValuePointer(Key);
 	if (!val)
 	{
 		return defaultValue;
 	}
-	return std::stoll(*val);
+	return std::stoll(val->c_str());
 }
 
 uint8_t LevelEntity::GetPropertyByteValue(const char* Key, uint8_t defaultValue) const
 {
-	const std::string* val = GetPropertyValuePointer(Key);
+	const str* val = GetPropertyValuePointer(Key);
 	if (!val)
 	{
 		return defaultValue;
@@ -197,67 +197,67 @@ uint8_t LevelEntity::GetPropertyByteValue(const char* Key, uint8_t defaultValue)
 
 uint16_t LevelEntity::GetPropertyUnsignedShortValue(const char* Key, uint16_t defaultValue) const
 {
-	const std::string* val = GetPropertyValuePointer(Key);
+	const str* val = GetPropertyValuePointer(Key);
 	if (!val)
 	{
 		return defaultValue;
 	}
-	return (uint16_t)std::stoul(*val);
+	return (uint16_t)std::stoul(val->c_str());
 }
 
 uint32_t LevelEntity::GetPropertyUnsignedIntegerValue(const char* Key, uint32_t defaultValue) const
 {
-	const std::string* val = GetPropertyValuePointer(Key);
+	const str* val = GetPropertyValuePointer(Key);
 	if (!val)
 	{
 		return defaultValue;
 	}
-	return std::stoul(*val);
+	return std::stoul(val->c_str());
 }
 
 uint64_t LevelEntity::GetPropertyUnsignedLongValue(const char* Key, uint64_t defaultValue) const
 {
-	const std::string* val = GetPropertyValuePointer(Key);
+	const str* val = GetPropertyValuePointer(Key);
 	if (!val)
 	{
 		return defaultValue;
 	}
-	return std::stoull(*val);
+	return std::stoull(val->c_str());
 }
 
 float LevelEntity::GetPropertyFloatValue(const char* Key, float defaultValue) const
 {
-	const std::string* val = GetPropertyValuePointer(Key);
+	const str* val = GetPropertyValuePointer(Key);
 	if (!val)
 	{
 		return defaultValue;
 	}
-	return std::stof(*val);
+	return std::stof(val->c_str());
 }
 
 double LevelEntity::GetPropertyDoubleValue(const char* Key, double defaultValue) const
 {
-	const std::string* val = GetPropertyValuePointer(Key);
+	const str* val = GetPropertyValuePointer(Key);
 	if (!val)
 	{
 		return defaultValue;
 	}
-	return std::stod(*val);
+	return std::stod(val->c_str());
 }
 
 long double LevelEntity::GetPropertyLongDoubleValue(const char* Key, long double defaultValue) const
 {
-	const std::string* val = GetPropertyValuePointer(Key);
+	const str* val = GetPropertyValuePointer(Key);
 	if (!val)
 	{
 		return defaultValue;
 	}
-	return std::stold(*val);
+	return std::stold(val->c_str());
 }
 
 Vector LevelEntity::GetPropertyVectorValue(const char* Key, const Vector& defaultValue) const
 {
-	const std::string* val = GetPropertyValuePointer(Key);
+	const str* val = GetPropertyValuePointer(Key);
 	if (!val)
 	{
 		return defaultValue;
@@ -265,7 +265,7 @@ Vector LevelEntity::GetPropertyVectorValue(const char* Key, const Vector& defaul
 	return Vector(val->c_str());
 }
 
-const std::string* LevelEntity::GetPropertyValuePointer(const char* Key) const
+const str* LevelEntity::GetPropertyValuePointer(const char* Key) const
 {
 	PropertyMap::const_iterator it = keyValues.find(Key);
 	if (it != keyValues.end())
@@ -305,7 +305,7 @@ MOHPC_EXPORTS bool MOHPC::LevelEntity::TrySetMemberValue(const char* Key, const 
 	}
 	else if (!stricmp(Key, "classname"))
 	{
-		if (classname.empty())
+		if (classname.isEmpty())
 		{
 			// Only set if not set already
 			classname = Value;
@@ -339,7 +339,7 @@ void LevelEntity::SetPropertyValue(const char* Key, const char* Value)
 	}
 }
 
-void MOHPC::LevelEntity::SetPropertyDef(const PropertyDef& Key, std::string&& Value)
+void MOHPC::LevelEntity::SetPropertyDef(const PropertyDef& Key, str&& Value)
 {
 	if (!TrySetMemberValue(Key.GetPropertyName(), Value.c_str()))
 	{

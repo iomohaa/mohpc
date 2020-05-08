@@ -34,7 +34,7 @@ namespace MOHPC
 		//void *operator new( size_t size );
 		//void operator delete( void *ptr );
 
-		Entry();
+		Entry(const k& inKey);
 
 		void			Archive(Archiver& arc);
 	};
@@ -56,9 +56,10 @@ namespace MOHPC
 		Entry< k, v >				*defaultEntry;
 
 	protected:
-		Entry< k, v >				*findKeyEntry(const k& key);
-		Entry< k, v >				*addKeyEntry(const k& key);
-		virtual Entry< k, v >		*addNewKeyEntry(const k& key);
+		Entry< k, v >*			findKeyEntry(const k& key);
+		const Entry< k, v >*	findKeyEntry(const k& key) const;
+		Entry< k, v >*			addKeyEntry(const k& key);
+		virtual Entry< k, v >*	addNewKeyEntry(const k& key);
 
 	public:
 		con_set();
@@ -69,8 +70,9 @@ namespace MOHPC
 		virtual void				clear();
 		virtual void				resize(int count = 0);
 
-		v							*findKeyValue(const k& key);
-		k							*firstKeyValue();
+		v*							findKeyValue(const k& key);
+		const v*					findKeyValue(const k& key) const;
+		k*							firstKeyValue();
 
 		v&							addKeyValue(const k& key);
 		v&							addNewKeyValue(const k& key);
@@ -81,6 +83,19 @@ namespace MOHPC
 
 		uintptr_t					size();
 	};
+
+	template< typename k, typename v >
+	const v* MOHPC::con_set<k, v>::findKeyValue(const k& key) const
+	{
+		const Entry< k, v >* entry = findKeyEntry(key);
+
+		if (entry != nullptr) {
+			return &entry->value;
+		}
+		else {
+			return nullptr;
+		}
+	}
 
 	template< typename key, typename value >
 	class con_set_enum
@@ -179,11 +194,9 @@ namespace MOHPC
 	*/
 
 	template< typename k, typename v >
-	Entry< k, v >::Entry()
+	Entry< k, v >::Entry(const k& inKey)
+		: key(inKey)
 	{
-		this->key = k();
-		this->value = v();
-
 		index = 0;
 		next = nullptr;
 	}
@@ -239,7 +252,7 @@ namespace MOHPC
 	}
 
 	template< typename key, typename value >
-	void con_set< key, value >::resize(int count)
+	void con_set< key, value >::resize(int newCount)
 	{
 		Entry< key, value > **oldTable = table;
 		Entry< key, value > *e, *old;
@@ -247,9 +260,9 @@ namespace MOHPC
 		intptr_t i;
 		intptr_t index;
 
-		if (count > 0)
+		if (newCount > 0)
 		{
-			tableLength += count;
+			tableLength += newCount;
 			threshold = tableLength;
 		}
 		else
@@ -294,9 +307,22 @@ namespace MOHPC
 	template< typename k, typename v >
 	Entry< k, v > *con_set< k, v >::findKeyEntry(const k& key)
 	{
-		Entry< k, v > *entry;
+		Entry< k, v > *entry = table[HashCode< k >(key) % tableLength];
 
-		entry = table[HashCode< k >(key) % tableLength];
+		for (; entry != nullptr; entry = entry->next)
+		{
+			if (entry->key == key) {
+				return entry;
+			}
+		}
+
+		return nullptr;
+	}
+
+	template< typename k, typename v >
+	const Entry< k, v >* MOHPC::con_set<k, v>::findKeyEntry(const k& key) const
+	{
+		const Entry< k, v >* entry = table[HashCode< k >(key) % tableLength];
 
 		for (; entry != nullptr; entry = entry->next)
 		{
@@ -329,8 +355,7 @@ namespace MOHPC
 		Entry< k, v > *entry;
 		intptr_t index;
 
-		if (count >= threshold)
-		{
+		if (count >= threshold) {
 			resize();
 		}
 
@@ -338,15 +363,14 @@ namespace MOHPC
 
 		count++;
 
-		entry = new Entry < k, v >;
+		entry = new Entry<k, v>(key);
 
 		if (defaultEntry == nullptr)
 		{
 			defaultEntry = entry;
 			entry->next = nullptr;
 		}
-		else
-		{
+		else {
 			entry->next = table[index];
 		}
 

@@ -1,8 +1,18 @@
 #include <MOHPC/Managers/AssetManager.h>
 #include <MOHPC/Managers/SoundManager.h>
+#include "UnitTest.h"
 
-void TestSoundAlias(MOHPC::AssetManager& AM)
+class CSoundAliasTest : public IUnitTest, public TAutoInst<CSoundAliasTest>
 {
-	MOHPC::SoundManager* SoundManager = AM.GetManager<MOHPC::SoundManager>();
-	const MOHPC::SoundNode* Alias = SoundManager->FindAlias("30cal_leftwing");
-}
+public:
+	virtual const char* name() override
+	{
+		return "Sound alias";
+	}
+
+	virtual void run(MOHPC::AssetManager& AM) override
+	{
+		MOHPC::SoundManager* SoundManager = AM.GetManager<MOHPC::SoundManager>();
+		const MOHPC::SoundNode* Alias = SoundManager->FindAlias("30cal_leftwing");
+	}
+};

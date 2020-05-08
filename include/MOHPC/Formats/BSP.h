@@ -5,11 +5,10 @@
 #include "../Managers/FileManager.h"
 #include "../Managers/ShaderManager.h"
 #include <stdint.h>
-#include <vector>
-#include <map>
-#include <unordered_map>
+#include "../Script/Container.h"
+#include "../Script/str.h"
 #include "../Vector.h"
-#include <string.h>
+#include "../Utilities/SharedPtr.h"
 
 namespace MOHPC
 {
@@ -48,11 +47,11 @@ namespace MOHPC
 
 		struct Shader
 		{
-			std::string shaderName;
+			str shaderName;
 			int32_t surfaceFlags;
 			int32_t contentFlags;
 			int32_t subdivisions;
-			std::string fenceMaskImage;
+			str fenceMaskImage;
 
 			ShaderRef shader;
 		};
@@ -137,8 +136,8 @@ namespace MOHPC
 
 		private:
 			const Shader* shader;
-			std::vector<Vertice> vertices;
-			std::vector<size_t> indexes;
+			Container<Vertice> vertices;
+			Container<size_t> indexes;
 			Vector centroid;
 			bool bIsPatch;
 			int32_t lightmapNum;
@@ -210,14 +209,14 @@ namespace MOHPC
 
 		struct Brush
 		{
-			std::string name;
+			str name;
 			const Shader* shader;
 			int32_t contents;
 			Vector bounds[2];
 			size_t numsides;
 			BrushSide* sides;
 			Brush* parent;
-			std::vector<const Surface *> surfaces;
+			Container<const Surface *> surfaces;
 
 		public:
 			MOHPC_EXPORTS const char* GetName() const;
@@ -260,14 +259,14 @@ namespace MOHPC
 			friend BSP;
 
 		private:
-			std::string name;
-			std::vector<const Surface *> surfaces;
-			std::vector<const Brush *> brushes;
+			str name;
+			Container<const Surface *> surfaces;
+			Container<const Brush *> brushes;
 			Vector bounds[2];
 			Vector origin;
 
 		public:
-			MOHPC_EXPORTS const std::string& GetGroupName() const;
+			MOHPC_EXPORTS const str& GetGroupName() const;
 			MOHPC_EXPORTS size_t GetNumSurfaces() const;
 			MOHPC_EXPORTS const Surface *GetSurface(size_t index) const;
 			MOHPC_EXPORTS size_t GetNumBrushes() const;
@@ -299,7 +298,7 @@ namespace MOHPC
 
 		struct StaticModel
 		{
-			std::string modelName;
+			str modelName;
 			Vector origin;
 			Vector angles;
 			float scale;
@@ -512,7 +511,7 @@ namespace MOHPC
 		MOHPC_EXPORTS const Model *GetSubmodel(size_t submodelNum) const;
 
 		/** Returns the submodel by name (in the format '*x'). */
-		MOHPC_EXPORTS const Model *GetSubmodel(const std::string& submodelName) const;
+		MOHPC_EXPORTS const Model *GetSubmodel(const str& submodelName) const;
 
 		/** Returns the number of sphere lights. */
 		MOHPC_EXPORTS size_t GetNumLights() const;
@@ -545,10 +544,10 @@ namespace MOHPC
 		MOHPC_EXPORTS const class LevelEntity *GetEntity(size_t entityNum) const;
 
 		/** Returns the first entity found with the targetname. */
-		MOHPC_EXPORTS const class LevelEntity* GetEntity(const std::string& targetName) const;
+		MOHPC_EXPORTS const class LevelEntity* GetEntity(const str& targetName) const;
 
 		/** Returns an array of entities with the specified targetname. */
-		MOHPC_EXPORTS const std::vector<class LevelEntity *>* GetEntities(const std::string& targetName) const;
+		MOHPC_EXPORTS const Container<class LevelEntity *>* GetEntities(const str& targetName) const;
 
 		/** Returns the number of grouped surfaces. */
 		MOHPC_EXPORTS size_t GetNumSurfacesGroup() const;
@@ -599,7 +598,7 @@ namespace MOHPC
 		void LoadStaticModelDefs(const GameLump* GameLump);
 		void LoadTerrain(const GameLump* GameLump);
 		void LoadTerrainIndexes(const GameLump* GameLump);
-		void FloodArea(uint32_t areaNum, uint32_t floodNum, uint32_t& floodValid);
+		void FloodArea(size_t areaNum, uint32_t floodNum, uint32_t& floodValid);
 		void FloodAreaConnections();
 
 		// terrain
@@ -646,40 +645,40 @@ namespace MOHPC
 		void FreeLump(GameLump *lump);
 
 	private:
-		std::vector<Shader> shaders;
-		std::vector<Lightmap> lightmaps;
-		std::vector<Surface> surfaces;
-		std::vector<Plane> planes;
-		std::vector<SideEquation> sideEquations;
-		std::vector<BrushSide> brushSides;
-		std::vector<Brush> brushes;
-		std::vector<Node> nodes;
-		std::vector<Leaf> leafs;
-		std::vector<uintptr_t> leafBrushes;
-		std::vector<uintptr_t> leafSurfaces;
-		std::vector<TerrainPatch*> leafTerrains;
-		std::vector<Area> areas;
-		std::vector<uintptr_t> areaPortals;
-		std::vector<Model> brushModels;
-		std::vector<SphereLight> lights;
-		std::vector<StaticModel> staticModels;
-		std::vector<TerrainPatch> terrainPatches;
-		std::vector<Surface> terrainSurfaces;
-		std::vector<class LevelEntity*> entities;
-		std::unordered_map<std::string, std::vector<class LevelEntity*>> targetList;
-		std::vector<SurfacesGroup*> surfacesGroups;
+		Container<Shader> shaders;
+		Container<Lightmap> lightmaps;
+		Container<Surface> surfaces;
+		Container<Plane> planes;
+		Container<SideEquation> sideEquations;
+		Container<BrushSide> brushSides;
+		Container<Brush> brushes;
+		Container<Node> nodes;
+		Container<Leaf> leafs;
+		Container<uintptr_t> leafBrushes;
+		Container<uintptr_t> leafSurfaces;
+		Container<TerrainPatch*> leafTerrains;
+		Container<Area> areas;
+		Container<uintptr_t> areaPortals;
+		Container<Model> brushModels;
+		Container<SphereLight> lights;
+		Container<StaticModel> staticModels;
+		Container<TerrainPatch> terrainPatches;
+		Container<Surface> terrainSurfaces;
+		Container<class LevelEntity*> entities;
+		con_set<str, Container<class LevelEntity*>> targetList;
+		Container<SurfacesGroup*> surfacesGroups;
 		size_t numClusters;
 		size_t numAreas;
 		size_t clusterBytes;
-		std::vector<uint8_t> visibility;
+		Container<uint8_t> visibility;
 		char* entityString;
 		size_t entityStringLength;
 
-		std::vector<TerrainVert> trVerts;
-		std::vector<TerrainTri> trTris;
+		Container<TerrainVert> trVerts;
+		Container<TerrainTri> trTris;
 		PoolInfo trpiTri;
 		PoolInfo trpiVert;
 		varnodeIndex varnodeIndexes[2][8][8][2];
 	};
-	typedef std::shared_ptr<BSP> BSPPtr;
+	using BSPPtr = SharedPtr<BSP>;
 }

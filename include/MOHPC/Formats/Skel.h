@@ -9,16 +9,16 @@
 #include "Skel/SkelMat3.h"
 #include "Skel/SkelMat4.h"
 #include "Skel/SkelQuat.h"
-#include <string>
-#include <vector>
-#include <memory>
+#include "../Script/Container.h"
+#include "../Script/str.h"
+#include "../Utilities/SharedPtr.h"
 
 namespace MOHPC
 {
 	MOHPC_EXPORTS void AddToBounds(SkelVec3 *bounds, const SkelVec3 *newBounds);
 
-	typedef std::shared_ptr<class Skeleton> SkeletonPtr;
-	typedef std::shared_ptr<const class Skeleton> ConstSkeletonPtr;
+	typedef SharedPtr<class Skeleton> SkeletonPtr;
+	typedef SharedPtr<const class Skeleton> ConstSkeletonPtr;
 
 	struct SkeletonChannelName;
 	class SkeletonChannelNameTable;
@@ -97,17 +97,17 @@ namespace MOHPC
 		{
 			Vector normal;
 			float textureCoords[2];
-			std::vector<SkeletorWeight> Weights;
-			std::vector<SkeletorMorph> Morphs;
+			Container<SkeletorWeight> Weights;
+			Container<SkeletorMorph> Morphs;
 		};
 
 		struct Surface
 		{
-			std::string name;
-			std::vector<int32_t> Triangles;
-			std::vector<SkeletorVertex> Vertices;
-			std::vector<int32_t> Collapse;
-			std::vector<int32_t> CollapseIndex;
+			str name;
+			Container<int32_t> Triangles;
+			Container<SkeletorVertex> Vertices;
+			Container<int32_t> Collapse;
+			Container<int32_t> CollapseIndex;
 		};
 
 		struct LodControl
@@ -132,13 +132,13 @@ namespace MOHPC
 		};
 
 	private:
-		std::string name;
-		std::vector<BoneData> Bones;
-		std::vector<Surface> Surfaces;
+		str name;
+		Container<BoneData> Bones;
+		Container<Surface> Surfaces;
 		int32_t lodIndex[10];
-		std::vector<int32_t> Boxes;
+		Container<int32_t> Boxes;
 		LodControl* pLOD;
-		std::vector<std::string> MorphTargets;
+		Container<str> MorphTargets;
 	public:
 		MOHPC_EXPORTS Skeleton();
 		virtual bool Load() override;
@@ -154,7 +154,7 @@ namespace MOHPC
 		MOHPC_EXPORTS const BoneData* GetBone(size_t index) const;
 
 		MOHPC_EXPORTS size_t GetNumMorphTargets() const;
-		MOHPC_EXPORTS const std::string& GetMorphTarget(size_t index) const;
+		MOHPC_EXPORTS const char* GetMorphTarget(size_t index) const;
 
 		MOHPC_EXPORTS void LoadBoneFromBuffer(const SkeletonChannelList *boneList, const BoneData *boneData, class skelBone_Base **bone) const;
 		MOHPC_EXPORTS void LoadBonesFromBuffer(const SkeletonChannelList *boneList, class skelBone_Base **bone) const;

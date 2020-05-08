@@ -6,7 +6,9 @@
 #include <MOHPC/Script/Level.h>
 #include <MOHPC/Script/Listener.h>
 #include <MOHPC/Script/ScriptVariable.h>
+
 #include <algorithm>
+#include <string>
 
 using namespace MOHPC;
 
@@ -38,7 +40,7 @@ EventManager::~EventManager()
 	{
 		ClassDef::ClearEventResponses();
 		ClearEventList();
-		UnloadEvents();
+		//UnloadEvents();
 	}
 }
 
@@ -107,8 +109,19 @@ void EventManager::LoadEvents()
 		//e->ev->name = e->command;
 #endif
 
-		lower = str(e->command);
-		lower.tolower();
+		lower = e->command;
+
+		// normally all commands are lowered
+		const size_t strLen = lower.length();
+		for (size_t i = 0; i < strLen; ++i)
+		{
+			const char c = const_cast<const str&>(lower)[i];
+			if (isupper(c))
+			{
+				lower.tolower();
+				break;
+			}
+		}
 
 		en = commandList;
 
@@ -640,8 +653,8 @@ void EventManager::ClassEvents(const char *classname, bool print_to_disk)
 	Event **events;
 	uint8_t *order;
 	FILE *class_file;
-	std::string classNames[MAX_INHERITANCE];
-	std::string class_filename;
+	str classNames[MAX_INHERITANCE];
+	str class_filename;
 
 	c = GetClass(classname);
 	if (!c)
@@ -654,7 +667,7 @@ void EventManager::ClassEvents(const char *classname, bool print_to_disk)
 
 	if (print_to_disk)
 	{
-		class_filename = std::string(classname) + ".txt";
+		class_filename = str(classname) + ".txt";
 		class_file = fopen(class_filename.c_str(), "w");
 		if (class_file == NULL)
 			return;
@@ -809,9 +822,9 @@ void EventManager::DumpAllClasses()
 	size_t i, num;
 	ClassDef *c;
 	FILE * class_file;
-	std::string class_filename;
-	std::string class_title;
-	std::string classes[MAX_CLASSES];
+	str class_filename;
+	str class_title;
+	str classes[MAX_CLASSES];
 
 #if defined( GAME_DLL )
 	class_filename = "g_allclasses.html";

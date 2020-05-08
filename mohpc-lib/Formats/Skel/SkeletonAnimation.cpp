@@ -1,13 +1,13 @@
 #include <Shared.h>
 #include "SkelPrivate.h"
 #include "../TIKI/TIKI_Private.h"
-#include "../../Misc/msg.h"
+#include <MOHPC/Misc/MSG/MSG.h>
+#include <MOHPC/Misc/MSG/Stream.h>
 #include <MOHPC/Managers/FileManager.h>
 
 using namespace MOHPC;
-using namespace std;
 
-map<string, weak_ptr<SkeletonAnimation>> SkeletonAnimation::g_skelAnimCache;
+con_set<str, WeakPtr<SkeletonAnimation>> SkeletonAnimation::g_skelAnimCache;
 
 SkeletonAnimation::AnimFrame::AnimFrame()
 {
@@ -32,9 +32,9 @@ bool SkeletonAnimation::Load()
 {
 	const char *Fname = GetFilename().c_str();
 	if (*Fname == '/' || *Fname == '\\') Fname++;
-	const string nwPath = string("/newanim/") + Fname;
+	const str nwPath = str("/newanim/") + Fname;
 	void* buf;
-	streamsize length = 0;
+	std::streamsize length = 0;
 
 	FilePtr file = GetFileManager()->OpenFile(nwPath.c_str());
 	if (file)
@@ -331,62 +331,126 @@ void SkeletonAnimation::ConvertSkelFileToGame(File_AnimDataHeader *pHeader, size
 	}
 }
 
-void SkeletonAnimation::WriteEncodedFrames(msg_t *msg)
+void MOHPC::SkeletonAnimation::WriteEncodedFrames(class MSG* msg)
 {
-	SkanChannelHdr *pChannel;
-	SkanGameFrame *pFrame;
+	SkanChannelHdr* pChannel;
+	SkanGameFrame* pFrame;
 
-	MSG_WriteLong(msg, (int32_t)m_frame.size());
-	MSG_WriteShort(msg, (int32_t)ary_channels.size());
+	uint32_t numFrames = (uint32_t)m_frame.size();
+	uint16_t numChannels = (uint16_t)ary_channels.size();
+
+	msg->SerializeUInteger(numFrames);
+	msg->SerializeUShort(numChannels);
 
 	size_t nTotalChannels = ary_channels.size();
 
 	for (size_t i = 0; i < nTotalChannels; i++)
 	{
 		pChannel = &ary_channels[i];
-		size_t nFramesInChannel = pChannel->ary_frames.size();
-		MSG_WriteShort(msg, (int32_t)nFramesInChannel);
+		uint16_t nFramesInChannel = (uint16_t)pChannel->ary_frames.size();
+		msg->SerializeUShort(nFramesInChannel);
 
 		for (size_t j = 0; j < nFramesInChannel; j++)
 		{
 			pFrame = &pChannel->ary_frames[i];
-			MSG_WriteShort(msg, (int32_t)pFrame->nFrameNum);
-			MSG_WriteShort(msg, (int32_t)pFrame->nPrevFrameIndex);
-			MSG_WriteData(msg, pFrame->pChannelData, sizeof(vec4_t));
+
+			uint16_t frameNum = (uint16_t)pFrame->nFrameNum;
+			uint16_t prevFrameIndex = (uint16_t)pFrame->nPrevFrameIndex;
+			msg->SerializeUShort(frameNum);
+			msg->SerializeUShort(prevFrameIndex);
+			msg->Serialize(pFrame->pChannelData, sizeof(vec4_t));
 		}
 	}
 
-	size_t nBytesUsed = sizeof(int32_t) + sizeof(int32_t);
+	uint32_t nBytesUsed = sizeof(int32_t) + sizeof(int32_t);
 	nBytesUsed += sizeof(bool) + sizeof(bool) + sizeof(bool);
 	nBytesUsed += sizeof(SkelVec3);
 	nBytesUsed += sizeof(float) + sizeof(float);
 	nBytesUsed += sizeof(SkeletonChannelList);
 	nBytesUsed += sizeof(SkelVec3) * 2;
-	nBytesUsed += sizeof(AnimFrame) * m_frame.size();
-	nBytesUsed += sizeof(SkanChannelHdr) * ary_channels.size();
+	nBytesUsed += sizeof(AnimFrame) * (uint32_t)m_frame.size();
+	nBytesUsed += sizeof(SkanChannelHdr) * (uint32_t)ary_channels.size();
 
-	MSG_WriteLong(msg, (int32_t)nBytesUsed);
+	msg->SerializeUInteger(nBytesUsed);
 }
 
-void SkeletonAnimation::SaveProcessedAnim(const char *path, File_AnimDataHeader *pHeader)
+void MOHPC::SkeletonAnimation::WriteEncodedFramesEx(class MSG* msg)
 {
-/*
-	int i;
-	skelChannelName_t *pChannelNames;
-	msg_t msg;
-	skelAnimGameFrame_t *newFrame;
-	char npath[ 128 ];
-	unsigned char buf[ 2000000 ];
+	size_t nTotalChannels = ary_channels.size();
+	SkeletorManager* skeletorManager = GetManager<SkeletorManager>();
+	for (size_t i = 0; i < nTotalChannels; i++)
+	{
+		SkanChannelHdr* pChannel = &ary_channels[i];
 
-	// FIXME:
-	// Write animation
-*/
+		const char* name = channelList.ChannelName(skeletorManager->GetChannelNamesTable(), i);
+		int32_t type = SkeletonChannelNameTable::GetChannelTypeFromName(name);
+		uint16_t frameCnt = (uint16_t)pChannel->ary_frames.size();
+		msg->SerializeUShort(frameCnt);
+
+		SkanGameFrame* ary_frames = pChannel->ary_frames.data();
+
+		if (type)
+		{
+			if (type == 1)
+			{
+				for (uint16_t j = 0; j < frameCnt; j++)
+				{
+					const SkanGameFrame* pFrame = &ary_frames[j];
+
+					uint16_t nFrameNum = (uint16_t)pFrame->nFrameNum;
+					uint16_t nPrevFrameIndex = (uint16_t)pFrame->nPrevFrameIndex;
+					msg->SerializeUShort(nFrameNum);
+					msg->SerializeUShort(nPrevFrameIndex);
+
+					float channelData[] = { pFrame->pChannelData[0],  pFrame->pChannelData[1], pFrame->pChannelData[2] };
+					msg->SerializeFloat(channelData[0]);
+					msg->SerializeFloat(channelData[1]);
+					msg->SerializeFloat(channelData[2]);
+				}
+			}
+			else if (type == 3)
+			{
+				for (uint16_t j = 0; j < frameCnt; j++)
+				{
+					const SkanGameFrame* pFrame = &ary_frames[j];
+
+					uint16_t nFrameNum = (uint16_t)pFrame->nFrameNum;
+					uint16_t nPrevFrameIndex = (uint16_t)pFrame->nPrevFrameIndex;
+					msg->SerializeUShort(nFrameNum);
+					msg->SerializeUShort(nPrevFrameIndex);
+
+					float channelData[] = { pFrame->pChannelData[0] };
+					msg->SerializeFloat(channelData[0]);
+				}
+			}
+		}
+		else
+		{
+			for (uint16_t j = 0; j < frameCnt; j++)
+			{
+				const SkanGameFrame* pFrame = &ary_frames[j];
+
+				uint16_t nFrameNum = (uint16_t)pFrame->nFrameNum;
+				uint16_t nPrevFrameIndex = (uint16_t)pFrame->nPrevFrameIndex;
+				msg->SerializeUShort(nFrameNum);
+				msg->SerializeUShort(nPrevFrameIndex);
+
+				float channelData[] = { pFrame->pChannelData[0],  pFrame->pChannelData[1], pFrame->pChannelData[2], pFrame->pChannelData[3] };
+				msg->SerializeFloat(channelData[0]);
+				msg->SerializeFloat(channelData[1]);
+				msg->SerializeFloat(channelData[2]);
+				msg->SerializeFloat(channelData[3]);
+			}
+		}
+	}
 }
 
-void SkeletonAnimation::ReadEncodedFrames(msg_t *msg)
+void SkeletonAnimation::ReadEncodedFrames(class MSG* msg)
 {
-	int32_t numFrames = MSG_ReadLong(msg);
-	int32_t nTotalChannels = MSG_ReadShort(msg);
+	uint32_t numFrames;
+	uint16_t nTotalChannels;
+	msg->SerializeUInteger(numFrames);
+	msg->SerializeUShort(nTotalChannels);
 
 	m_frame.resize(numFrames);
 	ary_channels.resize(nTotalChannels);
@@ -394,23 +458,32 @@ void SkeletonAnimation::ReadEncodedFrames(msg_t *msg)
 	for (int32_t i = 0; i < nTotalChannels; i++)
 	{
 		SkanChannelHdr *pChannel = &ary_channels[ i ];
-		int32_t frameCnt = MSG_ReadShort( msg );
+		uint16_t frameCnt;
+		msg->SerializeUShort(frameCnt);
 
 		pChannel->ary_frames.resize(frameCnt);
 
 		for (int32_t j = 0; j < frameCnt; j++)
 		{
-			SkanGameFrame *pFrame = &pChannel->ary_frames[j];
-			pFrame->nFrameNum = MSG_ReadShort(msg);
-			pFrame->nPrevFrameIndex = MSG_ReadShort(msg);
-			MSG_ReadData(msg, pFrame->pChannelData, sizeof(vec4_t));
+			SkanGameFrame* pFrame = &pChannel->ary_frames[j];
+
+			uint16_t frameNum;
+			uint16_t prevFrameIndex;
+
+			msg->SerializeUShort(frameNum);
+			msg->SerializeUShort(prevFrameIndex);
+
+			pFrame->nFrameNum = frameNum;
+			pFrame->nPrevFrameIndex = prevFrameIndex;
+			msg->Serialize(pFrame->pChannelData, sizeof(vec4_t));
 		}
 	}
 
-	int32_t nBytesUsed = MSG_ReadLong( msg );
+	uint32_t nBytesUsed;
+	msg->SerializeUInteger(nBytesUsed);
 }
 
-void SkeletonAnimation::ReadEncodedFramesEx(msg_t *msg)
+void SkeletonAnimation::ReadEncodedFramesEx(class MSG* msg)
 {
 	size_t nTotalChannels = ary_channels.size();
 	SkeletorManager* skeletorManager = GetManager<SkeletorManager>();
@@ -420,7 +493,8 @@ void SkeletonAnimation::ReadEncodedFramesEx(msg_t *msg)
 
 		const char* name = channelList.ChannelName(skeletorManager->GetChannelNamesTable(), i);
 		int32_t type = SkeletonChannelNameTable::GetChannelTypeFromName(name);
-		int32_t frameCnt = MSG_ReadShort(msg);
+		uint16_t frameCnt;
+		msg->SerializeUShort(frameCnt);
 
 		pChannel->ary_frames.resize(frameCnt);
 		SkanGameFrame* ary_frames = pChannel->ary_frames.data();
@@ -429,25 +503,35 @@ void SkeletonAnimation::ReadEncodedFramesEx(msg_t *msg)
 		{
 			if (type == 1)
 			{
-				for (int32_t j = 0; j < frameCnt; j++)
+				for (uint16_t j = 0; j < frameCnt; j++)
 				{
 					SkanGameFrame *pFrame = &ary_frames[j];
-					pFrame->nFrameNum = MSG_ReadShort(msg);
-					pFrame->nPrevFrameIndex = MSG_ReadShort(msg);
-					pFrame->pChannelData[0] = MSG_ReadFloat(msg);
-					pFrame->pChannelData[1] = MSG_ReadFloat(msg);
-					pFrame->pChannelData[2] = MSG_ReadFloat(msg);
+
+					uint16_t nFrameNum, nPrevFrameIndex;
+					msg->SerializeUShort(nFrameNum);
+					msg->SerializeUShort(nPrevFrameIndex);
+
+					pFrame->nFrameNum = nFrameNum;
+					pFrame->nPrevFrameIndex = nPrevFrameIndex;
+					msg->SerializeFloat(pFrame->pChannelData[0]);
+					msg->SerializeFloat(pFrame->pChannelData[1]);
+					msg->SerializeFloat(pFrame->pChannelData[2]);
 					pFrame->pChannelData[3] = 0;
 				}
 			}
 			else if (type == 3)
 			{
-				for (int32_t j = 0; j < frameCnt; j++)
+				for (uint16_t j = 0; j < frameCnt; j++)
 				{
 					SkanGameFrame *pFrame = &ary_frames[j];
-					pFrame->nFrameNum = MSG_ReadShort(msg);
-					pFrame->nPrevFrameIndex = MSG_ReadShort(msg);
-					pFrame->pChannelData[0] = MSG_ReadFloat(msg);
+
+					uint16_t nFrameNum, nPrevFrameIndex;
+					msg->SerializeUShort(nFrameNum);
+					msg->SerializeUShort(nPrevFrameIndex);
+
+					pFrame->nFrameNum = nFrameNum;
+					pFrame->nPrevFrameIndex = nPrevFrameIndex;
+					msg->SerializeFloat(pFrame->pChannelData[0]);
 					pFrame->pChannelData[1] = 0;
 					pFrame->pChannelData[2] = 0;
 					pFrame->pChannelData[3] = 0;
@@ -456,77 +540,101 @@ void SkeletonAnimation::ReadEncodedFramesEx(msg_t *msg)
 		}
 		else
 		{
-			for (int32_t j = 0; j < frameCnt; j++)
+			for (uint16_t j = 0; j < frameCnt; j++)
 			{
-				SkanGameFrame *pFrame = &ary_frames[j];
-				pFrame->nFrameNum = MSG_ReadShort(msg);
-				pFrame->nPrevFrameIndex = MSG_ReadShort(msg);
-				pFrame->pChannelData[0] = MSG_ReadFloat(msg);
-				pFrame->pChannelData[1] = MSG_ReadFloat(msg);
-				pFrame->pChannelData[2] = MSG_ReadFloat(msg);
-				pFrame->pChannelData[3] = MSG_ReadFloat(msg);
+				SkanGameFrame* pFrame = &ary_frames[j];
+				uint16_t nFrameNum, nPrevFrameIndex;
+				msg->SerializeUShort(nFrameNum);
+				msg->SerializeUShort(nPrevFrameIndex);
+
+				pFrame->nFrameNum = nFrameNum;
+				pFrame->nPrevFrameIndex = nPrevFrameIndex;
+				msg->SerializeFloat(pFrame->pChannelData[0]);
+				msg->SerializeFloat(pFrame->pChannelData[1]);
+				msg->SerializeFloat(pFrame->pChannelData[2]);
+				msg->SerializeFloat(pFrame->pChannelData[3]);
 			}
 		}
 	}
 }
 
+void SkeletonAnimation::SaveProcessedAnim(const char* path, File_AnimDataHeader* pHeader)
+{
+	/*
+		int i;
+		skelChannelName_t *pChannelNames;
+		msg->t msg;
+		skelAnimGameFrame_t *newFrame;
+		char npath[ 128 ];
+		unsigned char buf[ 2000000 ];
+	*/
+
+	// FIXME:
+	// Write animation
+}
+
 void SkeletonAnimation::LoadProcessedAnim(const char *path, void *buffer, size_t len, const char *name)
 {
-	msg_t msg;
+	FixedDataMessageStream stream(buffer, len);
 
-	MSG_Init(&msg, (uint8_t *)buffer, len);
-	msg.cursize = len;
-	MSG_BeginReading( &msg );
+	MSG msg(stream, MOHPC::msgMode_e::Reading);
 
-	int32_t numChannels = MSG_ReadLong( &msg );
-	flags = MSG_ReadLong(&msg);
-	frameTime = MSG_ReadFloat(&msg);
-	totalDelta[0] = MSG_ReadFloat(&msg);
-	totalDelta[1] = MSG_ReadFloat(&msg);
-	totalDelta[2] = MSG_ReadFloat(&msg);
-	totalAngleDelta = MSG_ReadFloat(&msg);
-	int32_t numFrames = MSG_ReadLong(&msg);
-	int32_t nTotalChannels = MSG_ReadShort(&msg);
-	bHasDelta = MSG_ReadByte(&msg) != 0;
-	bHasUpper = MSG_ReadByte(&msg) != 0;
-	bHasMorph = MSG_ReadByte(&msg) != 0;
+	uint32_t numChannels;
+	msg.SerializeUInteger(numChannels);
+
+	msg.SerializeInteger(flags);
+	msg.SerializeFloat(frameTime);
+	msg.SerializeFloat(totalDelta[0]);
+	msg.SerializeFloat(totalDelta[1]);
+	msg.SerializeFloat(totalDelta[2]);
+	msg.SerializeFloat(totalAngleDelta);
+	uint32_t numFrames;
+	uint16_t nTotalChannels;
+	msg.SerializeUInteger(numFrames);
+	msg.SerializeUShort(nTotalChannels);
+	msg.SerializeByteBool(bHasDelta);
+	msg.SerializeByteBool(bHasUpper);
+	msg.SerializeByteBool(bHasMorph);
 
 	m_frame.resize(numFrames);
 	ary_channels.resize(nTotalChannels);
 
 	AnimFrame* newFrame = &m_frame[0];
 
-	for(int32_t i = 0; i < numFrames; i++)
+	for(uint32_t i = 0; i < numFrames; i++)
 	{
-		newFrame->bounds[0][0] = MSG_ReadFloat(&msg);
-		newFrame->bounds[0][1] = MSG_ReadFloat(&msg);
-		newFrame->bounds[0][2] = MSG_ReadFloat(&msg);
-		newFrame->bounds[1][0] = MSG_ReadFloat(&msg);
-		newFrame->bounds[1][1] = MSG_ReadFloat(&msg);
-		newFrame->bounds[1][2] = MSG_ReadFloat(&msg);
-		newFrame->radius = MSG_ReadFloat(&msg);
-		newFrame->delta[0] = MSG_ReadFloat(&msg);
-		newFrame->delta[1] = MSG_ReadFloat(&msg);
-		newFrame->delta[2] = MSG_ReadFloat(&msg);
-		newFrame->angleDelta = MSG_ReadFloat(&msg);
+		msg.SerializeFloat(newFrame->bounds[0][0]);
+		msg.SerializeFloat(newFrame->bounds[0][1]);
+		msg.SerializeFloat(newFrame->bounds[0][2]);
+		msg.SerializeFloat(newFrame->bounds[1][0]);
+		msg.SerializeFloat(newFrame->bounds[1][2]);
+		msg.SerializeFloat(newFrame->bounds[1][2]);
+		msg.SerializeFloat(newFrame->radius);
+		msg.SerializeFloat(newFrame->delta[0]);
+		msg.SerializeFloat(newFrame->delta[1]);
+		msg.SerializeFloat(newFrame->delta[2]);
+		msg.SerializeFloat(newFrame->angleDelta);
 		newFrame->pChannels = NULL;
 		newFrame++;
 	}
 
-	bounds[0][0] = MSG_ReadFloat(&msg);
-	bounds[0][1] = MSG_ReadFloat(&msg);
-	bounds[0][2] = MSG_ReadFloat(&msg);
-	bounds[1][0] = MSG_ReadFloat(&msg);
-	bounds[1][1] = MSG_ReadFloat(&msg);
-	bounds[1][2] = MSG_ReadFloat(&msg);
+	msg.SerializeFloat(bounds[0][0]);
+	msg.SerializeFloat(bounds[0][1]);
+	msg.SerializeFloat(bounds[0][2]);
+	msg.SerializeFloat(bounds[1][0]);
+	msg.SerializeFloat(bounds[1][2]);
+	msg.SerializeFloat(bounds[1][2]);
 	ReadEncodedFrames(&msg);
 
-	numChannels = MSG_ReadLong( &msg );
+	msg.SerializeUInteger(numChannels);
 	channelList.ZeroChannels();
 
-	for (int32_t i = 0; i < numChannels; i++)
+	for (uint32_t i = 0; i < numChannels; i++)
 	{
-		channelList.AddChannel(GetAssetManager()->GetManager<SkeletorManager>()->GetChannelNamesTable()->RegisterChannel(MSG_ReadString(&msg)));
+		MOHPC::StringMessage channelName;
+		msg.SerializeString(channelName);
+
+		channelList.AddChannel(GetAssetManager()->GetManager<SkeletorManager>()->GetChannelNamesTable()->RegisterChannel(channelName));
 	}
 
 	channelList.PackChannels();
@@ -534,30 +642,36 @@ void SkeletonAnimation::LoadProcessedAnim(const char *path, void *buffer, size_t
 
 void SkeletonAnimation::LoadProcessedAnimEx(const char *path, void *buffer, size_t len, const char *name)
 {
-	msg_t msg;
+	FixedDataMessageStream stream(buffer, len);
 
-	MSG_Init(&msg, (uint8_t *)buffer, len);
-	msg.cursize = len;
-	MSG_BeginReading(&msg);
+	MSG msg(stream, MOHPC::msgMode_e::Reading);
 
-	int32_t numChannels = MSG_ReadShort(&msg);
+	uint16_t numChannels;
+	msg.SerializeUShort(numChannels);
+
 	channelList.ZeroChannels();
-	flags = MSG_ReadLong(&msg);
-	frameTime = MSG_ReadFloat(&msg);
-	totalDelta[0] = MSG_ReadFloat(&msg);
-	totalDelta[1] = MSG_ReadFloat(&msg);
-	totalDelta[2] = MSG_ReadFloat(&msg);
-	totalAngleDelta = MSG_ReadFloat(&msg);
-	int32_t numFrames = MSG_ReadLong(&msg);
-	bHasDelta = MSG_ReadByte(&msg) != 0;
-	bHasUpper = MSG_ReadByte(&msg) != 0;
-	bHasMorph = MSG_ReadByte(&msg) != 0;
+	msg.SerializeInteger(flags);
+	msg.SerializeFloat(frameTime);
+	msg.SerializeFloat(totalDelta[0]);
+	msg.SerializeFloat(totalDelta[1]);
+	msg.SerializeFloat(totalDelta[2]);
+	msg.SerializeFloat(totalAngleDelta);
+
+	uint32_t numFrames;
+	msg.SerializeUInteger(numFrames);
+	
+	msg.SerializeByteBool(bHasDelta);
+	msg.SerializeByteBool(bHasUpper);
+	msg.SerializeByteBool(bHasMorph);
 
 	ary_channels.resize(numChannels);
 	int32_t nTotalChannels = numChannels;
 	for (int32_t i = 0; i < nTotalChannels; i++)
 	{
-		channelList.AddChannel(GetAssetManager()->GetManager<SkeletorManager>()->GetChannelNamesTable()->RegisterChannel(MSG_ReadString(&msg)));
+		MOHPC::StringMessage channelName;
+		msg.SerializeString(channelName);
+
+		channelList.AddChannel(GetAssetManager()->GetManager<SkeletorManager>()->GetChannelNamesTable()->RegisterChannel(channelName));
 	}
 
 	channelList.PackChannels();
@@ -565,29 +679,29 @@ void SkeletonAnimation::LoadProcessedAnimEx(const char *path, void *buffer, size
 	m_frame.resize(numFrames);
 	AnimFrame* newFrame = &m_frame[0];
 
-	for (int32_t i = 0; i < numFrames; i++)
+	for (uint32_t i = 0; i < numFrames; i++)
 	{
-		newFrame->bounds[0][0] = MSG_ReadFloat(&msg);
-		newFrame->bounds[0][1] = MSG_ReadFloat(&msg);
-		newFrame->bounds[0][2] = MSG_ReadFloat(&msg);
-		newFrame->bounds[1][0] = MSG_ReadFloat(&msg);
-		newFrame->bounds[1][1] = MSG_ReadFloat(&msg);
-		newFrame->bounds[1][2] = MSG_ReadFloat(&msg);
-		newFrame->radius = MSG_ReadFloat(&msg);
-		newFrame->delta[0] = MSG_ReadFloat(&msg);
-		newFrame->delta[1] = MSG_ReadFloat(&msg);
-		newFrame->delta[2] = MSG_ReadFloat(&msg);
-		newFrame->angleDelta = MSG_ReadFloat(&msg);
+		msg.SerializeFloat(newFrame->bounds[0][0]);
+		msg.SerializeFloat(newFrame->bounds[0][1]);
+		msg.SerializeFloat(newFrame->bounds[0][2]);
+		msg.SerializeFloat(newFrame->bounds[1][0]);
+		msg.SerializeFloat(newFrame->bounds[1][2]);
+		msg.SerializeFloat(newFrame->bounds[1][2]);
+		msg.SerializeFloat(newFrame->radius);
+		msg.SerializeFloat(newFrame->delta[0]);
+		msg.SerializeFloat(newFrame->delta[1]);
+		msg.SerializeFloat(newFrame->delta[2]);
+		msg.SerializeFloat(newFrame->angleDelta);
 		newFrame->pChannels = NULL;
 		newFrame++;
 	}
 
-	bounds[0][0] = MSG_ReadFloat(&msg);
-	bounds[0][1] = MSG_ReadFloat(&msg);
-	bounds[0][2] = MSG_ReadFloat(&msg);
-	bounds[1][0] = MSG_ReadFloat(&msg);
-	bounds[1][1] = MSG_ReadFloat(&msg);
-	bounds[1][2] = MSG_ReadFloat(&msg);
+	msg.SerializeFloat(bounds[0][0]);
+	msg.SerializeFloat(bounds[0][1]);
+	msg.SerializeFloat(bounds[0][2]);
+	msg.SerializeFloat(bounds[1][0]);
+	msg.SerializeFloat(bounds[1][2]);
+	msg.SerializeFloat(bounds[1][2]);
 	ReadEncodedFramesEx(&msg);
 }
 

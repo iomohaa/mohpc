@@ -14,7 +14,7 @@ namespace MOHPC
 	{
 		float radius;
 		SkelVec3 bounds[2];
-		std::vector<SkelMat4> bones;
+		Container<SkelMat4> bones;
 	};
 
 	struct skelAnimTime

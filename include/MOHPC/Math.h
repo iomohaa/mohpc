@@ -70,4 +70,20 @@ namespace MOHPC
 	MOHPC_EXPORTS void ByteToDir(int b, vec3_t dir);
 	MOHPC_EXPORTS Vector GetMovedir(float angle);
 	MOHPC_EXPORTS float Random(float value);
+
+	template <typename INT>
+	constexpr INT rotl(INT val, intptr_t len)
+	{
+		constexpr unsigned int mask = CHAR_BIT * sizeof(val) - 1;
+		static_assert(std::is_unsigned<INT>::value, "Rotate Left only makes sense for unsigned types");
+		return (val << len) | ((unsigned)val >> (-len & mask));
+	}
+
+	template <typename INT>
+	constexpr INT rotr(INT val, intptr_t len)
+	{
+		constexpr unsigned int mask = CHAR_BIT * sizeof(val) - 1;
+		static_assert(std::is_unsigned<INT>::value, "Rotate Right only makes sense for unsigned types");
+		return (val >> len) | ((unsigned)val << (-len & mask));
+	}
 }

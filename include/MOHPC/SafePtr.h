@@ -4,6 +4,7 @@
 #include "Linklist.h"
 #include <assert.h>
 #include <mutex>
+#include <stdint.h>
 
 class SafePtrClass
 {
@@ -20,7 +21,7 @@ public:
 class SafePtrBase
 {
 private:
-	std::mutex m_mutex;
+	//std::mutex m_mutex;
 
 private:
 	void AddReference(SafePtrClass *ptr);

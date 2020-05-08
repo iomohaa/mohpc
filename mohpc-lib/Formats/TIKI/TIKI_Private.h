@@ -2,6 +2,8 @@
 
 #include <MOHPC/Formats/TIKI.h>
 #include <MOHPC/Vector.h>
+#include <MOHPC/Utilities/SharedPtr.h>
+#include <MOHPC/Script/con_set.h>
 #include "TIKI_Script.h"
 
 // skb skeletor
@@ -31,54 +33,54 @@ namespace MOHPC
 	struct TIKI::dtikicmd_t
 	{
 		int32_t frame_num;
-		std::vector<std::string> args;
+		MOHPC::Container<MOHPC::str> args;
 	};
 
 	struct TIKI::dloadframecmd_t 
 	{
 		int frame_num;
-		std::vector<std::string> args;
-		std::string location;
+		MOHPC::Container<MOHPC::str> args;
+		MOHPC::str location;
 	};
 
 	struct TIKI::dloadinitcmd_t
 	{
-		std::vector<std::string> args;
+		MOHPC::Container<MOHPC::str> args;
 	};
 
 	struct TIKI::dloadsurface_t
 	{
-		std::string name;
-		std::vector<std::string> shader;
+		MOHPC::str name;
+		MOHPC::Container<MOHPC::str> shader;
 		int flags;
 		float damage_multiplier;
 	};
 
 	struct TIKI::dloadanim_t
 	{
-		std::string alias;
-		std::string name;
-		std::string location;
+		MOHPC::str alias;
+		MOHPC::str name;
+		MOHPC::str location;
 		float weight;
 		float blendtime;
 		int32_t flags;
-		std::vector<dloadframecmd_t> loadservercmds;
-		std::vector<dloadframecmd_t> loadclientcmds;
+		MOHPC::Container<dloadframecmd_t> loadservercmds;
+		MOHPC::Container<dloadframecmd_t> loadclientcmds;
 	};
 
 	struct TIKI::dloaddef_t
 	{
-		std::string path;
-		std::shared_ptr<TikiScript> tikiFile;
+		MOHPC::str path;
+		SharedPtr<TikiScript> tikiFile;
 
-		std::map<std::string, std::string> keyvalues;
-		std::vector<dloadanim_t> loadanims;
-		std::vector<dloadinitcmd_t> loadserverinitcmds;
-		std::vector<dloadinitcmd_t> loadclientinitcmds;
+		con_set<MOHPC::str, MOHPC::str> keyvalues;
+		MOHPC::Container<dloadanim_t> loadanims;
+		MOHPC::Container<dloadinitcmd_t> loadserverinitcmds;
+		MOHPC::Container<dloadinitcmd_t> loadclientinitcmds;
 
 		int32_t skelIndex_ld[12];
-		std::vector<std::string> headmodels;
-		std::vector<std::string> headskins;
+		MOHPC::Container<MOHPC::str> headmodels;
+		MOHPC::Container<MOHPC::str> headskins;
 		bool bIsCharacter;
 
 		struct
@@ -86,11 +88,11 @@ namespace MOHPC
 			float load_scale;
 			float lod_scale;
 			float lod_bias;
-			std::vector<std::string> skelmodel;
+			MOHPC::Container<MOHPC::str> skelmodel;
 			Vector origin;
 			Vector lightoffset;
 			float radius;
-			std::vector<dloadsurface_t> surfaces;
+			MOHPC::Container<dloadsurface_t> surfaces;
 		} loaddata;
 
 		bool bInIncludesSection;

@@ -3,9 +3,7 @@
 #include "../Class.h"
 #include "Container.h"
 #include "str.h"
-#include <set>
-#include <vector>
-#include <string>
+#include "con_arrayset.h"
 
 namespace MOHPC
 {
@@ -102,7 +100,7 @@ namespace MOHPC
 		ClassDef *next;
 		ClassDef *prev;
 
-		std::set<const_str> *waitTillSet;
+		con_arrayset<const_str, const_str> *waitTillSet;
 
 		size_t numEvents;
 
@@ -117,8 +115,8 @@ namespace MOHPC
 
 		static size_t dump_numclasses;
 		static size_t dump_numevents;
-		static std::vector<intptr_t> sortedList;
-		static std::vector<ClassDef *> sortedClassList;
+		static Container<intptr_t> sortedList;
+		static Container<ClassDef *> sortedClassList;
 
 		ClassDef();
 		~ClassDef();

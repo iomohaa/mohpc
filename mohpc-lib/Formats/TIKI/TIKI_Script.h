@@ -2,6 +2,7 @@
 
 #include <MOHPC/Asset.h>
 #include <MOHPC/Managers/AssetManager.h>
+#include <MOHPC/Utilities/SharedPtr.h>
 #include <string>
 
 #define TOKENCOMMENT		(';')
@@ -32,15 +33,15 @@ namespace MOHPC
 
 	typedef SafePtr<class TikiScript> TikiScriptPtr;
 
-	class TikiScript : public Asset, public std::enable_shared_from_this<TikiScript>
+	class TikiScript : public Asset, public EnableSharedFromThis<TikiScript>
 	{
 		CLASS_BODY(TikiScript);
 
 	protected:
 		bool error;
 		bool tokenready;
-		std::shared_ptr<TikiScript> include;
-		std::shared_ptr<TikiScript> parent;
+		SharedPtr<TikiScript> include;
+		SharedPtr<TikiScript> parent;
 		char filename[MAXTOKEN];
 		const char *script_p;
 		const char *end_p;
@@ -55,9 +56,9 @@ namespace MOHPC
 
 	public:
 		char *buffer;
-		std::streamsize length;
+		uintmax_t length;
 		char path[256];
-		std::shared_ptr<TikiScript> currentScript;
+		SharedPtr<TikiScript> currentScript;
 
 	protected:
 		bool AtComment();
@@ -99,7 +100,7 @@ namespace MOHPC
 		float GetFloat(bool crossline);
 		void GetVector(bool crossline, float *vec);
 		int LinesInFile();
-		void Parse(char *data, std::streamsize length, const char *name);
+		void Parse(char *data, uintmax_t length, const char *name);
 		bool LoadFile(const char *name);
 		const char *Token();
 		void MarkPos();
@@ -107,15 +108,15 @@ namespace MOHPC
 		void ReplaceLineWithWhitespace(bool deleteFromStartOfLine);
 		void Exclude();
 		const char *GetParentToken();
-		void SetCurrentScript(std::shared_ptr<TikiScript> Script);
+		void SetCurrentScript(SharedPtr<TikiScript> Script);
 		void SetAllowExtendedComment(bool bAllow);
 	};
 
 	class TikiSwitchKey
 	{
 	public:
-		std::string sKeyName;
-		std::string sKeyValue;
+		str sKeyName;
+		str sKeyValue;
 		TikiSwitchKey *pNextKey;
 
 		TikiSwitchKey();
@@ -134,7 +135,7 @@ namespace MOHPC
 		void AddSwitchKey(const char *, const char *);
 		void ChangeSwitchKey(const char *, const char *);
 		void AddOrChangeSwitchKey(const char *, const char *);
-		std::string& GetSwitchKeyValue(const char *);
+		str& GetSwitchKeyValue(const char *);
 		void PrecompileTikiScript(TikiScript *);
 	};
 }

@@ -10,9 +10,8 @@
 #include <MOHPC/Misc/SHA256.h>
 
 using namespace MOHPC;
-using namespace std;
 
-namespace fs = filesystem;
+namespace fs = std::filesystem;
 
 namespace MOHPC
 {
@@ -33,8 +32,8 @@ namespace MOHPC
 
 	struct PakFileEntry
 	{
-		std::string Name;
-		std::string Hash;
+		str Name;
+		str Hash;
 		unzFile ZipFile;
 		unz_file_pos Pos;
 		size_t uncompressedSize;
@@ -45,7 +44,7 @@ namespace MOHPC
 		PakFile* Next;
 		FileManagerCategory* Category;
 		unzFile ZipFile;
-		vector<PakFileEntry*> entries;
+		Container<PakFileEntry*> entries;
 	};
 
 	struct FileNameCompare
@@ -60,7 +59,7 @@ namespace MOHPC
 			return tolower(c1) == tolower(c2);
 		}
 
-		static const char *StripBase(const string& path, const string& base)
+		static const char *StripBase(const std::string& path, const std::string& base)
 		{
 			const char *p1 = path.c_str();
 			const char *p2 = base.c_str();
@@ -76,7 +75,7 @@ namespace MOHPC
 			return p1;
 		}
 
-		static size_t GetParentDir(const string& path)
+		static size_t GetParentDir(const str& path)
 		{
 			const char *str = path.c_str();
 			for (const char *p = str + path.length() - 1; p != str - 1; p--)
@@ -90,7 +89,7 @@ namespace MOHPC
 			return 0;
 		}
 
-		static const char *GetFilename(const string& path)
+		static const char *GetFilename(const str& path)
 		{
 			const char *str = path.c_str();
 			for (const char *p = str + path.length() - 1; p != str - 1; p--)
@@ -104,7 +103,7 @@ namespace MOHPC
 			return str;
 		}
 
-		static const char *GetExtension(const string& path)
+		static const char *GetExtension(const str& path)
 		{
 			const char *str = path.c_str();
 			for (const char *p = str + path.length() - 1; p != str - 1; p--)
@@ -132,7 +131,7 @@ namespace MOHPC
 			return "";
 		}
 
-		bool operator() (const std::string& s1, const std::string& s2) const
+		bool operator() (const str& s1, const str& s2) const
 		{
 			const size_t parentdirl1 = GetParentDir(s1);
 			const size_t parentdirl2 = GetParentDir(s2);
@@ -172,7 +171,7 @@ namespace MOHPC
 
 	struct FileNameMapCompare
 	{
-		bool operator() (const std::string& s1, const std::string& s2) const
+		bool operator() (const str& s1, const str& s2) const
 		{
 			return !stricmp(s1.c_str(), s2.c_str());
 		}
@@ -180,13 +179,12 @@ namespace MOHPC
 
 	struct FileNameHash
 	{
-		size_t operator()(const std::string& s1) const
+		size_t operator()(const str& s1) const
 		{
 			size_t hash = 0;
 
 			const char *p = s1.c_str();
-			while (*p)
-			{
+			while (*p) {
 				hash = tolower(*p++) + 31 * hash;
 			}
 
@@ -220,9 +218,9 @@ namespace MOHPC
 
 	struct FileManagerCategory
 	{
-		std::string categoryName;
-		std::unordered_map<std::string, PakFileEntry*, FileNameHash, FileNameMapCompare> m_PakFilesMap;
-		std::vector<PakFileEntry*> m_PakFilesList;
+		str categoryName;
+		std::unordered_map<str, PakFileEntry*, FileNameHash, FileNameMapCompare> m_PakFilesMap;
+		Container<PakFileEntry*> m_PakFilesList;
 	};
 
 	struct FileManagerData
@@ -237,7 +235,7 @@ FileEntryList::FileEntryList()
 {
 }
 
-FileEntryList::FileEntryList(std::vector<FileEntry>&& inFileList)
+FileEntryList::FileEntryList(MOHPC::Container<FileEntry>&& inFileList) noexcept
 	: fileList(std::move(inFileList))
 {
 }
@@ -248,12 +246,12 @@ FileEntryList::~FileEntryList()
 
 size_t FileEntryList::GetNumFiles() const
 {
-	return fileList.size();
+	return fileList.NumObjects();
 }
 
 const FileEntry* FileEntryList::GetFileEntry(size_t Index) const
 {
-	return Index < fileList.size() ? &fileList[Index] : nullptr;
+	return Index < fileList.NumObjects() ? &fileList[Index] : nullptr;
 }
 
 File::File()
@@ -418,7 +416,7 @@ bool FileManager::AddPakFile(const char* Filename, const char* CategoryName)
 		Entry->Name.resize(FileInfo.size_filename + 1);
 		Entry->Name[0] = '/';
 		Entry->uncompressedSize = FileInfo.uncompressed_size;
-		unzGetCurrentFileInfo(ZipFile, NULL, (char*)Entry->Name.data() + 1, FileInfo.size_filename, NULL, 0, NULL, 0);
+		unzGetCurrentFileInfo(ZipFile, NULL, (char*)Entry->Name.c_str() + 1, FileInfo.size_filename, NULL, 0, NULL, 0);
 
 		*entries++ = Entry;
 	}
@@ -441,7 +439,7 @@ size_t FileManager::GetNumPakFiles() const
 
 bool FileManager::FileExists(const char* Filename, bool bInPakOnly, const char* CategoryName) const
 {
-	if (!m_pData->defaultCategory.m_PakFilesList.size())
+	if (!m_pData->defaultCategory.m_PakFilesList.NumObjects())
 	{
 		FileManager *This = (FileManager *)this;
 		This->CacheFiles();
@@ -449,7 +447,7 @@ bool FileManager::FileExists(const char* Filename, bool bInPakOnly, const char* 
 
 	FileManagerCategory* Category = GetCategory(CategoryName);
 
-	const string NewFilename = GetFixedPath(Filename);
+	const str NewFilename = GetFixedPath(Filename);
 
 	auto it = Category->m_PakFilesMap.find(NewFilename);
 	if (it != Category->m_PakFilesMap.end())
@@ -465,7 +463,7 @@ bool FileManager::FileExists(const char* Filename, bool bInPakOnly, const char* 
 			{
 				fs::path path = G->Directory;
 				path.append(NewFilename.c_str() + 1);
-				const string FullPath = path.generic_string();
+				const std::string FullPath = path.generic_string();
 
 				if (fs::exists(FullPath))
 				{
@@ -480,14 +478,13 @@ bool FileManager::FileExists(const char* Filename, bool bInPakOnly, const char* 
 
 FilePtr FileManager::OpenFile(const char* Filename, const char* CategoryName)
 {
-	if (!m_pData->defaultCategory.m_PakFilesList.size())
-	{
+	if (!m_pData->defaultCategory.m_PakFilesList.NumObjects()) {
 		CacheFiles();
 	}
 
 	FileManagerCategory* Category = GetCategory(CategoryName);
 
-	const string pathString = GetFixedPath(Filename);
+	const str pathString = GetFixedPath(Filename);
 
 	auto it = Category->m_PakFilesMap.find(pathString);
 	if (it != Category->m_PakFilesMap.end())
@@ -503,7 +500,7 @@ FilePtr FileManager::OpenFile(const char* Filename, const char* CategoryName)
 		file->m_data->LinkedStream = stream;
 		file->m_bInPak = true;
 
-		return shared_ptr<File>(file);
+		return SharedPtr<File>(file);
 	}
 	else
 	{
@@ -525,7 +522,7 @@ FilePtr FileManager::OpenFile(const char* Filename, const char* CategoryName)
 					File* file = new File;
 					file->m_data->BufferSize = 0;
 					file->m_data->LinkedStream = ifs;
-					return shared_ptr<File>(file);
+					return SharedPtr<File>(file);
 				}
 			}
 		}
@@ -536,9 +533,9 @@ FilePtr FileManager::OpenFile(const char* Filename, const char* CategoryName)
 	return FilePtr();
 }
 
-std::string FileManager::GetFileHash(const char* Filename, const char* CategoryName)
+str FileManager::GetFileHash(const char* Filename, const char* CategoryName)
 {
-	if (!m_pData->defaultCategory.m_PakFilesList.size())
+	if (!m_pData->defaultCategory.m_PakFilesList.NumObjects())
 	{
 		FileManager *This = (FileManager *)this;
 		This->CacheFiles();
@@ -546,7 +543,7 @@ std::string FileManager::GetFileHash(const char* Filename, const char* CategoryN
 
 	FileManagerCategory* Category = GetCategory(CategoryName);
 
-	const string pathString = GetFixedPath(Filename);
+	const str pathString = GetFixedPath(Filename);
 
 	PakFileEntry* Entry = nullptr;
 
@@ -561,7 +558,7 @@ std::string FileManager::GetFileHash(const char* Filename, const char* CategoryN
 		}
 	}
 
-	string hashString;
+	str hashString;
 
 	FilePtr File = OpenFile(Filename);
 	if (File)
@@ -569,7 +566,7 @@ std::string FileManager::GetFileHash(const char* Filename, const char* CategoryN
 		SHA256 Context;
 		Context.Init();
 
-		istream* stream = File->GetStream();
+		std::istream* stream = File->GetStream();
 		while (!stream->eof())
 		{
 			size_t length = 64 * 1024;
@@ -579,7 +576,7 @@ std::string FileManager::GetFileHash(const char* Filename, const char* CategoryN
 			delete[] buf;
 		}
 
-		hashString = Context.Final();
+		hashString = Context.Final().c_str();
 
 		if (Entry)
 		{
@@ -590,30 +587,30 @@ std::string FileManager::GetFileHash(const char* Filename, const char* CategoryN
 	return hashString;
 }
 
-static bool SortFileList(const string& s1, const string& s2)
+static bool SortFileList(const str& s1, const str& s2)
 {
 	return FileNameCompare()(s1, s2);
 }
 
-static bool AreFilesEqual(const string& s1, const string& s2)
+static bool AreFilesEqual(const str& s1, const str& s2)
 {
 	return !stricmp(s1.c_str(), s2.c_str());
 }
 
-static void InsertVirtualFile(const string& dir, const fs::path& path, const string& requestedDir, const std::vector<string>& Extensions, std::set<FileEntry, FileNameCompare>& fileList)
+static void InsertVirtualFile(const std::string& dir, const fs::path& path, const std::string& requestedDir, const Container<str>& Extensions, std::set<FileEntry, FileNameCompare>& fileList)
 {
-	const bool bAnyExtension = Extensions.size() <= 0;
+	const bool bAnyExtension = Extensions.NumObjects() <= 0;
 
 	if (!path.empty())
 	{
-		const string pathString = path.generic_string();
+		const std::string pathString = path.generic_string();
 		const char *virtualPath = FileNameCompare::StripBase(pathString, dir) - 1;
 
 		if (!strnicmp(virtualPath, requestedDir.c_str(), requestedDir.length()))
 		{
 			if (fs::is_directory(path))
 			{
-				const string virtualFolderPath = string(virtualPath) + "/";
+				const std::string virtualFolderPath = std::string(virtualPath) + "/";
 				fileList.insert(virtualFolderPath.c_str());
 			}
 			else
@@ -625,7 +622,7 @@ static void InsertVirtualFile(const string& dir, const fs::path& path, const str
 				else
 				{
 					const char *fileExtension = FileNameCompare::GetExtension(virtualPath);
-					for (size_t e = 0; e < Extensions.size(); e++)
+					for (size_t e = 0; e < Extensions.NumObjects(); e++)
 					{
 						if (!stricmp(Extensions[e].c_str(), fileExtension))
 						{
@@ -638,37 +635,35 @@ static void InsertVirtualFile(const string& dir, const fs::path& path, const str
 	}
 }
 
-FileEntryList FileManager::ListFilteredFiles(const char* Directory, const vector<string>& Extensions, bool bRecursive, bool bInPakOnly, const char* CategoryName) const
+FileEntryList FileManager::ListFilteredFiles(const char* Directory, const MOHPC::Container<str>& Extensions, bool bRecursive, bool bInPakOnly, const char* CategoryName) const
 {
 	FileManagerCategory* Category = GetCategory(CategoryName);
 
-	if (!Category->m_PakFilesList.size())
+	if (!Category->m_PakFilesList.NumObjects())
 	{
-		FileManager *This = (FileManager *)this;
+		FileManager *This = const_cast<FileManager*>(this);
 		This->CacheFiles();
 	}
 
-	if (*Directory != '/' && *Directory != '\\')
-	{
-		return vector<FileEntry>();
+	if (*Directory != '/' && *Directory != '\\') {
+		return Container<FileEntry>();
 	}
 
 	std::set<FileEntry, FileNameCompare> fileList;
 
-	const bool bAnyExtension = Extensions.size() <= 0;
+	const bool bAnyExtension = Extensions.NumObjects() <= 0;
 
 	fs::path requestedPath;
 
-	if (*Directory != '/' && *Directory != '\\')
-	{
-		requestedPath = string("/") + Directory;
+	if (*Directory != '/' && *Directory != '\\') {
+		requestedPath = std::string("/") + Directory;
 	}
-	else
-	{
+	else {
 		requestedPath = Directory;
 	}
+
 	{
-		const string nativePath = requestedPath.generic_string();
+		const std::string nativePath = requestedPath.generic_string();
 		const char end = *(nativePath.end() - 1);
 		if (end != '/' && end != '\\')
 		{
@@ -676,13 +671,13 @@ FileEntryList FileManager::ListFilteredFiles(const char* Directory, const vector
 		}
 	}
 
-	const string requestedDir = requestedPath.generic_string();
+	const std::string requestedDir = requestedPath.generic_string();
 	const char *requestedDirP = requestedDir.c_str();
 	size_t requestedDirLength = requestedDir.length();
 
 	bool bInDir = false;
-	PakFileEntry **Entries = Category->m_PakFilesList.data();
-	size_t numEntries = Category->m_PakFilesList.size();
+	PakFileEntry **Entries = Category->m_PakFilesList.Data();
+	size_t numEntries = Category->m_PakFilesList.NumObjects();
 	for (size_t i = 0; i < numEntries; i++)
 	{
 		const PakFileEntry *Entry = Entries[i];
@@ -693,17 +688,15 @@ FileEntryList FileManager::ListFilteredFiles(const char* Directory, const vector
 			{
 				bInDir = true;
 
-				if (bAnyExtension)
-				{
+				if (bAnyExtension) {
 					fileList.insert(Entry->Name);
 				}
 				else
 				{
 					const char *fileExtension = FileNameCompare::GetExtension(Entry->Name);
-					for (size_t e = 0; e < Extensions.size(); e++)
+					for (size_t e = 0; e < Extensions.NumObjects(); e++)
 					{
-						if (!stricmp(Extensions[e].c_str(), fileExtension))
-						{
+						if (!stricmp(Extensions[e].c_str(), fileExtension)) {
 							fileList.insert(Entry->Name);
 						}
 					}
@@ -724,28 +717,27 @@ FileEntryList FileManager::ListFilteredFiles(const char* Directory, const vector
 	{
 		for (GamePath* GP = m_pGamePath; GP != nullptr; GP = GP->Next)
 		{
-			const string currentDir = GP->Directory.generic_string();
-			const string requestedFullDir = string(currentDir).append(requestedDir, 1, std::string::npos);
+			const std::string currentDir = GP->Directory.generic_string();
+			const std::string requestedFullDir = std::string(currentDir).append(requestedDir, 1, std::string::npos);
 
 			if (bRecursive)
 			{
-				for (auto it = fs::recursive_directory_iterator(requestedFullDir, std::filesystem::directory_options::skip_permission_denied); it != fs::recursive_directory_iterator(); it++)
-				{
+				for (auto it = fs::recursive_directory_iterator(requestedFullDir, std::filesystem::directory_options::skip_permission_denied); it != fs::recursive_directory_iterator(); it++) {
 					InsertVirtualFile(currentDir, it->path(), requestedDir, Extensions, fileList);
 				}
 			}
 			else
 			{
-				for (auto it = fs::directory_iterator(requestedFullDir, std::filesystem::directory_options::skip_permission_denied); it != fs::directory_iterator(); it++)
-				{
+				for (auto it = fs::directory_iterator(requestedFullDir, std::filesystem::directory_options::skip_permission_denied); it != fs::directory_iterator(); it++) {
 					InsertVirtualFile(currentDir, it->path(), requestedDir, Extensions, fileList);
 				}
 			}
 		}
 	}
 
-	size_t numFiles = fileList.size();
-	vector<FileEntry> out(numFiles);
+	const size_t numFiles = fileList.size();
+	Container<FileEntry> out;
+	out.SetNumObjects(numFiles);
 	std::move(fileList.begin(), fileList.end(), out.begin());
 
 	return out;
@@ -753,28 +745,40 @@ FileEntryList FileManager::ListFilteredFiles(const char* Directory, const vector
 
 FileEntryList FileManager::ListFilteredFiles(const char* Directory, const char* Extension, bool bRecursive, bool bInPakOnly, const char* CategoryName) const
 {
-	vector<string> Extensions;
+	Container<str> Extensions;
 
-	if (*Extension && strlen(Extension))
-	{
-		Extensions.push_back(Extension);
+	if (*Extension && strlen(Extension)) {
+		Extensions.AddObject(Extension);
 	}
 
 	return ListFilteredFiles(Directory, Extensions, bRecursive, bInPakOnly, CategoryName);
 }
 
-void FileManager::SortFileList(std::vector<FileEntry>& FileList)
+void FileManager::SortFileList(Container<FileEntry>& FileList)
 {
 	std::sort(FileList.begin(), FileList.end(), ::SortFileList);
-	FileList.erase(std::unique(FileList.begin(), FileList.end(), AreFilesEqual), FileList.end());
+	//FileList.erase(std::unique(FileList.begin(), FileList.end(), AreFilesEqual), FileList.end());
+
+	// Remove duplicate file names
+	for (size_t i = FileList.NumObjects(); i > 0; i--)
+	{
+		for (size_t j = i; j > 0; j--)
+		{
+			if (AreFilesEqual(FileList[i].GetStr(), FileList[j].GetStr()))
+			{
+				FileList.RemoveObjectAt(i);
+				break;
+			}
+		}
+	}
 }
 
-string FileManager::GetFixedPath(const string& Path) const
+str FileManager::GetFixedPath(const str& Path) const
 {
 	const char *Filename = Path.c_str();
 	size_t pathLength = Path.length();
 
-	string out;
+	str out;
 	char *start;
 	char *end;
 
@@ -809,7 +813,7 @@ string FileManager::GetFixedPath(const string& Path) const
 	return out;
 }
 
-void FileManager::GetCategoryList(std::vector<const char*>& OutList) const
+void FileManager::GetCategoryList(Container<const char*>& OutList) const
 {
 	const size_t numCategories = m_pData->categoryList.size();
 	for (size_t i = 0; i < numCategories; i++)
@@ -834,7 +838,7 @@ const char *FileManager::GetFileExtension(const char* Filename)
 	return p + 1;
 }
 
-std::string FileManager::SetFileExtension(const char* Filename, const char* NewExtension)
+str FileManager::SetFileExtension(const char* Filename, const char* NewExtension)
 {
 	const size_t len = strlen(Filename);
 	const char *p = Filename + len;
@@ -850,10 +854,10 @@ std::string FileManager::SetFileExtension(const char* Filename, const char* NewE
 	const size_t newlen = p <= Filename ? len : (p - Filename);
 	const std::string newfile = std::string().assign(Filename, newlen) + "." + std::string(NewExtension);
 
-	return newfile;
+	return newfile.c_str();
 }
 
-std::string FileManager::GetDefaultFileExtension(const char* Filename, const char* DefaultExtension)
+str FileManager::GetDefaultFileExtension(const char* Filename, const char* DefaultExtension)
 {
 	const char *p = Filename + strlen(Filename) - 1;
 
@@ -866,14 +870,14 @@ std::string FileManager::GetDefaultFileExtension(const char* Filename, const cha
 		p--;
 	}
 
-	const std::string newfile = std::string(Filename) + "." + std::string(DefaultExtension);
+	const str newfile = Filename + str(".") + DefaultExtension;
 
-	return newfile;
+	return newfile.c_str();
 }
 
-std::string FileManager::CanonicalFilename(const char* Filename)
+str FileManager::CanonicalFilename(const char* Filename)
 {
-	std::string newString;
+	str newString;
 	newString.reserve(strlen(Filename) + 1);
 
 	for(const char* p = Filename; *p; p++)
@@ -885,7 +889,7 @@ std::string FileManager::CanonicalFilename(const char* Filename)
 		}
 	}
 
-	newString.shrink_to_fit();
+	//newString.shrink_to_fit();
 	return newString;
 }
 
@@ -975,7 +979,7 @@ void FileManager::CacheFilesCategory(FileManagerCategory* Category)
 void FileManager::CategorizeFiles(std::set<PakFileEntry*, PakFileEntryCompare>& FileList, FileManagerCategory* Category)
 {
 	size_t numFiles = FileList.size();
-	Category->m_PakFilesList.resize(numFiles);
+	Category->m_PakFilesList.SetNumObjectsUninitialized(numFiles);
 	std::move(FileList.begin(), FileList.end(), Category->m_PakFilesList.begin());
 
 	Category->m_PakFilesMap.reserve(numFiles);
@@ -989,85 +993,38 @@ void FileManager::CategorizeFiles(std::set<PakFileEntry*, PakFileEntryCompare>& 
 
 FileEntry::FileEntry()
 {
-	Name = nullptr;
-	bIsRef = false;
 	bIsDir = false;
 }
 
-FileEntry::FileEntry(const char *Filename)
+FileEntry::FileEntry(const char *Filename) noexcept
 {
-	Name = new string(Filename);
-	bIsRef = false;
+	Name = Filename;
 
-	const char *ptr = Name->c_str();
-	const size_t endPos = Name->length() - 1;
+	const char *ptr = Name.c_str();
+	const size_t endPos = Name.length() - 1;
 	bIsDir = ptr[endPos] == '/' || ptr[endPos] == '\\';
 }
 
-FileEntry::FileEntry(const string& Filename)
+FileEntry::FileEntry(const str& Filename) noexcept
 {
-	Name = &Filename;
-	bIsRef = true;
+	Name = Filename;
 
-	const char *ptr = Name->c_str();
-	const size_t endPos = Name->length() - 1;
+	const char *ptr = Name.c_str();
+	const size_t endPos = Name.length() - 1;
 	bIsDir = ptr[endPos] == '/' || ptr[endPos] == '\\';
 }
 
-FileEntry::FileEntry(const FileEntry& Entry)
+FileEntry::FileEntry(str&& Filename) noexcept
 {
-	if (Entry.bIsRef)
-	{
-		Name = Entry.Name;
-		bIsRef = true;
-	}
-	else
-	{
-		Name = new string(*Entry.Name);
-		bIsRef = false;
-	}
-	bIsDir = Entry.bIsDir;
-}
+	Name = std::move(Filename);
 
-FileEntry::FileEntry(FileEntry&& Entry)
-{
-	Name = Entry.Name;
-	bIsRef = Entry.bIsRef;
-	bIsDir = Entry.bIsDir;
-	Entry.Name = nullptr;
-}
-
-FileEntry& FileEntry::operator=(const FileEntry& Entry)
-{
-	if (Entry.bIsRef)
-	{
-		Name = Entry.Name;
-		bIsRef = true;
-	}
-	else
-	{
-		Name = new string(*Entry.Name);
-		bIsRef = false;
-	}
-	bIsDir = Entry.bIsDir;
-	return *this;
-}
-
-FileEntry& FileEntry::operator=(FileEntry&& Entry)
-{
-	Name = Entry.Name;
-	bIsDir = Entry.bIsDir;
-	bIsRef = Entry.bIsRef;
-	Entry.Name = nullptr;
-	return *this;
+	const char* ptr = Name.c_str();
+	const size_t endPos = Name.length() - 1;
+	bIsDir = ptr[endPos] == '/' || ptr[endPos] == '\\';
 }
 
 FileEntry::~FileEntry()
 {
-	if (Name && !bIsRef)
-	{
-		delete Name;
-	}
 }
 
 bool FileEntry::IsDirectory() const
@@ -1082,15 +1039,15 @@ const char *FileEntry::GetExtension() const
 
 const char *FileEntry::GetRawName() const
 {
-	return Name->c_str();
+	return Name.c_str();
 }
 
-FileEntry::operator const string&() const
+const str& FileEntry::GetStr() const
 {
-	return *Name;
+	return Name;
 }
 
-FileEntry::operator const char *() const
+FileEntry::operator const str& () const
 {
-	return Name->c_str();
+	return Name;
 }

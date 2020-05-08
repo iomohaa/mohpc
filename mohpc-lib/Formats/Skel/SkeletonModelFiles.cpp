@@ -2,32 +2,31 @@
 #include "SkelPrivate.h"
 
 using namespace MOHPC;
-using namespace std;
 
-void ConvertToRotationName(const char *boneName, string& rotChannelName)
+void ConvertToRotationName(const char *boneName, str& rotChannelName)
 {
-	rotChannelName = string(boneName) + " rot";
+	rotChannelName = str(boneName) + " rot";
 }
 
-void ConvertToPositionName(const char *boneName, string& posChannelName)
+void ConvertToPositionName(const char *boneName, str& posChannelName)
 {
-	posChannelName = string(boneName) + " rot";
+	posChannelName = str(boneName) + " rot";
 }
 
-void ConvertToFKRotationName(const char *boneName, string& rotChannelName)
+void ConvertToFKRotationName(const char *boneName, str& rotChannelName)
 {
-	rotChannelName = string(boneName) + " rosFK";
+	rotChannelName = str(boneName) + " rosFK";
 }
 
-void ConvertToFKPositionName(const char *boneName, string& posChannelName)
+void ConvertToFKPositionName(const char *boneName, str& posChannelName)
 {
-	posChannelName = string(boneName) + " posFK";
+	posChannelName = str(boneName) + " posFK";
 }
 
 int Skeleton::CreateRotationBoneFileData( const char *newBoneName, const char *newBoneParentName, SkelVec3 basePos, Skeleton::BoneFileData *fileData )
 {
 	char *saveChannelName;
-	string rotChannelName;
+	str rotChannelName;
 	Skeleton::BoneData *boneData;
 
 	strncpy( fileData->name, newBoneName, sizeof( fileData->name ) );
@@ -55,8 +54,8 @@ int Skeleton::CreatePosRotBoneFileData( char *newBoneName, char *newBoneParentNa
 {
 	int channelNamesLength;
 	char *saveChannelName;
-	string rotChannelName;
-	string posChannelName;
+	str rotChannelName;
+	str posChannelName;
 	Skeleton::BoneData *boneData;
 
 	strncpy( fileData->name, newBoneName, sizeof( fileData->name ) );
@@ -87,8 +86,8 @@ int Skeleton::CreatePosRotBoneFileData( char *newBoneName, char *newBoneParentNa
 
 void Skeleton::CreatePosRotBoneData( const char *newBoneName, const char *newBoneParentName, Skeleton::BoneData *boneData )
 {
-	string rotChannelName;
-	string posChannelName;
+	str rotChannelName;
+	str posChannelName;
 
 	boneData->channel = GetAssetManager()->GetManager<SkeletorManager>()->GetBoneNamesTable()->RegisterChannel( newBoneName );
 
@@ -162,7 +161,7 @@ void Skeletor::LoadMorphTargetNames(Skeleton *skelmodel)
 
 	for (size_t i = 0; i < numTargets; i++)
 	{
-		const char *newTargetName = skelmodel->GetMorphTarget(i).c_str();
+		const char *newTargetName = skelmodel->GetMorphTarget(i);
 
 		size_t newChannel = GetAssetManager()->GetManager<SkeletorManager>()->GetChannelNamesTable()->RegisterChannel(newTargetName);
 		size_t morphTargetIndex = m_morphTargetList.AddChannel(newChannel);

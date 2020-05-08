@@ -1,9 +1,9 @@
 #pragma once
 
 #include "Asset.h"
-#include <string>
-#include <vector>
 #include "Vector.h"
+#include "Script/Container.h"
+#include "Script/str.h"
 
 #define TOKENCOMMENT		(';')
 #define TOKENCOMMENT2		('#')
@@ -16,7 +16,6 @@
 
 namespace MOHPC
 {
-
 	class Script : public Asset
 	{
 	public:
@@ -25,25 +24,25 @@ namespace MOHPC
 			bool tokenready;
 			size_t offset;
 			int32_t line;
-			std::string token;
+			str token;
 		} scriptmarker_t;
 
 
 		struct macro
 		{
-			std::string macroName;
-			std::string macroText;
+			str macroName;
+			str macroText;
 		};
 	protected:
 		bool		tokenready;
 
-		std::string filename;
+		str filename;
 		const char	*script_p;
 		const char	*end_p;
-		std::vector<macro *> macrolist;
+		Container<macro *> macrolist;
 
 		int32_t line;
-		std::string token;
+		str token;
 
 		bool		releaseBuffer;
 		bool		hasError;
@@ -89,7 +88,7 @@ namespace MOHPC
 		MOHPC_EXPORTS float GetFloat(bool crossline);
 		MOHPC_EXPORTS Vector GetVector(bool crossline);
 		MOHPC_EXPORTS int LinesInFile(void);
-		MOHPC_EXPORTS void Parse(const char* data, std::streamsize length, const char* name = "");
+		MOHPC_EXPORTS void Parse(const char* data, uintmax_t length, const char* name = "");
 		MOHPC_EXPORTS bool LoadFile(const char* name);
 		MOHPC_EXPORTS void LoadFile(const char* name, int length, const char* buf);
 		MOHPC_EXPORTS const char* Token(void);
@@ -104,7 +103,7 @@ namespace MOHPC
 		MOHPC_EXPORTS bool EndOfFile();
 		MOHPC_EXPORTS bool isValid(void);
 
-		MOHPC_EXPORTS std::vector<macro *> *GetMacroList() { return &macrolist; }
+		MOHPC_EXPORTS Container<macro *> *GetMacroList() { return &macrolist; }
 		MOHPC_EXPORTS void AddMacro(const char *name, const char *value);
 	};
 };

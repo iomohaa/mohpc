@@ -32,7 +32,7 @@ MOHPC::Sprite& MOHPC::Sprite::operator=(const Sprite& sprite)
 	{
 		if (spriteType == ST_Tiki)
 		{
-			Tiki = new std::shared_ptr<class TIKI>(*sprite.Tiki);
+			Tiki = new SharedPtr<class TIKI>(*sprite.Tiki);
 		}
 		else if (spriteType == ST_Shader)
 		{
@@ -204,7 +204,7 @@ bool EmitterManager::ParseEmitters(const TIKI* Tiki, EmitterResults& Results)
 	return bAnimHasCommands;
 }
 
-bool EmitterManager::ProcessCommand(const std::vector<std::string>& Arguments, EmitterListener& Listener)
+bool EmitterManager::ProcessCommand(const Container<str>& Arguments, EmitterListener& Listener)
 {
 	Event* ev = GetManager<EventManager>()->NewEvent(Arguments[0].c_str());
 

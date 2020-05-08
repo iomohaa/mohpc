@@ -4,9 +4,8 @@
 #include "../Asset.h"
 #include "../Math.h"
 #include "../Vector.h"
-#include <vector>
-#include <memory>
 #include "../Managers/ShaderManager.h"
+#include "../Utilities/SharedPtr.h"
 
 namespace MOHPC
 {
@@ -60,5 +59,5 @@ namespace MOHPC
 		/** Get a decal definition at the specified index. */
 		MOHPC_EXPORTS const DCLMarkDef* GetDecal(size_t index) const;
 	};
-	typedef std::shared_ptr<DCL> DCLPtr;
+	typedef SharedPtr<DCL> DCLPtr;
 }

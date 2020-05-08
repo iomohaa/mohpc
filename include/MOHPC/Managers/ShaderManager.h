@@ -1,11 +1,11 @@
 #pragma once
 
 #include "../Global.h"
+#include "../Script/Container.h"
+#include "../Script/con_set.h"
+#include "../Script/str.h"
+#include "../Utilities/SharedPtr.h"
 #include "Manager.h"
-#include <unordered_map>
-#include <string>
-#include <vector>
-#include <memory>
 
 #include <MOHPC/Vector.h>
 
@@ -265,13 +265,13 @@ namespace MOHPC
 	class ImageCache
 	{
 	private:
-		std::string imageName;
-		std::shared_ptr<Image> cachedImage;
+		str imageName;
+		SharedPtr<Image> cachedImage;
 		bool bCached;
 		ShaderManager* shaderManager;
 
 	public:
-		ImageCache(ShaderManager *shaderManager, const std::string& imageName);
+		ImageCache(ShaderManager *shaderManager, const str& imageName);
 
 	private:
 		ImageCache();
@@ -283,6 +283,8 @@ namespace MOHPC
 		MOHPC_EXPORTS void CacheImage();
 		MOHPC_EXPORTS void ClearCachedImage();
 	};
+
+	using ImageCachePtr = SharedPtr<ImageCache>;
 
 	struct WaveForm
 	{
@@ -356,14 +358,14 @@ namespace MOHPC
 
 	struct TextureBundle
 	{
-		std::vector<ImageCache*> image;
+		Container<ImageCache*> image;
 		float imageAnimationSpeed;
 		float imageAnimationPhase;
 
 		TextureCoordGen tcGen;
 		Vector tcGenVectors[2];
 
-		std::vector<TextureModInfo> texMods;
+		Container<TextureModInfo> texMods;
 
 		int32_t videoMapHandle;
 		bool isLightmap;
@@ -371,11 +373,12 @@ namespace MOHPC
 		int flags;
 
 		TextureBundle();
+		~TextureBundle();
 	};
 
 	struct ShaderStage
 	{
-		std::vector<TextureBundle> bundle;
+		Container<TextureBundle> bundle;
 
 		WaveForm rgbWave;
 		ColorGen rgbGen;
@@ -393,6 +396,7 @@ namespace MOHPC
 		uint8_t alphaConstMin;
 
 		ShaderStage();
+		~ShaderStage();
 	};
 
 	class Shader
@@ -402,7 +406,7 @@ namespace MOHPC
 
 	private:
 		class ShaderContainer* shaderContainer;
-		std::string m_name;
+		str m_name;
 		int32_t numRef;
 
 		bool bCached;
@@ -426,8 +430,8 @@ namespace MOHPC
 		bool bNoMipMaps;
 		bool bNoPicMip;
 
-		std::vector<DeformStage> m_deforms;
-		std::vector<ShaderStage> m_stages;
+		Container<DeformStage> m_deforms;
+		Container<ShaderStage> m_stages;
 
 	public:
 		Shader(class ShaderContainer* Container);
@@ -436,8 +440,8 @@ namespace MOHPC
 		MOHPC_EXPORTS ShaderManager* GetShaderManager() const;
 		MOHPC_EXPORTS ShaderContainer* GetShaderContainer();
 		MOHPC_EXPORTS const ShaderContainer* GetShaderContainer() const;
-		MOHPC_EXPORTS const std::string& GetFilename() const;
-		MOHPC_EXPORTS const std::string& GetName() const;
+		MOHPC_EXPORTS const str& GetFilename() const;
+		MOHPC_EXPORTS const str& GetName() const;
 		MOHPC_EXPORTS int32_t GetContents() const;
 		MOHPC_EXPORTS int32_t GetSurfaceFlags() const;
 		MOHPC_EXPORTS float GetDistRange() const;
@@ -472,6 +476,8 @@ namespace MOHPC
 		void ClearCache();
 	};
 
+	using ShaderPtr = SharedPtr<Shader>;
+
 	class MOHPC_EXPORTS ShaderRef
 	{
 	private:
@@ -498,31 +504,39 @@ namespace MOHPC
 	{
 	private:
 		ShaderManager *m_shaderManager;
-		std::string m_filename;
-		std::vector<Shader*> m_shaderList;
+		str m_filename;
+		Container<ShaderPtr> m_shaderList;
 
 	public:
-		ShaderContainer(ShaderManager* shaderManager, const std::string& filename);
+		ShaderContainer(ShaderManager* shaderManager, const str& filename);
 
-		void AddShader(Shader* Shader);
-		void RemoveShader(Shader* Shader);
+		void AddShader(const ShaderPtr& Shader);
+		void RemoveShader(const ShaderPtr& Shader);
 
 		MOHPC_EXPORTS size_t GetNumShaders() const;
 		MOHPC_EXPORTS const Shader* GetShader(size_t num) const;
 
 		MOHPC_EXPORTS ShaderManager *GetShaderManager() const;
-		MOHPC_EXPORTS const std::string& GetFilename() const;
+		MOHPC_EXPORTS const str& GetFilename() const;
 	};
+
+	using ShaderContainerPtr = SharedPtr<ShaderContainer>;
 
 	class ShaderManager : public Manager
 	{
 		CLASS_BODY(ShaderManager);
 
 	private:
-		std::unordered_map<std::string, Shader *> m_nametoshader;
-		std::unordered_map<std::string, ImageCache *> m_images;
-		std::unordered_map<std::string, ShaderContainer*> m_fileShaderMap;
-		std::vector<ShaderContainer*> m_shaderContainers;
+		//std::unordered_map<str, Shader *> m_nametoshader;
+		//std::unordered_map<str, ImageCache *> m_images;
+		//std::unordered_map<str, ShaderContainer*> m_fileShaderMap;
+		//Container<ShaderContainer*> m_shaderContainers;
+		MOHPC::con_set<str, ShaderPtr> m_nametoshader;
+		MOHPC::con_set<str, ImageCachePtr> m_nametoimage;
+		MOHPC::con_set<str, ShaderContainerPtr> m_fileShaderMap;
+		//Container<ShaderPtr> m_shaders;
+		Container<ImageCachePtr> m_images;
+		Container<ShaderContainerPtr> m_shaderContainers;
 		ShaderContainer m_defaultShaderContainer;
 		mutable Shader m_defaultshader;
 
@@ -531,9 +545,9 @@ namespace MOHPC
 		MOHPC_EXPORTS ~ShaderManager();
 
 		MOHPC_EXPORTS void Init();
-		MOHPC_EXPORTS Shader* AllocShader(ShaderContainer *shaderContainer);
-		MOHPC_EXPORTS void FreeShader(Shader *shader);
-		MOHPC_EXPORTS void AddShader(Shader *shader);
+		MOHPC_EXPORTS ShaderPtr AllocShader(ShaderContainer *shaderContainer);
+		MOHPC_EXPORTS void FreeShader(const ShaderPtr& shader);
+		MOHPC_EXPORTS void AddShader(const ShaderPtr& shader);
 		MOHPC_EXPORTS ShaderRef GetShader(const char *name) const;
 		MOHPC_EXPORTS ShaderRef GetDefaultShader() const;
 		MOHPC_EXPORTS ImageCache* FindImage(const char *name);
