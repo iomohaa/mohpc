@@ -1,7 +1,6 @@
 #include <MOHPC/Managers/NetworkManager.h>
 #include <MOHPC/Network/Client.h>
 #include <MOHPC/Network/ClientGame.h>
-#include <MOHPC/Network/ClientCommands.h>
 #include <MOHPC/Network/Event.h>
 #include <MOHPC/Network/SerializableTypes.h>
 #include <MOHPC/Network/Channel.h>

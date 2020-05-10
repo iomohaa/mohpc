@@ -211,6 +211,10 @@ public:
 					return;
 				}
 				connection = cg;
+				connection->setCallback<MOHPC::Network::Handlers::Error>([](const MOHPC::Network::NetworkException& exception)
+					{
+
+					});
 			});
 		char cmd[512];
 		size_t count = 0;

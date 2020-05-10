@@ -4,66 +4,68 @@
 
 using namespace MOHPC;
 
-void MOHPC::SerializableUsercmd::SerializeDelta(MSG& msg, const ISerializableMessage* from)
+void MOHPC::SerializableUsercmd::LoadDelta(MSG& msg, const ISerializableMessage* from, intptr_t key)
 {
-	usercmd_t* fromCmd = (usercmd_t*)from;
+	const usercmd_t* fromCmd = &((SerializableUsercmd*)from)->ucmd;
 
-	uint8_t byteTime = ucmd.serverTime - fromCmd->serverTime;
-
-	bool isByteTime = byteTime < 256;
-	msg.SerializeBool(isByteTime);
-	if (isByteTime) {
-		msg.SerializeByte(byteTime);
+	const bool isByteTime = msg.ReadBool();
+	if (isByteTime)
+	{
+		const uint8_t deltaTime = msg.ReadByte();
 	}
 	else {
-		msg.SerializeUInteger(ucmd.serverTime);
+		ucmd.serverTime = msg.ReadUInteger();
 	}
 
-	msg.SerializeDeltaType(fromCmd->angles[0], ucmd.angles[0]);
-	msg.SerializeDeltaType(fromCmd->angles[1], ucmd.angles[1]);
-	msg.SerializeDeltaType(fromCmd->angles[2], ucmd.angles[2]);
-	msg.SerializeDeltaType(fromCmd->forwardmove, ucmd.forwardmove);
-	msg.SerializeDeltaType(fromCmd->rightmove, ucmd.rightmove);
-	msg.SerializeDeltaType(fromCmd->upmove, ucmd.upmove);
-	msg.SerializeDeltaType(fromCmd->buttons, ucmd.buttons);
+	const bool hasChanges = msg.ReadBool();
+	if (hasChanges)
+	{
+		key = (uint32_t)((uint32_t)key ^ ucmd.serverTime);
+		ucmd.angles[0] = msg.ReadDeltaTypeKey(fromCmd->angles[0], key);
+		ucmd.angles[1] = msg.ReadDeltaTypeKey(fromCmd->angles[1], key);
+		ucmd.angles[2] = msg.ReadDeltaTypeKey(fromCmd->angles[2], key);
+		ucmd.forwardmove = msg.ReadDeltaTypeKey(fromCmd->forwardmove, key);
+		ucmd.rightmove = msg.ReadDeltaTypeKey(fromCmd->rightmove, key);
+		ucmd.upmove = msg.ReadDeltaTypeKey(fromCmd->upmove, key);
+		ucmd.buttons.flags = msg.ReadDeltaTypeKey(fromCmd->buttons.flags, key);
+	}
 }
 
-void MOHPC::SerializableUsercmd::SerializeDelta(MSG& msg, const ISerializableMessage* from, intptr_t key)
+void MOHPC::SerializableUsercmd::SaveDelta(MSG& msg, const ISerializableMessage* from, intptr_t key)
 {
 	const usercmd_t* fromCmd = &((SerializableUsercmd*)from)->ucmd;
 
 	const uint32_t deltaTime = ucmd.serverTime - fromCmd->serverTime;
+	const bool isByteTime = deltaTime < 256;
 
-	bool isByteTime = deltaTime < 256;
-	msg.SerializeBool(isByteTime);
+	msg.WriteBool(isByteTime);
 	if (isByteTime) {
-		uint8_t byteTime = (uint8_t)deltaTime;
-		msg.SerializeByte(byteTime);
+		msg.WriteByte(deltaTime);
 	}
 	else {
-		msg.SerializeUInteger(ucmd.serverTime);
+		msg.WriteUInteger(ucmd.serverTime);
 	}
 
-	bool hasChanges =
+	const bool hasChanges =
 		fromCmd->angles[0] != ucmd.angles[0] ||
 		fromCmd->angles[1] != ucmd.angles[1] ||
 		fromCmd->angles[2] != ucmd.angles[2] ||
 		fromCmd->forwardmove != ucmd.forwardmove ||
 		fromCmd->rightmove != ucmd.rightmove ||
 		fromCmd->upmove != ucmd.upmove ||
-		fromCmd->buttons != ucmd.buttons;
+		fromCmd->buttons.flags != ucmd.buttons.flags;
 
-	msg.SerializeBool(hasChanges);
+	msg.WriteBool(hasChanges);
 	if (hasChanges)
 	{
 		key = (uint32_t)((uint32_t)key ^ ucmd.serverTime);
-		msg.SerializeDeltaType(fromCmd->angles[0], ucmd.angles[0], key);
-		msg.SerializeDeltaType(fromCmd->angles[1], ucmd.angles[1], key);
-		msg.SerializeDeltaType(fromCmd->angles[2], ucmd.angles[2], key);
-		msg.SerializeDeltaType(fromCmd->forwardmove, ucmd.forwardmove, key);
-		msg.SerializeDeltaType(fromCmd->rightmove, ucmd.rightmove, key);
-		msg.SerializeDeltaType(fromCmd->upmove, ucmd.upmove, key);
-		msg.SerializeDeltaType(fromCmd->buttons, ucmd.buttons, key);
+		msg.WriteDeltaTypeKey(fromCmd->angles[0], ucmd.angles[0], key);
+		msg.WriteDeltaTypeKey(fromCmd->angles[1], ucmd.angles[1], key);
+		msg.WriteDeltaTypeKey(fromCmd->angles[2], ucmd.angles[2], key);
+		msg.WriteDeltaTypeKey(fromCmd->forwardmove, ucmd.forwardmove, key);
+		msg.WriteDeltaTypeKey(fromCmd->rightmove, ucmd.rightmove, key);
+		msg.WriteDeltaTypeKey(fromCmd->upmove, ucmd.upmove, key);
+		msg.WriteDeltaTypeKey(fromCmd->buttons.flags, ucmd.buttons.flags, key);
 	}
 }
 

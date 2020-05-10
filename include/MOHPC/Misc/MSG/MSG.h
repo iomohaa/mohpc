@@ -259,30 +259,35 @@ namespace MOHPC
 		StringMessage ReadScrambledString(const char* byteCharMapping);
 
 		template<typename T>
-		MSG& ReadDeltaType(const T& a, T& b) noexcept
+		T ReadDeltaType(const T& a) noexcept
 		{
 			static_assert(std::is_arithmetic<T>::value, "Type must be an arithmetic type");
 
-			bool isSame;
-			SerializeBits(&isSame, 1);
-			if (!isSame) SerializeBits(&b, sizeof(T) << 3);
-			return *this;
+			const bool isDiff = ReadBool();
+			if (isDiff)
+			{
+				T val;
+				ReadBits(&val, sizeof(T) << 3);
+				return val;
+			}
+
+			return a;
 		}
 
 		template<typename T>
-		MSG& ReadDeltaType(const T& a, T& b, intptr_t key) noexcept
+		T ReadDeltaTypeKey(const T& a, intptr_t key) noexcept
 		{
 			static_assert(std::is_arithmetic<T>::value, "Type must be an arithmetic type");
 
-			bool isDiff = a != b;
-			SerializeBits(&isDiff, 1);
-
+			const bool isDiff = ReadBool();
 			if (isDiff)
 			{
-				T val = XORType(b, key);
-				SerializeBits(&val, sizeof(T) << 3);
+				T val;
+				ReadBits(&val, sizeof(T) << 3);
+				XORType(val, key);
+				return val;
 			}
-			return *this;
+			return a;
 		}
 
 		/** Serialize b if b is different than a. */

@@ -4,7 +4,7 @@
 
 == Introduction
 
-This library helps you to read Medal of Honor: Allied Assault (all versions) assets using C++. It has been well-tested on a big project https://moh-rises.com/[MOHUE] and is considered stable.
+This library helps you to read Medal of Honor: Allied Assault (all versions) assets using C++. It's working fine on a big project (https://moh-rises.com/[MOHUE]) and is considered stable.
 
 == Requirements
 
@@ -12,13 +12,13 @@ All::
 - CMake 3.1 or higher
 
 Windows::
-- A compiler, like Visual Studio, thats support C++17
+- A compiler, like Visual Studio, that supports C++17
 
 Unix::
 - GCC 8.x or higher
 - stdc++fs library on Unix
 
-Third-party components will be downloaded and compiled automatically.
+Third-party components should be downloaded and compiled automatically.
 
 == Compatibility
 

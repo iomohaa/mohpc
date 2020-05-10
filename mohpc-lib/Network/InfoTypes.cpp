@@ -1,25 +1,80 @@
 #include <MOHPC/Network/InfoTypes.h>
 
+using namespace MOHPC;
+
+usercmd_t::usercmd_t(uint32_t inServerTime)
+	: usercmd_t()
+{
+	serverTime = inServerTime;
+}
+
 MOHPC::usercmd_t::usercmd_t()
 	: serverTime(0)
-	, msec(0)
-	, buttons(0)
+	, buttons{ 0 }
 	, angles{ 0 }
 	, forwardmove(0)
 	, rightmove(0)
 	, upmove(0)
 {
-
 }
 
-MOHPC::usereyes_t::usereyes_t()
+void usercmd_t::setWeaponCommand(weaponCommand_e weaponCommand)
+{
+	buttons.bitflags.weaponFlags = 1 << (uint8_t)weaponCommand;
+}
+
+void usercmd_t::setAngles(float pitch, float yaw, float roll)
+{
+	angles[0] = AngleToShort(pitch);
+	angles[1] = AngleToShort(yaw);
+	angles[2] = AngleToShort(roll);
+}
+
+void usercmd_t::moveForward(int8_t value)
+{
+	forwardmove = value;
+}
+
+void usercmd_t::moveRight(int8_t value)
+{
+	rightmove = value;
+}
+
+void usercmd_t::moveUp(int8_t value)
+{
+	upmove = value;
+}
+
+void usercmd_t::jump()
+{
+	upmove = 127;
+}
+
+void usercmd_t::crouch()
+{
+	upmove = -128;
+}
+
+usereyes_t::usereyes_t()
 	: angles{ 0 }
 	, ofs{ 0 }
 {
-
 }
 
-MOHPC::playerState_t::playerState_t()
+void usereyes_t::setOffset(int8_t x, int8_t y, int8_t z)
+{
+	ofs[0] = x;
+	ofs[1] = y;
+	ofs[1] = z;
+}
+
+void usereyes_t::setAngle(float pitch, float yaw)
+{
+	angles[0] = pitch;
+	angles[1] = yaw;
+}
+
+playerState_t::playerState_t()
 	: commandTime(0)
 	, pm_type(0)
 	, bobCycle(0)
@@ -57,17 +112,17 @@ MOHPC::playerState_t::playerState_t()
 {
 }
 
-MOHPC::trajectory_t::trajectory_t()
+trajectory_t::trajectory_t()
 	: trTime(0)
 {}
 
-MOHPC::frameInfo_t::frameInfo_t()
+frameInfo_t::frameInfo_t()
 	: index(0)
 	, time(0.f)
 	, weight(0.f)
 {}
 
-MOHPC::entityState_t::entityState_t()
+entityState_t::entityState_t()
 	: number(0)
 	, eType(0)
 	, eFlags(0)

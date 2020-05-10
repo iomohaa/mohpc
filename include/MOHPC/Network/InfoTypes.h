@@ -6,27 +6,98 @@
 
 namespace MOHPC
 {
+	enum class weaponCommand_e : unsigned char
+	{
+		usePistol = 1,
+		useRifle,
+		useSmg,
+		useMg,
+		useGrenade,
+		useHeavy,
+		useItem,
+		useItem2,
+		useItem3,
+		useItem4,
+		prevWeapon,
+		nextWeapon,
+		useLast,
+		holster,
+		drop
+	};
+
 	class MOHPC_EXPORTS usercmd_t
 	{
 	public:
 		uint32_t serverTime;
-		uint8_t msec;
-		uint16_t buttons;
+		struct {
+			union {
+				struct {
+					// Button flags
+					struct {
+						uint8_t attack		: 1;
+						uint8_t melee		: 1;
+						uint8_t run			: 1;
+						uint8_t use			: 1;
+						uint8_t leanleft	: 1;
+						uint8_t leanright	: 1;
+					} button;
+				} fields;
+
+				struct {
+					uint8_t moveflags : 6;
+					uint8_t weaponFlags : 5;
+				} bitflags;
+
+				// The whole buttons flags
+				uint16_t flags;
+			};
+		} buttons;
 		uint16_t angles[3];
 		int8_t forwardmove, rightmove, upmove;
 
 	public:
 		usercmd_t();
+		usercmd_t(uint32_t inServerTime);
+
+		/** Sends a weapon command. */
+		void setWeaponCommand(weaponCommand_e weaponCommand);
+
+		/** Converts and set angles. */
+		void setAngles(float pitch, float yaw, float roll);
+
+		/** Move forward by the specified value. Range [-128, 127]. */
+		void moveForward(int8_t value);
+
+		/** Move right by the specified value. Range [-128, 127]. */
+		void moveRight(int8_t value);
+
+		/** Move up by the specified value. Range [-128, 127]. */
+		void moveUp(int8_t value);
+
+		/** Jump. Same as calling moveUp with a value of 127. */
+		void jump();
+
+		/** Crouch. Same as calling moveUp with a value of -128. */
+		void crouch();
 	};
 
 	class MOHPC_EXPORTS usereyes_t
 	{
 	public:
+		/** Position of eyes. */
 		int8_t ofs[3];
+
+		/** Pitch and yaw of eyes. */
 		float angles[2];
 
 	public:
 		usereyes_t();
+
+		/** Set the offset of eyes view. The offset is the head position starting from the player's origin (feet). */
+		void setOffset(int8_t x, int8_t y, int8_t z);
+
+		/** Set the eyes angles. */
+		void setAngle(float pitch, float yaw);
 	};
 
 	static constexpr size_t GENTITYNUM_BITS = 10; // don't need to send any more

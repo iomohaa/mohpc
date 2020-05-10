@@ -44,10 +44,6 @@ namespace MOHPC
 		SerializableAngle8() = default;
 		SerializableAngle8(float inValue);
 		virtual void Serialize(MSG& msg) override;
-
-	private:
-		static uint8_t AngleToByte(float v);
-		static float ByteToAngle(uint8_t v);
 	};
 
 	class MOHPC_EXPORTS SerializableAngle16 : public SerializableAngle
@@ -56,9 +52,5 @@ namespace MOHPC
 		SerializableAngle16() = default;
 		SerializableAngle16(float inValue);
 		virtual void Serialize(MSG& msg) override;
-
-	private:
-		static uint16_t AngleToShort(float v);
-		static float ShortToAngle(uint16_t v);
 	};
 };

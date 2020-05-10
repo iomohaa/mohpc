@@ -748,3 +748,23 @@ float MOHPC::Random(float value)
 {
 	return fmodf((float)rand(), value);
 }
+
+uint8_t MOHPC::AngleToByte(float v)
+{
+	return (uint8_t)(v * 256.f / 360.f) & 255;
+}
+
+float MOHPC::ByteToAngle(uint8_t v)
+{
+	return (v) * (360.f / 255.f);
+}
+
+uint16_t MOHPC::AngleToShort(float v)
+{
+	return (uint16_t)((v) * 65536.f / 360.f) & 65535;
+}
+
+float MOHPC::ShortToAngle(uint16_t v)
+{
+	return (v) * (360.f / 65536.f);
+}

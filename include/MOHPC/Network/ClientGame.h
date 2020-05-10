@@ -5,6 +5,7 @@
 #include "InfoTypes.h"
 #include "Client.h"
 #include <functional>
+#include <type_traits>
 
 namespace MOHPC
 {
@@ -12,6 +13,8 @@ namespace MOHPC
 
 	namespace Network
 	{
+		static constexpr unsigned int MAX_CONFIGSTRINGS = 2736;
+
 		// these are sent over the net as 8 bits
 		static constexpr unsigned int MAX_MODELS = 1024;
 		// so they cannot be blindly increased
@@ -20,8 +23,6 @@ namespace MOHPC
 		static constexpr unsigned int MAX_LIGHTSTYLES = 32;
 		static constexpr unsigned int MAX_WEAPONS = 48;
 		static constexpr unsigned int MAX_CLIENTS = 64;
-
-		static constexpr unsigned int MAX_CONFIGSTRINGS = 2736;
 
 		// from the map worldspawn's message field
 		static constexpr unsigned int CS_MESSAGE = 2;
@@ -81,10 +82,82 @@ namespace MOHPC
 
 		//static constexpr unsigned int CS_MAX = (CS_PARTICLES + MAX_LOCATIONS);
 
-		namespace Callbacks
+		struct sound_t;
+
+		namespace Handlers
 		{
-			using ClientGameTimeout = std::function<void()>;
-			using ErrorHandler = std::function<void(const NetworkException& exception)>;
+			template<typename T>
+			struct Base { using Type = std::function<T>; };
+
+			/** Called when the client/server has timed out (data no longer received within a certain amount of time). */
+			struct ClientGameTimeout : public Base<void()> {};
+
+			/**
+			 * Called when an exception occurs within the game client.
+			 *
+			 * @param	exception	The exception that has occurred.
+			 */
+			struct Error : public Base<void(const NetworkException& exception)> {};
+
+			/**
+			 * Called when an entity has been modified or added.
+			 *
+			 * @param	old		The entity before modification.
+			 * @param	state	The new entity.
+			 */
+			struct EntityRead : public Base<void(const entityState_t* old, const entityState_t* state)> {};
+
+			/**
+			 * Called when the current player state has been modified.
+			 *
+			 * @param	old		Previous player state (can be NULL).
+			 * @param	state	Current player state.
+			 */
+			struct PlayerstateRead : public Base<void(const playerState_t* old, const playerState_t* state)> {};
+
+			/**
+			 * Called after the insertion of a new configstring.
+			 *
+			 * @param	csNum			The configstring num.
+			 * @param	configString	The string pointed at by the csNum.
+			 */
+			struct Configstring { using Type = std::function<void(size_t csNum, const char* configString)>; };
+
+			/**
+			 * Called when a sound started to play/stopped.
+			 *
+			 * @param	sound	Sound structure containing various informations.
+			 */
+			struct Sound : public Base<void(const sound_t& sound)> {};
+
+			/**
+			 * Called when the server sent a string to print at the center of the screen.
+			 *
+			 * @param	message		String message to print.
+			 */
+			struct CenterPrint { using Type = std::function<void(const char* message)>; };
+
+			/**
+			 * Called when the server sent a string to print at a 2D location of the screen.
+			 *
+			 * @param	message		String message to print.
+			 */
+			struct LocationPrint : public Base<void(uint16_t x, uint16_t y, const char* message)> {};
+
+			/**
+			 * Called when the server sent a command. The library doesn't process any commands.
+			 *
+			 * @param	command		Command to process.
+			 */
+			struct ServerCommand : public Base<void(const char* command)> {};
+
+			/**
+			 * This callback is used to modify the player input before sending.
+			 *
+			 * @param	cmd		User command structure.
+			 * @param	eyes	Eyes information.
+			 */
+			struct UserInput : public Base<void(usercmd_t& cmd, usereyes_t& eyes)> {};
 		}
 
 		enum class svc_ops_e : uint8_t
@@ -119,15 +192,63 @@ namespace MOHPC
 			eof
 		};
 
-		struct outPacket_t {
+		struct outPacket_t
+		{
 			// cl.cmdNumber when packet was sent
 			uint32_t p_cmdNumber;
 			// usercmd->serverTime when packet was sent
 			uint32_t p_serverTime;
 			// cls.realtime when packet was sent
-			uint32_t p_realtime;
+			uint64_t p_realtime;
 			// eyeInfo when packet was sent
 			usereyes_t p_eyeinfo;
+		};
+
+		struct sound_t
+		{
+			/** The entity that the sound is playing on. */
+			const entityState_t* entity;
+
+			/** The name of the sound (retrieved from configstrings). */
+			const char* soundName;
+
+			/** Whether or not the sound has stopped playing. */
+			bool hasStopped;
+
+			/** If the whole sound is not into memory. */
+			bool isStreamed;
+
+			/** If the sound is spatialized (check origin).*/
+			bool isSpatialized;
+
+			/** Volume is assigned if yes. */
+			bool hasVolume;
+			/** minDist is assigned if yes. */
+			bool hasDist;
+
+			/** pitch is assigned if yes. */
+			bool hasPitch;
+
+			/** The channel the sound is playing on. */
+			uint8_t channel;
+
+			/** Sound's volume. */
+			float volume;
+
+			/** The minimum distance the sound will play at full volume. */
+			float minDist;
+
+			/** The maximum distance before the sound stops playing. */
+			float maxDist;
+
+			/** The pitch of the sound. */
+			float pitch;
+
+			/** The sound origin if it's spatialized. */
+			Vector origin;
+
+		public:
+			sound_t();
 		};
 
 		class BadCommandByteException : public NetworkException
@@ -270,16 +391,86 @@ namespace MOHPC
 			using writeString_f = void (ClientGameConnection::*)(MSG& msg, const char* s);
 			using hashKey_f = uint32_t(ClientGameConnection::*)(const char* string, size_t maxlen);
 			using readEntityNum_f = uint32_t(ClientGameConnection::*)(MsgTypesHelper& msgHelper);
-			using readDeltaPlayerstate_f = void(ClientGameConnection::*)(MSG& msg, playerState_t* from, playerState_t* to);
-			using readDeltaEntity_f = void(ClientGameConnection::*)(MSG& msg, entityState_t* from, entityState_t* to);
+			using readDeltaPlayerstate_f = void(ClientGameConnection::*)(MSG& msg, const playerState_t* from, playerState_t* to);
+			using readDeltaEntity_f = void(ClientGameConnection::*)(MSG& msg, const entityState_t* from, entityState_t* to);
+
+			struct HandlerList
+			{
+			public:
+				Handlers::ClientGameTimeout::Type	timeoutHandler;
+				Handlers::Error::Type				errorHandler;
+				Handlers::EntityRead::Type			entityReadHandler;
+				Handlers::PlayerstateRead::Type		playerStateReadHandler;
+				Handlers::Configstring::Type		configStringHandler;
+				Handlers::Sound::Type				soundHandler;
+				Handlers::CenterPrint::Type			centerPrintHandler;
+				Handlers::LocationPrint::Type		locationPrintHandler;
+				Handlers::ServerCommand::Type		serverCommandHandler;
+				Handlers::UserInput::Type			userInputHandler;
+
+			public:
+#define MOHPC_HANDLERLIST_SETTER(c) \
+template<> MOHPC_EXPORTS void set<Handlers::c>(Handlers::c::Type&& handler)
+
+#define MOHPC_HANDLERLIST_NOTIFY0() \
+template<typename T> void notify();
+
+#define MOHPC_HANDLERLIST_NOTIFY1(t1) \
+template<typename T> void notify(t1 arg1);
+
+#define MOHPC_HANDLERLIST_NOTIFY2(t1, t2) \
+template<typename T> void notify(t1 arg1, t2 arg2);
+
+#define MOHPC_HANDLERLIST_NOTIFY3(t1, t2, t3) \
+template<typename T> void notify(t1 arg1, t2 arg2, t3 arg3);
+
+#define MOHPC_HANDLERLIST_HANDLER0(c) \
+MOHPC_HANDLERLIST_SETTER(c); \
+MOHPC_HANDLERLIST_NOTIFY0() \
+template<> void notify<Handlers::c>()
+
+#define MOHPC_HANDLERLIST_HANDLER1(c, t1) \
+MOHPC_HANDLERLIST_SETTER(c); \
+MOHPC_HANDLERLIST_NOTIFY1(t1) \
+template<> void notify<Handlers::c>(t1 arg1)
+
+#define MOHPC_HANDLERLIST_HANDLER1_NODEF(c, t1) \
+MOHPC_HANDLERLIST_SETTER(c); \
+template<> void notify<Handlers::c>(t1 arg1)
+
+#define MOHPC_HANDLERLIST_HANDLER2(c, t1, t2) \
+MOHPC_HANDLERLIST_SETTER(c); \
+MOHPC_HANDLERLIST_NOTIFY2(t1, t2) \
+template<> void notify<Handlers::c>(t1 arg1, t2 arg2)
+
+#define MOHPC_HANDLERLIST_HANDLER3(c, t1, t2, t3) \
+MOHPC_HANDLERLIST_SETTER(c); \
+MOHPC_HANDLERLIST_NOTIFY3(t1, t2, t3) \
+template<> void notify<Handlers::c>(t1 arg1, t2 arg2, t3 arg3)
+
+				template<typename T> void set(typename T::Type&& handler) = delete;
+				template<typename T, typename...Args> void notify(Args...args) = delete;
+
+				MOHPC_HANDLERLIST_NOTIFY1(const char*);
+
+				MOHPC_HANDLERLIST_HANDLER0(ClientGameTimeout);
+				MOHPC_HANDLERLIST_HANDLER1(Error, const NetworkException&);
+				MOHPC_HANDLERLIST_HANDLER2(EntityRead, const entityState_t*, const entityState_t*);
+				MOHPC_HANDLERLIST_HANDLER2(PlayerstateRead, const playerState_t*, const playerState_t*);
+				MOHPC_HANDLERLIST_HANDLER2(Configstring, uint16_t, const char*);
+				MOHPC_HANDLERLIST_HANDLER1(Sound, const sound_t&);
+				MOHPC_HANDLERLIST_HANDLER1_NODEF(CenterPrint, const char*);
+				MOHPC_HANDLERLIST_HANDLER3(LocationPrint, uint16_t, uint16_t, const char*);
+				MOHPC_HANDLERLIST_HANDLER1_NODEF(ServerCommand, const char*);
+				MOHPC_HANDLERLIST_HANDLER2(UserInput, usercmd_t&, usereyes_t&);
+			};
 
 		private:
 			INetchanPtr netchan;
 			netadr_t adr;
-			Callbacks::ClientGameTimeout timeoutCallback;
-			Callbacks::ErrorHandler errorCallback;
 			size_t timeoutTime;
 			std::chrono::time_point<std::chrono::steady_clock> nextTimeoutTime;
+			HandlerList handlerList;
 			IEncodingPtr encoder;
 			uint32_t parseEntitiesNum;
 			uint32_t serverStartTime;
@@ -299,6 +490,7 @@ namespace MOHPC
 			ClientSnapshot currentSnap;
 			ClientSnapshot snapshots[PACKET_BACKUP];
 			gameState_t gameState;
+			usereyes_t userEyes;
 			usercmd_t cmds[CMD_BACKUP];
 			outPacket_t outPackets[CMD_BACKUP];
 			entityState_t entityBaselines[MAX_GENTITIES];
@@ -339,45 +531,51 @@ namespace MOHPC
 			 * Set the timeout and the callback to be called when the client/server timeouts.
 			 *
 			 * @param	timeoutTime		Timeout in milliseconds before the game considers it timed out.
-			 * @param	callback		Target callback to set.
 			 */
-			MOHPC_EXPORTS void setTimeout(size_t timeoutTime, Callbacks::ClientGameTimeout&& callback = Callbacks::ClientGameTimeout());
+			MOHPC_EXPORTS void setTimeout(size_t timeoutTime);
 
-			/**
-			 * Set the callback to be called when a serious error happens (such as illegible server command).
-			 *
-			 * @param	handler		Handler called on error.
-			 */
-			MOHPC_EXPORTS void setErrorHandler(Callbacks::ErrorHandler&& handler);
-
-			// FIXME: entity callback
-			// FIXME: server command callback
-			// FIXME: Usercmd builder
-			// FIXME: sound callback
-			// FIXME: gamestate parsed callback
+			/** Return the handler list. */
+			MOHPC_EXPORTS HandlerList& getHandlerList();
+	
+			/** Generic callback function. See Callbacks above for valid callbacks. */
+			template<typename T>
+			void setCallback(typename T::Type&& handler)
+			{
+				handlerList.set<T>(std::forward<T::Type>(handler));
+			}
 
 		private:
 			const INetchanPtr& getNetchan() const;
 			void receive(const netadr_t& from, MSG& msg);
 
-			void onTimedOut();
-			void onError(const NetworkException& exception);
+			/*
+			void notifyTimedOut();
+			void notifyError(const NetworkException& exception);
+			void notifyEntityModified(const entityState_t* old, const entityState_t* state);
+			void notifyPlayerstateModified(const playerState_t* old, const playerState_t* state);
+			void notifyConfigstringModified(size_t csNum, const char* configString);
+			void notifySound(const sound_t& sound);
+			void notifyCenterprint(const char* message);
+			void notifyLocationPrint(uint16_t x, uint16_t y, const char* message);
+			void notifyCommand(const char* command);
+			void applyUserInput(usercmd_t& cmd, usereyes_t& eyes);
+			*/
 
 			void parseServerMessage(MSG& msg, uint32_t serverMessageSequence);
 			void parseGameState(MSG& msg);
-			void parseCommandString(MSG& msg);
 			void parseSnapshot(MSG& msg, uint32_t serverMessageSequence);
 			void parsePacketEntities(MSG& msg, ClientSnapshot* oldFrame, ClientSnapshot* newFrame);
 			void parseDeltaEntity(MSG& msg, ClientSnapshot* frame, uint32_t newNum, entityState_t* old, bool unchanged);
 			void parseSounds(MSG& msg);
-			void parseCenterprint(MSG& msg);
 			void parseDownload(MSG& msg);
+			void parseCommandString(MSG& msg);
+			void parseCenterprint(MSG& msg);
 			void parseLocprint(MSG& msg);
 			void parseCGMessage(MSG& msg);
 
 			void systemInfoChanged();
 			void createNewCommands();
-			usercmd_t createCmd();
+			void createCmd(usercmd_t& outcmd);
 			void sendCmd();
 			void writePacket(uint32_t serverMessageSequence);
 
@@ -385,8 +583,8 @@ namespace MOHPC
 			void writeStringMessage(MSG& msg, const char* s);
 			uint32_t hashKey(const char* string, size_t maxlen);
 			uint32_t readEntityNum(MsgTypesHelper& msgHelper);
-			void readDeltaPlayerstate(MSG& msg, playerState_t* from, playerState_t* to);
-			void readDeltaEntity(MSG& msg, entityState_t* from, entityState_t* to);
+			void readDeltaPlayerstate(MSG& msg, const playerState_t* from, playerState_t* to);
+			void readDeltaEntity(MSG& msg, const entityState_t* from, entityState_t* to);
 
 		private:
 			StringMessage readStringMessage_normal(MSG& msg);
@@ -399,10 +597,10 @@ namespace MOHPC
 			uint32_t readEntityNum_ver17(MsgTypesHelper& msgHelper);
 			void parseGameState_ver8(MSG& msg);
 			void parseGameState_ver17(MSG& msg);
-			void readDeltaPlayerstate_ver8(MSG& msg, playerState_t* from, playerState_t* to);
-			void readDeltaPlayerstate_ver17(MSG& msg, playerState_t* from, playerState_t* to);
-			void readDeltaEntity_ver8(MSG& msg, entityState_t* from, entityState_t* to);
-			void readDeltaEntity_ver17(MSG& msg, entityState_t* from, entityState_t* to);
+			void readDeltaPlayerstate_ver8(MSG& msg, const playerState_t* from, playerState_t* to);
+			void readDeltaPlayerstate_ver17(MSG& msg, const playerState_t* from, playerState_t* to);
+			void readDeltaEntity_ver8(MSG& msg, const entityState_t* from, entityState_t* to);
+			void readDeltaEntity_ver17(MSG& msg, const entityState_t* from, entityState_t* to);
 		};
 
 		using ClientGameConnectionPtr = SharedPtr<ClientGameConnection>;

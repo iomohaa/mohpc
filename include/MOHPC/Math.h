@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Global.h"
+#include <stdint.h>
 
 #define M_PI_FLOAT 3.14159265358979323846f
 #define NUMVERTEXNORMALS	162
@@ -70,6 +71,10 @@ namespace MOHPC
 	MOHPC_EXPORTS void ByteToDir(int b, vec3_t dir);
 	MOHPC_EXPORTS Vector GetMovedir(float angle);
 	MOHPC_EXPORTS float Random(float value);
+	MOHPC_EXPORTS uint8_t AngleToByte(float v);
+	MOHPC_EXPORTS float ByteToAngle(uint8_t v);
+	MOHPC_EXPORTS uint16_t AngleToShort(float v);
+	MOHPC_EXPORTS float ShortToAngle(uint16_t v);
 
 	template <typename INT>
 	constexpr INT rotl(INT val, intptr_t len)

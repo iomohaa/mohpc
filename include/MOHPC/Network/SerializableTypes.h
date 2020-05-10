@@ -145,8 +145,8 @@ namespace MOHPC
 			: ucmd(inCmd)
 		{}
 
-		virtual void SerializeDelta(MSG & msg, const ISerializableMessage * from) override;
-		virtual void SerializeDelta(MSG & msg, const ISerializableMessage * from, intptr_t key) override;
+		virtual void LoadDelta(MSG& msg, const ISerializableMessage* from, intptr_t key) override;
+		virtual void SaveDelta(MSG& msg, const ISerializableMessage* from, intptr_t key) override;
 	};
 
 	class MOHPC_EXPORTS SerializableUserEyes : public ISerializableMessage

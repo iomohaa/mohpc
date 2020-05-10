@@ -1,4 +1,3 @@
-#include <MOHPC/Network/ClientCommands.h>
 #include <MOHPC/Network/Event.h>
 #include <MOHPC/Network/Client.h>
 #include <MOHPC/Network/Server.h>

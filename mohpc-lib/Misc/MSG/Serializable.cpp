@@ -49,16 +49,6 @@ void MOHPC::SerializableAngle8::Serialize(MSG& msg)
 	}
 }
 
-uint8_t MOHPC::SerializableAngle8::AngleToByte(float v)
-{
-	return (uint8_t)(v * 256.f / 360.f) & 255;
-}
-
-float MOHPC::SerializableAngle8::ByteToAngle(uint8_t v)
-{
-	return (v) * (360.f / 255.f);
-}
-
 MOHPC::SerializableAngle16::SerializableAngle16(float inValue)
 	: SerializableAngle(inValue)
 {
@@ -79,12 +69,3 @@ void MOHPC::SerializableAngle16::Serialize(MSG& msg)
 	}
 }
 
-uint16_t MOHPC::SerializableAngle16::AngleToShort(float v)
-{
-	return (uint16_t)((v) * 65536.f / 360.f) & 65535;
-}
-
-float MOHPC::SerializableAngle16::ShortToAngle(uint16_t v)
-{
-	return (v) * (360.f / 65536.f);
-}
