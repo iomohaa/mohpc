@@ -11,8 +11,8 @@ using namespace Network;
 
 #define MOHPC_LOG_NAMESPACE "gs_server"
 
-MOHPC::Network::GSServer::GSServer(const netadr_t& adr)
-	: IServer(adr)
+MOHPC::Network::GSServer::GSServer(NetworkManager* inManager, const netadr_t& adr)
+	: IServer(inManager, adr)
 {
 	socket = ISocketFactory::get()->createUdp(addressType_e::IPv4);
 }
@@ -86,8 +86,8 @@ MOHPC::SharedPtr<MOHPC::IRequestBase> MOHPC::Network::GSServer::Request_Query::t
 	return nullptr;
 }
 
-MOHPC::Network::IServer::IServer(const netadr_t& adr)
-	: ITickableNetwork()
+MOHPC::Network::IServer::IServer(NetworkManager* inManager, const netadr_t& adr)
+	: ITickableNetwork(inManager)
 	, address(adr)
 {
 }
@@ -97,8 +97,8 @@ const netadr_t& IServer::getAddress() const
 	return address;
 }
 
-MOHPC::Network::LANServer::LANServer(const netadr_t& inAddress, char* inInfo, size_t infoSize)
-	: IServer(inAddress)
+MOHPC::Network::LANServer::LANServer(NetworkManager* inManager, const netadr_t& inAddress, char* inInfo, size_t infoSize)
+	: IServer(inManager, inAddress)
 	, info(ReadOnlyInfo(inInfo, infoSize))
 	, dataStr(inInfo)
 {
@@ -119,8 +119,9 @@ void MOHPC::Network::LANServer::query(Callbacks::Query&& response, Callbacks::Se
 	response(info);
 }
 
-EngineServer::EngineServer(const netadr_t& inAddress)
-	: socket(ISocketFactory::get()->createUdp(addressType_e::IPv4))
+EngineServer::EngineServer(NetworkManager* inManager, const netadr_t& inAddress)
+	: ITickableNetwork(inManager)
+	, socket(ISocketFactory::get()->createUdp(addressType_e::IPv4))
 	, address(inAddress)
 {
 }
@@ -146,7 +147,7 @@ void EngineServer::connect(ClientInfo&& clientInfo, Callbacks::Connect&& result,
 	using namespace std::placeholders;
 
 	ConnectionParams connData;
-	connData.response = std::bind(&EngineServer::onConnect, this, std::move(result), _1, _2, _3, _4);
+	connData.response = std::bind(&EngineServer::onConnect, this, std::move(result), _1, _2, _3, _4, _5);
 	connData.info = std::move(clientInfo);
 
 	sendRequest(makeShared<VerBeforeChallengeRequest>(std::move(connData)), std::move(timeoutResult));
@@ -174,15 +175,24 @@ void EngineServer::sendRequest(IEngineRequestPtr&& req, Callbacks::ServerTimeout
 	handler.sendRequest(std::move(req), std::move(param), 10000);
 }
 
-void EngineServer::onConnect(const Callbacks::Connect result, uint16_t qport, uint32_t challengeResponse, const protocolType_c& protocolType, const char* errorMessage)
+void EngineServer::onConnect(const Callbacks::Connect result, uint16_t qport, uint32_t challengeResponse, const protocolType_c& protoType, ClientInfo&& cInfo, const char* errorMessage)
 {
 	if (!errorMessage)
 	{
 		// Create a net channel
 		INetchanPtr newChannel = makeShared<Netchan>(socket, address, qport);
 		// And pass it to the new client game connection
-		ClientGameConnectionPtr connection = makeShared<ClientGameConnection>(newChannel, address, challengeResponse, protocolType.getProtocolVersion());
-
+		ClientGameConnectionPtr connection = makeShared<ClientGameConnection>(
+			getManager(),
+			newChannel,
+			address,
+			challengeResponse,
+			protoType,
+			std::move(cInfo)
+		);
+		
+		// Init client time
+		connection->initTime(getCurrentTime());
 		// Return the newly created client game connection
 		result(connection, nullptr);
 	}
@@ -193,6 +203,7 @@ void EngineServer::onConnect(const Callbacks::Connect result, uint16_t qport, ui
 	}
 }
 
+#if 0
 INetchan* IClient::getNetchan() const
 {
 	return netchan.get();
@@ -207,9 +218,32 @@ IClientPtr ClientInstance::getClient() const
 {
 	return client;
 }
+#endif
 
 ClientInfo::ClientInfo()
+	: snaps(20)
+	, rate(5000)
 {
+}
+
+void MOHPC::Network::ClientInfo::setRate(uint32_t inRate)
+{
+	rate = inRate;
+}
+
+uint32_t MOHPC::Network::ClientInfo::getRate() const
+{
+	return rate;
+}
+
+void MOHPC::Network::ClientInfo::setSnaps(uint32_t inSnaps)
+{
+	snaps = inSnaps;
+}
+
+uint32_t MOHPC::Network::ClientInfo::getSnaps() const
+{
+	return snaps;
 }
 
 void ClientInfo::setName(const char* newName)
@@ -224,22 +258,49 @@ const char* ClientInfo::getName() const
 
 void ClientInfo::setPlayerAlliedModel(const char* newModel)
 {
-	playerAlliedModel = newModel;
+	properties.SetPropertyValue("dm_playermodel", newModel);
 }
 
 const char* ClientInfo::getPlayerAlliedModel() const
 {
-	return playerAlliedModel.c_str();
+	return properties.GetPropertyRawValue("dm_playermodel");
 }
 
 void ClientInfo::setPlayerGermanModel(const char* newModel)
 {
-	playerGermanModel = newModel;
+	properties.SetPropertyValue("dm_playergermanmodel", newModel);
 }
 
 const char* ClientInfo::getPlayerGermanModel() const
 {
-	return playerGermanModel.c_str();
+	return properties.GetPropertyRawValue("dm_playergermanmodel");
+}
+
+void MOHPC::Network::ClientInfo::setUserKeyValue(const char* key, const char* value)
+{
+	properties.SetPropertyValue(key, value);
+}
+
+const char* MOHPC::Network::ClientInfo::getUserKeyValue(const char* key) const
+{
+	return properties.GetPropertyRawValue(key);
+}
+
+void ClientInfo::fillInfoString(Info& info) const
+{
+	// Build mandatory variables
+	info.SetValueForKey("rate", str::printf("%i", rate));
+	info.SetValueForKey("snaps", str::printf("%i", snaps));
+	info.SetValueForKey("name", name.c_str());
+
+	// Build miscellaneous values
+	for (PropertyMapIterator it = properties.GetIterator(); it; ++it)
+	{
+		info.SetValueForKey(
+			it.key().GetFullPropertyName(),
+			it.value()
+		);
+	}
 }
 
 EngineServer::EmbeddedRequest::EmbeddedRequest(const IRequestPtr& inRequest, Callbacks::ServerTimeout&& inTimedout)

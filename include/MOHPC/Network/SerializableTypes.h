@@ -17,9 +17,9 @@ namespace MOHPC
 		number,
 		angle,
 		time,
-		field03,
+		animWeight,
 		time2,
-		field05,
+		animWeight2,
 		largeCoord,
 		smallCoord,
 	};
@@ -65,7 +65,8 @@ namespace MOHPC
 		void ReadNumberPlayerStateField(MSG& msg, size_t bits, void* toF, size_t size);
 		void WriteNumberPlayerStateField(MSG& msg, size_t bits, void* toF);
 
-		void ReadRegular(MSG& msg, size_t bits, void* toF, size_t size);
+		void ReadRegular(MSG& msg, intptr_t bits, void* toF, size_t size);
+		void ReadRegular2(MSG& msg, intptr_t bits, void* toF, size_t size);
 		void WriteNumberEntityField(MSG& msg, size_t bits, void* toF, size_t size);
 
 		float ReadAngleField(MSG& msg, size_t bits);

@@ -3,13 +3,13 @@
 #include <functional>
 
 using namespace MOHPC;
+using namespace Network;
 
 CLASS_DEFINITION(NetworkManager);
 
-static Container<ITickableNetwork*> tickables;
 uint64_t lastTickTime = 0;
 
-static uintptr_t getCurrentTime()
+uint64_t Network::getCurrentTime()
 {
 	using namespace std::chrono;
 	return duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
@@ -29,12 +29,28 @@ void MOHPC::NetworkManager::processTicks()
 	}
 }
 
-MOHPC::ITickableNetwork::ITickableNetwork()
+void MOHPC::NetworkManager::addTickable(ITickableNetwork* tickable)
 {
-	tickables.AddObject(this);
+	tickables.AddObject(tickable);
+}
+
+void MOHPC::NetworkManager::removeTickable(ITickableNetwork* tickable)
+{
+	tickables.RemoveObject(tickable);
+}
+
+MOHPC::ITickableNetwork::ITickableNetwork(NetworkManager* manager)
+	: owner(manager)
+{
+	owner->addTickable(this);
+}
+
+MOHPC::NetworkManager* MOHPC::ITickableNetwork::getManager() const
+{
+	return owner;
 }
 
 MOHPC::ITickableNetwork::~ITickableNetwork()
 {
-	tickables.RemoveObject(this);
+	owner->removeTickable(this);
 }

@@ -795,7 +795,7 @@ const char* TokenParser::GetRaw(void)
 ==============
 */
 
-const char* TokenParser::GetString(bool crossline)
+const char* TokenParser::GetString(bool crossline, bool escape)
 {
 	int startline;
 
@@ -821,38 +821,55 @@ const char* TokenParser::GetString(bool crossline)
 
 	startline = line;
 	token = "";
-	while (*script_p != '"')
+	if(escape)
 	{
-		if (*script_p == TOKENEOL)
+		while (*script_p != '"')
 		{
-			//glbs.Error( ERR_DROP, "Line %i is incomplete while reading string in file %s\n", line, filename.c_str() );
-			return "";
-		}
-
-		if ((*script_p == '\\') && (script_p < (end_p - 1)))
-		{
-			script_p++;
-			switch (*script_p)
+			if (*script_p == TOKENEOL)
 			{
-			case 'n':	token.append('\n'); break;
-			case 'r':	token.append('\n'); break;
-			case '\'': token.append('\''); break;
-			case '\"': token.append('\"'); break;
-			case '\\': token.append('\\'); break;
-			default:	token.append(*script_p); break;
+				//glbs.Error( ERR_DROP, "Line %i is incomplete while reading string in file %s\n", line, filename.c_str() );
+				return "";
 			}
-			script_p++;
+
+			if ((*script_p == '\\') && (script_p < (end_p - 1)))
+			{
+				script_p++;
+				switch (*script_p)
+				{
+				case 'n':	token.append('\n'); break;
+				case 'r':	token.append('\n'); break;
+				case '\'': token.append('\''); break;
+				case '\"': token.append('\"'); break;
+				case '\\': token.append('\\'); break;
+				default: break;
+				}
+				script_p++;
+			}
+			else
+			{
+				token.append(*script_p++);
+			}
+
+			if (script_p >= end_p)
+			{
+				//glbs.Error( ERR_DROP, "End of token file reached prematurely while reading string on\n"
+				//	"line %d in file %s\n", startline, filename.c_str() );
+				return "";
+			}
 		}
-		else
+	}
+	else
+	{
+		while (*script_p != '"')
 		{
 			token.append(*script_p++);
-		}
 
-		if (script_p >= end_p)
-		{
-			//glbs.Error( ERR_DROP, "End of token file reached prematurely while reading string on\n"
-			//	"line %d in file %s\n", startline, filename.c_str() );
-			return "";
+			if (script_p >= end_p)
+			{
+				//glbs.Error( ERR_DROP, "End of token file reached prematurely while reading string on\n"
+				//	"line %d in file %s\n", startline, filename.c_str() );
+				return "";
+			}
 		}
 	}
 
@@ -921,6 +938,12 @@ int TokenParser::GetInteger(bool crossline)
 {
 	GetToken(crossline);
 	return atoi(token.c_str());
+}
+
+uint64_t TokenParser::GetInteger64(bool crossline)
+{
+	GetToken(crossline);
+	return atoll(token.c_str());
 }
 
 /*

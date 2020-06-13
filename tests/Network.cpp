@@ -1,13 +1,15 @@
 #include <MOHPC/Managers/AssetManager.h>
 #include <MOHPC/Managers/NetworkManager.h>
-#include <MOHPC/Network/Client.h>
+//#include <MOHPC/Network/Client.h>
 #include <MOHPC/Network/ClientGame.h>
+#include <MOHPC/Network/CGModule.h>
 #include <MOHPC/Network/Event.h>
 #include <MOHPC/Network/Types.h>
 #include <MOHPC/Network/MasterList.h>
 #include <MOHPC/Misc/MSG/Stream.h>
 #include <MOHPC/Script/str.h>
 #include <MOHPC/Utilities/Info.h>
+#include <MOHPC/Utilities/TokenParser.h>
 #include <MOHPC/Log.h>
 #include "UnitTest.h"
 #include <winsock2.h>
@@ -19,6 +21,8 @@
 #include <locale>
 
 #pragma comment(lib, "Ws2_32.lib")
+
+#define MOHPC_LOG_NAMESPACE "testnet"
 
 class CNetworkUnitTest : public IUnitTest, public TAutoInst<CNetworkUnitTest>
 {
@@ -105,6 +109,7 @@ private:
 			va_end(va);
 
 			printf("\n");
+			fflush(stdout);
 		}
 	};
 
@@ -140,16 +145,18 @@ public:
 		MOHPC::NetworkManager* manager = AM.GetManager<MOHPC::NetworkManager>();
 
 		// Set new log
-		MOHPC::Log::ILogPtr logPtr = std::make_shared<Logger>();
-		MOHPC::Log::ILog::set(logPtr);
+		using namespace MOHPC::Log;
+		ILogPtr logPtr = std::make_shared<Logger>();
+		ILog::set(logPtr);
 
 		MOHPC::Network::netadr_t adr;
 		adr.ip[0] = 127; adr.ip[1] = 0; adr.ip[2] = 0; adr.ip[3] = 1;
-		//adr.ip[0] = 99; adr.ip[1] = 231; adr.ip[2] = 117; adr.ip[3] = 205;
+		//adr.ip[0] = 0; adr.ip[1] = 0; adr.ip[2] = 0; adr.ip[3] = 1;
+
 		adr.port = 12203;
 
-		MOHPC::Network::EngineServerPtr clientBase = MOHPC::makeShared<MOHPC::Network::EngineServer>(adr);
-		MOHPC::Network::ClientInstance netInst(nullptr);
+		MOHPC::Network::EngineServerPtr clientBase = MOHPC::makeShared<MOHPC::Network::EngineServer>(manager, adr);
+		//MOHPC::Network::ClientInstance netInst(nullptr);
 
 		/*
 		clientBase->getInfo([](const MOHPC::ReadOnlyInfo* info)
@@ -174,10 +181,10 @@ public:
 					std::cout << "value: " << it.value() << std::endl;
 				}
 			});
-		*/
+		*//*
 
 		/*
-		MOHPC::Network::ServerList master(MOHPC::Network::gameListType_e::mohaab);
+		MOHPC::Network::ServerList master(manager, MOHPC::Network::gameListType_e::mohaa);
 		master.fetch(
 			[](const MOHPC::Network::IServerPtr& ptr)
 			{
@@ -199,11 +206,19 @@ public:
 			});
 		*/
 
+		using namespace MOHPC;
+		using namespace MOHPC::Network;
+
 		MOHPC::Network::ClientGameConnectionPtr connection;
 
+		float forwardValue = 0.f;
+		float rightValue = 0.f;
+		float angle = 0.f;
+
 		MOHPC::Network::ClientInfo clientInfo;
-		clientInfo.setName("test");
-		clientBase->connect(std::move(clientInfo), [&connection, &clientBase](const MOHPC::Network::ClientGameConnectionPtr& cg, const char* errorMessage)
+		clientInfo.setName("mohpc_test");
+		clientInfo.setRate(25000);
+		clientBase->connect(std::move(clientInfo), [&logPtr, &connection, &clientBase, &forwardValue, &rightValue, &angle](const MOHPC::Network::ClientGameConnectionPtr& cg, const char* errorMessage)
 			{
 				if (errorMessage)
 				{
@@ -211,12 +226,84 @@ public:
 					return;
 				}
 				connection = cg;
-				connection->setCallback<MOHPC::Network::Handlers::Error>([](const MOHPC::Network::NetworkException& exception)
+
+				connection->setCallback<ClientHandlers::Error>([](const MOHPC::Network::NetworkException& exception)
 					{
 
 					});
+
+				CGameModuleBase& cgame = connection->getCGModule();
+				cgame.setCallback<CGameHandlers::EntityAdded>([&connection](const EntityInfo& entity)
+					{
+						const char* modelName = connection->getGameState().getConfigString(CS_MODELS + entity.currentState.modelindex);
+						MOHPC_LOG(VeryVerbose, "new entity %d, model \"%s\"", entity.currentState.number, modelName);
+					});
+
+				cgame.setCallback<CGameHandlers::EntityRemoved>([&connection](const EntityInfo& entity)
+					{
+						const char* modelName = connection->getGameState().getConfigString(CS_MODELS + entity.currentState.modelindex);
+						MOHPC_LOG(VeryVerbose, "entity %d deleted (was model \"%s\")", entity.currentState.number, modelName);
+					});
+
+				cgame.setCallback<CGameHandlers::MakeBulletTracer>([&logPtr](const Vector& barrel, const Vector& start, const Vector& end, uint32_t numBullets, uint32_t iLarge, uint32_t numTracersVisible, float bulletSize)
+					{
+						static size_t num = 0;
+						MOHPC_LOG(VeryVerbose, "bullet %zu", num++);
+					});
+
+				cgame.setCallback<CGameHandlers::Impact>([&logPtr](const Vector& origin, const Vector& normal, uint32_t large)
+					{
+						static size_t num = 0;
+						MOHPC_LOG(VeryVerbose, "impact %zu", num++);
+					});
+
+				cgame.setCallback<CGameHandlers::MakeExplosionEffect>([&logPtr](const Vector& origin, effects_e type)
+					{
+						static size_t num = 0;
+						MOHPC_LOG(VeryVerbose, "explosionfx %zu: type \"%s\"", num++, getEffectName(type));
+					});
+
+				cgame.setCallback<CGameHandlers::MakeEffect>([&logPtr](const Vector& origin, const Vector& normal, effects_e type)
+					{
+						static size_t num = 0;
+						MOHPC_LOG(VeryVerbose, "effect %zu: type \"%s\"", num++, getEffectName(type));
+					});
+
+				cgame.setCallback<CGameHandlers::SpawnDebris>([&logPtr](CGameHandlers::debrisType_e debrisType, const Vector& origin, uint32_t numDebris)
+					{
+						static size_t num = 0;
+						MOHPC_LOG(VeryVerbose, "debris %zu: type %d", num++, debrisType);
+					});
+
+				cgame.setCallback<CGameHandlers::HitNotify>([&logPtr]()
+					{
+						static size_t num = 0;
+						MOHPC_LOG(VeryVerbose, "hit %zu", num++);
+					});
+
+				cgame.setCallback<CGameHandlers::KillNotify>([&logPtr]()
+					{
+						static size_t num = 0;
+						MOHPC_LOG(VeryVerbose, "kill %zu", num++);
+					});
+
+				cgame.setCallback<CGameHandlers::VoiceMessage>([&logPtr](const Vector& origin, bool local, uint8_t clientNum, const char* soundName)
+					{
+						static size_t num = 0;
+						MOHPC_LOG(VeryVerbose, "voice %d: sound \"%s\"", num++, soundName);
+					});
+
+				connection->setCallback<ClientHandlers::UserInput>([&forwardValue, &rightValue, &angle](usercmd_t& ucmd, usereyes_t& eyeinfo)
+				{
+					eyeinfo.setAngle(30.f, angle);
+					ucmd.buttons.fields.button.run = true;
+					ucmd.moveForward((int8_t)(forwardValue * 127.f));
+					ucmd.moveRight((int8_t)(rightValue * 127.f));
+					ucmd.setAngles(30.f, angle, 0.f);
+				});
 			});
-		char cmd[512];
+
+		char buf[512];
 		size_t count = 0;
 
 		for (;;)
@@ -227,8 +314,79 @@ public:
 				if (c == '\n' || c == '\r')
 				{
 					count = 0;
+
+					TokenParser parser;
+					parser.Parse(buf, strlen(buf));
+
+					const char* cmd = parser.GetToken(false);
+
 					if (!strcmp(cmd, "disconnect")) {
 						break;
+					}
+					else if (!strcmp(cmd, "forward")) {
+						forwardValue = 1.f;
+					}
+					else if(!strcmp(cmd, "backward")) {
+						forwardValue = -1.f;
+					}
+					else if (!strcmp(cmd, "right")) {
+						rightValue = 1.f;
+					}
+					else if (!strcmp(cmd, "left")) {
+						rightValue = -1.f;
+					}
+					else if (!strcmp(cmd, "stop"))
+					{
+						forwardValue = 0.f;
+						rightValue = 0.f;
+					}
+					else if (!strcmp(cmd, "turnleft")) {
+						angle += 20.f;
+					}
+					else if (!strcmp(cmd, "turnright")) {
+						angle -= 20.f;
+					}
+					else if (!strcmp(cmd, "testuinfo"))
+					{
+						if (connection)
+						{
+							ClientInfo& userInfo = connection->getUserInfo();
+							userInfo.setRate(30000);
+							userInfo.setName("modified");
+							userInfo.setSnaps(1);
+							connection->updateUserInfo();
+						}
+					}
+					else if (!strcmp(cmd, "set"))
+					{
+						const char* key = parser.GetToken(false);
+						if (!strcmp(key, "rate"))
+						{
+							const uint32_t rate = parser.GetInteger(false);
+							if(connection)
+							{
+								ClientInfo& userInfo = connection->getUserInfo();
+								userInfo.setRate(rate);
+								connection->updateUserInfo();
+							}
+						}
+						else if (!strcmp(key, "snaps"))
+						{
+							const uint32_t snaps = parser.GetInteger(false);
+							if (connection)
+							{
+								ClientInfo& userInfo = connection->getUserInfo();
+								userInfo.setSnaps(snaps);
+								connection->updateUserInfo();
+							}
+						}
+						else if (!strcmp(key, "maxpackets"))
+						{
+							const uint32_t maxPackets = parser.GetInteger(false);
+							if (connection) {
+								connection->setMaxPackets(maxPackets);
+							}
+						}
 					}
 
 					if (connection) {
@@ -238,19 +396,19 @@ public:
 				else if (c == '\b')
 				{
 					if(count > 0) count--;
-					cmd[count] = 0;
+					buf[count] = 0;
 				}
 				else
 				{
-					cmd[count++] = c;
-					cmd[count] = 0;
+					buf[count++] = c;
+					buf[count] = 0;
 				}
 
 				printf("%c", c);
 			}
 
 			manager->processTicks();
-			Sleep(50);
+			Sleep(10);
 		}
 	}
 };

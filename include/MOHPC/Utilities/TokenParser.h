@@ -76,10 +76,11 @@ namespace MOHPC
 		MOHPC_EXPORTS const char* GetToken(bool crossline);
 		MOHPC_EXPORTS const char* GetLine(bool crossline);
 		MOHPC_EXPORTS const char* GetRaw(void);
-		MOHPC_EXPORTS const char* GetString(bool crossline);
+		MOHPC_EXPORTS const char* GetString(bool crossline, bool escape = true);
 		MOHPC_EXPORTS bool GetSpecific(const char* string);
 		MOHPC_EXPORTS bool GetBoolean(bool crossline);
 		MOHPC_EXPORTS int GetInteger(bool crossline);
+		MOHPC_EXPORTS uint64_t GetInteger64(bool crossline);
 		MOHPC_EXPORTS double GetDouble(bool crossline);
 		MOHPC_EXPORTS float GetFloat(bool crossline);
 		MOHPC_EXPORTS Vector GetVector(bool crossline);

@@ -2231,12 +2231,19 @@ void ShaderManager::AddShader(const ShaderPtr &shader)
 	*/
 
 	ShaderPtr* pExistingShader = m_nametoshader.findKeyValue(shader->m_name);
+	if (!pExistingShader)
+	{
+		// don't remove shaders in other containers
+		m_nametoshader.addNewKeyValue(shader->m_name) = shader;
+	}
+	/*
 	if (pExistingShader) {
 		pExistingShader->get()->GetShaderContainer()->RemoveShader(*pExistingShader);
 	}
 	else {
 		m_nametoshader.addNewKeyValue(shader->m_name) = shader;
 	}
+	*/
 
 	/*
 	auto it = m_nametoshader.find(shader->m_name);

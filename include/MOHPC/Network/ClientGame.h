@@ -3,9 +3,19 @@
 #include <stdint.h>
 #include "Types.h"
 #include "InfoTypes.h"
-#include "Client.h"
+#include "Channel.h"
+#include "Encoding.h"
+#include "Event.h"
+#include "../Utilities/HandlerList.h"
+#include "../Utilities/Info.h"
+#include "../Utilities/PropertyMap.h"
+#include "../Utilities/TokenParser.h"
+#include "Configstring.h"
+#include "../Misc/MSG/MSG.h"
+#include "../Managers/NetworkManager.h"
 #include <functional>
 #include <type_traits>
+#include <bitset>
 
 namespace MOHPC
 {
@@ -13,91 +23,32 @@ namespace MOHPC
 
 	namespace Network
 	{
-		static constexpr unsigned int MAX_CONFIGSTRINGS = 2736;
+		class CGameModuleBase;
+		class Event;
+		class ClientSnapshot;
 
-		// these are sent over the net as 8 bits
-		static constexpr unsigned int MAX_MODELS = 1024;
-		// so they cannot be blindly increased
-		static constexpr unsigned int MAX_SOUNDS = 512;
-		static constexpr unsigned int MAX_OBJECTIVES = 20;
-		static constexpr unsigned int MAX_LIGHTSTYLES = 32;
-		static constexpr unsigned int MAX_WEAPONS = 48;
-		static constexpr unsigned int MAX_CLIENTS = 64;
+		static constexpr size_t PACKET_BACKUP = 32;
+		static constexpr size_t PACKET_MASK = PACKET_BACKUP - 1;
+		static constexpr size_t MAX_PARSE_ENTITIES = 2048;
+		static constexpr size_t CMD_BACKUP = 128;
+		static constexpr size_t CMD_MASK = CMD_BACKUP - 1;
+		static constexpr size_t MAX_PACKET_USERCMDS = 32;
 
-		// from the map worldspawn's message field
-		static constexpr unsigned int CS_MESSAGE = 2;
-		// current save
-		static constexpr unsigned int CS_SAVENAME = 3;
-		// g_motd string for server message of the day
-		static constexpr unsigned int CS_MOTD = 4;
-		// server time when the match will be restarted
-		static constexpr unsigned int CS_WARMUP = 5;
+		class INetchan;
 
-		// MUSIC_NewSoundtrack(cs)
-		static constexpr unsigned int CS_MUSIC = 8;
-		// cg.farplane_cull cg.farplane_distance cg.farplane_color[3]
-		static constexpr unsigned int CS_FOGINFO = 9;
-		// cg.sky_alpha cg.sky_portal
-		static constexpr unsigned int CS_SKYINFO = 10;
+		using ClientGameConnectionPtr = SharedPtr<class ClientGameConnection>;
 
-		static constexpr unsigned int CS_GAME_VERSION = 11;
-		// so the timer only shows the current level cgs.levelStartTime
-		static constexpr unsigned int CS_LEVEL_START_TIME = 12;
-
-		static constexpr unsigned int CS_CURRENT_OBJECTIVE = 13;
-
-		// cg.rain
-		static constexpr unsigned int CS_RAIN_DENSITY = 14;
-		static constexpr unsigned int CS_RAIN_SPEED = 15;
-		static constexpr unsigned int CS_RAIN_SPEEDVARY = 16;
-		static constexpr unsigned int CS_RAIN_SLANT = 17;
-		static constexpr unsigned int CS_RAIN_LENGTH = 18;
-		static constexpr unsigned int CS_RAIN_MINDIST = 19;
-		static constexpr unsigned int CS_RAIN_WIDTH = 20;
-		static constexpr unsigned int CS_RAIN_SHADER = 21;
-		static constexpr unsigned int CS_RAIN_NUMSHADERS = 22;
-
-		// cgs.matchEndTime
-		static constexpr unsigned int CS_MATCHEND = 26;
-
-		static constexpr unsigned int CS_MODELS = 32;
-		static constexpr unsigned int CS_OBJECTIVES = (CS_MODELS + MAX_MODELS);
-		static constexpr unsigned int CS_SOUNDS = (CS_OBJECTIVES + MAX_OBJECTIVES);
-
-		static constexpr unsigned int CS_IMAGES = (CS_SOUNDS + MAX_SOUNDS);
-		static constexpr unsigned int MAX_IMAGES = 64;
-
-		static constexpr unsigned int CS_LIGHTSTYLES(CS_IMAGES + MAX_IMAGES);
-		static constexpr unsigned int CS_PLAYERS = (CS_LIGHTSTYLES + MAX_LIGHTSTYLES);
-
-		static constexpr unsigned int CS_WEAPONS = (CS_PLAYERS + MAX_CLIENTS);
-		static constexpr unsigned int CS_TEAMS = 1876;
-		static constexpr unsigned int CS_GENERAL_STRINGS = 1877;
-		static constexpr unsigned int CS_SPECTATORS = 1878;
-		static constexpr unsigned int CS_ALLIES = 1879;
-		static constexpr unsigned int CS_AXIS = 1880;
-		static constexpr unsigned int CS_SOUNDTRACK = 1881;
-
-		static constexpr unsigned int CS_TEAMINFO = 1;
-
-		//static constexpr unsigned int CS_MAX = (CS_PARTICLES + MAX_LOCATIONS);
-
-		struct sound_t;
-
-		namespace Handlers
+		namespace ClientHandlers
 		{
-			template<typename T>
-			struct Base { using Type = std::function<T>; };
-
 			/** Called when the client/server has timed out (data no longer received within a certain amount of time). */
-			struct ClientGameTimeout : public Base<void()> {};
+			struct ClientGameTimeout : public HandlerNotifyBase<void()> {};
 
 			/**
 			 * Called when an exception occurs within the game client.
 			 *
 			 * @param	exception	The exception that has occurred.
 			 */
-			struct Error : public Base<void(const NetworkException& exception)> {};
+			struct Error : public HandlerNotifyBase<void(const NetworkException& exception)> {};
 
 			/**
 			 * Called when an entity has been modified or added.
@@ -105,7 +56,7 @@ namespace MOHPC
 			 * @param	old		The entity before modification.
 			 * @param	state	The new entity.
 			 */
-			struct EntityRead : public Base<void(const entityState_t* old, const entityState_t* state)> {};
+			struct EntityRead : public HandlerNotifyBase<void(const entityState_t* old, const entityState_t* state)> {};
 
 			/**
 			 * Called when the current player state has been modified.
@@ -113,43 +64,43 @@ namespace MOHPC
 			 * @param	old		Previous player state (can be NULL).
 			 * @param	state	Current player state.
 			 */
-			struct PlayerstateRead : public Base<void(const playerState_t* old, const playerState_t* state)> {};
+			struct PlayerstateRead : public HandlerNotifyBase<void(const playerState_t* old, const playerState_t* state)> {};
 
 			/**
-			 * Called after the insertion of a new configstring.
+			 * Called after the insertion/modification of a new configstring.
 			 *
 			 * @param	csNum			The configstring num.
 			 * @param	configString	The string pointed at by the csNum.
 			 */
-			struct Configstring { using Type = std::function<void(size_t csNum, const char* configString)>; };
+			struct Configstring : public HandlerNotifyBase<void(size_t csNum, const char* configString)> {};
 
 			/**
 			 * Called when a sound started to play/stopped.
 			 *
 			 * @param	sound	Sound structure containing various informations.
 			 */
-			struct Sound : public Base<void(const sound_t& sound)> {};
+			struct Sound : public HandlerNotifyBase<void(const sound_t& sound)> {};
 
 			/**
 			 * Called when the server sent a string to print at the center of the screen.
 			 *
 			 * @param	message		String message to print.
 			 */
-			struct CenterPrint { using Type = std::function<void(const char* message)>; };
+			struct CenterPrint : public HandlerNotifyBase<void(const char* message)> {};
 
 			/**
 			 * Called when the server sent a string to print at a 2D location of the screen.
 			 *
 			 * @param	message		String message to print.
 			 */
-			struct LocationPrint : public Base<void(uint16_t x, uint16_t y, const char* message)> {};
+			struct LocationPrint : public HandlerNotifyBase<void(uint16_t x, uint16_t y, const char* message)> {};
 
 			/**
 			 * Called when the server sent a command. The library doesn't process any commands.
 			 *
 			 * @param	command		Command to process.
 			 */
-			struct ServerCommand : public Base<void(const char* command)> {};
+			struct ServerCommand : public HandlerNotifyBase<void(const char* command, const Event& ev)> {};
 
 			/**
 			 * This callback is used to modify the player input before sending.
@@ -157,100 +108,84 @@ namespace MOHPC
 			 * @param	cmd		User command structure.
 			 * @param	eyes	Eyes information.
 			 */
-			struct UserInput : public Base<void(usercmd_t& cmd, usereyes_t& eyes)> {};
+			struct UserInput : public HandlerNotifyBase<void(usercmd_t& cmd, usereyes_t& eyes)> {};
+
+			/**
+			 * Called when receiving the first valid snapshot. Useful to get the server time at this point.
+			 *
+			 * @param	snap	The first snapshot received.
+			 */
+			struct FirstSnapshot : public HandlerNotifyBase<void(const ClientSnapshot& snap)> {};
+
+			/**
+			 * Called when a snap was received.
+			 *
+			 * @param	snap	The snapshot that was received.
+			 */
+			struct SnapReceived : public HandlerNotifyBase<void(const ClientSnapshot& snap)> {};
 		}
 
 		enum class svc_ops_e : uint8_t
 		{
-			bad,
-			nop,
-			gamestate,
-			// [short] [string] only in gamestate messages
-			configstring,
-			// only in gamestate messages
-			baseline,
-			// [string] to be executed by client game module
-			serverCommand,
-			// [short] size [size bytes]
-			download,
-			snapshot,
-			centerprint,
-			locprint,
-			cgameMessage,
-			eof
+			/** Bad operation. */
+			Bad,
+			/** Operation that should be ignored. */
+			Nop,
+			/** Gamestate parsing. */
+			Gamestate,
+			/** [short] [string] only in gamestate messages. */
+			Configstring,
+			/** [short] [entity] Baseline entity parsing (only in gamestate messages). */
+			Baseline,
+			/** [string] server command to execute on client. */
+			ServerCommand,
+			/** [short] size [size bytes] */
+			Download,
+			/** Snapshot parsing. */
+			Snapshot,
+			/** [string] Centerprint command. */
+			Centerprint,
+			/** [short] [short] [string] Locationprint command. */
+			Locprint,
+			/** [byte6] Message for cgame. */
+			CGameMessage,
+			/** Indicate the end of message. */
+			Eof
 		};
 
-		enum clc_ops_e : uint8_t {
+		enum clc_ops_e : uint8_t
+		{
+			/** Bad operation. */
 			Bad,
 			Nop,
-			// [usercmd_t]
+			/** [usercmd_t] Movement. */
 			Move,
-			// [usercmd_t]
+			/** [usercmd_t] Movement without delta. */
 			MoveNoDelta,
-			// [string] message
+			/** [string] Command to execute on server. */
 			ClientCommand,
+			/** Indicate the end of client message. */
 			eof
 		};
 
 		struct outPacket_t
 		{
-			// cl.cmdNumber when packet was sent
+			/** cl.cmdNumber when packet was sent */
 			uint32_t p_cmdNumber;
-			// usercmd->serverTime when packet was sent
+
+			/** usercmd->serverTime when packet was sent */
 			uint32_t p_serverTime;
-			// cls.realtime when packet was sent
-			uint64_t p_realtime;
-			// eyeInfo when packet was sent
+
+			/** time when packet was sent */
+			uint64_t p_currentTime;
+
+			/** eyeInfo when packet was sent */
 			usereyes_t p_eyeinfo;
 		};
 
-		struct sound_t
-		{
-			/** The entity that the sound is playing on. */
-			const entityState_t* entity;
-
-			/** The name of the sound (retrieved from configstrings). */
-			const char* soundName;
-
-			/** Whether or not the sound has stopped playing. */
-			bool hasStopped;
-
-			/** If the whole sound is not into memory. */
-			bool isStreamed;
-
-			/** If the sound is spatialized (check origin).*/
-			bool isSpatialized;
-
-			/** Volume is assigned if yes. */
-			bool hasVolume;
-			/** minDist is assigned if yes. */
-			bool hasDist;
-
-			/** pitch is assigned if yes. */
-			bool hasPitch;
-
-			/** The channel the sound is playing on. */
-			uint8_t channel;
-
-			/** Sound's volume. */
-			float volume;
-
-			/** The minimum distance the sound will play at full volume. */
-			float minDist;
-
-			/** The maximum distance before the sound stops playing. */
-			float maxDist;
-
-			/** The pitch of the sound. */
-			float pitch;
-
-			/** The sound origin if it's spatialized. */
-			Vector origin;
-
-		public:
-			sound_t();
-		};
-
+		/**
+		 * Invalid command while parsing game state.
+		 */
 		class BadCommandByteException : public NetworkException
 		{
 		private:
@@ -265,6 +200,9 @@ namespace MOHPC
 			virtual str what() { return str((int)getLength()); }
 		};
 
+		/**
+		 * The protocol version does not exist.
+		 */
 		class BadProtocolVersionException : public NetworkException
 		{
 		private:
@@ -279,6 +217,9 @@ namespace MOHPC
 			virtual str what() { return str((int)getProtocolVersion()); }
 		};
 
+		/**
+		 * Invalid server operation.
+		 */
 		class IllegibleServerMessageException : public NetworkException
 		{
 		private:
@@ -293,6 +234,9 @@ namespace MOHPC
 			virtual str what() { return str((int)getLength()); }
 		};
 
+		/**
+		 * Invalid baseline entity number while parsing gamestate.
+		 */
 		class BaselineOutOfRangeException : public NetworkException
 		{
 		private:
@@ -307,6 +251,9 @@ namespace MOHPC
 			virtual str what() { return str((int)getBaselineNum()); }
 		};
 
+		/**
+		 * Bad configstring number.
+		 */
 		class MaxConfigStringException : public NetworkException
 		{
 		private:
@@ -321,6 +268,9 @@ namespace MOHPC
 			virtual str what() { return str((int)GetConfigstringNum()); }
 		};
 
+		/**
+		 * MAX_GAMESTATE_CHARS was reached while parsing a configstring.
+		 */
 		class MaxGameStateCharsException : public NetworkException
 		{
 		private:
@@ -335,6 +285,9 @@ namespace MOHPC
 			virtual str what() { return str((int)GetStringLength()); }
 		};
 
+		/**
+		 * Bad area mask size while parsing snapshot.
+		 */
 		class AreaMaskBadSize : public NetworkException
 		{
 		private:
@@ -349,6 +302,9 @@ namespace MOHPC
 			virtual str what() { return str((int)getSize()); }
 		};
 
+		/**
+		 * Server error while downloading.
+		 */
 		class DownloadException : public NetworkException
 		{
 		private:
@@ -381,99 +337,153 @@ namespace MOHPC
 			 * @return	The configstring. NULL if num is greater than MAX_CONFIGSTRINGS
 			 */
 			MOHPC_EXPORTS const char* getConfigString(size_t num) const;
+
+			/**
+			 * Return the configstring at the specified number.
+			 *
+			 * @param	num				Config string ID. Must be < MAX_CONFIGSTRINGS
+			 * @param	configString	The value to put in.
+			 * @param	sz				Size of the config string
+			 */
+			MOHPC_EXPORTS void setConfigString(size_t num, const char* configString, size_t sz);
 		};
 
+		class ClientSnapshot
+		{
+		public:
+			bool valid;
+			uint8_t snapFlags;
+			uint32_t ping;
+			uint8_t serverTimeResidual;
+			uint32_t serverTime;
+			uint32_t messageNum;
+			int32_t deltaNum;
+			uint8_t areamask[MAX_MAP_AREA_BYTES];
+			uint8_t cmdNum;
+			playerState_t ps;
+
+			uint32_t numEntities;
+
+			uint32_t parseEntitiesNum;
+			uint32_t serverCommandNum;
+
+			uint32_t numSounds;
+			sound_t sounds[MAX_SERVER_SOUNDS];
+
+		public:
+			ClientSnapshot();
+		};
+
+		/** Class for handling client specifing settings. */
+		class ClientInfo
+		{
+		private:
+			uint32_t rate;
+			uint32_t snaps;
+			str name;
+			PropertyObject properties;
+
+		public:
+			MOHPC_EXPORTS ClientInfo();
+			MOHPC_EXPORTS ClientInfo(ClientInfo&& other) = default;
+			MOHPC_EXPORTS ClientInfo& operator=(ClientInfo && other) = default;
+
+			/**
+			 * Set/get the client rate, in kbps. Common rates are :
+			 * - 2500 : 28.8k modem
+			 * - 3000 : 33.6k modem
+			 * - 4000 : 56k modem
+			 * - 5000 : ISDN
+			 * - 20000 : Cable
+			 * - 25000 : xDSL
+			 * - 30000 : LAN
+			 */
+			MOHPC_EXPORTS void setRate(uint32_t inRate);
+			MOHPC_EXPORTS uint32_t getRate() const;
+
+			/** Set/get the number of processed snapshots per second. */
+			MOHPC_EXPORTS void setSnaps(uint32_t inSnaps);
+			MOHPC_EXPORTS uint32_t getSnaps() const;
+
+			/** Set/get the client name. */
+			MOHPC_EXPORTS void setName(const char* newName);
+			MOHPC_EXPORTS const char* getName() const;
+
+			/** Set/get the client deathmatch allied model. */
+			MOHPC_EXPORTS void setPlayerAlliedModel(const char* newModel);
+			MOHPC_EXPORTS const char* getPlayerAlliedModel() const;
+
+			/** Set/get the client deathmatch german model. */
+			MOHPC_EXPORTS void setPlayerGermanModel(const char* newModel);
+			MOHPC_EXPORTS const char* getPlayerGermanModel() const;
+
+			/** Set/get an user value. */
+			MOHPC_EXPORTS void setUserKeyValue(const char* key, const char* value);
+			MOHPC_EXPORTS const char* getUserKeyValue(const char* key) const;
+
+			/** Build info string from properties. */
+			MOHPC_EXPORTS void fillInfoString(Info& info) const;
+		};
+		
+		// FIXME: Store server config/properties
 		class ClientGameConnection : public ITickableNetwork
 		{
 		private:
+			struct HandlerListClient : public HandlerList
+			{
+			public:
+				MOHPC_HANDLERLIST_DEFINITIONS();
+
+				MOHPC_HANDLERLIST_HANDLER0(ClientHandlers::ClientGameTimeout, timeoutHandler);
+				MOHPC_HANDLERLIST_HANDLER1(ClientHandlers::Error, errorHandler, const NetworkException&);
+				MOHPC_HANDLERLIST_HANDLER2(ClientHandlers::EntityRead, entityReadHandler, const entityState_t*, const entityState_t*);
+				MOHPC_HANDLERLIST_HANDLER2(ClientHandlers::PlayerstateRead, playerStateReadHandler, const playerState_t*, const playerState_t*);
+				MOHPC_HANDLERLIST_HANDLER2(ClientHandlers::Configstring, configStringHandler, uint16_t, const char*);
+				MOHPC_HANDLERLIST_HANDLER1(ClientHandlers::Sound, soundHandler, const sound_t&);
+				MOHPC_HANDLERLIST_HANDLER1(ClientHandlers::CenterPrint, centerPrintHandler, const char*);
+				MOHPC_HANDLERLIST_HANDLER3(ClientHandlers::LocationPrint, locationPrintHandler, uint16_t, uint16_t, const char*);
+				MOHPC_HANDLERLIST_HANDLER2(ClientHandlers::ServerCommand, serverCommandHandler, const char*, const Event&);
+				MOHPC_HANDLERLIST_HANDLER2(ClientHandlers::UserInput, userInputHandler, usercmd_t&, usereyes_t&);
+
+				MOHPC_HANDLERLIST_NOTIFY1(const ClientSnapshot&);
+				MOHPC_HANDLERLIST_HANDLER1_NODEF(ClientHandlers::FirstSnapshot, firstSnapshotHandler, const ClientSnapshot&);
+				MOHPC_HANDLERLIST_HANDLER1_NODEF(ClientHandlers::SnapReceived, snapshotReceivedHandler, const ClientSnapshot&);
+			};
+
+		private:
 			using parse_f = void (ClientGameConnection::*)(MSG& msg);
-			using readString_f = StringMessage(ClientGameConnection::*)(MSG& msg);
-			using writeString_f = void (ClientGameConnection::*)(MSG& msg, const char* s);
+			using readString_f = StringMessage(*)(MSG& msg);
+			using writeString_f = void (*)(MSG& msg, const char* s);
 			using hashKey_f = uint32_t(ClientGameConnection::*)(const char* string, size_t maxlen);
 			using readEntityNum_f = uint32_t(ClientGameConnection::*)(MsgTypesHelper& msgHelper);
 			using readDeltaPlayerstate_f = void(ClientGameConnection::*)(MSG& msg, const playerState_t* from, playerState_t* to);
 			using readDeltaEntity_f = void(ClientGameConnection::*)(MSG& msg, const entityState_t* from, entityState_t* to);
-
-			struct HandlerList
-			{
-			public:
-				Handlers::ClientGameTimeout::Type	timeoutHandler;
-				Handlers::Error::Type				errorHandler;
-				Handlers::EntityRead::Type			entityReadHandler;
-				Handlers::PlayerstateRead::Type		playerStateReadHandler;
-				Handlers::Configstring::Type		configStringHandler;
-				Handlers::Sound::Type				soundHandler;
-				Handlers::CenterPrint::Type			centerPrintHandler;
-				Handlers::LocationPrint::Type		locationPrintHandler;
-				Handlers::ServerCommand::Type		serverCommandHandler;
-				Handlers::UserInput::Type			userInputHandler;
-
-			public:
-#define MOHPC_HANDLERLIST_SETTER(c) \
-template<> MOHPC_EXPORTS void set<Handlers::c>(Handlers::c::Type&& handler)
-
-#define MOHPC_HANDLERLIST_NOTIFY0() \
-template<typename T> void notify();
-
-#define MOHPC_HANDLERLIST_NOTIFY1(t1) \
-template<typename T> void notify(t1 arg1);
-
-#define MOHPC_HANDLERLIST_NOTIFY2(t1, t2) \
-template<typename T> void notify(t1 arg1, t2 arg2);
-
-#define MOHPC_HANDLERLIST_NOTIFY3(t1, t2, t3) \
-template<typename T> void notify(t1 arg1, t2 arg2, t3 arg3);
-
-#define MOHPC_HANDLERLIST_HANDLER0(c) \
-MOHPC_HANDLERLIST_SETTER(c); \
-MOHPC_HANDLERLIST_NOTIFY0() \
-template<> void notify<Handlers::c>()
-
-#define MOHPC_HANDLERLIST_HANDLER1(c, t1) \
-MOHPC_HANDLERLIST_SETTER(c); \
-MOHPC_HANDLERLIST_NOTIFY1(t1) \
-template<> void notify<Handlers::c>(t1 arg1)
-
-#define MOHPC_HANDLERLIST_HANDLER1_NODEF(c, t1) \
-MOHPC_HANDLERLIST_SETTER(c); \
-template<> void notify<Handlers::c>(t1 arg1)
-
-#define MOHPC_HANDLERLIST_HANDLER2(c, t1, t2) \
-MOHPC_HANDLERLIST_SETTER(c); \
-MOHPC_HANDLERLIST_NOTIFY2(t1, t2) \
-template<> void notify<Handlers::c>(t1 arg1, t2 arg2)
-
-#define MOHPC_HANDLERLIST_HANDLER3(c, t1, t2, t3) \
-MOHPC_HANDLERLIST_SETTER(c); \
-MOHPC_HANDLERLIST_NOTIFY3(t1, t2, t3) \
-template<> void notify<Handlers::c>(t1 arg1, t2 arg2, t3 arg3)
-
-				template<typename T> void set(typename T::Type&& handler) = delete;
-				template<typename T, typename...Args> void notify(Args...args) = delete;
-
-				MOHPC_HANDLERLIST_NOTIFY1(const char*);
-
-				MOHPC_HANDLERLIST_HANDLER0(ClientGameTimeout);
-				MOHPC_HANDLERLIST_HANDLER1(Error, const NetworkException&);
-				MOHPC_HANDLERLIST_HANDLER2(EntityRead, const entityState_t*, const entityState_t*);
-				MOHPC_HANDLERLIST_HANDLER2(PlayerstateRead, const playerState_t*, const playerState_t*);
-				MOHPC_HANDLERLIST_HANDLER2(Configstring, uint16_t, const char*);
-				MOHPC_HANDLERLIST_HANDLER1(Sound, const sound_t&);
-				MOHPC_HANDLERLIST_HANDLER1_NODEF(CenterPrint, const char*);
-				MOHPC_HANDLERLIST_HANDLER3(LocationPrint, uint16_t, uint16_t, const char*);
-				MOHPC_HANDLERLIST_HANDLER1_NODEF(ServerCommand, const char*);
-				MOHPC_HANDLERLIST_HANDLER2(UserInput, usercmd_t&, usereyes_t&);
-			};
 
 		private:
 			INetchanPtr netchan;
 			netadr_t adr;
 			size_t timeoutTime;
 			std::chrono::time_point<std::chrono::steady_clock> nextTimeoutTime;
-			HandlerList handlerList;
+			HandlerListClient handlerList;
+			parse_f parseGameState_pf;
+			readString_f readStringMessage_pf;
+			writeString_f writeStringMessage_pf;
+			hashKey_f hashKey_pf;
+			readEntityNum_f readEntityNum_pf;
+			readDeltaPlayerstate_f readDeltaPlayerstate_pf;
+			readDeltaEntity_f readDeltaEntity_pf;
+			CGameModuleBase* cgameModule;
 			IEncodingPtr encoder;
+			uint64_t realTimeStart;
+			uint64_t serverStartTime;
+			uint64_t serverTime;
+			uint64_t oldServerTime;
+			uint64_t oldFrameServerTime;
+			uint64_t oldRealTime;
+			uint64_t lastPacketSendTime;
+			uint64_t serverDeltaFrequency;
+			uint32_t maxPackets;
 			uint32_t parseEntitiesNum;
-			uint32_t serverStartTime;
 			uint32_t serverCommandSequence;
 			uint32_t serverMessageSequence;
 			uint32_t cmdNumber;
@@ -483,25 +493,25 @@ template<> void notify<Handlers::c>(t1 arg1, t2 arg2, t3 arg3)
 			uint32_t downloadedBlock;
 			int32_t reliableSequence;
 			int32_t reliableAcknowledge;
+			bool newSnapshots;
+			bool extrapolatedSnapshot;
+			bool isActive;
 			char* reliableCommands[MAX_RELIABLE_COMMANDS];
 			char* serverCommands[MAX_RELIABLE_COMMANDS];
 			char reliableCmdStrings[MAX_STRING_CHARS * MAX_RELIABLE_COMMANDS];
 			char serverCmdStrings[MAX_STRING_CHARS * MAX_RELIABLE_COMMANDS];
+			usereyes_t userEyes;
+			ReadOnlyInfo serverSystemInfo;
+			ReadOnlyInfo serverGameInfo;
+			ClientInfo userInfo;
+			gameState_t gameState;
 			ClientSnapshot currentSnap;
 			ClientSnapshot snapshots[PACKET_BACKUP];
-			gameState_t gameState;
-			usereyes_t userEyes;
 			usercmd_t cmds[CMD_BACKUP];
 			outPacket_t outPackets[CMD_BACKUP];
 			entityState_t entityBaselines[MAX_GENTITIES];
 			entityState_t parseEntities[MAX_PARSE_ENTITIES];
-			parse_f parseGameState_pf;
-			readString_f readStringMessage_pf;
-			writeString_f writeStringMessage_pf;
-			hashKey_f hashKey_pf;
-			readEntityNum_f readEntityNum_pf;
-			readDeltaPlayerstate_f readDeltaPlayerstate_pf;
-			readDeltaEntity_f readDeltaEntity_pf;
+			std::bitset<MAX_GENTITIES> validEntities;
 
 		public:
 			/**
@@ -512,13 +522,16 @@ template<> void notify<Handlers::c>(t1 arg1, t2 arg2, t3 arg3)
 			 * @param	challengeResponse	Challenge used to XOR data.
 			 * @param	protocolVersion		Version of the protocol to use.
 			 */
-			ClientGameConnection(const INetchanPtr& netchan, const netadr_t& inAdr, uint32_t challengeResponse, protocolVersion_e protocolVersion);
+			ClientGameConnection(NetworkManager* inNetworkManager, const INetchanPtr& netchan, const netadr_t& inAdr, uint32_t challengeResponse, const protocolType_c& protoType, ClientInfo&& cInfo);
 			~ClientGameConnection();
 
 			// ITickableNetwork
 			// ~
 			virtual void tick(uint64_t deltaTime, uint64_t currentTime) override;
 			// ~
+
+			/** Called to set the current time on start. */
+			void initTime(uint64_t currentTime);
 
 			/**
 			 * Send a command to server.
@@ -535,7 +548,7 @@ template<> void notify<Handlers::c>(t1 arg1, t2 arg2, t3 arg3)
 			MOHPC_EXPORTS void setTimeout(size_t timeoutTime);
 
 			/** Return the handler list. */
-			MOHPC_EXPORTS HandlerList& getHandlerList();
+			MOHPC_EXPORTS HandlerListClient& getHandlerList();
 	
 			/** Generic callback function. See Callbacks above for valid callbacks. */
 			template<typename T>
@@ -544,40 +557,102 @@ template<> void notify<Handlers::c>(t1 arg1, t2 arg2, t3 arg3)
 				handlerList.set<T>(std::forward<T::Type>(handler));
 			}
 
+			/** Retrieve the current game state. */
+			MOHPC_EXPORTS const gameState_t& getGameState() const;
+
+			/** Retrieve the CGame module. */
+			MOHPC_EXPORTS CGameModuleBase& getCGModule();
+
+			/** Retrieve the server system info such as the serverid, the timescale, cheats allowed, ... */
+			MOHPC_EXPORTS const ReadOnlyInfo& getServerSystemInfo() const;
+
+			/** Retrieve the server game configuration, such as the hostname, gametype, force respawn, timelimit, ... */
+			MOHPC_EXPORTS const ReadOnlyInfo& getServerGameInfo() const;
+
+			/** Return modifiable user info. */
+			MOHPC_EXPORTS const ClientInfo& getUserInfo() const;
+
+			/** Return modifiable user info. */
+			MOHPC_EXPORTS ClientInfo& getUserInfo();
+
+			/** Send the server a new user info string. Must be called after having finished modifying the userinfo. */
+			MOHPC_EXPORTS void updateUserInfo();
+
+			/** Return the maximum number of packets that can be sent per second. */
+			MOHPC_EXPORTS uint32_t getMaxPackets() const;
+
+			/** Set the maximum number of packets that can be sent per second, in the range of [1, 125]. */
+			MOHPC_EXPORTS void setMaxPackets(uint32_t inMaxPackets);
+
+			/** Return the current snapshot number. */
+			MOHPC_EXPORTS uintptr_t getCurrentSnapshotNumber() const;
+
+			/**
+			 * Return snapshot data.
+			 *
+			 * @param	snapshotNum		The snapshot number to get data from.
+			 * @param	outSnapshot		Output data.
+			 * @return	true if the snap is valid.
+			 */
+			MOHPC_EXPORTS bool getSnapshot(uintptr_t snapshotNum, SnapshotInfo& outSnapshot) const;
+
+			/** Return the time at which the server started (in milliseconds). */
+			MOHPC_EXPORTS uint64_t getServerStartTime() const;
+
+			/** Return the current server time (in milliseconds). */
+			MOHPC_EXPORTS uint64_t getServerTime() const;
+
+			/** Return the frequency at which the game server is running (sv_fps). */
+			MOHPC_EXPORTS uint64_t getServerFrameFrequency() const;
+
+			/** Return th current user input number. */
+			MOHPC_EXPORTS uintptr_t getCurrentCmdNumber();
+
+			/**
+			 * Return user input data.
+			 *
+			 * @param	cmdNum		The cmd number to get data from.
+			 * @param	outCmd		Output data.
+			 * @return	true if the command is valid.
+			 */
+			MOHPC_EXPORTS bool getUserCmd(uintptr_t cmdNum, usercmd_t& outCmd);
+
+			/**
+			 * Return parseable server command.
+			 * @param	serverCommandNumber		The command num to get.
+			 * @param	tokenized				Tokenized data.
+			 * @return	true if the command is valid.
+			 */
+			MOHPC_EXPORTS bool getServerCommand(uintptr_t serverCommandNumber, TokenParser& tokenized);
+
 		private:
 			const INetchanPtr& getNetchan() const;
-			void receive(const netadr_t& from, MSG& msg);
+			void receive(const netadr_t& from, MSG& msg, uint64_t currentTime);
 
-			/*
-			void notifyTimedOut();
-			void notifyError(const NetworkException& exception);
-			void notifyEntityModified(const entityState_t* old, const entityState_t* state);
-			void notifyPlayerstateModified(const playerState_t* old, const playerState_t* state);
-			void notifyConfigstringModified(size_t csNum, const char* configString);
-			void notifySound(const sound_t& sound);
-			void notifyCenterprint(const char* message);
-			void notifyLocationPrint(uint16_t x, uint16_t y, const char* message);
-			void notifyCommand(const char* command);
-			void applyUserInput(usercmd_t& cmd, usereyes_t& eyes);
-			*/
-
-			void parseServerMessage(MSG& msg, uint32_t serverMessageSequence);
+			void parseServerMessage(MSG& msg, uint32_t serverMessageSequence, uint64_t currentTime);
 			void parseGameState(MSG& msg);
-			void parseSnapshot(MSG& msg, uint32_t serverMessageSequence);
+			void parseSnapshot(MSG& msg, uint32_t serverMessageSequence, uint64_t currentTime);
 			void parsePacketEntities(MSG& msg, ClientSnapshot* oldFrame, ClientSnapshot* newFrame);
 			void parseDeltaEntity(MSG& msg, ClientSnapshot* frame, uint32_t newNum, entityState_t* old, bool unchanged);
-			void parseSounds(MSG& msg);
+			void parseSounds(MSG& msg, ClientSnapshot* newFrame);
 			void parseDownload(MSG& msg);
 			void parseCommandString(MSG& msg);
 			void parseCenterprint(MSG& msg);
 			void parseLocprint(MSG& msg);
 			void parseCGMessage(MSG& msg);
 
+			void setCGameTime(uint64_t currentTime);
+			void adjustTimeDelta(uint64_t realTime);
+			void firstSnapshot(uint64_t currentTime);
+
+			void configStringModified(uint16_t num, const char* newString);
+
 			void systemInfoChanged();
+			bool readyToSendPacket(uint64_t currentTime) const;
 			void createNewCommands();
 			void createCmd(usercmd_t& outcmd);
-			void sendCmd();
-			void writePacket(uint32_t serverMessageSequence);
+			bool sendCmd(uint64_t currentTime);
+			void writePacket(uint32_t serverMessageSequence, uint64_t currentTime);
 
 			StringMessage readStringMessage(MSG& msg);
 			void writeStringMessage(MSG& msg, const char* s);
@@ -587,10 +662,10 @@ template<> void notify<Handlers::c>(t1 arg1, t2 arg2, t3 arg3)
 			void readDeltaEntity(MSG& msg, const entityState_t* from, entityState_t* to);
 
 		private:
-			StringMessage readStringMessage_normal(MSG& msg);
-			void writeStringMessage_normal(MSG& msg, const char* s);
-			StringMessage readStringMessage_scrambled(MSG& msg);
-			void writeStringMessage_scrambled(MSG& msg, const char* s);
+			static StringMessage readStringMessage_normal(MSG& msg);
+			static void writeStringMessage_normal(MSG& msg, const char* s);
+			static StringMessage readStringMessage_scrambled(MSG& msg);
+			static void writeStringMessage_scrambled(MSG& msg, const char* s);
 			uint32_t hashKey_ver8(const char* string, size_t maxlen);
 			uint32_t hashKey_ver17(const char* string, size_t maxlen);
 			uint32_t readEntityNum_ver8(MsgTypesHelper& msgHelper);

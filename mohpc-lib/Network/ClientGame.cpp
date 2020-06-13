@@ -4,7 +4,9 @@
 #include <MOHPC/Misc/MSG/Codec.h>
 #include <MOHPC/Network/Channel.h>
 #include <MOHPC/Network/SerializableTypes.h>
+#include <MOHPC/Network/CGModule.h>
 #include <MOHPC/Utilities/Info.h>
+#include <MOHPC/Utilities/TokenParser.h>
 #include <MOHPC/Log.h>
 #include <typeinfo>
 #include <filesystem>
@@ -82,23 +84,6 @@ const char byteCharMapping[256] =
 };
 */
 
-Network::sound_t::sound_t()
-	: entity(nullptr)
-	, soundName(nullptr)
-	, hasStopped(false)
-	, isStreamed(false)
-	, isSpatialized(false)
-	, hasVolume(false)
-	, hasDist(false)
-	, hasPitch(false)
-	, channel(0)
-	, volume(0.f)
-	, minDist(0.f)
-	, maxDist(0.f)
-	, pitch(0.f)
-{
-}
-
 Network::DownloadException::DownloadException(StringMessage&& inError)
 	: error(std::move(inError))
 {}
@@ -130,66 +115,26 @@ ClientSnapshot::ClientSnapshot()
 	, numEntities(0)
 	, parseEntitiesNum(0)
 	, serverCommandNum(0)
-	, number_of_sounds(0)
+	, numSounds(0)
 {
 }
 
-#define HANDLERLIST_CALLBACK(c, varName) \
-template<> void ClientGameConnection::HandlerList::set<Handlers::c>(Handlers::c::Type&& handler) \
-{ \
-	varName = std::forward<Handlers::c::Type>(handler); \
-}
-
-#define HANDLERLIST_NOTIFY_BASE(c, ...) \
-template<> void ClientGameConnection::HandlerList::notify<Handlers::c>(__VA_ARGS__)
-
-#define HANDLERLIST_NOTIFY0(c, h) \
-HANDLERLIST_NOTIFY_BASE(c) \
-{ \
-	if (h) h(); \
-} \
-HANDLERLIST_CALLBACK(c, h)
-
-#define HANDLERLIST_NOTIFY1(c, h, t1) \
-HANDLERLIST_NOTIFY_BASE(c, t1 arg1) \
-{ \
-	if (h) h(arg1); \
-} \
-HANDLERLIST_CALLBACK(c, h)
-
-#define HANDLERLIST_NOTIFY2(c, h, t1, t2) \
-HANDLERLIST_NOTIFY_BASE(c, t1 arg1, t2 arg2) \
-{ \
-	if (h) h(arg1, arg2); \
-} \
-HANDLERLIST_CALLBACK(c, h)
-
-#define HANDLERLIST_NOTIFY3(c, h, t1, t2, t3) \
-HANDLERLIST_NOTIFY_BASE(c, t1 arg1, t2 arg2, t3 arg3) \
-{ \
-	if (h) h(arg1, arg2, arg3); \
-} \
-HANDLERLIST_CALLBACK(c, h)
-
-HANDLERLIST_NOTIFY0(ClientGameTimeout, timeoutHandler);
-HANDLERLIST_NOTIFY1(Error, errorHandler, const NetworkException&);
-HANDLERLIST_NOTIFY2(EntityRead, entityReadHandler, const entityState_t*, const entityState_t*);
-HANDLERLIST_NOTIFY2(PlayerstateRead, playerStateReadHandler, const playerState_t*, const playerState_t*);
-HANDLERLIST_NOTIFY2(Configstring, configStringHandler, uint16_t, const char*);
-HANDLERLIST_NOTIFY1(Sound, soundHandler, const sound_t&);
-HANDLERLIST_NOTIFY1(CenterPrint, centerPrintHandler, const char*);
-HANDLERLIST_NOTIFY3(LocationPrint, locationPrintHandler, uint16_t, uint16_t, const char*);
-HANDLERLIST_NOTIFY1(ServerCommand, serverCommandHandler, const char*);
-HANDLERLIST_NOTIFY2(UserInput, userInputHandler, usercmd_t&, usereyes_t&);
-
-MOHPC::Network::ClientGameConnection::HandlerList& Network::ClientGameConnection::getHandlerList()
+MOHPC::Network::ClientGameConnection::HandlerListClient& Network::ClientGameConnection::getHandlerList()
 {
 	return handlerList;
 }
 
-ClientGameConnection::ClientGameConnection(const INetchanPtr& inNetchan, const netadr_t& inAdr, uint32_t challengeResponse, protocolVersion_e protocolVersion)
-	: netchan(inNetchan)	
+ClientGameConnection::ClientGameConnection(NetworkManager* inNetworkManager, const INetchanPtr& inNetchan, const netadr_t& inAdr, uint32_t challengeResponse, const protocolType_c& protoType, ClientInfo&& cInfo)
+	: ITickableNetwork(inNetworkManager)
+	, netchan(inNetchan)	
 	, adr(inAdr)
+	, realTimeStart(0)
+	, serverStartTime(0)
+	, serverTime(0)
+	, oldServerTime(0)
+	, oldFrameServerTime(0)
+	, lastPacketSendTime(0)
+	, maxPackets(30)
 	, parseEntitiesNum(0)
 	, serverCommandSequence(0)
 	, cmdNumber(0)
@@ -199,17 +144,23 @@ ClientGameConnection::ClientGameConnection(const INetchanPtr& inNetchan, const n
 	, downloadedBlock(0)
 	, reliableSequence(0)
 	, reliableAcknowledge(0)
+	, newSnapshots(false)
+	, extrapolatedSnapshot(false)
+	, isActive(false)
 	, reliableCommands{ nullptr }
 	, serverCommands{ nullptr }
 	, reliableCmdStrings{ 0 }
 	, serverCmdStrings{ 0 }
+	, userInfo(std::move(cInfo))
 {
-	switch (protocolVersion)
+	CGameImports imports;
+
+	switch (protoType.getProtocolVersion())
 	{
-	case 6:
+	case protocolVersion_e::ver100:
 		// FIXME: Unimplemented
 		break;
-	case 8:
+	case protocolVersion_e::ver111:
 		readStringMessage_pf = &ClientGameConnection::readStringMessage_normal;
 		writeStringMessage_pf = &ClientGameConnection::writeStringMessage_normal;
 		parseGameState_pf = &ClientGameConnection::parseGameState_ver8;
@@ -217,11 +168,13 @@ ClientGameConnection::ClientGameConnection(const INetchanPtr& inNetchan, const n
 		readEntityNum_pf = &ClientGameConnection::readEntityNum_ver8;
 		readDeltaPlayerstate_pf = &ClientGameConnection::readDeltaPlayerstate_ver8;
 		readDeltaEntity_pf = &ClientGameConnection::readDeltaEntity_ver8;
+
+		cgameModule = new CGameModule8(imports, this);
 		break;
-	case 15:
+	case protocolVersion_e::ver200:
 		// FIXME: Unimplemented
 		break;
-	case 17:
+	case protocolVersion_e::ver211:
 		readStringMessage_pf = &ClientGameConnection::readStringMessage_scrambled;
 		writeStringMessage_pf = &ClientGameConnection::writeStringMessage_scrambled;
 		parseGameState_pf = &ClientGameConnection::parseGameState_ver17;
@@ -229,13 +182,16 @@ ClientGameConnection::ClientGameConnection(const INetchanPtr& inNetchan, const n
 		readEntityNum_pf = &ClientGameConnection::readEntityNum_ver17;
 		readDeltaPlayerstate_pf = &ClientGameConnection::readDeltaPlayerstate_ver17;
 		readDeltaEntity_pf = &ClientGameConnection::readDeltaEntity_ver17;
+
+		cgameModule = new CGameModule17(imports, this);
 		break;
 	default:
-		throw BadProtocolVersionException((uint8_t)protocolVersion);
+		throw BadProtocolVersionException((uint8_t)protoType.getProtocolVersion());
 		break;
 	}
 
-	for (size_t i = 0; i < MAX_RELIABLE_COMMANDS; ++i) {
+	for (size_t i = 0; i < MAX_RELIABLE_COMMANDS; ++i)
+	{
 		reliableCommands[i] = &reliableCmdStrings[i * MAX_STRING_CHARS];
 		serverCommands[i] = &serverCmdStrings[i * MAX_STRING_CHARS];
 	}
@@ -248,7 +204,7 @@ ClientGameConnection::~ClientGameConnection()
 	addReliableCommand("disconnect");
 
 	for (size_t i = 0; i < 3; ++i) {
-		writePacket(serverMessageSequence);
+		writePacket(serverMessageSequence, 0);
 	}
 }
 
@@ -261,12 +217,12 @@ void ClientGameConnection::tick(uint64_t deltaTime, uint64_t currentTime)
 		if (clockTime >= nextTimeoutTime)
 		{
 			// The server or the client timed out
-			handlerList.notify<Handlers::ClientGameTimeout>();
+			handlerList.notify<ClientHandlers::ClientGameTimeout>();
 		}
 	}
 
 	IUdpSocket* socket = getNetchan()->getRawSocket();
-	if (socket->wait(0))
+	if (socket->dataAvailable())
 	{
 		std::vector<uint8_t> data(65536);
 		FixedDataMessageStream stream(data.data(), data.size());
@@ -276,7 +232,20 @@ void ClientGameConnection::tick(uint64_t deltaTime, uint64_t currentTime)
 
 		// Prepare for reading
 		MSG msg(stream, msgMode_e::Reading);
-		receive(from, msg);
+		receive(from, msg, currentTime);
+	}
+
+	// Build and send client commands
+	if(sendCmd(currentTime))
+	{
+		// Send packets if there are new commands
+		writePacket(serverMessageSequence, currentTime);
+	}
+
+	setCGameTime(currentTime);
+
+	if (serverId) {
+		getCGModule().tick(deltaTime, currentTime, serverTime);
 	}
 }
 
@@ -285,18 +254,12 @@ void ClientGameConnection::setTimeout(size_t inTimeoutTime)
 	timeoutTime = inTimeoutTime;
 }
 
-template<>
-void ClientGameConnection::setCallback<Handlers::Error>(Handlers::Error::Type&& handler)
-{
-	handlerList.errorHandler = std::move(handler);
-}
-
 const INetchanPtr& ClientGameConnection::getNetchan() const
 {
 	return netchan;
 }
 
-void Network::ClientGameConnection::receive(const netadr_t& from, MSG& msg)
+void Network::ClientGameConnection::receive(const netadr_t& from, MSG& msg, uint64_t currentTime)
 {
 	IMessageStream& stream = msg.stream();
 
@@ -312,22 +275,18 @@ void Network::ClientGameConnection::receive(const netadr_t& from, MSG& msg)
 
 		try
 		{
-			parseServerMessage(msg, serverMessageSequence);
+			parseServerMessage(msg, serverMessageSequence, currentTime);
 		}
 		catch (NetworkException& e)
 		{
 			MOHPC_LOG(Error, "got exception of type %s: \"%s\"", typeid(e).name(), e.what().c_str());
 
 			// Call the handler
-			handlerList.notify<Handlers::Error>(e);
+			handlerList.notify<ClientHandlers::Error>(e);
 		}
 
 		using namespace std::chrono;
 		nextTimeoutTime = steady_clock::now() + milliseconds(timeoutTime);
-
-		// Build and send client commands
-		sendCmd();
-		writePacket(serverMessageSequence);
 	}
 }
 
@@ -345,7 +304,7 @@ void Network::ClientGameConnection::addReliableCommand(const char* cmd)
 	strncpy(reliableCommands[index], cmd, sizeof(reliableCmdStrings[0]) * MAX_STRING_CHARS);
 }
 
-void Network::ClientGameConnection::parseServerMessage(MSG& msg, uint32_t serverMessageSequence)
+void Network::ClientGameConnection::parseServerMessage(MSG& msg, uint32_t serverMessageSequence, uint64_t currentTime)
 {
 	msg.SetCodec(MessageCodecs::Bit);
 
@@ -360,35 +319,34 @@ void Network::ClientGameConnection::parseServerMessage(MSG& msg, uint32_t server
 		uint8_t cmdNum = msg.ReadByte();
 
 		svc_ops_e cmd = (svc_ops_e)cmdNum;
-		if (cmd == svc_ops_e::eof) {
+		if (cmd == svc_ops_e::Eof) {
 			break;
 		}
 
 		switch (cmd)
 		{
-		case svc_ops_e::nop:
+		case svc_ops_e::Nop:
 			break;
-		case svc_ops_e::serverCommand:
+		case svc_ops_e::ServerCommand:
 			parseCommandString(msg);
 			break;
-		case svc_ops_e::gamestate:
+		case svc_ops_e::Gamestate:
 			parseGameState(msg);
 			break;
-		case svc_ops_e::snapshot:
-			parseSnapshot(msg, serverMessageSequence);
+		case svc_ops_e::Snapshot:
+			parseSnapshot(msg, serverMessageSequence, currentTime);
 			break;
-		case svc_ops_e::download:
+		case svc_ops_e::Download:
 			parseDownload(msg);
 			break;
-		case svc_ops_e::centerprint:
+		case svc_ops_e::Centerprint:
 			parseCenterprint(msg);
 			break;
-		case svc_ops_e::locprint:
+		case svc_ops_e::Locprint:
 			parseLocprint(msg);
 			break;
-		case svc_ops_e::cgameMessage:
+		case svc_ops_e::CGameMessage:
 			parseCGMessage(msg);
-			return;
 			break;
 		default:
 			throw IllegibleServerMessageException(cmdNum);
@@ -401,7 +359,7 @@ void GetNullEntityState(entityState_t* nullState) {
 	*nullState = entityState_t();
 	nullState->alpha = 1.0f;
 	nullState->scale = 1.0f;
-	nullState->parent = entityState_t::ENTITYNUM_NONE;
+	nullState->parent = ENTITYNUM_NONE;
 	nullState->tag_num = -1;
 	nullState->constantLight = -1;
 	nullState->renderfx = 16;
@@ -428,13 +386,13 @@ void Network::ClientGameConnection::parseGameState(MSG& msg)
 	for (;;)
 	{
 		const svc_ops_e cmd = (svc_ops_e)msg.ReadByte();
-		if (cmd == svc_ops_e::eof) {
+		if (cmd == svc_ops_e::Eof) {
 			break;
 		}
 
 		switch (cmd)
 		{
-		case svc_ops_e::configstring:
+		case svc_ops_e::Configstring:
 		{
 			const uint16_t stringNum = msg.ReadUShort();
 
@@ -443,22 +401,11 @@ void Network::ClientGameConnection::parseGameState(MSG& msg)
 			}
 
 			const StringMessage stringValue = readStringMessage(msg);
-			const size_t sz = strlen(stringValue) + 1;
 
-			const size_t newSz = gameState.dataCount + sz;
-			if (newSz > gameState.MAX_GAMESTATE_CHARS) {
-				throw MaxGameStateCharsException(newSz);
-			}
-
-			gameState.stringOffsets[stringNum] = gameState.dataCount;
-			memcpy(gameState.stringData + gameState.dataCount, stringValue, sz);
-			gameState.dataCount += sz;
-
-			// Notify about change
-			handlerList.notify<Handlers::Configstring>(stringNum, gameState.getConfigString(stringNum));
+			configStringModified(stringNum, stringValue);
 		}
 		break;
-		case svc_ops_e::baseline:
+		case svc_ops_e::Baseline:
 		{
 			const uint16_t newNum = readEntityNum(msgHelper);
 			if (newNum >= MAX_GENTITIES) {
@@ -469,10 +416,11 @@ void Network::ClientGameConnection::parseGameState(MSG& msg)
 			GetNullEntityState(&nullState);
 
 			entityState_t& es = entityBaselines[newNum];
+			es.number = newNum;
 			readDeltaEntity(msg, &nullState, &es);
 
 			// Call handler
-			handlerList.notify<Handlers::EntityRead>((const entityState_t*)nullptr, const_cast<const entityState_t*>(&es));
+			handlerList.notify<ClientHandlers::EntityRead>((const entityState_t*)nullptr, const_cast<const entityState_t*>(&es));
 		}
 		break;
 		default:
@@ -487,7 +435,7 @@ void Network::ClientGameConnection::parseGameState(MSG& msg)
 	systemInfoChanged();
 }
 
-void Network::ClientGameConnection::parseSnapshot(MSG& msg, uint32_t serverMessageSequence)
+void Network::ClientGameConnection::parseSnapshot(MSG& msg, uint32_t serverMessageSequence, uint64_t currentTime)
 {
 	ClientSnapshot newSnap;
 	ClientSnapshot* old;
@@ -549,13 +497,13 @@ void Network::ClientGameConnection::parseSnapshot(MSG& msg, uint32_t serverMessa
 	// Read player state
 	playerState_t* oldps = old ? &old->ps : nullptr;
 	readDeltaPlayerstate(msg, oldps, &newSnap.ps);
-	handlerList.notify<Handlers::PlayerstateRead>(const_cast<const playerState_t*>(oldps), const_cast<const playerState_t*>(&newSnap.ps));
+	handlerList.notify<ClientHandlers::PlayerstateRead>(const_cast<const playerState_t*>(oldps), const_cast<const playerState_t*>(&newSnap.ps));
 
 	// Read all entities in this snap
 	parsePacketEntities(msg, old, &newSnap);
 
 	// Parse sounds
-	parseSounds(msg);
+	parseSounds(msg, &newSnap);
 
 	if (!newSnap.valid) {
 		return;
@@ -571,25 +519,31 @@ void Network::ClientGameConnection::parseSnapshot(MSG& msg, uint32_t serverMessa
 		snapshots[oldMessageNum & PACKET_MASK].valid = false;
 	}
 
-	if (currentSnap.valid && (newSnap.snapFlags ^ newSnap.snapFlags) & ClientSnapshot::SNAPFLAG_SERVERCOUNT) {
+	if (currentSnap.valid && (newSnap.snapFlags ^ newSnap.snapFlags) & SNAPFLAG_SERVERCOUNT)
+	{
 		serverStartTime = newSnap.serverTime;
+		realTimeStart = currentTime;
 	}
 
 	currentSnap = newSnap;
-	// FIXME: ping ?
+	currentSnap.ping = 999;
 
 	// FIXME: calculate ping time
 	uint16_t ping = 0;
 	for (size_t i = 0; i < PACKET_BACKUP; ++i)
 	{
 		const uintptr_t packetNum = (getNetchan()->getOutgoingSequence() - 1 - i) & PACKET_MASK;
-		if (currentSnap.ps.commandTime >= outPackets[packetNum].p_serverTime) {
-			//ping = cls.realtime - cl.outPackets[packetNum].p_realtime;
+		if (currentSnap.ps.commandTime >= outPackets[packetNum].p_serverTime)
+		{
+			currentSnap.ping = (uint32_t)(currentTime - outPackets[packetNum].p_currentTime);
 			break;
 		}
 	}
 
 	snapshots[currentSnap.messageNum & PACKET_MASK] = currentSnap;
+	newSnapshots = true;
+
+	getHandlerList().notify<ClientHandlers::SnapReceived>(currentSnap);
 }
 
 void Network::ClientGameConnection::parsePacketEntities(MSG& msg, ClientSnapshot* oldFrame, ClientSnapshot* newFrame)
@@ -606,29 +560,29 @@ void Network::ClientGameConnection::parsePacketEntities(MSG& msg, ClientSnapshot
 	if (!oldFrame) {
 		oldNum = 99999;
 	}
-	else {
-		if (oldIndex >= oldFrame->numEntities) {
-			oldNum = 99999;
-		}
-		else {
-			oldState = &parseEntities[(oldFrame->parseEntitiesNum + oldIndex) & (MAX_PARSE_ENTITIES - 1)];
-			oldNum = oldState->number;
-		}
+	else
+	{
+		oldState = &parseEntities[oldFrame->parseEntitiesNum & (MAX_PARSE_ENTITIES - 1)];
+		oldNum = oldState->number;
 	}
+
+	std::bitset<MAX_GENTITIES> currentValidEntities;
 
 	for (;;)
 	{
-		// SH/BT use this
 		const uint16_t newNum = readEntityNum(msgHelper);
 
-		if (newNum == (MAX_GENTITIES - 1)) {
+		if (newNum == ENTITYNUM_NONE) {
 			break;
 		}
+
+		currentValidEntities.set(newNum, true);
 
 		// FIXME: throw if end of message
 
 		while (oldNum < newNum)
 		{
+			currentValidEntities.set(oldNum, true);
 			parseDeltaEntity(msg, newFrame, oldNum, oldState, true);
 
 			++oldIndex;
@@ -644,6 +598,7 @@ void Network::ClientGameConnection::parsePacketEntities(MSG& msg, ClientSnapshot
 
 		if (oldNum == newNum)
 		{
+			currentValidEntities.set(oldNum, true);
 			// delta from previous state
 			parseDeltaEntity(msg, newFrame, newNum, oldState, false);
 
@@ -670,6 +625,7 @@ void Network::ClientGameConnection::parsePacketEntities(MSG& msg, ClientSnapshot
 	// any remaining entities in the old frame are copied over
 	while (oldNum != 99999)
 	{
+		currentValidEntities.set(oldNum, true);
 		// one or more entities from the old packet are unchanged
 		parseDeltaEntity(msg, newFrame, oldNum, oldState, true);
 
@@ -678,9 +634,34 @@ void Network::ClientGameConnection::parsePacketEntities(MSG& msg, ClientSnapshot
 		if (oldIndex >= oldFrame->numEntities) {
 			oldNum = 99999;
 		}
-		else {
+		else
+		{
 			oldState = &parseEntities[(oldFrame->parseEntitiesNum + oldIndex) & (MAX_PARSE_ENTITIES - 1)];
 			oldNum = oldState->number;
+		}
+	}
+
+	// Find entities that were not sent and mark them as deleted
+	for (size_t i = 0; i < MAX_GENTITIES; ++i)
+	{
+		if (!currentValidEntities.test(i) && validEntities.test(i))
+		{
+			// Find parse entity with the same number
+			const size_t start = newFrame->parseEntitiesNum & (MAX_PARSE_ENTITIES - 1);
+			for (size_t j = start ; j < MAX_PARSE_ENTITIES; ++j)
+			{
+				const entityState_t* parsed = &parseEntities[j];
+				if (parsed->number == i)
+				{
+					// Notify about deletion
+					handlerList.notify<ClientHandlers::EntityRead>(
+						const_cast<const entityState_t*>(parsed),
+						const_cast<const entityState_t*>(nullptr)
+					);
+					validEntities.set(i, false);
+					break;
+				}
+			}
 		}
 	}
 }
@@ -696,21 +677,33 @@ void Network::ClientGameConnection::parseDeltaEntity(MSG& msg, ClientSnapshot* f
 	{
 		state->number = newNum;
 		readDeltaEntity(msg, old, state);
-
-		handlerList.notify<Handlers::EntityRead>(const_cast<const entityState_t*>(old), const_cast<const entityState_t*>(state));
 	}
 
-	if (state->number == (MAX_GENTITIES - 1))
+	if (state->number == ENTITYNUM_NONE)
 	{
 		// entity was delta removed
+		validEntities.set(newNum, false);
+		handlerList.notify<ClientHandlers::EntityRead>(const_cast<const entityState_t*>(old), const_cast<const entityState_t*>(nullptr));
 		return;
+	}
+
+	if (!validEntities.test(newNum))
+	{
+		// Notify for a new entity
+		handlerList.notify<ClientHandlers::EntityRead>(const_cast<const entityState_t*>(nullptr), const_cast<const entityState_t*>(state));
+	}
+	else
+	{
+		// Notify only if it has changed
+		handlerList.notify<ClientHandlers::EntityRead>(const_cast<const entityState_t*>(old), const_cast<const entityState_t*>(state));
 	}
 
 	++parseEntitiesNum;
 	frame->numEntities++;
+	validEntities.set(newNum, true);
 }
 
-void Network::ClientGameConnection::parseSounds(MSG& msg)
+void Network::ClientGameConnection::parseSounds(MSG& msg, ClientSnapshot* newFrame)
 {
 	const bool hasSounds = msg.ReadBool();
 	if (!hasSounds) {
@@ -719,16 +712,18 @@ void Network::ClientGameConnection::parseSounds(MSG& msg)
 
 	uint8_t numSounds = 0;
 	msg.ReadBits(&numSounds, 7);
-	if (numSounds > 64) {
+	if (numSounds > MAX_SERVER_SOUNDS) {
 		return;
 	}
+
+	newFrame->numSounds = numSounds;
 
 	MsgTypesHelper msgHelper(msg);
 
 	// FIXME: set number of sounds and assign them
 	for (size_t i = 0; i < numSounds; ++i)
 	{
-		sound_t sound;
+		sound_t& sound = newFrame->sounds[i];
 		sound.hasStopped = msg.ReadBool();
 
 		if (sound.hasStopped)
@@ -746,7 +741,7 @@ void Network::ClientGameConnection::parseSounds(MSG& msg)
 			sound.isSpatialized = msg.ReadBool();
 
 			if (sound.isSpatialized) {
-				sound.origin = msgHelper.ReadVectorCoord();
+				sound.origin = msgHelper.ReadVectorFloat();
 			}
 
 			uint16_t entityNum = 0;
@@ -801,7 +796,7 @@ void Network::ClientGameConnection::parseSounds(MSG& msg)
 			sound.maxDist = msg.ReadFloat();
 		}
 
-		handlerList.notify<Handlers::Sound>(sound);
+		handlerList.notify<ClientHandlers::Sound>(sound);
 	}
 }
 
@@ -869,14 +864,32 @@ void Network::ClientGameConnection::parseCommandString(MSG& msg)
 	serverCommands[index] = &serverCmdStrings[MAX_STRING_CHARS * index];
 	strncpy(serverCommands[index], s, sizeof(serverCmdStrings[0]) * MAX_STRING_CHARS);
 
-	// notify about the NEW command
-	handlerList.notify<Handlers::ServerCommand>(const_cast<const char*>(s.getData()));
+	Event ev;
+	TokenParser parser;
+	parser.Parse(s, strlen(s));
+
+	const str commandName = parser.GetToken(false);
+
+	while (parser.TokenAvailable(true)) {
+		ev.AddString(parser.GetToken(true));
+	}
+
+#if _DEBUG
+	if (!str::icmp(commandName, "stufftext"))
+	{
+		// Warn about stufftext
+		MOHPC_LOG(Warning, "Stufftext command detected. Handle it with high precautions. Arguments : %s", s.getData() + 10);
+	}
+#endif
+
+	// notify about the new command
+	handlerList.notify<ClientHandlers::ServerCommand>(commandName.c_str(), ev);
 }
 
 void Network::ClientGameConnection::parseCenterprint(MSG& msg)
 {
 	const StringMessage s = readStringMessage(msg);
-	handlerList.notify<Handlers::CenterPrint>(const_cast<const char*>(s.getData()));
+	handlerList.notify<ClientHandlers::CenterPrint>(const_cast<const char*>(s.getData()));
 }
 
 void Network::ClientGameConnection::parseLocprint(MSG& msg)
@@ -885,217 +898,26 @@ void Network::ClientGameConnection::parseLocprint(MSG& msg)
 	const uint16_t y = msg.ReadUShort();
 
 	const StringMessage string = readStringMessage(msg);
-	handlerList.notify<Handlers::LocationPrint>(x, y, const_cast<const char*>(string.getData()));
+	handlerList.notify<ClientHandlers::LocationPrint>(x, y, const_cast<const char*>(string.getData()));
 }
 
 void Network::ClientGameConnection::parseCGMessage(MSG& msg)
 {
-	// FIXME: Should be fixed for SH/BT
-	uint8_t temp;
-	uint8_t count;
-	uint8_t index;
-	bool large = false;
-	bool hasMessage = false;
-	StringMessage strVal;
-	Vector vecTmp;
-	Vector vecStart, vecEnd;
-	Vector vecArray[64];
-	MsgTypesHelper msgHelper(msg);
-
-	do
-	{
-		uint8_t msgType = 0;
-		msg.ReadBits(&msgType, 6);
-
-		switch (msgType)
-		{
-		case 1:
-			vecTmp = msgHelper.ReadVectorCoord();
-		case 2:
-		case 5:
-		{
-			vecStart = msgHelper.ReadVectorCoord();
-			vecTmp = vecStart;
-			vecArray[0] = msgHelper.ReadVectorCoord();
-			large = msg.ReadBool();
-
-			// FIXME: create bullet tracer
-			break;
-		}
-		case 3:
-		{
-			vecTmp = msgHelper.ReadVectorCoord();
-			temp = 0;
-			msg.ReadBits(&temp, 6);
-		}
-		case 4:
-			if (msgType == 4) {
-				temp = 0;
-			}
-
-			vecStart = msgHelper.ReadVectorCoord();
-			large = msg.ReadBool();
-			msg.ReadBits(&count, 6);
-
-			for (size_t i = 0; i < count; ++i) {
-				vecArray[i] = msgHelper.ReadVectorCoord();
-			}
-			// FIXME: bullet tracer
-			break;
-		case 6:
-		case 7:
-		case 8:
-		case 9:
-		case 10:
-			vecStart = msgHelper.ReadVectorCoord();
-			vecEnd = msgHelper.ReadDir();
-			large = msg.ReadBool();
-			// FIXME do it
-			break;
-		case 11:
-			vecStart = msgHelper.ReadVectorCoord();
-			vecEnd = msgHelper.ReadVectorCoord();
-			// FIXME: melee impact
-			break;
-		case 12:
-		case 13:
-			vecStart = msgHelper.ReadVectorCoord();
-			// FIXME: grenade explosion
-			break;
-		case 14:
-		case 15:
-		case 16:
-		case 17:
-		case 18:
-		case 19:
-		case 20:
-		case 21:
-		case 22:
-			vecStart = msgHelper.ReadVectorCoord();
-			vecEnd = msgHelper.ReadDir();
-			// FIXME: make effect
-			break;
-		case 23:
-		case 24:
-			vecStart = msgHelper.ReadVectorCoord();
-			temp = msg.ReadByte();
-			// FIXME: spawn effect
-			break;
-		case 25:
-			vecTmp = msgHelper.ReadVectorCoord();
-			vecStart = msgHelper.ReadVectorCoord();
-			vecArray[0] = msgHelper.ReadVectorCoord();
-			large = msg.ReadBool();
-			// FIXME: make bullet tracer
-			break;
-		case 26:
-			vecTmp = vec_zero;
-			vecStart = msgHelper.ReadVectorCoord();
-			vecArray[0] = msgHelper.ReadVectorCoord();
-			large = msg.ReadBool();
-			// FIXME: make bullet tracer
-			break;
-		case 27:
-			index = msg.ReadByte();
-			strVal = readStringMessage(msg);
-			// FIXME: hud draw
-			break;
-		case 28:
-		{
-			index = msg.ReadByte();
-			uint8_t hAlign = 0, vAlign = 0;
-			msg.ReadBits(&hAlign, 2);
-			msg.ReadBits(&vAlign, 2);
-			// FIXME: hud draw
-			break;
-		}
-		case 29:
-		{
-			index = msg.ReadByte();
-
-			const uint16_t x = msg.ReadUShort();
-			const uint16_t y = msg.ReadUShort();
-			const uint16_t width = msg.ReadUShort();
-			const uint16_t height = msg.ReadUShort();
-			// FIXME: hud draw
-			break;
-		}
-		case 30:
-		{
-			index = msg.ReadByte();
-			const bool virtualScreen = msg.ReadBool();
-			// FIXME: hud draw
-			break;
-		}
-		case 31:
-		{
-			index = msg.ReadByte();
-			const uint8_t col[3] =
-			{
-				msg.ReadByte(),
-				msg.ReadByte(),
-				msg.ReadByte()
-			};
-
-			// Divide by 255 to get float color
-			// FIXME: hud draw
-			break;
-		}
-		case 32:
-		{
-			index = msg.ReadByte();
-			const uint8_t alpha = msg.ReadByte();
-			// FIXME: hud draw
-			break;
-		}
-		case 33:
-		{
-			index = msg.ReadByte();
-			strVal = readStringMessage(msg);
-			// FIXME: hud draw
-			break;
-		}
-		case 34:
-		{
-			index = msg.ReadByte();
-			strVal = readStringMessage(msg);
-			// FIXME: hud draw
-			break;
-		}
-		case 35:
-		case 36:
-			// FIXME: play sound
-			break;
-		case 37:
-			vecStart = msgHelper.ReadVectorCoord();
-
-			msg.ReadBits(&temp, 1);
-			msg.ReadBits(&index, 6);
-			strVal = readStringMessage(msg);
-
-			// FIXME: play sound
-			break;
-
-		}
-		hasMessage = msg.ReadBool();
-	} while (hasMessage);
+	// Let the module handle messages
+	cgameModule->parseCGMessage(msg);
 }
-
-
-// an info string with all the serverinfo cvars
-static constexpr size_t CS_SERVERINFO = 0;
-// an info string for server system to client system configuration (timescale, etc)
-static constexpr size_t CS_SYSTEMINFO = 1;
-// game can't modify below this, only the system can
-static constexpr size_t RESERVED_CONFIGSTRINGS = 2;
 
 void Network::ClientGameConnection::systemInfoChanged()
 {
-	const char* systemInfo = gameState.stringData + gameState.stringOffsets[CS_SYSTEMINFO];
+	const char* systemInfoStr = gameState.stringData + gameState.stringOffsets[CS_SYSTEMINFO];
+	const char* serverInfoStr = gameState.stringData + gameState.stringOffsets[CS_SERVERINFO];
 
-	ReadOnlyInfo info(systemInfo);
+	serverSystemInfo = systemInfoStr;
+	serverGameInfo = serverInfoStr;
 
-	serverId = atoi(info.ValueForKey("sv_serverid"));
+	serverId = atoi(serverSystemInfo.ValueForKey("sv_serverid"));
+	const uint32_t sv_fps = atoi(serverGameInfo.ValueForKey("sv_fps"));
+	serverDeltaFrequency = (uint64_t)(1.f / (float)sv_fps * (1000.f * 2.f));
 }
 
 void Network::ClientGameConnection::createNewCommands()
@@ -1109,24 +931,25 @@ void Network::ClientGameConnection::createNewCommands()
 	userEyes = usereyes_t();
 
 	// Let the app set user input
-	handlerList.notify<Handlers::UserInput>(cmd, userEyes);
+	handlerList.notify<ClientHandlers::UserInput>(cmd, userEyes);
 }
 
 void Network::ClientGameConnection::createCmd(usercmd_t& outcmd)
 {
-	outcmd = usercmd_t(currentSnap.serverTime);
+	outcmd = usercmd_t((uint32_t)serverTime);
 }
 
-void Network::ClientGameConnection::sendCmd()
+bool Network::ClientGameConnection::sendCmd(uint64_t currentTime)
 {
-	if (!serverId) {
-		return;
+	if (!readyToSendPacket(currentTime)) {
+		return false;
 	}
 
 	createNewCommands();
+	return true;
 }
 
-void Network::ClientGameConnection::writePacket(uint32_t serverMessageSequence)
+void Network::ClientGameConnection::writePacket(uint32_t serverMessageSequence, uint64_t currentTime)
 {
 	std::vector<uint8_t> data(MAX_MSGLEN);
 	FixedDataMessageStream stream(data.data(), data.size());
@@ -1141,7 +964,6 @@ void Network::ClientGameConnection::writePacket(uint32_t serverMessageSequence)
 	// Write the server sequence
 	msg.WriteUInteger(serverMessageSequence);
 	msg.WriteUInteger(serverCommandSequence);
-	//msg.WriteUInteger(-63);
 
 	// FIXME: write any unacknowledged clientCommands
 	for (int32_t i = reliableAcknowledge + 1; i <= reliableSequence; ++i)
@@ -1162,19 +984,19 @@ void Network::ClientGameConnection::writePacket(uint32_t serverMessageSequence)
 
 	if (count >= 1)
 	{
-		uint8_t cmdNum;
+		uint8_t cmdOp;
 		//if (currentSnap.valid && serverMessageSequence == currentSnap.messageNum) {
 		//	cmdNum = clc_ops_e::Move;
 		//}
 		//else {
-		cmdNum = clc_ops_e::MoveNoDelta;
+		cmdOp = clc_ops_e::MoveNoDelta;
 		//}
 
 		// Write the command number
-		msg.WriteByte(cmdNum);
+		msg.WriteByte(cmdOp);
 
-		uint8_t numCmd = (uint8_t)count;
-		msg.WriteByte(numCmd);
+		// Write the number of commands
+		msg.WriteByte(count);
 
 		// Write delta eyes
 		msg.WriteDeltaClass(&SerializableUserEyes(outPackets[oldPacketNum].p_eyeinfo), &SerializableUserEyes(userEyes));
@@ -1188,7 +1010,7 @@ void Network::ClientGameConnection::writePacket(uint32_t serverMessageSequence)
 		// write all the commands, including the predicted command
 		for (size_t i = 0; i < count; i++)
 		{
-			size_t j = (cmdNumber - count + i + 1) & CMD_MASK;
+			const size_t j = (cmdNumber - count + i + 1) & CMD_MASK;
 			usercmd_t* cmd = &cmds[j];
 			// Write delta cmd
 			msg.WriteDeltaClass(&SerializableUsercmd(*oldcmd), &SerializableUsercmd(*cmd), key);
@@ -1197,11 +1019,8 @@ void Network::ClientGameConnection::writePacket(uint32_t serverMessageSequence)
 	}
 
 	// Retrieve the time
-	using namespace std::chrono;
-	time_point<steady_clock> clockTime = steady_clock::now();
-
 	const uint32_t packetNum = getNetchan()->getOutgoingSequence() & PACKET_MASK;
-	outPackets[packetNum].p_realtime = duration_cast<milliseconds>(clockTime.time_since_epoch()).count();
+	outPackets[packetNum].p_currentTime = currentTime;
 	outPackets[packetNum].p_serverTime = oldcmd->serverTime;
 	outPackets[packetNum].p_cmdNumber = cmdNumber;
 	outPackets[packetNum].p_eyeinfo = userEyes;
@@ -1219,16 +1038,18 @@ void Network::ClientGameConnection::writePacket(uint32_t serverMessageSequence)
 	
 	// Transmit the encoded message
 	getNetchan()->transmit(adr, msg.stream());
+
+	lastPacketSendTime = currentTime;
 }
 
 StringMessage ClientGameConnection::readStringMessage(MSG& msg)
 {
-	return (this->*readStringMessage_pf)(msg);
+	return (*readStringMessage_pf)(msg);
 }
 
 void ClientGameConnection::writeStringMessage(MSG& msg, const char* s)
 {
-	return (this->*writeStringMessage_pf)(msg, s);
+	return (*writeStringMessage_pf)(msg, s);
 }
 
 uint32_t ClientGameConnection::hashKey(const char* string, size_t maxlen)
@@ -1333,4 +1154,307 @@ void ClientGameConnection::readDeltaEntity_ver8(MSG& msg, const entityState_t* f
 void ClientGameConnection::readDeltaEntity_ver17(MSG& msg, const entityState_t* from, entityState_t* to)
 {
 	msg.ReadDeltaClass(from ? &SerializableEntityState_ver17(*const_cast<entityState_t*>(from)) : nullptr, &SerializableEntityState_ver17(*to));
+}
+
+const gameState_t& MOHPC::Network::ClientGameConnection::getGameState() const
+{
+	return gameState;
+}
+
+const ClientInfo& MOHPC::Network::ClientGameConnection::getUserInfo() const
+{
+	return userInfo;
+}
+
+void MOHPC::Network::ClientGameConnection::updateUserInfo()
+{
+	Info info;
+	userInfo.fillInfoString(info);
+	// Send the new user info.
+	addReliableCommand(str::printf("userinfo \"%s\"", info.GetString()));
+}
+
+uint32_t MOHPC::Network::ClientGameConnection::getMaxPackets() const
+{
+	return maxPackets;
+}
+
+void MOHPC::Network::ClientGameConnection::setMaxPackets(uint32_t inMaxPackets)
+{
+	maxPackets = inMaxPackets;
+	if (maxPackets < 1) {
+		maxPackets = 1;
+	}
+	else if (maxPackets > 125) {
+		maxPackets = 125;
+	}
+}
+
+ClientInfo& MOHPC::Network::ClientGameConnection::getUserInfo()
+{
+	return userInfo;
+}
+
+void MOHPC::Network::ClientGameConnection::initTime(uint64_t currentTime)
+{
+	realTimeStart = currentTime;
+}
+
+uintptr_t MOHPC::Network::ClientGameConnection::getCurrentSnapshotNumber() const
+{
+	return currentSnap.messageNum;
+}
+
+bool MOHPC::Network::ClientGameConnection::getSnapshot(uintptr_t snapshotNum, SnapshotInfo& outSnapshot) const
+{
+	// if the frame has fallen out of the circular buffer, we can't return it
+	if (currentSnap.messageNum - snapshotNum >= PACKET_BACKUP) {
+		return false;
+	}
+
+	// if the frame is not valid, we can't return it
+	const ClientSnapshot* foundSnap = &snapshots[snapshotNum & PACKET_MASK];
+	if (!foundSnap->valid) {
+		return false;
+	}
+
+	// if the entities in the frame have fallen out of their
+	// circular buffer, we can't return it
+	if (parseEntitiesNum - foundSnap->parseEntitiesNum >= MAX_PARSE_ENTITIES) {
+		return false;
+	}
+
+	// Copy snapshot data
+	outSnapshot.snapFlags = foundSnap->snapFlags;
+	outSnapshot.serverCommandSequence = foundSnap->serverCommandNum;
+	outSnapshot.ping = foundSnap->ping;
+	outSnapshot.serverTime = foundSnap->serverTime;
+	memcpy(outSnapshot.areamask, foundSnap->areamask, sizeof(outSnapshot.areamask));
+	outSnapshot.ps = foundSnap->ps;
+
+	size_t count = foundSnap->numEntities;
+	if (count > MAX_ENTITIES_IN_SNAPSHOT) {
+		count = MAX_ENTITIES_IN_SNAPSHOT;
+	}
+
+	outSnapshot.numEntities = count;
+
+	// Copy entities to snapshot
+	for (uintptr_t i = 0; i < count; i++) {
+		outSnapshot.entities[i] = parseEntities[(foundSnap->parseEntitiesNum + i) & (MAX_PARSE_ENTITIES - 1)];
+	}
+
+	outSnapshot.numSounds = foundSnap->numSounds;
+	for (uintptr_t i = 0; i < outSnapshot.numSounds; i++) {
+		outSnapshot.sounds[i] = foundSnap->sounds[i];
+	}
+
+	return true;
+}
+
+uint64_t MOHPC::Network::ClientGameConnection::getServerStartTime() const
+{
+	return serverStartTime;
+}
+
+uint64_t MOHPC::Network::ClientGameConnection::getServerTime() const
+{
+	return serverTime;
+}
+
+uint64_t MOHPC::Network::ClientGameConnection::getServerFrameFrequency() const
+{
+	return serverDeltaFrequency;
+}
+
+uintptr_t MOHPC::Network::ClientGameConnection::getCurrentCmdNumber()
+{
+	return cmdNumber;
+}
+
+bool MOHPC::Network::ClientGameConnection::getUserCmd(uintptr_t cmdNum, usercmd_t& outCmd)
+{
+	// the usercmd has been overwritten in the wrapping
+	// buffer because it is too far out of date
+	if (cmdNum < this->cmdNumber - CMD_BACKUP) {
+		return false;
+	}
+
+	outCmd = cmds[cmdNum & CMD_MASK];
+	return true;
+}
+
+bool MOHPC::Network::ClientGameConnection::getServerCommand(uintptr_t serverCommandNumber, TokenParser& tokenized)
+{
+	const char* cmdString = serverCommands[serverCommandNumber % MAX_RELIABLE_COMMANDS];
+	if (!cmdString) {
+		return false;
+	}
+
+	tokenized.Parse(cmdString, strlen(cmdString));
+
+	if (!str::icmpn(cmdString, "cs ", 3))
+	{
+		// Skip the "cs" token
+		tokenized.GetToken(true);
+
+		// Retrieve the configstring number
+		const uint32_t num = tokenized.GetInteger(true);
+		// Get the content
+		const char* csString = tokenized.GetString(true, false);
+
+		// Notify about modification
+		configStringModified(num, csString);
+
+		if (num == CS_SYSTEMINFO || num == CS_SERVERINFO)
+		{
+			// Notify when system info has changed
+			systemInfoChanged();
+		}
+
+		return false;
+	}
+
+	return true;
+}
+
+void MOHPC::Network::ClientGameConnection::configStringModified(uint16_t num, const char* newString)
+{
+	// Set the config string in gamestate
+	gameState.setConfigString(num, newString, strlen(newString));
+
+	// Notify the client module about cs modification
+	if(cgameModule) cgameModule->configStringModified(num);
+
+	// Notify about the change
+	handlerList.notify<ClientHandlers::Configstring>(num, newString);
+}
+
+void MOHPC::Network::ClientGameConnection::setCGameTime(uint64_t currentTime)
+{
+	if(!serverId)
+	{
+		if (newSnapshots)
+		{
+			newSnapshots = false;
+			firstSnapshot(currentTime);
+		}
+	}
+
+	// if we have gotten to this point, cl.snap is guaranteed to be valid
+	if (!currentSnap.valid)
+	{
+		realTimeStart = currentTime;
+		return;
+	}
+
+	oldFrameServerTime = currentSnap.serverTime;
+
+	int32_t tn = 10;
+	if (tn < -30) {
+		tn = -30;
+	}
+	else if (tn > 30) {
+		tn = 30;
+	}
+
+	const uint64_t realTime = currentTime;
+	const uint64_t realServerTime = realTime - realTimeStart + oldServerTime;
+	serverTime = realServerTime - tn;
+	oldRealTime = currentTime;
+
+	// guarantee that time will never flow backwards, even if
+	// serverTimeDelta made an adjustment or cl_timeNudge was changed
+	if (serverTime < oldServerTime) {
+		serverTime = oldServerTime;
+	}
+
+	if (realServerTime >= currentSnap.serverTime - 5) {
+		extrapolatedSnapshot = true;
+	}
+
+	if(newSnapshots) {
+		adjustTimeDelta(realTime);
+	}
+}
+
+void MOHPC::Network::ClientGameConnection::adjustTimeDelta(uint64_t realTime)
+{
+	newSnapshots = false;
+
+	constexpr size_t BASE_RESET_TIME = 400;
+
+	const uint64_t resetTime = BASE_RESET_TIME + serverDeltaFrequency;
+	uint64_t deltaDelta = abs((int64_t)(currentSnap.serverTime - serverTime));
+
+	if (deltaDelta > resetTime)
+	{
+		realTimeStart = realTime;
+		oldServerTime = currentSnap.serverTime;
+		serverTime = currentSnap.serverTime;
+	}
+	else if (deltaDelta > serverDeltaFrequency)
+	{
+		// fast adjust
+		realTimeStart += serverDeltaFrequency - deltaDelta;
+	}
+	else
+	{
+		if (extrapolatedSnapshot)
+		{
+			extrapolatedSnapshot = false;
+			realTimeStart += 2;
+		}
+		else {
+			realTimeStart -= 1;
+		}
+	}
+}
+
+void MOHPC::Network::ClientGameConnection::firstSnapshot(uint64_t currentTime)
+{
+	if (currentSnap.snapFlags & SNAPFLAG_NOT_ACTIVE) {
+		return;
+	}
+
+	serverStartTime = currentSnap.serverTime;
+	serverTime = (uint32_t)(currentSnap.serverTime - currentTime);
+	isActive = true;
+
+	// Notify about the snapshot
+	getHandlerList().notify<ClientHandlers::FirstSnapshot>(currentSnap);
+}
+
+bool MOHPC::Network::ClientGameConnection::readyToSendPacket(uint64_t currentTime) const
+{
+	if (!serverId)
+	{
+		// Send one packet per second when loading
+		return currentTime >= lastPacketSendTime + 1000;
+	}
+
+	const size_t oldPacketNum = (getNetchan()->getOutgoingSequence() - 1) & PACKET_MASK;
+	const uint64_t delta = currentTime - outPackets[oldPacketNum].p_currentTime;
+	if (delta < 1000 / maxPackets) {
+		return false;
+	}
+
+	return true;
+}
+
+MOHPC::Network::CGameModuleBase& Network::ClientGameConnection::getCGModule()
+{
+	return *cgameModule;
+}
+
+void MOHPC::Network::gameState_t::setConfigString(size_t num, const char* configString, size_t len)
+{
+	const size_t newSz = dataCount + len;
+	if (newSz > MAX_GAMESTATE_CHARS) {
+		throw MaxGameStateCharsException(newSz);
+	}
+
+	stringOffsets[num] = dataCount;
+	memcpy(stringData + dataCount, configString, len + 1);
+	dataCount += len + 1;
 }

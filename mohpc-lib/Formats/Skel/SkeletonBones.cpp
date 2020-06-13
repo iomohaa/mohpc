@@ -768,7 +768,7 @@ SkelMat4 skelBone_IKshoulder::GetDirtyTransform( const skelAnimStoreFrameList_c 
 	m_cosElbowAngle = -( ( m_lowerLength * m_lowerLength + m_upperLength * m_upperLength - sinUpperAngle * sinUpperAngle ) /
 		( m_upperLength * m_lowerLength + m_upperLength * m_lowerLength ) );
 
-	length = -sqrt( 1.0f - maxLength * maxLength );
+	length = -sqrtf( 1.0f - maxLength * maxLength );
 
 	cosA = m_cachedValue[ 0 ][ 0 ];
 	sinA = m_cachedValue[ 1 ][ 0 ];

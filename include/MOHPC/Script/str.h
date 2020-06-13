@@ -18,7 +18,7 @@ namespace MOHPC
 	class strdata
 	{
 	public:
-		strdata() : len(0), refcount(0), data(NULL), alloced(0) {}
+		strdata() : data(NULL), refcount(0), alloced(0), len(0) {}
 		~strdata()
 		{
 			if (data)
@@ -164,4 +164,41 @@ namespace MOHPC
 
 	char* strstrip(char* string);
 	char* strlwc(char* string);
+
+	template<typename Archive>
+	Archive& operator<<(Archive& ar, str& value)
+	{
+		if (value.length() > 0)
+		{
+			ar << (uint32_t)value.length();
+
+			for (size_t i = 0; i < value.length(); ++i)
+			{
+				ar << value.c_str()[i];
+			}
+		}
+		else {
+			ar << (uint32_t)0;
+		}
+
+		return ar;
+	}
+
+	template<typename Archive>
+	Archive& operator>>(Archive& ar, str& value)
+	{
+		uint32_t len = 0;
+		ar >> len;
+
+		if (len)
+		{
+			value.resize(len);
+			for (size_t i = 0; i < len; ++i)
+			{
+				ar >> value[i];
+			}
+		}
+
+		return ar;
+	}
 };

@@ -104,37 +104,30 @@ namespace MOHPC
 			switch (value)
 			{
 			case 6:
-				return protocolVersion_e::ver111;
+				return protocolVersion_e::ver100;
 			case 8:
 				return protocolVersion_e::ver111;
 			case 15:
-				return protocolVersion_e::ver211;
-			case 17:
 				return protocolVersion_e::ver200;
+			case 17:
+				return protocolVersion_e::ver211;
 			default:
 				return protocolVersion_e::bad;
 			}
 		}
 
-		class protocolType_c
+		class MOHPC_EXPORTS protocolType_c
 		{
 		public:
 			uint8_t serverType;
 			protocolVersion_e protocolVersion;
 
 		public:
-			explicit protocolType_c()
-				: serverType(0)
-				, protocolVersion(protocolVersion_e::bad)
-			{}
+			explicit protocolType_c();
+			protocolType_c(uint8_t inServerType, protocolVersion_e inProtocolVersion);
 
-			protocolType_c(uint8_t inServerType, protocolVersion_e inProtocolVersion)
-				: serverType(inServerType)
-				, protocolVersion(inProtocolVersion)
-			{}
-
-			uint8_t getServerType() const { return serverType; }
-			protocolVersion_e getProtocolVersion() const { return protocolVersion; }
+			uint8_t getServerType() const;
+			protocolVersion_e getProtocolVersion() const;
 		};
 	}
 }

@@ -883,7 +883,7 @@ void MOHPC::CompressedMessage::Decompress(size_t offset, size_t len) noexcept
 float MOHPC::MsgTypesHelper::ReadCoord() noexcept
 {
 	uint32_t read = 0;
-	msg.SerializeBits(&read, 19);
+	msg.ReadBits(&read, 19);
 
 	float sign = 1.0f;
 	if (read & 262144)
@@ -899,7 +899,7 @@ float MOHPC::MsgTypesHelper::ReadCoord() noexcept
 float MOHPC::MsgTypesHelper::ReadCoordSmall() noexcept
 {
 	uint32_t read = 0;
-	msg.SerializeBits(&read, 17);
+	msg.ReadBits(&read, 17);
 
 	float sign = 1.0f;
 	if (read & 65536)
@@ -912,15 +912,15 @@ float MOHPC::MsgTypesHelper::ReadCoordSmall() noexcept
 	return sign * read / 8.f;
 }
 
-int32_t MOHPC::MsgTypesHelper::ReadDeltaCoord(int32_t offset) noexcept
+int32_t MOHPC::MsgTypesHelper::ReadDeltaCoord(uint32_t offset) noexcept
 {
-	int16_t result = 0;
+	int32_t result = 0;
 
 	const bool isSmall = msg.ReadBool();
 	if (isSmall)
 	{
 		uint8_t byteValue = 0;
-		msg.SerializeBits(&byteValue, 8);
+		msg.ReadBits(&byteValue, 8);
 		result = (byteValue >> 1) + 1;
 		if (byteValue & 1) result = -result;
 
@@ -928,13 +928,13 @@ int32_t MOHPC::MsgTypesHelper::ReadDeltaCoord(int32_t offset) noexcept
 
 	}
 	else {
-		msg.SerializeBits(&result, 16);
+		msg.ReadBits(&result, 16);
 	}
 
 	return result;
 }
 
-int32_t MOHPC::MsgTypesHelper::ReadDeltaCoordExtra(int32_t offset) noexcept
+int32_t MOHPC::MsgTypesHelper::ReadDeltaCoordExtra(uint32_t offset) noexcept
 {
 	int32_t result = 0;
 
@@ -942,14 +942,14 @@ int32_t MOHPC::MsgTypesHelper::ReadDeltaCoordExtra(int32_t offset) noexcept
 	if (isSmall)
 	{
 		uint16_t shortValue = 0;
-		msg.SerializeBits(&shortValue, 10);
+		msg.ReadBits(&shortValue, 10);
 		result = (shortValue >> 1) + 1;
 		if (shortValue & 1) result = -result;
 
 		result += offset;
 	}
 	else {
-		msg.SerializeBits(&result, 18);
+		msg.ReadBits(&result, 18);
 	}
 
 	return result;
@@ -957,10 +957,23 @@ int32_t MOHPC::MsgTypesHelper::ReadDeltaCoordExtra(int32_t offset) noexcept
 
 MOHPC::Vector MOHPC::MsgTypesHelper::ReadVectorCoord() noexcept
 {
-	Vector vec;
-	msg.SerializeFloat(vec.x);
-	msg.SerializeFloat(vec.y);
-	msg.SerializeFloat(vec.z);
+	const Vector vec =
+	{
+		ReadCoord(),
+		ReadCoord(),
+		ReadCoord()
+	};
+	return vec;
+}
+
+MOHPC::Vector MOHPC::MsgTypesHelper::ReadVectorFloat() noexcept
+{
+	const Vector vec =
+	{
+		msg.ReadFloat(),
+		msg.ReadFloat(),
+		msg.ReadFloat()
+	};
 	return vec;
 }
 
@@ -977,14 +990,14 @@ MOHPC::Vector MOHPC::MsgTypesHelper::ReadDir() noexcept
 uint16_t MOHPC::MsgTypesHelper::ReadEntityNum()
 {
 	uint16_t entNum = 0;
-	msg.SerializeBits(&entNum, GENTITYNUM_BITS);
+	msg.ReadBits(&entNum, GENTITYNUM_BITS);
 	return entNum & (MAX_GENTITIES - 1);
 }
 
 uint16_t MOHPC::MsgTypesHelper::ReadEntityNum2()
 {
 	uint16_t entNum = 0;
-	msg.SerializeBits(&entNum, GENTITYNUM_BITS);
+	msg.ReadBits(&entNum, GENTITYNUM_BITS);
 	return (entNum - 1) & (MAX_GENTITIES - 1);
 }
 
@@ -1011,14 +1024,14 @@ void MOHPC::MsgTypesHelper::WriteCoordSmall(float& value) noexcept
 		bits = bits & 65535;
 	}
 
-	msg.SerializeBits(&bits, 17);
+	msg.WriteBits(&bits, 17);
 }
 
 void MOHPC::MsgTypesHelper::WriteVectorCoord(Vector& value) noexcept
 {
-	msg.SerializeFloat(value.x);
-	msg.SerializeFloat(value.y);
-	msg.SerializeFloat(value.z);
+	WriteCoord(value.x);
+	WriteCoord(value.y);
+	WriteCoord(value.z);
 }
 
 void MOHPC::MsgTypesHelper::WriteDir(Vector& dir) noexcept

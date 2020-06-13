@@ -105,7 +105,7 @@ public:
 	virtual bool wait(size_t timeout) override
 	{
 		timeval t;
-		t.tv_sec = (long)timeout;
+		t.tv_usec = (long)timeout * 1000;
 
 		fd_set readfds;
 		readfds.fd_count = 1;
@@ -113,6 +113,13 @@ public:
 
 		int result = select(0, &readfds, NULL, NULL, timeout != -1 ? &t : NULL);
 		return result != SOCKET_ERROR && result == 1;
+	}
+
+	virtual bool dataAvailable() override
+	{
+		u_long count;
+		ioctlsocket(conn, FIONREAD, &count);
+		return count > 0;
 	}
 };
 
@@ -180,14 +187,32 @@ public:
 	virtual bool wait(size_t timeout) override
 	{
 		timeval t;
-		t.tv_sec = (long)timeout;
+		t.tv_usec = (long)timeout * 1000;
 
 		fd_set readfds;
 		readfds.fd_count = 1;
 		readfds.fd_array[0] = conn;
 
 		int result = select(0, &readfds, NULL, NULL, timeout != -1 ? &t : NULL);
-		return result != SOCKET_ERROR && result == 1;
+		if (result != 1) {
+			return false;
+		}
+
+		// now check if there is any data
+		char buf;
+		size_t numBytes = recv(conn, &buf, 1, MSG_PEEK);
+		if (numBytes == -1 || numBytes == 0) {
+			return false;
+		}
+
+		return true;
+	}
+
+	virtual bool dataAvailable() override
+	{
+		u_long count;
+		ioctlsocket(conn, FIONREAD, &count);
+		return count > 0;
 	}
 };
 

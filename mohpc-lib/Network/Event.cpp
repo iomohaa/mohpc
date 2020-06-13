@@ -28,6 +28,11 @@ str Event::GetString(size_t index) const
 	return data[index - 1].GetString();
 }
 
+size_t MOHPC::Network::Event::numArgs() const
+{
+	return data.NumObjects();
+}
+
 EventData::EventData(const char* value)
 	: dataType(dataType_e::String)
 {

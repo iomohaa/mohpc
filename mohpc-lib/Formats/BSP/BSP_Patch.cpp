@@ -137,26 +137,6 @@ bool BSP::PlaneFromPoints(vec4_t plane, vec3_t a, vec3_t b, vec3_t c)
 	return true;
 }
 
-void SnapVector(vec3_t normal) {
-	int		i;
-
-	for (i = 0; i < 3; i++)
-	{
-		if (fabs(normal[i] - 1) < NORMAL_EPSILON)
-		{
-			VectorClear(normal);
-			normal[i] = 1;
-			break;
-		}
-		if (fabs(normal[i] - -1) < NORMAL_EPSILON)
-		{
-			VectorClear(normal);
-			normal[i] = -1;
-			break;
-		}
-	}
-}
-
 int FindPlane2(float plane[4], int *flipped) {
 	int i;
 

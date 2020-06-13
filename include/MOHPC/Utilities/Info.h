@@ -38,6 +38,7 @@ namespace MOHPC
 		size_t size;
 
 	public:
+		ReadOnlyInfo();
 		ReadOnlyInfo(const char* existingBuffer, size_t len = 0);
 		ReadOnlyInfo(const ReadOnlyInfo&) = delete;
 		ReadOnlyInfo& operator=(const ReadOnlyInfo&) = delete;
@@ -45,6 +46,7 @@ namespace MOHPC
 		ReadOnlyInfo& operator=(ReadOnlyInfo&& other) noexcept;
 
 		str ValueForKey(const char* key) const;
+		const char* ValueForKey(const char* key, size_t& outLen) const;
 
 		const char* GetString() const;
 		size_t GetInfoLength() const;

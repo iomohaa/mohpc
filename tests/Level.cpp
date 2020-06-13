@@ -1,10 +1,191 @@
 #include <MOHPC/Formats/BSP.h>
 #include <MOHPC/Formats/DCL.h>
 #include <MOHPC/Managers/AssetManager.h>
+#include <MOHPC/Managers/ShaderManager.h>
+#include <MOHPC/Collision/Collision.h>
 #include "UnitTest.h"
 
 #include <map>
 #include <vector>
+
+class Archive
+{
+public:
+	virtual void serialize(void* value, size_t size) = 0;
+};
+
+class ArchiveReader : public Archive
+{
+private:
+	const uint8_t* data;
+	size_t dataSize;
+	size_t dataPos;
+
+public:
+	ArchiveReader(const uint8_t* inData, size_t inDataSize)
+		: data(inData)
+		, dataSize(inDataSize)
+		, dataPos(0)
+	{
+
+	}
+
+	template<typename T>
+	void operator()(T& value)
+	{
+		*this >> value;
+	}
+
+	virtual void serialize(void* value, size_t size)
+	{
+		memcpy(value, data + dataPos, size);
+		dataPos += size;
+	}
+
+	Archive& operator>>(char& value)
+	{
+		serialize(&value, sizeof(value));
+		return *this;
+	}
+
+	Archive& operator>>(uint8_t& value)
+	{
+		serialize(&value, sizeof(value));
+		return *this;
+	}
+
+	Archive& operator>>(size_t& value)
+	{
+		serialize(&value, sizeof(value));
+		return *this;
+	}
+
+	Archive& operator>>(bool& value)
+	{
+		serialize(&value, sizeof(value));
+		return *this;
+	}
+
+	Archive& operator>>(int32_t& value)
+	{
+		serialize(&value, sizeof(value));
+		return *this;
+	}
+
+	Archive& operator>>(uint32_t& value)
+	{
+		serialize(&value, sizeof(value));
+		return *this;
+	}
+
+	Archive& operator>>(intptr_t& value)
+	{
+		serialize(&value, sizeof(value));
+		return *this;
+	}
+
+	Archive& operator>>(float& value)
+	{
+		serialize(&value, sizeof(value));
+		return *this;
+	}
+};
+
+class ArchiveWriter : public Archive
+{
+private:
+	MOHPC::Container<uint8_t> data;
+	size_t pos;
+
+public:
+	ArchiveWriter()
+		: pos(0)
+	{
+	}
+
+	template<typename T>
+	void operator()(T& value)
+	{
+		*this << value;
+	}
+
+	virtual void serialize(void* value, size_t size)
+	{
+		if(pos + size >= data.NumObjects()) {
+			data.SetNumObjectsUninitialized(data.NumObjects() * 2 + size);
+		}
+
+		memcpy(data.Data() + pos, value, size);
+		pos += size;
+	}
+
+	const MOHPC::Container<uint8_t>& getData() const
+	{
+		return data;
+	}
+
+	Archive& operator<<(char value)
+	{
+		serialize(&value, sizeof(value));
+		return *this;
+	}
+
+	Archive& operator<<(uint8_t value)
+	{
+		serialize(&value, sizeof(value));
+		return *this;
+	}
+
+	Archive& operator<<(size_t value)
+	{
+		serialize((void*)&value, sizeof(value));
+		return *this;
+	}
+
+	Archive& operator<<(bool value)
+	{
+		serialize((void*)&value, sizeof(value));
+		return *this;
+	}
+
+	Archive& operator<<(int32_t value)
+	{
+		serialize((void*)&value, sizeof(value));
+		return *this;
+	}
+
+	Archive& operator<<(uint32_t value)
+	{
+		serialize((void*)&value, sizeof(value));
+		return *this;
+	}
+
+	Archive& operator<<(intptr_t value)
+	{
+		serialize((void*)&value, sizeof(value));
+		return *this;
+	}
+
+	Archive& operator<<(float value)
+	{
+		serialize((void*)&value, sizeof(value));
+		return *this;
+	}
+};
+
+/*
+template<typename T>
+Archive& operator<<(Archive& ar, const T& obj)
+{
+	obj.serialize(ar);
+}
+
+template<typename T>
+Archive& operator>>(Archive& ar, const T& obj)
+{
+	obj.serialize(ar);
+}
+*/
 
 class CLevelTest : public IUnitTest, public TAutoInst<CLevelTest>
 {
@@ -14,15 +195,44 @@ public:
 		return "BSP";
 	}
 
+	virtual unsigned int priority() override
+	{
+		return 0;
+	}
+
 	virtual void run(MOHPC::AssetManager& AM) override
 	{
 		//MOHPC::BSPPtr Level = AM.LoadAsset<MOHPC::BSP>("/maps/lib/mp_anzio_lib.bsp");
-		MOHPC::BSPPtr Asset = AM.LoadAsset<MOHPC::BSP>("/maps/dm/mohdm2.bsp");
+		MOHPC::BSPPtr Asset = AM.LoadAsset<MOHPC::BSP>("/maps/dm/mohdm6.bsp");
+		traceTest(Asset);
 		leafTesting(Asset);
 		MOHPC::DCLPtr DCL = AM.LoadAsset<MOHPC::DCL>("/maps/dm/mohdm4.dcl");
 
 		MOHPC::BSP::TerrainCollide collision;
 		Asset->GenerateTerrainCollide(Asset->GetTerrainPatch(0), collision);
+	}
+
+	void traceTest(MOHPC::BSPPtr Asset)
+	{
+		MOHPC::CollisionWorld cm;
+		Asset->FillCollisionWorld(cm);
+
+		MOHPC::trace_t results;
+
+		MOHPC::Vector start(0, 0, 0);
+		MOHPC::Vector end(0, 0, -500);
+		cm.CM_BoxTrace(&results, start, end, MOHPC::Vector(), MOHPC::Vector(), 5, MOHPC::ContentFlags::MASK_PLAYERSOLID, true);
+
+		ArchiveWriter ar;
+		cm.save(ar);
+
+		const MOHPC::Container<uint8_t>& data = ar.getData();
+
+		ArchiveReader arReader(data.Data(), data.NumObjects());
+		cm.load(arReader);
+
+		end = MOHPC::Vector(1000, 1000, 0);
+		cm.CM_BoxTrace(&results, start, end, MOHPC::Vector(), MOHPC::Vector(), 1, MOHPC::ContentFlags::MASK_PLAYERSOLID, true);
 	}
 
 	void leafTesting(MOHPC::BSPPtr Asset)

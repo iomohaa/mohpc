@@ -580,6 +580,37 @@ namespace MOHPC
 		return *this;
 	}
 
+	template<typename Archive, typename T>
+	Archive& operator<<(Archive& ar, const Container<T>& container)
+	{
+		const size_t numObjects = container.NumObjects();
+		ar << numObjects;
+		
+		for (size_t i = 0; i < numObjects; i++)
+		{
+			T& obj = container[i];
+			ar << obj;
+		}
+
+		return ar;
+	}
+
+	template<typename Archive, typename T>
+	Archive& operator>>(Archive& ar, Container<T>& container)
+	{
+		size_t numObjects;
+		ar >> numObjects;
+
+		container.SetNumObjectsUninitialized(numObjects);
+
+		for (size_t i = 0; i < numObjects; i++)
+		{
+			T* obj = new(container) T();
+			ar >> *obj;
+		}
+
+		return ar;
+	}
 };
 
 template<typename T>
@@ -596,3 +627,4 @@ void operator delete(void* ptr, MOHPC::Container<T>& container)
 {
 	container.RemoveObject((T*)ptr);
 }
+

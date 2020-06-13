@@ -1,6 +1,8 @@
 #include <MOHPC/Network/InfoTypes.h>
+#include <MOHPC/Network/Types.h>
 
 using namespace MOHPC;
+using namespace Network;
 
 usercmd_t::usercmd_t(uint32_t inServerTime)
 	: usercmd_t()
@@ -76,7 +78,7 @@ void usereyes_t::setAngle(float pitch, float yaw)
 
 playerState_t::playerState_t()
 	: commandTime(0)
-	, pm_type(0)
+	, pm_type(pmType_e::PM_NORMAL)
 	, bobCycle(0)
 	, pm_flags(0)
 	, pm_time(0)
@@ -124,7 +126,7 @@ frameInfo_t::frameInfo_t()
 
 entityState_t::entityState_t()
 	: number(0)
-	, eType(0)
+	, eType(entityType_e::modelanim_skel)
 	, eFlags(0)
 	, constantLight(0)
 	, loopSound(0)
@@ -143,7 +145,6 @@ entityState_t::entityState_t()
 	, wasframe(0)
 	, actionWeight(0.f)
 	, bone_tag{ 0 }
-	, bone_quat{ 0.f }
 	, surfaces{ 0 }
 	, clientNum(0)
 	, groundEntityNum(0)
@@ -156,4 +157,52 @@ entityState_t::entityState_t()
 	, quat{ 0.f }
 
 {
+}
+
+MOHPC::Network::SnapshotInfo::SnapshotInfo()
+	: snapFlags(SNAPFLAG_NOT_ACTIVE)
+	, ping(0)
+	, serverTime(0)
+	, areamask{0}
+	, numEntities(0)
+	, numServerCommands(0)
+	, serverCommandSequence(0)
+{
+}
+
+sound_t::sound_t()
+	: entity(nullptr)
+	, soundName(nullptr)
+	, hasStopped(false)
+	, isStreamed(false)
+	, isSpatialized(false)
+	, hasVolume(false)
+	, hasDist(false)
+	, hasPitch(false)
+	, channel(0)
+	, volume(0.f)
+	, minDist(0.f)
+	, maxDist(0.f)
+	, pitch(0.f)
+{
+}
+
+protocolType_c::protocolType_c()
+	: serverType(0)
+	, protocolVersion(protocolVersion_e::bad)
+{}
+
+protocolType_c::protocolType_c(uint8_t inServerType, protocolVersion_e inProtocolVersion)
+	: serverType(inServerType)
+	, protocolVersion(inProtocolVersion)
+{}
+
+uint8_t protocolType_c::getServerType() const
+{
+	return serverType;
+}
+
+protocolVersion_e protocolType_c::getProtocolVersion() const
+{
+	return protocolVersion;
 }

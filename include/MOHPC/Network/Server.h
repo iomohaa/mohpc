@@ -5,7 +5,7 @@
 #include "../Utilities/LazyPtr.h"
 #include "../Utilities/RequestHandler.h"
 #include "../Managers/NetworkManager.h"
-#include "Client.h"
+#include "ClientGame.h"
 #include "GamespyRequest.h"
 #include <functional>
 
@@ -28,7 +28,7 @@ namespace MOHPC
 			netadr_t address;
 
 		public:
-			IServer(const netadr_t& adr);
+			IServer(NetworkManager* inManager, const netadr_t& adr);
 
 			virtual void query(Callbacks::Query&& response, Callbacks::ServerTimeout&& timeoutResult = Callbacks::ServerTimeout()) = 0;
 			MOHPC_EXPORTS const netadr_t& getAddress() const;
@@ -61,7 +61,7 @@ namespace MOHPC
 			IUdpSocketPtr socket;
 
 		public:
-			GSServer(const netadr_t& adr);
+			GSServer(NetworkManager* inManager, const netadr_t& adr);
 
 			virtual void tick(uint64_t deltaTime, uint64_t currentTime) override;
 
@@ -75,7 +75,7 @@ namespace MOHPC
 			char* dataStr;
 
 		public:
-			LANServer(const netadr_t& inAddress, char* inInfo, size_t infoSize);
+			LANServer(NetworkManager* inManager, const netadr_t& inAddress, char* inInfo, size_t infoSize);
 			~LANServer();
 
 			virtual void tick(uint64_t deltaTime, uint64_t currentTime) override;
@@ -86,7 +86,7 @@ namespace MOHPC
 		class EngineServer : public ITickableNetwork, public std::enable_shared_from_this<EngineServer>
 		{
 		private:
-			using ConnectResponse = std::function<void(uint16_t qport, uint32_t challenge, const protocolType_c& protocolType, const char* errorMessage)>;
+			using ConnectResponse = std::function<void(uint16_t qport, uint32_t challenge, const protocolType_c& protoType, ClientInfo&& cInfo, const char* errorMessage)>;
 
 			struct ConnectionParams
 			{
@@ -230,7 +230,7 @@ namespace MOHPC
 			RequestHandler<IRequestBase, GamespyUDPRequestParam> handler;
 
 		public:
-			MOHPC_EXPORTS EngineServer(const netadr_t& inAddress);
+			MOHPC_EXPORTS EngineServer(NetworkManager* inManager, const netadr_t& inAddress);
 			MOHPC_EXPORTS ~EngineServer();
 
 			virtual void tick(uint64_t deltaTime, uint64_t currentTime) override;
@@ -272,7 +272,7 @@ namespace MOHPC
 			void sendRequest(IEngineRequestPtr&& req, Callbacks::ServerTimeout&& timeoutResult = Callbacks::ServerTimeout());
 
 		private:
-			void onConnect(const Callbacks::Connect result, uint16_t qport, uint32_t challengeResponse, const protocolType_c& protocolType, const char* errorMessage);
+			void onConnect(const Callbacks::Connect result, uint16_t qport, uint32_t challengeResponse, const protocolType_c& protoType, ClientInfo&& cInfo, const char* errorMessage);
 		};
 
 		using EngineServerPtr = SharedPtr<EngineServer>;

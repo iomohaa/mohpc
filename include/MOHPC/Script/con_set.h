@@ -63,7 +63,7 @@ namespace MOHPC
 
 	public:
 		con_set();
-		~con_set();
+		virtual ~con_set();
 
 		void						Archive(Archiver& arc);
 

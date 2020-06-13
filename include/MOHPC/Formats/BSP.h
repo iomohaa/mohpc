@@ -16,6 +16,7 @@ namespace MOHPC
 
 	class File;
 	class Shader;
+	class CollisionWorld;
 
 	class BSP : public Asset
 	{
@@ -240,12 +241,12 @@ namespace MOHPC
 		{
 			int32_t cluster;
 			int32_t area;
-			uint32_t firstLeafBrush;
-			uint32_t numLeafBrushes;
-			uint32_t firstLeafSurface;
-			uint32_t numLeafSurfaces;
-			uint32_t firstLeafTerrain;
-			uint32_t numLeafTerrains;
+			uintptr_t firstLeafBrush;
+			uintptr_t numLeafBrushes;
+			uintptr_t firstLeafSurface;
+			uintptr_t numLeafSurfaces;
+			uintptr_t firstLeafTerrain;
+			uintptr_t numLeafTerrains;
 		};
 
 		struct Area
@@ -283,6 +284,7 @@ namespace MOHPC
 			Vector bounds[2];
 			Surface* surface;
 			int32_t numSurfaces;
+			Leaf leaf;
 		};
 
 		struct SphereLight
@@ -560,6 +562,9 @@ namespace MOHPC
 
 		/** Return the leaf number of the point at the specified location. */
 		MOHPC_EXPORTS uintptr_t PointLeafNum(const MOHPC::Vector p);
+
+		/** Fill the specified collision world for tracing, etc... */
+		MOHPC_EXPORTS void FillCollisionWorld(CollisionWorld& cm);
 
 		static bool PlaneFromPoints(vec4_t plane, vec3_t a, vec3_t b, vec3_t c);
 

@@ -5,11 +5,11 @@ namespace MOHPC
 	// The following is automatically set and must not be modified
 	static constexpr unsigned long VERSION_MAJOR = 1;
 	static constexpr unsigned long VERSION_MINOR = 1;
-	static constexpr unsigned long VERSION_BUILD = 2860;
+	static constexpr unsigned long VERSION_BUILD = 6001;
 
-	static constexpr char VERSION_STRING[] = "1.1.2860";
+	static constexpr char VERSION_STRING[] = "1.1.6001";
 	static constexpr char VERSION_SHORT_STRING[] = "1.1";
-	static constexpr char VERSION_DATE[] = "Sun 10 2020";
+	static constexpr char VERSION_DATE[] = "Sat 13 2020";
 
 	// The following is manually set
 	// This should be modified only for adding a new architecture

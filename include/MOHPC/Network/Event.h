@@ -63,6 +63,8 @@ namespace MOHPC
 
 			MOHPC_EXPORTS int32_t GetInteger(size_t index) const;
 			MOHPC_EXPORTS str GetString(size_t index) const;
+
+			MOHPC_EXPORTS size_t numArgs() const;
 		};
 
 		class INetworkResponse

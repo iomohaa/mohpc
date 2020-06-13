@@ -16,6 +16,10 @@
 #define Z 2
 #define W 3
 
+#define PITCH 0
+#define YAW 1
+#define ROLL 2
+
 namespace MOHPC
 {
 	vec3_t vec3_origin = { 0,0,0 };
@@ -146,6 +150,11 @@ MOHPC::vec_t MOHPC::DotProduct(const MOHPC::vec3_t vec1, const MOHPC::vec3_t vec
 	return vec1[0] * vec2[0] + vec1[1] * vec2[1] + vec1[2] * vec2[2];
 }
 
+MOHPC::vec_t MOHPC::DotProduct2D(const vec2_t vec1, const vec2_t vec2)
+{
+	return ((vec1)[0] * (vec2)[0] + (vec1)[1] * (vec2)[1]);
+}
+
 MOHPC::vec_t MOHPC::DotProduct4(const MOHPC::vec4_t vec1, const MOHPC::vec4_t vec2)
 {
 	return vec1[0] * vec2[0] + vec1[1] * vec2[1] + vec1[2] * vec2[2] + vec1[3] * vec2[3];
@@ -169,6 +178,117 @@ float MOHPC::AngleMod(float a)
 {
 	a = (360.0f / 65536) * ((int)(a*(65536 / 360.0f)) & 65535);
 	return a;
+}
+
+float MOHPC::AngleSubtract(float a1, float a2) {
+	float	a;
+
+	a = a1 - a2;
+	while (a > 180) {
+		a -= 360;
+	}
+	while (a < -180) {
+		a += 360;
+	}
+	return a;
+}
+
+
+void MOHPC::AnglesSubtract(MOHPC::vec3_t v1, MOHPC::vec3_t v2, MOHPC::vec3_t v3) {
+	v3[0] = AngleSubtract(v1[0], v2[0]);
+	v3[1] = AngleSubtract(v1[1], v2[1]);
+	v3[2] = AngleSubtract(v1[2], v2[2]);
+}
+
+float MOHPC::LerpAngle(float from, float to, float frac) {
+	float	a;
+
+	if (to - from > 180) {
+		to -= 360;
+	}
+	if (to - from < -180) {
+		to += 360;
+	}
+	a = from + frac * (to - from);
+
+	return a;
+}
+
+void MOHPC::AngleVectors(const MOHPC::vec3_t angles, MOHPC::vec3_t forward, MOHPC::vec3_t right, MOHPC::vec3_t up)
+{
+	float		angle;
+	static float		sr, sp, sy, cr, cp, cy;
+	// static to help MS compiler fp bugs
+
+	angle = angles[YAW] * (M_PI * 2 / 360);
+	sy = sin(angle);
+	cy = cos(angle);
+	angle = angles[PITCH] * (M_PI * 2 / 360);
+	sp = sin(angle);
+	cp = cos(angle);
+	angle = angles[ROLL] * (M_PI * 2 / 360);
+	sr = sin(angle);
+	cr = cos(angle);
+
+	if (forward)
+	{
+		forward[0] = cp * cy;
+		forward[1] = cp * sy;
+		forward[2] = -sp;
+	}
+	if (right)
+	{
+		right[0] = (-1 * sr * sp * cy + -1 * cr * -sy);
+		right[1] = (-1 * sr * sp * sy + -1 * cr * cy);
+		right[2] = -1 * sr * cp;
+	}
+	if (up)
+	{
+		up[0] = (cr * sp * cy + -sr * -sy);
+		up[1] = (cr * sp * sy + -sr * cy);
+		up[2] = cr * cp;
+	}
+}
+
+void MOHPC::AngleVectorsLeft(const MOHPC::vec3_t angles, MOHPC::vec3_t forward, MOHPC::vec3_t left, MOHPC::vec3_t up)
+{
+	float		angle;
+	static float		sr, sp, sy, cr, cp, cy;
+	// static to help MS compiler fp bugs
+
+	angle = angles[YAW] * (M_PI * 2 / 360);
+	sy = sin(angle);
+	cy = cos(angle);
+	angle = angles[PITCH] * (M_PI * 2 / 360);
+	sp = sin(angle);
+	cp = cos(angle);
+
+	if (forward)
+	{
+		forward[0] = cp * cy;
+		forward[1] = cp * sy;
+		forward[2] = -sp;
+	}
+
+	if (left || up)
+	{
+		angle = angles[ROLL] * (M_PI * 2 / 360);
+		sr = sin(angle);
+		cr = cos(angle);
+
+		if (left)
+		{
+			left[0] = (sr * sp * cy + cr * -sy);
+			left[1] = (sr * sp * sy + cr * cy);
+			left[2] = sr * cp;
+		}
+		if (up)
+		{
+			up[0] = (cr * sp * cy + -sr * -sy);
+			up[1] = (cr * sp * sy + -sr * cy);
+			up[2] = cr * cp;
+		}
+	}
 }
 
 void MOHPC::AnglesToAxis(float angles[3], float axis[3][3])
@@ -293,6 +413,14 @@ void MOHPC::QuatToMat(const float q[4], float m[3][3])
 	m[2][0] = xz - wy;
 	m[2][1] = yz + wx;
 	m[2][2] = 1.0f - (xx + yy);
+}
+
+void MOHPC::QuatSet(quat_t q, float x, float y, float z, float w)
+{
+	q[0] = x;
+	q[1] = y;
+	q[2] = z;
+	q[3] = w;
 }
 
 void MOHPC::QuatClear(quat_t q)
@@ -462,12 +590,41 @@ void MOHPC::AxisCopy(const vec3_t in[3], vec3_t out[3])
 	VecCopy(in[1], out[1]);
 	VecCopy(in[2], out[2]);
 }
+static constexpr float NORMAL_EPSILON = 0.0001f;
+static constexpr float DIST_EPSILON = 0.02f;
+
+void MOHPC::SnapVector(vec3_t normal) {
+	int		i;
+
+	for (i = 0; i < 3; i++)
+	{
+		if (::fabs(normal[i] - 1) < NORMAL_EPSILON)
+		{
+			VectorClear(normal);
+			normal[i] = 1;
+			break;
+		}
+		if (::fabs(normal[i] - -1) < NORMAL_EPSILON)
+		{
+			VectorClear(normal);
+			normal[i] = -1;
+			break;
+		}
+	}
+}
 
 void MOHPC::VecCopy(const vec3_t in, vec3_t out)
 {
 	out[0] = in[0];
 	out[1] = in[1];
 	out[2] = in[2];
+}
+
+void MOHPC::VecSet(vec3_t out, float x, float y, float z)
+{
+	out[0] = x;
+	out[1] = y;
+	out[2] = z;
 }
 
 void MOHPC::Vec4Copy(const vec4_t in, vec4_t out)
@@ -767,4 +924,74 @@ uint16_t MOHPC::AngleToShort(float v)
 float MOHPC::ShortToAngle(uint16_t v)
 {
 	return (v) * (360.f / 65536.f);
+}
+
+#define BBOX_XBITS 9
+#define BBOX_YBITS 8
+#define BBOX_ZBOTTOMBITS 5
+#define BBOX_ZTOPBITS 9
+
+#define BBOX_MAX_X ( 1 << BBOX_XBITS )
+#define BBOX_MAX_Y ( 1 << BBOX_YBITS )
+#define BBOX_MAX_BOTTOM_Z ( 1 << ( BBOX_ZBOTTOMBITS - 1 ) )
+#define BBOX_REALMAX_BOTTOM_Z ( 1 << BBOX_ZBOTTOMBITS )
+#define BBOX_MAX_TOP_Z ( 1 << BBOX_ZTOPBITS )
+
+int MOHPC::BoundingBoxToInteger(MOHPC::vec3_t mins, MOHPC::vec3_t maxs)
+{
+	int x, y, zd, zu, result;
+
+	x = maxs[0];
+	if (x < 0)
+		x = 0;
+	if (x >= BBOX_MAX_X)
+		x = BBOX_MAX_X - 1;
+
+	y = maxs[1];
+	if (y < 0)
+		y = 0;
+	if (y >= BBOX_MAX_Y)
+		y = BBOX_MAX_Y - 1;
+
+	zd = mins[2] + BBOX_MAX_BOTTOM_Z;
+	if (zd < 0)
+	{
+		zd = 0;
+	}
+	if (zd >= BBOX_REALMAX_BOTTOM_Z)
+	{
+		zd = BBOX_REALMAX_BOTTOM_Z - 1;
+	}
+
+	zu = maxs[2];
+	if (zu < 0)
+		zu = 0;
+	if (zu >= BBOX_MAX_TOP_Z)
+		zu = BBOX_MAX_TOP_Z - 1;
+
+	result = x |
+		(y << BBOX_XBITS) |
+		(zd << (BBOX_XBITS + BBOX_YBITS)) |
+		(zu << (BBOX_XBITS + BBOX_YBITS + BBOX_ZBOTTOMBITS));
+
+	return result;
+}
+
+void MOHPC::IntegerToBoundingBox(int num, MOHPC::vec3_t mins, MOHPC::vec3_t maxs)
+{
+	int x, y, zd, zu;
+
+	x = num & (BBOX_MAX_X - 1);
+	y = (num >> (BBOX_XBITS)) & (BBOX_MAX_Y - 1);
+	zd = (num >> (BBOX_XBITS + BBOX_YBITS)) & (BBOX_REALMAX_BOTTOM_Z - 1);
+	zd -= BBOX_MAX_BOTTOM_Z;
+	zu = (num >> (BBOX_XBITS + BBOX_YBITS + BBOX_ZBOTTOMBITS)) & (BBOX_MAX_TOP_Z - 1);
+
+	mins[0] = -x;
+	mins[1] = -y;
+	mins[2] = zd;
+
+	maxs[0] = x;
+	maxs[1] = y;
+	maxs[2] = zu;
 }

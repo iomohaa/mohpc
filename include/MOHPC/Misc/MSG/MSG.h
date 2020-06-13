@@ -128,9 +128,9 @@ namespace MOHPC
 		{
 			static_assert(std::is_arithmetic<T>::value, "Type must be an arithmetic type");
 
-			bool isSame = a != b;
-			SerializeBits(&isSame, 1);
-			if (!isSame) SerializeBits(&b, sizeof(T) << 3);
+			bool isDiff = a != b;
+			SerializeBits(&isDiff, 1);
+			if (isDiff) SerializeBits(&b, sizeof(T) << 3);
 			return *this;
 		}
 
@@ -340,24 +340,25 @@ namespace MOHPC
 		{
 			static_assert(std::is_arithmetic<T>::value, "Type must be an arithmetic type");
 
-			bool isSame = a != b;
-			SerializeBits(&isSame, 1);
-			if (!isSame) SerializeBits(&b, sizeof(T) << 3);
+			const bool isDiff = a != b;
+			WriteBool(isDiff);
+			if (isDiff) WriteBits(&b, sizeof(T) << 3);
 			return *this;
 		}
 
 		template<typename T>
-		MSG& WriteDeltaTypeKey(const T& a, T& b, intptr_t key) noexcept
+		MSG& WriteDeltaTypeKey(const T& a, T& b, intptr_t key, size_t bits = sizeof(T) << 3) noexcept
 		{
 			static_assert(std::is_arithmetic<T>::value, "Type must be an arithmetic type");
 
-			bool isDiff;
-			SerializeBits(&isDiff, 1);
+			// Write true if different
+			const bool isDiff = a != b;
+			WriteBool(isDiff);
 
 			if (isDiff)
 			{
-				SerializeBits(&b, sizeof(T) << 3);
-				b = XORType(b, key);
+				const T newB = XORType(b, key);
+				WriteBits(&newB, bits);
 			}
 			return *this;
 		}
@@ -427,13 +428,16 @@ public:
 		float ReadCoordSmall() noexcept;
 
 		/** Read a coordinate value. */
-		int32_t ReadDeltaCoord(int32_t offset) noexcept;
+		int32_t ReadDeltaCoord(uint32_t offset) noexcept;
 
 		/** Read a coordinate value. */
-		int32_t ReadDeltaCoordExtra(int32_t offset) noexcept;
+		int32_t ReadDeltaCoordExtra(uint32_t offset) noexcept;
 
 		/** Read a coordinate value. */
 		Vector ReadVectorCoord() noexcept;
+
+		/** Read a coordinate value. */
+		Vector ReadVectorFloat() noexcept;
 
 		/** Read a coordinate value. */
 		Vector ReadDir() noexcept;

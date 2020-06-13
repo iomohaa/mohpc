@@ -1,32 +1,14 @@
 #pragma once
 
+#include "Global.h"
 #include "Vector.h"
 #include "Script/str.h"
+#include "Utilities/PropertyMap.h"
 #include <map>
 
 namespace MOHPC
 {
 	MOHPC_EXPORTS str CanonicalModelName(const char* ModelName);
-
-	class PropertyDef
-	{
-	private:
-		str propertyName;
-
-	public:
-		PropertyDef(const char* inPropertyName);
-		PropertyDef(str&& inPropertyName);
-		PropertyDef(const str& inPropertyName);
-
-		bool operator<(const PropertyDef& right) const;
-
-		MOHPC_EXPORTS const char* GetPropertyName() const;
-		MOHPC_EXPORTS const char* GetFullPropertyName() const;
-
-	private:
-		bool IsKeyed() const;
-	};
-	using PropertyMap = std::map<PropertyDef, str>;
 
 	class LevelEntity
 	{
@@ -36,7 +18,7 @@ namespace MOHPC
 		int32_t spawnflags;
 		str targetname;
 		str target;
-		PropertyMap keyValues;
+		PropertyObject propertyObject;
 
 	public:
 		str model;
@@ -77,9 +59,10 @@ namespace MOHPC
 		MOHPC_EXPORTS bool TrySetMemberValue(const char* Key, const char* Value);
 		MOHPC_EXPORTS void SetPropertyValue(const char* Key, const char* Value);
 		void SetPropertyDef(const PropertyDef& Key, str&& Value);
-		MOHPC_EXPORTS const PropertyMap& GetPropertyMap() const;
 
-	private:
-		const str* GetPropertyValuePointer(const char* Key) const;
+		MOHPC_EXPORTS PropertyMapIterator GetIterator() const;
+
+		// Can't be used outside of the module due to STL cross-boundaries
+		const PropertyMap& GetPropertyMap() const;
 	};
 }

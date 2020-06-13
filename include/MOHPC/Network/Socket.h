@@ -27,6 +27,13 @@ namespace MOHPC
 			 * @return	True if there is any pending data.
 			 */
 			virtual bool wait(size_t timeout) = 0;
+
+			/**
+			 * Return whether or not there is any data available in the socket.
+			 *
+			 * @return	True if there is any pending data.
+			 */
+			virtual bool dataAvailable() = 0;
 		};
 
 		using ISocketPtr = SharedPtr<ISocket>;

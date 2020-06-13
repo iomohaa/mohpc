@@ -58,14 +58,14 @@ void MOHPC::SerializableUsercmd::SaveDelta(MSG& msg, const ISerializableMessage*
 	msg.WriteBool(hasChanges);
 	if (hasChanges)
 	{
-		key = (uint32_t)((uint32_t)key ^ ucmd.serverTime);
-		msg.WriteDeltaTypeKey(fromCmd->angles[0], ucmd.angles[0], key);
-		msg.WriteDeltaTypeKey(fromCmd->angles[1], ucmd.angles[1], key);
-		msg.WriteDeltaTypeKey(fromCmd->angles[2], ucmd.angles[2], key);
-		msg.WriteDeltaTypeKey(fromCmd->forwardmove, ucmd.forwardmove, key);
-		msg.WriteDeltaTypeKey(fromCmd->rightmove, ucmd.rightmove, key);
-		msg.WriteDeltaTypeKey(fromCmd->upmove, ucmd.upmove, key);
-		msg.WriteDeltaTypeKey(fromCmd->buttons.flags, ucmd.buttons.flags, key);
+		const uint32_t keyTime = (uint32_t)key ^ ucmd.serverTime;
+		msg.WriteDeltaTypeKey(fromCmd->angles[0], ucmd.angles[0], keyTime, 16);
+		msg.WriteDeltaTypeKey(fromCmd->angles[1], ucmd.angles[1], keyTime, 16);
+		msg.WriteDeltaTypeKey(fromCmd->angles[2], ucmd.angles[2], keyTime, 16);
+		msg.WriteDeltaTypeKey(fromCmd->forwardmove, ucmd.forwardmove, keyTime, 8);
+		msg.WriteDeltaTypeKey(fromCmd->rightmove, ucmd.rightmove, keyTime, 8);
+		msg.WriteDeltaTypeKey(fromCmd->upmove, ucmd.upmove, keyTime, 8);
+		msg.WriteDeltaTypeKey(fromCmd->buttons.flags, ucmd.buttons.flags, keyTime, 16);
 	}
 }
 
@@ -92,7 +92,7 @@ void MOHPC::SerializableUserEyes::SerializeDelta(MSG& msg, const ISerializableMe
 }
 
 #define	PSF(x) #x,(size_t)&((playerState_t*)0)->x,sizeof(playerState_t::x)
-static constexpr size_t FLOAT_INT_BITS = 13;
+static constexpr intptr_t FLOAT_INT_BITS = 13;
 static constexpr size_t FLOAT_INT_BIAS = (1 << (FLOAT_INT_BITS - 1));
 
 const netField_t playerStateFields[] =
@@ -862,7 +862,7 @@ void MOHPC::SerializablePlayerState_ver17::LoadDelta(MSG& msg, const ISerializab
 	if (lc > numFields) {
 		throw BadEntityFieldCountException(lc);
 	}
-
+	
 	size_t i;
 	const netField_t* field;
 	for (i = 0, field = playerStateFields_ver17; i < lc; ++i, ++field)
@@ -884,11 +884,11 @@ void MOHPC::SerializablePlayerState_ver17::LoadDelta(MSG& msg, const ISerializab
 		switch (field->type)
 		{
 		case fieldType_ver17_e::number:
-			EntityField::ReadRegular(msg, field->bits, toF, field->size);
+			EntityField::ReadRegular2(msg, field->bits, toF, field->size);
 			break;
 		case fieldType_ver17_e::angle: // anglestmp = 1.0f;
 			result = 0;
-			msg.SerializeBits(&result, field->bits < 0 ? -field->bits : field->bits);
+			msg.ReadBits(&result, field->bits < 0 ? -field->bits : field->bits);
 			*(float*)toF = EntityField::UnpackAngle(result, field->bits, field->bits < 0);
 			break;
 		case fieldType_ver17_e::mediumCoord: // changed in SH/BT
@@ -937,11 +937,11 @@ void MOHPC::SerializablePlayerState_ver17::LoadDelta(MSG& msg, const ISerializab
 	const bool hasStatsChanged = msg.ReadBool();
 	if (hasStatsChanged)
 	{
-		msg.SerializeBits(&statsBits, playerState_t::MAX_STATS);
+		msg.ReadBits(&statsBits, playerState_t::MAX_STATS);
 		for (i = 0; i < playerState_t::MAX_STATS; ++i)
 		{
 			if (statsBits & (1 << i)) {
-				msg.SerializeUShort(state.stats[i]);
+				state.stats[i] = msg.ReadUShort();
 			}
 		}
 	}
@@ -950,11 +950,11 @@ void MOHPC::SerializablePlayerState_ver17::LoadDelta(MSG& msg, const ISerializab
 	const bool hasActiveItemsChanged = msg.ReadBool();
 	if (hasActiveItemsChanged)
 	{
-		msg.SerializeBits(&activeItemsBits, playerState_t::MAX_ACTIVEITEMS);
+		msg.ReadBits(&activeItemsBits, playerState_t::MAX_ACTIVEITEMS);
 		for (i = 0; i < playerState_t::MAX_ACTIVEITEMS; ++i)
 		{
 			if (activeItemsBits & (1 << i)) {
-				msg.SerializeUShort(state.activeItems[i]);
+				state.activeItems[i] = msg.ReadUShort();
 			}
 		}
 	}
@@ -963,11 +963,11 @@ void MOHPC::SerializablePlayerState_ver17::LoadDelta(MSG& msg, const ISerializab
 	const bool hasAmmoAmountChanges = msg.ReadBool();
 	if (hasAmmoAmountChanges)
 	{
-		msg.SerializeBits(&ammoAmountBits, playerState_t::MAX_AMMO_AMOUNT);
+		msg.ReadBits(&ammoAmountBits, playerState_t::MAX_AMMO_AMOUNT);
 		for (i = 0; i < playerState_t::MAX_AMMO_AMOUNT; ++i)
 		{
 			if (ammoAmountBits & (1 << i)) {
-				msg.SerializeUShort(state.ammo_amount[i]);
+				state.ammo_amount[i] = msg.ReadUShort();
 			}
 		}
 	}
@@ -976,11 +976,11 @@ void MOHPC::SerializablePlayerState_ver17::LoadDelta(MSG& msg, const ISerializab
 	const bool hasAmmoBitsChanges = msg.ReadBool();
 	if (hasAmmoBitsChanges)
 	{
-		msg.SerializeBits(&ammoBits, playerState_t::MAX_AMMO);
+		msg.ReadBits(&ammoBits, playerState_t::MAX_AMMO);
 		for (i = 0; i < playerState_t::MAX_AMMO; ++i)
 		{
 			if (ammoBits & (1 << i)) {
-				msg.SerializeUShort(state.ammo_name_index[i]);
+				state.ammo_name_index[i] = msg.ReadUShort();
 			}
 		}
 	}
@@ -989,11 +989,11 @@ void MOHPC::SerializablePlayerState_ver17::LoadDelta(MSG& msg, const ISerializab
 	const bool hasMaxAmmoAmountChanges = msg.ReadBool();
 	if (hasMaxAmmoAmountChanges)
 	{
-		msg.SerializeBits(&maxAmmoAmountBits, playerState_t::MAX_MAX_AMMO_AMOUNT);
+		msg.ReadBits(&maxAmmoAmountBits, playerState_t::MAX_MAX_AMMO_AMOUNT);
 		for (i = 0; i < playerState_t::MAX_MAX_AMMO_AMOUNT; ++i)
 		{
 			if (maxAmmoAmountBits & (1 << i)) {
-				msg.SerializeUShort(state.max_ammo_amount[i]);
+				state.max_ammo_amount[i] = msg.ReadUShort();
 			}
 		}
 	}
@@ -1027,7 +1027,7 @@ void MOHPC::SerializableEntityState::SaveDelta(MSG& msg, const ISerializableMess
 	if (removed)
 	{
 		state = entityState_t();
-		state.number = MAX_GENTITIES - 1;
+		state.number = ENTITYNUM_NONE;
 		return;
 	}
 
@@ -1071,7 +1071,7 @@ void MOHPC::SerializableEntityState::SaveDelta(MSG& msg, const ISerializableMess
 		case fieldType_e::time:
 			EntityField::WriteTimeField(msg, *(float*)toF);
 			break;
-		case fieldType_e::field03: // nasty!
+		case fieldType_e::animWeight: // nasty!
 			tmp = *(float*)toF;
 
 			bits = intptr_t((tmp * 255.0f) + 0.5f);
@@ -1082,7 +1082,7 @@ void MOHPC::SerializableEntityState::SaveDelta(MSG& msg, const ISerializableMess
 		case fieldType_e::time2:
 			EntityField::WriteSmallTimeField(msg, *(float*)toF);
 			break;
-		case fieldType_e::field05:
+		case fieldType_e::animWeight2:
 			tmp = *(float*)toF;
 
 			bits = intptr_t((tmp * 255.0f) + 0.5f);
@@ -1106,18 +1106,20 @@ void MOHPC::SerializableEntityState::LoadDelta(MSG& msg, const ISerializableMess
 {
 	MsgTypesHelper msgHelper(msg);
 
+	entityState_t* fromEnt = ((SerializableEntityState*)from)->GetState();
+
 	const bool removed = msg.ReadBool();
 	if (removed)
 	{
 		state = entityState_t();
-		state.number = MAX_GENTITIES - 1;
+		state.number = ENTITYNUM_NONE;
 		return;
 	}
 
 	const bool hasDelta = msg.ReadBool();
 	if (!hasDelta)
 	{
-		state = *(entityState_t*)from;
+		state = *(entityState_t*)fromEnt;
 		return;
 	}
 
@@ -1134,7 +1136,7 @@ void MOHPC::SerializableEntityState::LoadDelta(MSG& msg, const ISerializableMess
 
 	for (i = 0, field = entityStateFields; i < lc; i++, field++)
 	{
-		uint8_t* fromF = (uint8_t*)((uint8_t*)from + field->offset);
+		uint8_t* fromF = (uint8_t*)((uint8_t*)fromEnt + field->offset);
 		uint8_t* toF = (uint8_t*)((uint8_t*)&state + field->offset);
 
 		const bool isDiff = msg.ReadBool();
@@ -1155,17 +1157,17 @@ void MOHPC::SerializableEntityState::LoadDelta(MSG& msg, const ISerializableMess
 		case fieldType_e::time:
 			*(float*)toF = EntityField::ReadTimeField(msg, field->bits);
 			break;
-		case fieldType_e::field03: // nasty!
+		case fieldType_e::animWeight:
 			result = 0;
-			msg.SerializeBits(&result, 8);
+			msg.ReadBits(&result, 8);
 			*(float*)toF = EntityField::UnpackAnimWeight(result, 8);
 			break;
 		case fieldType_e::time2:
 			*(float*)toF = EntityField::ReadSmallTimeField(msg, field->bits);
 			break;
-		case fieldType_e::field05:
+		case fieldType_e::animWeight2:
 			result = 0;
-			msg.SerializeBits(&result, 8);
+			msg.ReadBits(&result, 8);
 			*(float*)toF = EntityField::UnpackAnimWeight(result, 8);
 			break;
 		case fieldType_e::largeCoord:
@@ -1180,8 +1182,7 @@ void MOHPC::SerializableEntityState::LoadDelta(MSG& msg, const ISerializableMess
 	}
 
 	// assign unchanged fields accordingly
-	SerializableEntityState* fromE = (SerializableEntityState*)from;
-	EntityField::CopyFields(fromE->GetState(), GetState(), lc, numFields, entityStateFields);
+	EntityField::CopyFields(fromEnt, GetState(), lc, numFields, entityStateFields);
 
 	// FIXME: not sure if origin, angles and bone_angles should be set
 }
@@ -1202,7 +1203,7 @@ void MOHPC::SerializableEntityState_ver17::LoadDelta(MSG& msg, const ISerializab
 	if (removed)
 	{
 		state = entityState_t();
-		state.number = MAX_GENTITIES - 1;
+		state.number = ENTITYNUM_NONE;
 		return;
 	}
 
@@ -1243,18 +1244,18 @@ void MOHPC::SerializableEntityState_ver17::LoadDelta(MSG& msg, const ISerializab
 		switch (field->type)
 		{
 		case fieldType_ver17_e::number:
-			EntityField::ReadRegular(msg, field->bits, toF, field->size);
+			EntityField::ReadRegular2(msg, field->bits, toF, field->size);
 			break;
-		case fieldType_ver17_e::angle: // anglestmp = 1.0f;
+		case fieldType_ver17_e::angle:
 			result = 0;
-			msg.SerializeBits(&result, field->bits < 0 ? -field->bits : field->bits);
+			msg.ReadBits(&result, field->bits < 0 ? -field->bits : field->bits);
 			*(float*)toF = EntityField::UnpackAngle(result, field->bits, field->bits < 0);
 			break;
 		case fieldType_ver17_e::animTime: // time
 			result = 0;
 			if (msg.ReadBool())
 			{
-				msg.SerializeBits(&result, field->bits);
+				msg.ReadBits(&result, field->bits);
 				*(float*)toF = EntityField::UnpackAnimTime(result);
 			}
 			else {
@@ -1262,19 +1263,19 @@ void MOHPC::SerializableEntityState_ver17::LoadDelta(MSG& msg, const ISerializab
 				//*(float*)toF += timeInc
 			}
 			break;
-		case fieldType_ver17_e::animWeight: // nasty!
+		case fieldType_ver17_e::animWeight:
 			result = 0;
-			msg.SerializeBits(&result, field->bits);
+			msg.ReadBits(&result, field->bits);
 			*(float*)toF = EntityField::UnpackAnimWeight(result, field->bits);
 			break;
 		case fieldType_ver17_e::scale:
 			result = 0;
-			msg.SerializeBits(&result, field->bits);
+			msg.ReadBits(&result, field->bits);
 			*(float*)toF = EntityField::UnpackScale(result);
 			break;
 		case fieldType_ver17_e::alpha:
 			result = 0;
-			msg.SerializeBits(&result, field->bits);
+			msg.ReadBits(&result, field->bits);
 			*(float*)toF = EntityField::UnpackAlpha(result, field->bits);
 			break;
 		case fieldType_ver17_e::mediumCoord: // changed in SH/BT
@@ -1360,7 +1361,7 @@ void MOHPC::EntityField::WriteNumberPlayerStateField(MSG& msg, size_t bits, void
 	}
 }
 
-void MOHPC::EntityField::ReadRegular(MSG& msg, size_t bits, void* toF, size_t size)
+void MOHPC::EntityField::ReadRegular(MSG& msg, intptr_t bits, void* toF, size_t size)
 {
 	if (bits == 0)
 	{
@@ -1377,7 +1378,7 @@ void MOHPC::EntityField::ReadRegular(MSG& msg, size_t bits, void* toF, size_t si
 			{
 				// integral float
 				int32_t truncFloat = 0;
-				msg.SerializeBits(&truncFloat, FLOAT_INT_BITS);
+				msg.ReadBits(&truncFloat, FLOAT_INT_BITS);
 				// bias to allow equal parts positive and negative
 				truncFloat -= FLOAT_INT_BIAS;
 				*(float*)toF = (float)truncFloat;
@@ -1397,7 +1398,82 @@ void MOHPC::EntityField::ReadRegular(MSG& msg, size_t bits, void* toF, size_t si
 		if (hasValue)
 		{
 			// integer
-			msg.SerializeBits(toF, bits);
+			msg.ReadBits(toF, bits);
+		}
+	}
+}
+
+template<typename T>
+void shiftType(T& val)
+{
+	if (val & 1) {
+		val = ~(val >> 1);
+	}
+	else {
+		val = val >> 1;
+	}
+}
+
+void MOHPC::EntityField::ReadRegular2(MSG& msg, intptr_t bits, void* toF, size_t size)
+{
+	if (bits == 0)
+	{
+		// float
+		bool hasValue = msg.ReadBool();
+
+		if (!hasValue) {
+			*(float*)toF = 0.0f;
+		}
+		else
+		{
+			const bool isFullFloat = msg.ReadBool();
+			if (!isFullFloat)
+			{
+				// integral float
+				int32_t truncFloat = 0;
+				msg.ReadBits(&truncFloat, -FLOAT_INT_BITS);
+				shiftType(truncFloat);
+
+				*(float*)toF = (float)truncFloat;
+			}
+			else
+			{
+				// full floating point value
+				*(float*)toF = msg.ReadFloat();
+			}
+		}
+	}
+	else
+	{
+		memset(toF, 0, size);
+
+		const bool hasValue = msg.ReadBool();
+		if (hasValue)
+		{
+			// integer
+			msg.ReadBits(toF, bits);
+		}
+
+		if (bits < 0)
+		{
+			size_t nbits = -bits;
+
+			if (size == 1)
+			{
+				shiftType(*(uint8_t*)toF);
+			}
+			else if (size == 2)
+			{
+				shiftType(*(uint16_t*)toF);
+			}
+			else if (size == 4)
+			{
+				shiftType(*(uint32_t*)toF);
+			}
+			else
+			{
+				shiftType(*(uint32_t*)toF);
+			}
 		}
 	}
 }

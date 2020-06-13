@@ -36,11 +36,12 @@ Info& Info::operator=(Info&& info)
 
 void Info::SetValueForKey(const char* key, const char* value)
 {
-	// remove existing key
-	RemoveKey(key);
-	if (!value || !*value) {
+	if (!key || !*key) {
 		return;
 	}
+
+	// remove existing key
+	RemoveKey(key);
 
 	// append at the end
 	const size_t keyLen = strlen(key);
@@ -180,6 +181,12 @@ ReadOnlyInfo::ReadOnlyInfo(ReadOnlyInfo&& other) noexcept
 	size = other.size;
 }
 
+MOHPC::ReadOnlyInfo::ReadOnlyInfo()
+	: keyBuffer(nullptr)
+	, size(0)
+{
+}
+
 ReadOnlyInfo& ReadOnlyInfo::operator=(ReadOnlyInfo&& other) noexcept
 {
 	keyBuffer = other.keyBuffer;
@@ -189,8 +196,27 @@ ReadOnlyInfo& ReadOnlyInfo::operator=(ReadOnlyInfo&& other) noexcept
 
 str ReadOnlyInfo::ValueForKey(const char* key) const
 {
+	size_t keyLen;
+	const char* foundKey = ValueForKey(key, keyLen);
+
+	if(keyLen)
+	{
+		return str(
+			foundKey,
+			0,
+			keyLen
+		);
+	}
+
+	return str();
+}
+
+const char* MOHPC::ReadOnlyInfo::ValueForKey(const char* key, size_t& outLen) const
+{
 	const char* pkey = keyBuffer;
 	const char* endBuf = keyBuffer + size;
+
+	outLen = 0;
 
 	while (pkey < endBuf)
 	{
@@ -207,11 +233,8 @@ str ReadOnlyInfo::ValueForKey(const char* key) const
 
 		if (!str::cmpn(pkey, key, endKey - pkey))
 		{
-			return str(
-				startValue,
-				0,
-				endValue - startValue
-			);
+			outLen = endValue - startValue;
+			return startValue;
 		}
 
 		pkey = endValue;

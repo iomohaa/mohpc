@@ -43,6 +43,11 @@ Unknown:: Absence of testing, but this does not mean the library will not work.
 
 === Features
 
+* Assets reader
+* Networking
+* Collision handling
+* Player movement
+
 ==== Supported assets
 
 * BSP
@@ -51,9 +56,27 @@ Unknown:: Absence of testing, but this does not mean the library will not work.
 ** SKB
 ** SKD from all expansions
 ** SKC from all expansions
-** TIKI files
+** TIKI files / Emitters
 * Images
 * Sounds
+* Shaders
+
+==== Networking
+
+* Query server list from master server
+* Query LAN server list
+* Query server status/info
+* Connect to server
+
+===== In-game
+
+* Full support for packets/messages in realtime
+* Download is supported
+* User input simulation
+* Entities/snapshots fetching
+* Interpolation/Extrapolation support
+* Game events parsing, callbacks & notifications
+* Player movement prediction with collision support
 
 === TODO
 

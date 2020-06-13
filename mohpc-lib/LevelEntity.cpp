@@ -24,45 +24,10 @@ str MOHPC::CanonicalModelName(const char* ModelName)
 	}
 }
 
-PropertyDef::PropertyDef(const char* inPropertyName)
-{
-	propertyName = inPropertyName;
-}
-
-PropertyDef::PropertyDef(str&& inPropertyName)
-	: propertyName(std::move(inPropertyName))
-{
-
-}
-
-PropertyDef::PropertyDef(const str& inPropertyName)
-	: propertyName(inPropertyName)
-{
-}
-
-bool PropertyDef::operator<(const PropertyDef& right) const
-{
-	return propertyName < right.propertyName;
-}
-
-const char* PropertyDef::GetPropertyName() const
-{
-	return IsKeyed() ? propertyName.c_str() + 1 : propertyName.c_str();
-}
-
-const char* PropertyDef::GetFullPropertyName() const
-{
-	return propertyName.c_str();
-}
-
-bool MOHPC::PropertyDef::IsKeyed() const
-{
-	return propertyName[0] == '#' || propertyName[0] == '$';
-}
-
 LevelEntity::LevelEntity(size_t num)
 {
 	entnum = num;
+	spawnflags = 0;
 }
 
 size_t LevelEntity::GetEntNum() const
@@ -122,160 +87,77 @@ bool LevelEntity::HasSubmodel() const
 
 bool LevelEntity::HasProperty(const char* Key) const
 {
-	return GetPropertyValuePointer(Key) != nullptr;
+	return propertyObject.HasProperty(Key);
 }
 
 const char* LevelEntity::GetPropertyRawValue(const char* Key) const
 {
-	const str* val = GetPropertyValuePointer(Key);
-	if (!val)
-	{
-		return nullptr;
-	}
-	return val->c_str();
+	return propertyObject.GetPropertyRawValue(Key);
 }
 
 const str& LevelEntity::GetPropertyStringValue(const char* Key, const str& defaultValue) const
 {
-	const str* val = GetPropertyValuePointer(Key);
-	if (!val)
-	{
-		return defaultValue;
-	}
-	return *val;
+	return propertyObject.GetPropertyStringValue(Key, defaultValue);
 }
 
 int8_t LevelEntity::GetPropertyCharValue(const char* Key, int8_t defaultValue) const
 {
-	const str* val = GetPropertyValuePointer(Key);
-	if (!val)
-	{
-		return defaultValue;
-	}
-	return *val->c_str();
+	return propertyObject.GetPropertyCharValue(Key, defaultValue);
 }
 
 int16_t LevelEntity::GetPropertyShortValue(const char* Key, int16_t defaultValue) const
 {
-	const str* val = GetPropertyValuePointer(Key);
-	if (!val)
-	{
-		return defaultValue;
-	}
-	return (int16_t)std::stoi(val->c_str());
+	return propertyObject.GetPropertyShortValue(Key, defaultValue);
 }
 
 int32_t LevelEntity::GetPropertyIntegerValue(const char* Key, int32_t defaultValue) const
 {
-	const str* val = GetPropertyValuePointer(Key);
-	if (!val)
-	{
-		return defaultValue;
-	}
-	return std::stoi(val->c_str());
+	return propertyObject.GetPropertyIntegerValue(Key, defaultValue);
 }
 
 int64_t LevelEntity::GetPropertyLongValue(const char* Key, int64_t defaultValue) const
 {
-	const str* val = GetPropertyValuePointer(Key);
-	if (!val)
-	{
-		return defaultValue;
-	}
-	return std::stoll(val->c_str());
+	return propertyObject.GetPropertyLongValue(Key, defaultValue);
 }
 
 uint8_t LevelEntity::GetPropertyByteValue(const char* Key, uint8_t defaultValue) const
 {
-	const str* val = GetPropertyValuePointer(Key);
-	if (!val)
-	{
-		return defaultValue;
-	}
-	return (uint8_t)*val->c_str();
+	return propertyObject.GetPropertyByteValue(Key, defaultValue);
 }
 
 uint16_t LevelEntity::GetPropertyUnsignedShortValue(const char* Key, uint16_t defaultValue) const
 {
-	const str* val = GetPropertyValuePointer(Key);
-	if (!val)
-	{
-		return defaultValue;
-	}
-	return (uint16_t)std::stoul(val->c_str());
+	return propertyObject.GetPropertyUnsignedShortValue(Key, defaultValue);
 }
 
 uint32_t LevelEntity::GetPropertyUnsignedIntegerValue(const char* Key, uint32_t defaultValue) const
 {
-	const str* val = GetPropertyValuePointer(Key);
-	if (!val)
-	{
-		return defaultValue;
-	}
-	return std::stoul(val->c_str());
+	return propertyObject.GetPropertyUnsignedIntegerValue(Key, defaultValue);
 }
 
 uint64_t LevelEntity::GetPropertyUnsignedLongValue(const char* Key, uint64_t defaultValue) const
 {
-	const str* val = GetPropertyValuePointer(Key);
-	if (!val)
-	{
-		return defaultValue;
-	}
-	return std::stoull(val->c_str());
+	return propertyObject.GetPropertyUnsignedLongValue(Key, defaultValue);
 }
 
 float LevelEntity::GetPropertyFloatValue(const char* Key, float defaultValue) const
 {
-	const str* val = GetPropertyValuePointer(Key);
-	if (!val)
-	{
-		return defaultValue;
-	}
-	return std::stof(val->c_str());
+	return propertyObject.GetPropertyFloatValue(Key, defaultValue);
 }
 
 double LevelEntity::GetPropertyDoubleValue(const char* Key, double defaultValue) const
 {
-	const str* val = GetPropertyValuePointer(Key);
-	if (!val)
-	{
-		return defaultValue;
-	}
-	return std::stod(val->c_str());
+	return propertyObject.GetPropertyDoubleValue(Key, defaultValue);
 }
 
 long double LevelEntity::GetPropertyLongDoubleValue(const char* Key, long double defaultValue) const
 {
-	const str* val = GetPropertyValuePointer(Key);
-	if (!val)
-	{
-		return defaultValue;
-	}
-	return std::stold(val->c_str());
+	return propertyObject.GetPropertyLongDoubleValue(Key, defaultValue);
 }
 
 Vector LevelEntity::GetPropertyVectorValue(const char* Key, const Vector& defaultValue) const
 {
-	const str* val = GetPropertyValuePointer(Key);
-	if (!val)
-	{
-		return defaultValue;
-	}
-	return Vector(val->c_str());
-}
-
-const str* LevelEntity::GetPropertyValuePointer(const char* Key) const
-{
-	PropertyMap::const_iterator it = keyValues.find(Key);
-	if (it != keyValues.end())
-	{
-		return &it->second;
-	}
-	else
-	{
-		return nullptr;
-	}
+	return propertyObject.GetPropertyVectorValue(Key, defaultValue);
 }
 
 MOHPC_EXPORTS bool MOHPC::LevelEntity::TrySetMemberValue(const char* Key, const char* Value)
@@ -335,7 +217,7 @@ void LevelEntity::SetPropertyValue(const char* Key, const char* Value)
 {
 	if(!TrySetMemberValue(Key, Value))
 	{
-		keyValues.insert_or_assign(Key, Value);
+		return propertyObject.SetPropertyValue(Key, Value);
 	}
 }
 
@@ -343,12 +225,11 @@ void MOHPC::LevelEntity::SetPropertyDef(const PropertyDef& Key, str&& Value)
 {
 	if (!TrySetMemberValue(Key.GetPropertyName(), Value.c_str()))
 	{
-		keyValues.insert_or_assign(Key, std::move(Value));
+		return propertyObject.SetPropertyDef(Key, std::move(Value));
 	}
 }
 
-const PropertyMap& LevelEntity::GetPropertyMap() const
+PropertyMapIterator MOHPC::LevelEntity::GetIterator() const
 {
-	return keyValues;
+	return propertyObject.GetIterator();
 }
-

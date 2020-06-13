@@ -1,5 +1,5 @@
 #include <MOHPC/Network/Event.h>
-#include <MOHPC/Network/Client.h>
+#include <MOHPC/Network/ClientGame.h>
 #include <MOHPC/Network/Server.h>
 #include <MOHPC/Utilities/Info.h>
 #include <MOHPC/Utilities/TokenParser.h>
@@ -49,7 +49,7 @@ IRequestPtr MOHPC::Network::EngineServer::VerBeforeChallengeRequest::handleRespo
 		return nullptr;
 	}
 
-	MOHPC_LOG(Error, "server type %d protocol version %d game version %s", serverType, protocolVersionNumber, value.c_str());
+	MOHPC_LOG(Error, "server type %d protocol version %d game version \"%s\"", serverType, protocolVersionNumber, value.c_str());
 	return makeShared<ChallengeRequest>(protocolType_c(serverType, protocolVersion), std::move(data));
 }
 
@@ -153,8 +153,13 @@ str Network::EngineServer::ConnectRequest::generateRequest()
 
 	qport = (rand() % 45536) + 20000;
 
-	// Set user info
 	Info info;
+
+	// Fill in important info
+
+	// Append the challenge
+	info.SetValueForKey("challenge", str::printf("%i", challenge));
+	// Send the client version and the protocol
 	info.SetValueForKey("version", CLIENT_VERSION);
 	info.SetValueForKey("protocol", str::printf("%i", protocol.getProtocolVersion()));
 
@@ -164,8 +169,9 @@ str Network::EngineServer::ConnectRequest::generateRequest()
 	}
 
 	info.SetValueForKey("qport", str::printf("%i", qport));
-	info.SetValueForKey("challenge", str::printf("%i", challenge));
-	info.SetValueForKey("name", data.info.getName());
+
+	// Set user info
+	data.info.fillInfoString(info);
 
 	// Send user info string
 	connectArgs.reserve(info.GetInfoLength() + 2);
@@ -192,12 +198,12 @@ IRequestPtr MOHPC::Network::EngineServer::ConnectRequest::handleResponse(const c
 	if (!str::icmp(name, "droperror"))
 	{
 		const char* error = parser.GetLine(true);
-		data.response(0, 0, protocolType_c(), error);
+		data.response(0, 0, protocolType_c(), std::move(data.info), error);
 		return nullptr;
 	}
 
 	MOHPC_LOG(Verbose, "connection succeeded");
-	data.response(qport, challenge, protocol, nullptr);
+	data.response(qport, challenge, protocol, std::move(data.info), nullptr);
 	return nullptr;
 }
 

@@ -6,6 +6,8 @@
 #include <MOHPC/Managers/FileManager.h>
 #include <MOHPC/Managers/AssetManager.h>
 #include <MOHPC/Managers/ShaderManager.h>
+#include <MOHPC/Collision/Collision.h>
+#include <Misc/Endian.h>
 #include "BSP_Curve.h"
 #include <chrono>
 #include <algorithm>
@@ -363,12 +365,12 @@ int32_t BSP::Brush::GetContents() const
 	return contents;
 }
 
-const MOHPC::Vector& BSP::Brush::GetMins() const
+const Vector& BSP::Brush::GetMins() const
 {
 	return bounds[0];
 }
 
-const MOHPC::Vector& BSP::Brush::GetMaxs() const
+const Vector& BSP::Brush::GetMaxs() const
 {
 	return bounds[1];
 }
@@ -1945,6 +1947,25 @@ void BSP::LoadSubmodels(const GameLump* GameLump)
 		const File_BrushModel* In = (File_BrushModel*)GameLump->Buffer;
 		Model* Out = brushModels.data();
 
+		size_t numLeafBrushes = 0;
+		size_t numLeafSurfaces = 0;
+		for (size_t i = 0; i < Count; i++)
+		{
+			numLeafBrushes += In[i].numBrushes;
+			numLeafSurfaces += In[i].numSurfaces;
+		}
+
+		size_t startLeafBrush = leafBrushes.NumObjects();
+		size_t startLeafSurf = leafSurfaces.NumObjects();
+
+		if(numLeafBrushes) {
+			leafBrushes.SetNumObjectsUninitialized(leafBrushes.NumObjects() + numLeafBrushes);
+		}
+
+		if(numLeafSurfaces) {
+			leafSurfaces.SetNumObjectsUninitialized(leafSurfaces.NumObjects() + numLeafSurfaces);
+		}
+
 		for (size_t i = 0; i < Count; i++, In++, Out++)
 		{
 			Out->bounds[0] = In->mins;
@@ -1958,6 +1979,37 @@ void BSP::LoadSubmodels(const GameLump* GameLump)
 			{
 				Out->surface = nullptr;
 			}
+
+			Out->leaf.numLeafBrushes = In->numBrushes;
+			if (Out->leaf.numLeafBrushes)
+			{
+				uintptr_t* indexes = &leafBrushes[startLeafBrush];
+				Out->leaf.firstLeafBrush = startLeafBrush;
+				for (uintptr_t j = 0; j < Out->leaf.numLeafBrushes; j++) {
+					indexes[j] = LittleLong(In->firstBrush) + j;
+				}
+			}
+			else
+			{
+				Out->leaf.firstLeafBrush = -1;
+			}
+
+			Out->leaf.numLeafSurfaces = In->numSurfaces;
+			if (Out->leaf.numLeafSurfaces)
+			{
+				uintptr_t* indexes = &leafSurfaces[startLeafSurf];
+				Out->leaf.firstLeafSurface = startLeafSurf;
+				for (uintptr_t j = 0; j < Out->leaf.numLeafSurfaces; j++) {
+					indexes[j] = LittleLong(In->firstSurface) + j;
+				}
+			}
+			else
+			{
+				Out->leaf.numLeafSurfaces = -1;
+			}
+
+			startLeafSurf += Out->leaf.numLeafSurfaces;
+			startLeafBrush += Out->leaf.numLeafBrushes;
 		}
 	}
 }
@@ -2156,7 +2208,229 @@ void BSP::LoadTerrainIndexes(const GameLump* GameLump)
 	}
 }
 
-void MOHPC::BSP::FloodArea(size_t areaNum, uint32_t floodNum, uint32_t& floodValid)
+void BSP::FillCollisionWorld(CollisionWorld& cm)
+{
+	// Pre-allocate data
+	cm.reserve(
+		0,
+		shaders.NumObjects(),
+		sideEquations.NumObjects(),
+		brushSides.NumObjects(),
+		planes.NumObjects(),
+		nodes.NumObjects(),
+		leafs.NumObjects(),
+		leafBrushes.NumObjects(),
+		leafSurfaces.NumObjects(),
+		leafTerrains.NumObjects(),
+		brushModels.NumObjects(),
+		brushes.NumObjects(),
+		surfaces.NumObjects(),
+		terrainPatches.NumObjects(),
+		surfaces.NumObjects()
+	);
+
+	// Put shaders
+	for (size_t i = 0; i < shaders.NumObjects(); ++i)
+	{
+		const Shader& shader = shaders[i];
+
+		collisionShader_t* colShader = cm.createShader();
+		colShader->shader = shader.shaderName;
+		colShader->contentFlags = shader.contentFlags;
+		colShader->surfaceFlags = shader.surfaceFlags;
+	}
+
+	// Put side equations
+	for (size_t i = 0; i < sideEquations.NumObjects(); ++i)
+	{
+		const SideEquation& sideEq = sideEquations[i];
+
+		collisionSideEq_t* colSideEq = cm.createSideEquation();
+		memcpy(colSideEq->fSeq, sideEq.sEq, sizeof(colSideEq->fSeq));
+		memcpy(colSideEq->fTeq, sideEq.tEq, sizeof(colSideEq->fTeq));
+	}
+
+	// Put planes
+	for (size_t i = 0; i < planes.NumObjects(); ++i)
+	{
+		const Plane& plane = planes[i];
+
+		collisionPlane_t* colPlane = cm.createPlane();
+		VecCopy(plane.normal, colPlane->normal);
+		colPlane->dist = plane.distance;
+		colPlane->signbits = plane.signBits;
+		colPlane->type = plane.type;
+	}
+
+	// Put brushsides
+	for (size_t i = 0; i < brushSides.NumObjects(); ++i)
+	{
+		const BrushSide& bside = brushSides[i];
+
+		collisionBrushSide_t* colBside = cm.createBrushSide();
+		colBside->pEq = bside.Eq ? cm.getSideEquation(bside.Eq - sideEquations.Data()) : nullptr;
+		colBside->plane = cm.getPlane(bside.plane - planes.Data());
+		colBside->shaderNum = bside.shader - shaders.Data();
+		colBside->surfaceFlags = bside.surfaceFlags;
+	}
+
+	// Put nodes
+	for (size_t i = 0; i < nodes.NumObjects(); ++i)
+	{
+		const Node& node = nodes[i];
+
+		collisionNode_t* colNode = cm.createNode();
+		colNode->plane = cm.getPlane(node.plane - planes.Data());
+		colNode->children[0] = node.children[0];
+		colNode->children[1] = node.children[1];
+	}
+
+	// Put brushes
+	for (size_t i = 0; i < brushes.NumObjects(); ++i)
+	{
+		const Brush& brush = brushes[i];
+
+		collisionBrush_t* colBrush = cm.createBrush();
+		colBrush->shaderNum = brush.shader - shaders.Data();
+		colBrush->numsides = brush.numsides;
+		colBrush->sides = cm.getBrushSide(brush.sides - brushSides.Data());
+		colBrush->bounds[0] = brush.bounds[0];
+		colBrush->bounds[1] = brush.bounds[1];
+		colBrush->contents = brush.contents;
+	}
+
+	// Put patches
+	for (size_t i = 0; i < surfaces.NumObjects(); ++i)
+	{
+		const Surface& patch = surfaces[i];
+
+		if(patch.IsPatch())
+		{
+			const Shader* shader = patch.GetShader();
+
+			collisionPatch_t* colPatch = cm.createPatch();
+			colPatch->shaderNum = shader - shaders.Data();
+			colPatch->surfaceFlags = shader->surfaceFlags;
+			colPatch->contents = shader->contentFlags;
+			colPatch->subdivisions = shader->subdivisions;
+
+			const PatchCollide* pc = patch.GetPatchCollide();
+
+			colPatch->pc.bounds[0] = pc->bounds[0];
+			colPatch->pc.bounds[1] = pc->bounds[1];
+			colPatch->pc.numFacets = pc->numFacets;
+			colPatch->pc.facets = new facet_t[pc->numFacets];
+			colPatch->pc.numPlanes = pc->numPlanes;
+			colPatch->pc.planes = new patchPlane_t[pc->numPlanes];
+
+			// Fill facets
+			for (size_t j = 0; j < colPatch->pc.numFacets; ++j)
+			{
+				const Facet& facet = pc->facets[j];
+
+				facet_t& colFacet = colPatch->pc.facets[j];
+				memcpy(colFacet.borderInward, facet.borderInward, sizeof(colFacet.borderInward));
+				memcpy(colFacet.borderPlanes, facet.borderPlanes, sizeof(colFacet.borderPlanes));
+				memcpy(colFacet.borderNoAdjust, facet.borderNoAdjust, sizeof(colFacet.borderNoAdjust));
+				colFacet.surfacePlane = facet.surfacePlane;
+				colFacet.numBorders = facet.numBorders;
+			}
+
+			// Fill planes
+			for (size_t j = 0; j < colPatch->pc.numPlanes; ++j)
+			{
+				const PatchPlane& plane = pc->planes[j];
+
+				patchPlane_t& colPlane = colPatch->pc.planes[j];
+				for(size_t k = 0; k < 4; ++k) colPlane.plane[k] = plane.plane[k];
+				colPlane.signbits = plane.signbits;
+			}
+
+			cm.createSurface(colPatch);
+		}
+		else {
+			cm.createSurface(nullptr);
+		}
+	}
+
+	// Put terrains
+	for (size_t i = 0; i < terrainPatches.NumObjects(); ++i)
+	{
+		const TerrainPatch& terrain = terrainPatches[i];
+		const Shader* shader = terrain.shader;
+
+		TerrainCollide collision;
+		GenerateTerrainCollide(&terrain, collision);
+
+		collisionTerrain_t* colTerrain = cm.createTerrain();
+		colTerrain->tc.vBounds[0] = collision.vBounds[0];
+		colTerrain->tc.vBounds[1] = collision.vBounds[1];
+		memcpy(colTerrain->tc.squares, collision.squares, sizeof(colTerrain->tc.squares));
+		colTerrain->contents = shader->contentFlags;
+		colTerrain->shaderNum = shader - shaders.Data();
+		colTerrain->surfaceFlags = shader->surfaceFlags;
+	}
+
+	// Put leafs
+	for (size_t i = 0; i < leafs.NumObjects(); ++i)
+	{
+		const Leaf& leaf = leafs[i];
+
+		collisionLeaf_t* colLeaf = cm.createLeaf();
+		colLeaf->area = leaf.area;
+		colLeaf->cluster = leaf.cluster;
+		colLeaf->firstLeafBrush = (uint32_t)leaf.firstLeafBrush;
+		colLeaf->firstLeafSurface = (uint32_t)leaf.firstLeafSurface;
+		colLeaf->firstLeafTerrain = (uint32_t)leaf.firstLeafTerrain;
+		colLeaf->numLeafBrushes = (uint32_t)leaf.numLeafBrushes;
+		colLeaf->numLeafSurfaces = (uint32_t)leaf.numLeafSurfaces;
+		colLeaf->numLeafTerrains = (uint32_t)leaf.numLeafTerrains;
+	}
+
+	// Put leaf brushes
+	for (size_t i = 0; i < leafBrushes.NumObjects(); ++i)
+	{
+		const uintptr_t leafNum = leafBrushes[i];
+
+		cm.createLeafBrush(leafNum);
+	}
+
+	// Put leaf surfaces
+	for (size_t i = 0; i < leafSurfaces.NumObjects(); ++i)
+	{
+		const uintptr_t leafNum = leafSurfaces[i];
+
+		cm.createLeafSurface(leafNum);
+	}
+
+	// Put leaf terrains
+	for (size_t i = 0; i < leafTerrains.NumObjects(); ++i)
+	{
+		const TerrainPatch* leafTerrain = leafTerrains[i];
+
+		cm.createLeafTerrain(cm.getTerrain(leafTerrain - terrainPatches.Data()));
+	}
+
+	// Put brushmodels
+	for (size_t i = 0; i < brushModels.NumObjects(); ++i)
+	{
+		const Model& bmodel = brushModels[i];
+
+		collisionModel_t* colModel = cm.createModel();
+		colModel->mins = bmodel.bounds[0];
+		colModel->maxs = bmodel.bounds[1];
+		colModel->leaf.area = bmodel.leaf.area;
+		colModel->leaf.cluster = bmodel.leaf.cluster;
+		colModel->leaf.firstLeafBrush = (uint32_t)bmodel.leaf.firstLeafBrush;
+		colModel->leaf.firstLeafSurface = (uint32_t)bmodel.leaf.firstLeafSurface;
+		colModel->leaf.firstLeafTerrain = (uint32_t)bmodel.leaf.firstLeafTerrain;
+		colModel->leaf.numLeafBrushes = (uint32_t)bmodel.leaf.numLeafBrushes;
+		colModel->leaf.numLeafSurfaces = (uint32_t)bmodel.leaf.numLeafSurfaces;
+		colModel->leaf.numLeafTerrains = (uint32_t)bmodel.leaf.numLeafTerrains;
+	}
+}
+
+void BSP::FloodArea(size_t areaNum, uint32_t floodNum, uint32_t& floodValid)
 {
 	Area* area = &areas[areaNum];
 
@@ -2752,7 +3026,7 @@ void BSP::MapBrushes()
 	delete[] mappedSurfaces;
 }
 
-uintptr_t BSP::PointLeafNum(const MOHPC::Vector p)
+uintptr_t BSP::PointLeafNum(const Vector p)
 {
 	if (!nodes.size()) {
 		return 0;
@@ -2761,7 +3035,7 @@ uintptr_t BSP::PointLeafNum(const MOHPC::Vector p)
 	return PointLeafNum_r(p, 0);
 }
 
-uintptr_t BSP::PointLeafNum_r(const MOHPC::Vector p, intptr_t num)
+uintptr_t BSP::PointLeafNum_r(const Vector p, intptr_t num)
 {
 	float d;
 
