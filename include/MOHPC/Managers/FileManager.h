@@ -128,6 +128,13 @@ namespace MOHPC
 		 */
 		bool AddPakFile(const char* Filename, const char* CategoryName = nullptr);
 
+		/**
+		 * Auto add standard pak files and directories from root game directory.
+		 *
+		 * @param Directory - The full path to the game directory.
+		 */
+		bool FillGameDirectory(const char* Directory);
+
 		/** Return the number of added game dirs. */
 		size_t GetNumDirectories() const;
 

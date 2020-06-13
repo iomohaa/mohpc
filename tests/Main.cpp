@@ -41,41 +41,9 @@ int main(int argc, char *argv[])
 		printf("Loading pak files...\n");
 
 #ifdef _WIN32
-		FM->AddGameDirectory("I:\\Jeux\\Mohaa\\main", "AA");
-		FM->AddPakFile("I:\\Jeux\\Mohaa\\main\\Pak0.pk3", "AA");
-		FM->AddPakFile("I:\\Jeux\\Mohaa\\main\\Pak1.pk3", "AA");
-		FM->AddPakFile("I:\\Jeux\\Mohaa\\main\\Pak2.pk3", "AA");
-		FM->AddPakFile("I:\\Jeux\\Mohaa\\main\\Pak3.pk3", "AA");
-		FM->AddPakFile("I:\\Jeux\\Mohaa\\main\\Pak4.pk3", "AA");
-		FM->AddPakFile("I:\\Jeux\\Mohaa\\main\\Pak5.pk3", "AA");
-		FM->AddPakFile("I:\\Jeux\\Mohaa\\main\\Pak6.pk3", "AA");
-		FM->AddPakFile("I:\\Jeux\\Mohaa\\mainta\\Pak1.pk3", "SH");
-		FM->AddPakFile("I:\\Jeux\\Mohaa\\mainta\\Pak2.pk3", "SH");
-		FM->AddPakFile("I:\\Jeux\\Mohaa\\mainta\\Pak3.pk3", "SH");
-		FM->AddPakFile("I:\\Jeux\\Mohaa\\mainta\\Pak4.pk3", "SH");
-		FM->AddPakFile("I:\\Jeux\\Mohaa\\mainta\\Pak5.pk3", "SH");
-		FM->AddPakFile("I:\\Jeux\\Mohaa\\maintt\\Pak1.pk3", "BT");
-		FM->AddPakFile("I:\\Jeux\\Mohaa\\maintt\\Pak2.pk3", "BT");
-		FM->AddPakFile("I:\\Jeux\\Mohaa\\maintt\\Pak3.pk3", "BT");
-		FM->AddPakFile("I:\\Jeux\\Mohaa\\maintt\\Pak4.pk3", "BT");
+		FM->FillGameDirectory("I:\\Jeux\\Mohaa\\");
 #else
-		FM->AddGameDirectory("/mnt/i/Jeux/Mohaa/main");
-		FM->AddPakFile("/mnt/i/Jeux/Mohaa/main/Pak0.pk3");
-		FM->AddPakFile("/mnt/i/Jeux/Mohaa/main/Pak1.pk3");
-		FM->AddPakFile("/mnt/i/Jeux/Mohaa/main/Pak2.pk3");
-		FM->AddPakFile("/mnt/i/Jeux/Mohaa/main/Pak3.pk3");
-		FM->AddPakFile("/mnt/i/Jeux/Mohaa/main/Pak4.pk3");
-		FM->AddPakFile("/mnt/i/Jeux/Mohaa/main/Pak5.pk3");
-		FM->AddPakFile("/mnt/i/Jeux/Mohaa/main/Pak6.pk3");
-		FM->AddPakFile("/mnt/i/Jeux/Mohaa/mainta/Pak1.pk3");
-		FM->AddPakFile("/mnt/i/Jeux/Mohaa/mainta/Pak2.pk3");
-		FM->AddPakFile("/mnt/i/Jeux/Mohaa/mainta/Pak3.pk3");
-		FM->AddPakFile("/mnt/i/Jeux/Mohaa/mainta/Pak4.pk3");
-		FM->AddPakFile("/mnt/i/Jeux/Mohaa/mainta/Pak5.pk3");
-		FM->AddPakFile("/mnt/i/Jeux/Mohaa/maintt/Pak1.pk3");
-		FM->AddPakFile("/mnt/i/Jeux/Mohaa/maintt/Pak2.pk3");
-		FM->AddPakFile("/mnt/i/Jeux/Mohaa/maintt/Pak3.pk3");
-		FM->AddPakFile("/mnt/i/Jeux/Mohaa/maintt/Pak4.pk3");
+		FM->FillGameDirectory("/mnt/i/Jeux/Mohaa");
 #endif
 		{
 			MOHPC::FileEntryList entries = FM->ListFilteredFiles("/", "", true, false);

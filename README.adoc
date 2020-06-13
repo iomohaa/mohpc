@@ -1,3 +1,6 @@
+:source-highlighter: prettify
+:rouge-style: pastie
+
 = MOHPC
 :toc:
 :sectnums:
@@ -77,6 +80,38 @@ Unknown:: Absence of testing, but this does not mean the library will not work.
 * Interpolation/Extrapolation support
 * Game events parsing, callbacks & notifications
 * Player movement prediction with collision support
+
+=== Example
+
+[source,cpp]
+----
+#include <MOHPC/Managers/AssetManager.h>
+#include <MOHPC/Managers/FileManager.h>
+#include <MOHPC/Managers/ShaderManager.h>
+
+int main(int argc, char *argv[])
+{
+    MOHPC::AssetManager AM;
+    MOHPC::FileManager* FM = AM.GetFileManager();
+    // Setup the game directory
+    // Will load all pak files from Allied Assault, Spearhead and Breakthrough.
+    FM->FillGameDirectory("D:\\Path\\To\\Mohaa");
+
+    // Load a map (mohdm6)
+    MOHPC::BSPPtr bspLevel = AM.LoadAsset<MOHPC::BSP>("/maps/dm/mohdm6.bsp");
+    
+    // Setup collision
+    MOHPC::CollisionWorld cm;
+    bspLevel->FillCollisionWorld(cm);
+
+    // Trace through world
+    MOHPC::Vector start(0, 0, 0);
+    MOHPC::Vector end(0, 0, -500);
+    cm.CM_BoxTrace(&results, start, end, MOHPC::Vector(), MOHPC::Vector(), 5, MOHPC::ContentFlags::MASK_PLAYERSOLID, true);
+
+    // fraction should be less than 1 because of the terrain
+}
+----
 
 === TODO
 

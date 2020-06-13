@@ -228,7 +228,22 @@ namespace MOHPC
 		FileManagerCategory defaultCategory;
 		std::vector<FileManagerCategory*> categoryList;
 	};
+}
 
+#ifdef _WIN32
+static constexpr unsigned char PLATFORM_SLASH = '\\';
+#define PLATFORM_SLASH_MACRO "\\"
+#else
+static constexpr unsigned char PLATFORM_SLASH = '/';
+#define PLATFORM_SLASH_MACRO "/"
+#endif
+
+static bool HasTrailingSlash(const char* dir)
+{
+	const size_t dirLen = strlen(dir);
+
+	const char last = dir[dirLen - 1];
+	return last == PLATFORM_SLASH;
 }
 
 FileEntryList::FileEntryList()
@@ -426,6 +441,44 @@ bool FileManager::AddPakFile(const char* Filename, const char* CategoryName)
 	return true;
 }
 
+bool FileManager::FillGameDirectory(const char* Directory)
+{
+	const char* gameDir;
+	str gameDirStr;
+
+	if(!HasTrailingSlash(Directory))
+	{
+		gameDirStr = Directory;
+		gameDirStr += '/';
+		gameDir = gameDirStr.c_str();
+	}
+	else {
+		gameDir = Directory;
+	}
+
+	#define PSL PLATFORM_SLASH_MACRO
+
+	bool success = true;
+	success &= AddGameDirectory(str::printf("%smain", gameDir), "AA");
+	success &= AddPakFile(str::printf("%smain" PSL "Pak0.pk3", gameDir), "AA");
+	success &= AddPakFile(str::printf("%smain" PSL "Pak1.pk3", gameDir), "AA");
+	success &= AddPakFile(str::printf("%smain" PSL "Pak2.pk3", gameDir), "AA");
+	success &= AddPakFile(str::printf("%smain" PSL "Pak3.pk3", gameDir), "AA");
+	success &= AddPakFile(str::printf("%smain" PSL "Pak4.pk3", gameDir), "AA");
+	success &= AddPakFile(str::printf("%smain" PSL "Pak5.pk3", gameDir), "AA");
+	success &= AddPakFile(str::printf("%smain" PSL "Pak6.pk3", gameDir), "AA");
+	success &= AddPakFile(str::printf("%smainta" PSL "Pak1.pk3", gameDir), "SH");
+	success &= AddPakFile(str::printf("%smainta" PSL "Pak2.pk3", gameDir), "SH");
+	success &= AddPakFile(str::printf("%smainta" PSL "Pak3.pk3", gameDir), "SH");
+	success &= AddPakFile(str::printf("%smainta" PSL "Pak4.pk3", gameDir), "SH");
+	success &= AddPakFile(str::printf("%smainta" PSL "Pak5.pk3", gameDir), "SH");
+	success &= AddPakFile(str::printf("%smaintt" PSL "Pak1.pk3", gameDir), "BT");
+	success &= AddPakFile(str::printf("%smaintt" PSL "Pak2.pk3", gameDir), "BT");
+	success &= AddPakFile(str::printf("%smaintt" PSL "Pak3.pk3", gameDir), "BT");
+	success &= AddPakFile(str::printf("%smaintt" PSL "Pak4.pk3", gameDir), "BT");
+
+	return success;
+}
 
 size_t FileManager::GetNumDirectories() const
 {
