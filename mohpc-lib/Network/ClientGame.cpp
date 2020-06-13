@@ -135,6 +135,7 @@ ClientGameConnection::ClientGameConnection(NetworkManager* inNetworkManager, con
 	, oldFrameServerTime(0)
 	, lastPacketSendTime(0)
 	, maxPackets(30)
+	, maxTickPackets(60)
 	, parseEntitiesNum(0)
 	, serverCommandSequence(0)
 	, cmdNumber(0)
@@ -221,8 +222,10 @@ void ClientGameConnection::tick(uint64_t deltaTime, uint64_t currentTime)
 		}
 	}
 
+	size_t count = 0;
+
 	IUdpSocket* socket = getNetchan()->getRawSocket();
-	if (socket->dataAvailable())
+	while(socket->dataAvailable() && count++ < maxTickPackets)
 	{
 		std::vector<uint8_t> data(65536);
 		FixedDataMessageStream stream(data.data(), data.size());
@@ -433,6 +436,9 @@ void Network::ClientGameConnection::parseGameState(MSG& msg)
 
 	(this->*parseGameState_pf)(msg);
 	systemInfoChanged();
+
+	// Notify about the new game state
+	getHandlerList().notify<ClientHandlers::GameStateParsed, const gameState_t&>(getGameState());
 }
 
 void Network::ClientGameConnection::parseSnapshot(MSG& msg, uint32_t serverMessageSequence, uint64_t currentTime)
@@ -1187,6 +1193,22 @@ void MOHPC::Network::ClientGameConnection::setMaxPackets(uint32_t inMaxPackets)
 	}
 	else if (maxPackets > 125) {
 		maxPackets = 125;
+	}
+}
+
+uint32_t MOHPC::Network::ClientGameConnection::getMaxTickPackets() const
+{
+	return maxTickPackets;
+}
+
+void MOHPC::Network::ClientGameConnection::setMaxTickPackets(uint32_t inMaxPackets)
+{
+	maxTickPackets = inMaxPackets;
+	if (maxTickPackets < 1) {
+		maxTickPackets = 1;
+	}
+	else if (maxTickPackets > 1000) {
+		maxTickPackets = 1000;
 	}
 }
 

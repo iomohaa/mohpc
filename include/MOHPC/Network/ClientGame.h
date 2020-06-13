@@ -35,6 +35,7 @@ namespace MOHPC
 		static constexpr size_t MAX_PACKET_USERCMDS = 32;
 
 		class INetchan;
+		struct gameState_t;
 
 		using ClientGameConnectionPtr = SharedPtr<class ClientGameConnection>;
 
@@ -123,6 +124,13 @@ namespace MOHPC
 			 * @param	snap	The snapshot that was received.
 			 */
 			struct SnapReceived : public HandlerNotifyBase<void(const ClientSnapshot& snap)> {};
+
+			/**
+			 * Called the game state was parsed. Can be called multiple times.
+			 *
+			 * @param	gameState	New game state.
+			 */
+			struct GameStateParsed : public HandlerNotifyBase<void(const gameState_t& gameState)> {};
 		}
 
 		enum class svc_ops_e : uint8_t
@@ -387,6 +395,7 @@ namespace MOHPC
 			MOHPC_EXPORTS ClientInfo();
 			MOHPC_EXPORTS ClientInfo(ClientInfo&& other) = default;
 			MOHPC_EXPORTS ClientInfo& operator=(ClientInfo && other) = default;
+			MOHPC_EXPORTS ~ClientInfo() = default;
 
 			/**
 			 * Set/get the client rate, in kbps. Common rates are :
@@ -448,6 +457,7 @@ namespace MOHPC
 				MOHPC_HANDLERLIST_NOTIFY1(const ClientSnapshot&);
 				MOHPC_HANDLERLIST_HANDLER1_NODEF(ClientHandlers::FirstSnapshot, firstSnapshotHandler, const ClientSnapshot&);
 				MOHPC_HANDLERLIST_HANDLER1_NODEF(ClientHandlers::SnapReceived, snapshotReceivedHandler, const ClientSnapshot&);
+				MOHPC_HANDLERLIST_HANDLER1_NODEF(ClientHandlers::GameStateParsed, gameStateParsedHandler, const gameState_t&);
 			};
 
 		private:
@@ -483,6 +493,7 @@ namespace MOHPC
 			uint64_t lastPacketSendTime;
 			uint64_t serverDeltaFrequency;
 			uint32_t maxPackets;
+			uint32_t maxTickPackets;
 			uint32_t parseEntitiesNum;
 			uint32_t serverCommandSequence;
 			uint32_t serverMessageSequence;
@@ -583,6 +594,12 @@ namespace MOHPC
 
 			/** Set the maximum number of packets that can be sent per second, in the range of [1, 125]. */
 			MOHPC_EXPORTS void setMaxPackets(uint32_t inMaxPackets);
+
+			/** Return the maximum number of packets that can be processed at once in once tick. */
+			MOHPC_EXPORTS uint32_t getMaxTickPackets() const;
+
+			/** Set the maximum number of packets that can be sent processed at once in one tick, in the range of [1, 1000]. */
+			MOHPC_EXPORTS void setMaxTickPackets(uint32_t inMaxPackets);
 
 			/** Return the current snapshot number. */
 			MOHPC_EXPORTS uintptr_t getCurrentSnapshotNumber() const;
