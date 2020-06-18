@@ -465,9 +465,9 @@ namespace MOHPC
 			using readString_f = StringMessage(*)(MSG& msg);
 			using writeString_f = void (*)(MSG& msg, const char* s);
 			using hashKey_f = uint32_t(ClientGameConnection::*)(const char* string, size_t maxlen);
-			using readEntityNum_f = uint32_t(ClientGameConnection::*)(MsgTypesHelper& msgHelper);
+			using readEntityNum_f = entityNum_t (ClientGameConnection::*)(MsgTypesHelper& msgHelper);
 			using readDeltaPlayerstate_f = void(ClientGameConnection::*)(MSG& msg, const playerState_t* from, playerState_t* to);
-			using readDeltaEntity_f = void(ClientGameConnection::*)(MSG& msg, const entityState_t* from, entityState_t* to);
+			using readDeltaEntity_f = void(ClientGameConnection::*)(MSG& msg, const entityState_t* from, entityState_t* to, entityNum_t newNum);
 
 		private:
 			INetchanPtr netchan;
@@ -674,9 +674,9 @@ namespace MOHPC
 			StringMessage readStringMessage(MSG& msg);
 			void writeStringMessage(MSG& msg, const char* s);
 			uint32_t hashKey(const char* string, size_t maxlen);
-			uint32_t readEntityNum(MsgTypesHelper& msgHelper);
+			entityNum_t readEntityNum(MsgTypesHelper& msgHelper);
 			void readDeltaPlayerstate(MSG& msg, const playerState_t* from, playerState_t* to);
-			void readDeltaEntity(MSG& msg, const entityState_t* from, entityState_t* to);
+			void readDeltaEntity(MSG& msg, const entityState_t* from, entityState_t* to, uint16_t newNum);
 
 		private:
 			static StringMessage readStringMessage_normal(MSG& msg);
@@ -685,14 +685,14 @@ namespace MOHPC
 			static void writeStringMessage_scrambled(MSG& msg, const char* s);
 			uint32_t hashKey_ver8(const char* string, size_t maxlen);
 			uint32_t hashKey_ver17(const char* string, size_t maxlen);
-			uint32_t readEntityNum_ver8(MsgTypesHelper& msgHelper);
-			uint32_t readEntityNum_ver17(MsgTypesHelper& msgHelper);
+			entityNum_t readEntityNum_ver8(MsgTypesHelper& msgHelper);
+			entityNum_t readEntityNum_ver17(MsgTypesHelper& msgHelper);
 			void parseGameState_ver8(MSG& msg);
 			void parseGameState_ver17(MSG& msg);
 			void readDeltaPlayerstate_ver8(MSG& msg, const playerState_t* from, playerState_t* to);
 			void readDeltaPlayerstate_ver17(MSG& msg, const playerState_t* from, playerState_t* to);
-			void readDeltaEntity_ver8(MSG& msg, const entityState_t* from, entityState_t* to);
-			void readDeltaEntity_ver17(MSG& msg, const entityState_t* from, entityState_t* to);
+			void readDeltaEntity_ver8(MSG& msg, const entityState_t* from, entityState_t* to, entityNum_t newNum);
+			void readDeltaEntity_ver17(MSG& msg, const entityState_t* from, entityState_t* to, entityNum_t newNum);
 		};
 
 		using ClientGameConnectionPtr = SharedPtr<ClientGameConnection>;

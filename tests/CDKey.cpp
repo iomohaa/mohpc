@@ -51,7 +51,7 @@ public:
 			len += 30;
 
 			//sprintf(Base, "%0.13d", i);
-			MOHPC::CDKey::GenerateCDKey(CDKey, MOHPC::CDKey::GP_MOHAAB);
+			MOHPC::CDKey::GenerateCDKey2(CDKey, MOHPC::CDKey::GP_MOHAAB);
 
 			//memcpy(p, "BT: ", 4);
 			*(int*)p = *(int*)"BT: ";

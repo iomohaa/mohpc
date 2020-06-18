@@ -410,7 +410,7 @@ void Network::ClientGameConnection::parseGameState(MSG& msg)
 		break;
 		case svc_ops_e::Baseline:
 		{
-			const uint16_t newNum = readEntityNum(msgHelper);
+			const entityNum_t newNum = readEntityNum(msgHelper);
 			if (newNum >= MAX_GENTITIES) {
 				throw BaselineOutOfRangeException(newNum);
 			}
@@ -419,8 +419,7 @@ void Network::ClientGameConnection::parseGameState(MSG& msg)
 			GetNullEntityState(&nullState);
 
 			entityState_t& es = entityBaselines[newNum];
-			es.number = newNum;
-			readDeltaEntity(msg, &nullState, &es);
+			readDeltaEntity(msg, &nullState, &es, newNum);
 
 			// Call handler
 			handlerList.notify<ClientHandlers::EntityRead>((const entityState_t*)nullptr, const_cast<const entityState_t*>(&es));
@@ -679,10 +678,8 @@ void Network::ClientGameConnection::parseDeltaEntity(MSG& msg, ClientSnapshot* f
 	if (unchanged) {
 		*state = *old;
 	}
-	else
-	{
-		state->number = newNum;
-		readDeltaEntity(msg, old, state);
+	else {
+		readDeltaEntity(msg, old, state, newNum);
 	}
 
 	if (state->number == ENTITYNUM_NONE)
@@ -1063,7 +1060,7 @@ uint32_t ClientGameConnection::hashKey(const char* string, size_t maxlen)
 	return (this->*hashKey_pf)(string, maxlen);
 }
 
-uint32_t ClientGameConnection::readEntityNum(MsgTypesHelper& msgHelper)
+entityNum_t ClientGameConnection::readEntityNum(MsgTypesHelper& msgHelper)
 {
 	return (this->*readEntityNum_pf)(msgHelper);
 }
@@ -1073,9 +1070,9 @@ void ClientGameConnection::readDeltaPlayerstate(MSG& msg, const playerState_t* f
 	(this->*readDeltaPlayerstate_pf)(msg, from, to);
 }
 
-void ClientGameConnection::readDeltaEntity(MSG& msg, const entityState_t* from, entityState_t* to)
+void ClientGameConnection::readDeltaEntity(MSG& msg, const entityState_t* from, entityState_t* to, entityNum_t newNum)
 {
-	(this->*readDeltaEntity_pf)(msg, from, to);
+	(this->*readDeltaEntity_pf)(msg, from, to, newNum);
 }
 
 MOHPC::StringMessage ClientGameConnection::readStringMessage_normal(MSG& msg)
@@ -1122,12 +1119,12 @@ uint32_t ClientGameConnection::hashKey_ver17(const char* string, size_t maxlen)
 	return hash;
 }
 
-uint32_t ClientGameConnection::readEntityNum_ver8(MsgTypesHelper& msgHelper)
+entityNum_t ClientGameConnection::readEntityNum_ver8(MsgTypesHelper& msgHelper)
 {
 	return msgHelper.ReadEntityNum();
 }
 
-uint32_t ClientGameConnection::readEntityNum_ver17(MsgTypesHelper& msgHelper)
+entityNum_t ClientGameConnection::readEntityNum_ver17(MsgTypesHelper& msgHelper)
 {
 	return msgHelper.ReadEntityNum2();
 }
@@ -1152,14 +1149,14 @@ void ClientGameConnection::readDeltaPlayerstate_ver17(MSG& msg, const playerStat
 	msg.ReadDeltaClass(from ? &SerializablePlayerState_ver17(*const_cast<playerState_t*>(from)) : nullptr, &SerializablePlayerState_ver17(*to));
 }
 
-void ClientGameConnection::readDeltaEntity_ver8(MSG& msg, const entityState_t* from, entityState_t* to)
+void ClientGameConnection::readDeltaEntity_ver8(MSG& msg, const entityState_t* from, entityState_t* to, entityNum_t newNum)
 {
-	msg.ReadDeltaClass(from ? &SerializableEntityState(*const_cast<entityState_t*>(from)) : nullptr, &SerializableEntityState(*to));
+	msg.ReadDeltaClass(from ? &SerializableEntityState(*const_cast<entityState_t*>(from), newNum) : nullptr, &SerializableEntityState(*to, newNum));
 }
 
-void ClientGameConnection::readDeltaEntity_ver17(MSG& msg, const entityState_t* from, entityState_t* to)
+void ClientGameConnection::readDeltaEntity_ver17(MSG& msg, const entityState_t* from, entityState_t* to, entityNum_t newNum)
 {
-	msg.ReadDeltaClass(from ? &SerializableEntityState_ver17(*const_cast<entityState_t*>(from)) : nullptr, &SerializableEntityState_ver17(*to));
+	msg.ReadDeltaClass(from ? &SerializableEntityState_ver17(*const_cast<entityState_t*>(from), newNum) : nullptr, &SerializableEntityState_ver17(*to, newNum));
 }
 
 const gameState_t& MOHPC::Network::ClientGameConnection::getGameState() const

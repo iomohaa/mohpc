@@ -425,15 +425,15 @@ namespace MOHPC
 			ar(surfacePlane);
 			ar(numBorders);
 
-			for (size_t i = 0; i < sizeof(borderPlanes) / sizeof(borderPlanes[0]); ++i) {
+			for (size_t i = 0; i < numBorders; ++i) {
 				ar(borderPlanes[i]);
 			}
 
-			for (size_t i = 0; i < sizeof(borderInward) / sizeof(borderInward[0]); ++i) {
+			for (size_t i = 0; i < numBorders; ++i) {
 				ar(borderInward[i]);
 			}
 
-			for (size_t i = 0; i < sizeof(borderNoAdjust) / sizeof(borderNoAdjust[0]); ++i) {
+			for (size_t i = 0; i < numBorders; ++i) {
 				ar(borderNoAdjust[i]);
 			}
 		}
@@ -879,8 +879,8 @@ namespace MOHPC
 	public:
 		MOHPC_EXPORTS void CM_ModelBounds(clipHandle_t model, Vector& mins, Vector& maxs);
 		MOHPC_EXPORTS void CM_InitBoxHull();
+		MOHPC_EXPORTS int CM_PointContents(const vec3_t p, clipHandle_t model);
 		MOHPC_EXPORTS clipHandle_t inlineModel(uint32_t index);
-		MOHPC_EXPORTS int CM_PointContents(const Vector& p, clipHandle_t model);
 		MOHPC_EXPORTS clipHandle_t CM_TempBoxModel(const vec3_t mins, const vec3_t maxs, int contents);
 		MOHPC_EXPORTS uintptr_t CM_PointBrushNum(const Vector& p, clipHandle_t model);
 		MOHPC_EXPORTS int CM_TransformedPointContents(const Vector& p, clipHandle_t model, const Vector& origin, const Vector& angles);
@@ -945,7 +945,6 @@ namespace MOHPC
 		int CM_PointLeafnum(const Vector& p);
 		size_t	CM_BoxLeafnums(const Vector& mins, const Vector& maxs, int* list, size_t listsize, int* lastLeaf);
 		collisionShader_t* CM_ShaderPointer(int iShaderNum);
-		int CM_PointContents(const vec3_t p, clipHandle_t model);
 		uintptr_t CM_PointBrushNum(const vec3_t p, clipHandle_t model);
 		int	CM_TransformedPointContents(const vec3_t p, clipHandle_t model, const vec3_t origin, const vec3_t angles);
 		uint8_t* CM_ClusterPVS(int cluster);

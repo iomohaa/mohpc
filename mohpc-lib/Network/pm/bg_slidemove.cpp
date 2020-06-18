@@ -192,15 +192,13 @@ bool Pmove::PM_SlideMove( bool gravity )
 				}
 
 				// slide the original velocity along the crease
-				CrossProduct( planes[ i ], planes[ j ], dir );
-				VectorNormalize( dir );
-				d = DotProduct( dir, pm.ps->velocity );
-				VectorScale( dir, d, clipVelocity );
-
-				CrossProduct( planes[ i ], planes[ j ], dir );
-				VectorNormalize( dir );
-				d = DotProduct( dir, endVelocity );
-				VectorScale( dir, d, endClipVelocity );
+				CrossProduct(planes[i], planes[j], dir);
+				VectorNormalize(dir);
+				d = DotProduct(dir, pm.ps->velocity);
+				VectorScale(dir, d, clipVelocity);
+				// Removed useless math that are present in Quake3/OpenMOHAA
+				d = DotProduct(dir, endVelocity);
+				VectorScale(dir, d, endClipVelocity);
 
 				// see if there is a third plane the the new move enters
 				for( k = 0; k < numplanes; k++ ) {
@@ -308,7 +306,7 @@ void Pmove::PM_StepSlideMove( bool gravity )
 	{
 		if( bWasOnGoodGround && trace.fraction < 1.0 && trace.plane.normal[ 2 ] < MIN_WALK_NORMAL )
 		{
-			VecCopy( nostep_o, pm.ps->origin );
+ 			VecCopy( nostep_o, pm.ps->origin );
 			VecCopy( nostep_v, pm.ps->velocity );
 			return;
 		}

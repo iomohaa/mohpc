@@ -419,11 +419,13 @@ namespace MOHPC
 		mouth
 	};
 
+	using entityNum_t = uint16_t;
+
 	class MOHPC_EXPORTS entityState_t
 	{
 	public:
-		static constexpr size_t MAX_FRAMEINFOS = 16;
-		static constexpr size_t NUM_BONE_CONTROLLERS = 5;
+		static constexpr unsigned long MAX_FRAMEINFOS = 16;
+		static constexpr unsigned long NUM_BONE_CONTROLLERS = 5;
 
 	public:
 		// entity index

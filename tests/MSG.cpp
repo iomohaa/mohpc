@@ -260,7 +260,7 @@ public:
 				en2.frameInfo[i].weight = float(rand() % 65536) / 16387.f;
 			}
 
-			writer.SerializeDeltaClass(&MOHPC::SerializableEntityState(en1), &MOHPC::SerializableEntityState(en2));
+			writer.SerializeDeltaClass(&MOHPC::SerializableEntityState(en1,0 ), &MOHPC::SerializableEntityState(en2, 0));
 		}
 
 		// Reading
@@ -269,7 +269,7 @@ public:
 			MOHPC::MSG reader(streamReader, MOHPC::msgMode_e::Reading);
 
 			MOHPC::entityState_t sEnt;
-			reader.SerializeDeltaClass(&MOHPC::SerializableEntityState(en1), &MOHPC::SerializableEntityState(sEnt));
+			reader.SerializeDeltaClass(&MOHPC::SerializableEntityState(en1, 0), &MOHPC::SerializableEntityState(sEnt, 0));
 
 			assert(sEnt.alpha >= en2.alpha - 0.01f && sEnt.alpha <= en2.alpha + 0.01f);
 			assert(sEnt.netorigin == en2.netorigin);

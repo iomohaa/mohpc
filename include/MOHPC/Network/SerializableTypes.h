@@ -194,10 +194,12 @@ namespace MOHPC
 	{
 	protected:
 		entityState_t& state;
+		entityNum_t entNum;
 
 	public:
-		SerializableEntityState(entityState_t& inState)
+		SerializableEntityState(entityState_t& inState, entityNum_t newNum)
 			: state(inState)
+			, entNum(newNum)
 		{}
 
 		virtual void SaveDelta(MSG& msg, const ISerializableMessage* from) override;
@@ -208,8 +210,8 @@ namespace MOHPC
 	class MOHPC_EXPORTS SerializableEntityState_ver17 : public SerializableEntityState
 	{
 	public:
-		SerializableEntityState_ver17(entityState_t& inState)
-			: SerializableEntityState(inState)
+		SerializableEntityState_ver17(entityState_t& inState, entityNum_t newNum)
+			: SerializableEntityState(inState, newNum)
 		{}
 
 		virtual void SaveDelta(MSG& msg, const ISerializableMessage* from) override;

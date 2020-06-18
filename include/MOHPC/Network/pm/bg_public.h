@@ -206,15 +206,15 @@ namespace MOHPC
 		int c_pmove;
 
 	public:
-		Pmove();
+		MOHPC_EXPORTS Pmove();
 
-		pmove_t& get() { return pm; };
+		MOHPC_EXPORTS pmove_t& get() { return pm; };
 
 		// if a full pmove isn't done on the client, you can just update the angles
 		void PM_GetMove(float* pfForward, float* pfRight);
 		static void PM_UpdateViewAngles(playerState_t* ps, const usercmd_t* cmd);
 		void move_GroundTrace();
-		void move();
+		MOHPC_EXPORTS void move();
 		void moveAdjustAngleSettings(Vector& vViewAngles, Vector& vAngles, playerState_t* pPlayerState, entityState_t* pEntState);
 		void moveAdjustAngleSettings_Client(Vector& vViewAngles, Vector& vAngles, playerState_t* pPlayerState, entityState_t* pEntState);
 
@@ -227,7 +227,7 @@ namespace MOHPC
 		void PM_DeadMove();
 		void PM_NoclipMove();
 		void PM_CrashLand();
-		int PM_CorrectAllSolid(trace_t* trace);
+		int PM_CorrectAllSolid();
 		void PM_GroundTrace();
 		void PM_SetWaterLevel();
 		void PM_CheckDuck();

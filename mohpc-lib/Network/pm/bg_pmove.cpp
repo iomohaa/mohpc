@@ -511,8 +511,8 @@ void Pmove::PM_AirMove( void )
 	PM_CheckTerminalVelocity();
 }
 
-static Vector min3x3 = { -8, 0, 0 };
-static Vector max3x3 = { 4, 4, 8 };
+static Vector min4x4 = { -8, 0, 0 };
+static Vector max4x4 = { 4, 4, 8 };
 static Vector base_rightfoot_pos = { -5.25301f, -3.10885f, 0 };
 static Vector base_leftfoot_pos = { -0.123711f, 10.4893f, 0 };
 
@@ -522,11 +522,12 @@ bool Pmove::PM_FeetOnGround(const Vector& pos)
 	Vector end;
 	trace_t trace;
 
-	VecCopy( pos, start );
-	VecCopy( pos, end );
-	end[ 2 ] -= 16.01f;
+	VecCopy(pos, start);
+	VecCopy(pos, end);
+	// Some fixes not present in Quake3/OpenMOHAA
+	end[2] -= 16.1f;
 
-	pm.trace( &trace, start, min3x3, max3x3, end, pm.ps->clientNum, pm.tracemask, true, false );
+	pm.trace( &trace, start, min4x4, max4x4, end, pm.ps->clientNum, pm.tracemask, true, false );
 
 	return trace.fraction != 1.0f;
 }
@@ -933,10 +934,12 @@ void PM_CheckStuck(void) {
 PM_CorrectAllSolid
 =============
 */
-int Pmove::PM_CorrectAllSolid( trace_t *trace )
+// Some code has not been fixed in OpenMOHAA
+int Pmove::PM_CorrectAllSolid()
 {
 	int			i, j, k;
-	Vector		point;
+	Vector		point, point2;
+	trace_t		trace, trace2;
 
 	if ( pm.debugLevel ) {
 		//Com_Printf("%i:allsolid\n", c_pmove);
@@ -950,15 +953,17 @@ int Pmove::PM_CorrectAllSolid( trace_t *trace )
 				point[0] += (float) i;
 				point[1] += (float) j;
 				point[2] += (float) k;
-				pm.trace( trace, point, pm.mins, pm.maxs, point, pm.ps->clientNum, pm.tracemask, true, false );
-				if ( !trace->allsolid && !trace->startsolid ) {
-					point[0] = pm.ps->origin[0];
-					point[1] = pm.ps->origin[1];
-					point[2] = pm.ps->origin[2] - 0.25f;
+				pm.trace( &trace, point, pm.mins, pm.maxs, point, pm.ps->clientNum, pm.tracemask, true, false );
+				if ( !trace.allsolid && !trace.startsolid ) {
+					pm.ps->origin[0] = point[0];
+					pm.ps->origin[1] = point[1];
+					pm.ps->origin[2] = point[2];
+					point2 = point;
+					point2[2] -= 0.25f;
 
-					pm.trace( trace, pm.ps->origin, pm.mins, pm.maxs, point, pm.ps->clientNum, pm.tracemask, true, false );
-					pml.groundTrace = *trace;
-					pm.ps->groundTrace = *trace;
+					pm.trace( &trace2, point, pm.mins, pm.maxs, point2, pm.ps->clientNum, pm.tracemask, true, false );
+					pml.groundTrace = trace2;
+					pm.ps->groundTrace = trace2;
 					return true;
 				}
 			}
@@ -993,7 +998,7 @@ void Pmove::PM_GroundTrace( void ) {
 	// do something corrective if the trace starts in a solid...
 	if ( trace.allsolid || trace.startsolid )
 	{
-		if( !PM_CorrectAllSolid( &trace ) ) {
+		if( !PM_CorrectAllSolid() ) {
 			trace.fraction = 1.0f;
 		}
 	}

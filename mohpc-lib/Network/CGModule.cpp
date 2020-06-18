@@ -111,6 +111,7 @@ CGameModuleBase::CGameModuleBase(const CGameImports& inImports, ClientGameConnec
 	, processedSnapshotNum(0)
 	, latestSnapshotNum(0)
 	, latestCommandSequence(0)
+	, numSolidEntities(0)
 {
 	traceFunction = stubTrace;
 	pointContentsFunction = stubPointContents;
@@ -770,7 +771,7 @@ void CGameModuleBase::setPointContentsFunction(PointContentsFunction&& inPointCo
 	pointContentsFunction = std::move(inPointContentsFunction);
 }
 
-void CGameModuleBase::clipMoveToEntities(CollisionWorld& cm, const Vector& start, const Vector& mins, const Vector& maxs, const Vector& end, uint16_t skipNumber, uint32_t mask, trace_t& tr)
+void CGameModuleBase::clipMoveToEntities(CollisionWorld& cm, const Vector& start, const Vector& mins, const Vector& maxs, const Vector& end, uint16_t skipNumber, uint32_t mask, bool cylinder, trace_t& tr)
 {
 	trace_t trace;
 	entityState_t* ent;
@@ -810,7 +811,7 @@ void CGameModuleBase::clipMoveToEntities(CollisionWorld& cm, const Vector& start
 		}
 
 		world->CM_TransformedBoxTrace(&trace, start, end,
-			mins, maxs, cmodel, mask, origin, angles, false);
+			mins, maxs, cmodel, mask, origin, angles, cylinder);
 
 		if (trace.allsolid || trace.fraction < tr.fraction) {
 			trace.entityNum = ent->number;
@@ -818,9 +819,6 @@ void CGameModuleBase::clipMoveToEntities(CollisionWorld& cm, const Vector& start
 		}
 		else if (trace.startsolid) {
 			tr.startsolid = true;
-		}
-		if (tr.allsolid) {
-			return;
 		}
 	}
 }
@@ -880,7 +878,9 @@ void CGameModuleBase::trace(CollisionWorld& cm, trace_t& tr, const Vector& start
 		tr.entityNum = ENTITYNUM_WORLD;
 	}
 
-	clipMoveToEntities(cm, start, mins, maxs, end, skipNumber, mask, tr);
+	if(cliptoentities) {
+		clipMoveToEntities(cm, start, mins, maxs, end, skipNumber, mask, cylinder, tr);
+	}
 }
 
 const rain_t& CGameModuleBase::getRain() const

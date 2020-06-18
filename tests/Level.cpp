@@ -197,13 +197,13 @@ public:
 
 	virtual unsigned int priority() override
 	{
-		return 0;
+		return 4;
 	}
 
 	virtual void run(MOHPC::AssetManager& AM) override
 	{
 		//MOHPC::BSPPtr Level = AM.LoadAsset<MOHPC::BSP>("/maps/lib/mp_anzio_lib.bsp");
-		MOHPC::BSPPtr Asset = AM.LoadAsset<MOHPC::BSP>("/maps/dm/mohdm6.bsp");
+		MOHPC::BSPPtr Asset = AM.LoadAsset<MOHPC::BSP>("/maps/dm/mohdm1.bsp");
 		traceTest(Asset);
 		leafTesting(Asset);
 		MOHPC::DCLPtr DCL = AM.LoadAsset<MOHPC::DCL>("/maps/dm/mohdm4.dcl");
@@ -219,9 +219,27 @@ public:
 
 		MOHPC::trace_t results;
 
+		{
+			MOHPC::Vector start(1011.12500f, 1136.81250f ,116.125000f);
+			MOHPC::Vector end(1011.12500f, 1136.81250f, 98.1250000f);
+			cm.CM_BoxTrace(&results, start, end, MOHPC::Vector(-15, -15, 0), MOHPC::Vector(15, 15, 96), 0, MOHPC::ContentFlags::MASK_PLAYERSOLID, true);
+		}
+
+		// Patch testing
+		{
+			MOHPC::Vector start(499.133942f, -427.044525f, -151.875000f);
+			MOHPC::Vector end(499.125824f, -426.720612f, -151.875000f);
+			MOHPC::Vector mins(-15, -15, 0);
+			MOHPC::Vector maxs(15, 15, 96);
+			MOHPC::Vector origin(476.f, -400.f, -150.f);
+
+			//cm.CM_BoxTrace(&results, start, end, MOHPC::Vector(-15, -15, 0), MOHPC::Vector(15, 15, 96), 0, MOHPC::ContentFlags::MASK_PLAYERSOLID, true);
+			cm.CM_TransformedBoxTrace(&results, start, end, mins, maxs, 37, MOHPC::ContentFlags::MASK_PLAYERSOLID, origin, MOHPC::vec_origin, true);
+		}
+
 		MOHPC::Vector start(0, 0, 0);
 		MOHPC::Vector end(0, 0, -500);
-		cm.CM_BoxTrace(&results, start, end, MOHPC::Vector(), MOHPC::Vector(), 5, MOHPC::ContentFlags::MASK_PLAYERSOLID, true);
+		cm.CM_BoxTrace(&results, start, end, MOHPC::Vector(), MOHPC::Vector(), 0, MOHPC::ContentFlags::MASK_PLAYERSOLID, true);
 
 		ArchiveWriter ar;
 		cm.save(ar);
@@ -232,7 +250,7 @@ public:
 		cm.load(arReader);
 
 		end = MOHPC::Vector(1000, 1000, 0);
-		cm.CM_BoxTrace(&results, start, end, MOHPC::Vector(), MOHPC::Vector(), 1, MOHPC::ContentFlags::MASK_PLAYERSOLID, true);
+		cm.CM_BoxTrace(&results, start, end, MOHPC::Vector(), MOHPC::Vector(), 0, MOHPC::ContentFlags::MASK_PLAYERSOLID, true);
 	}
 
 	void leafTesting(MOHPC::BSPPtr Asset)

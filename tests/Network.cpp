@@ -10,6 +10,8 @@
 #include <MOHPC/Script/str.h>
 #include <MOHPC/Utilities/Info.h>
 #include <MOHPC/Utilities/TokenParser.h>
+#include <MOHPC/Formats/BSP.h>
+#include <MOHPC/Collision/Collision.h>
 #include <MOHPC/Log.h>
 #include "UnitTest.h"
 #include <winsock2.h>
@@ -215,10 +217,14 @@ public:
 		float rightValue = 0.f;
 		float angle = 0.f;
 
+		MOHPC::BSPPtr Asset = AM.LoadAsset<MOHPC::BSP>("/maps/dm/mohdm6.bsp");
+		MOHPC::CollisionWorld cm;
+		Asset->FillCollisionWorld(cm);
+
 		MOHPC::Network::ClientInfo clientInfo;
 		clientInfo.setName("mohpc_test");
 		clientInfo.setRate(25000);
-		clientBase->connect(std::move(clientInfo), [&logPtr, &connection, &clientBase, &forwardValue, &rightValue, &angle](const MOHPC::Network::ClientGameConnectionPtr& cg, const char* errorMessage)
+		clientBase->connect(std::move(clientInfo), [&logPtr, &connection, &clientBase, &forwardValue, &rightValue, &angle, &cm](const MOHPC::Network::ClientGameConnectionPtr& cg, const char* errorMessage)
 			{
 				if (errorMessage)
 				{
@@ -293,13 +299,31 @@ public:
 						MOHPC_LOG(VeryVerbose, "voice %d: sound \"%s\"", num++, soundName);
 					});
 
-				connection->setCallback<ClientHandlers::UserInput>([&forwardValue, &rightValue, &angle](usercmd_t& ucmd, usereyes_t& eyeinfo)
+				connection->setCallback<ClientHandlers::UserInput>([&forwardValue, &rightValue, &angle, &cgame, &cm](usercmd_t& ucmd, usereyes_t& eyeinfo)
 				{
 					eyeinfo.setAngle(30.f, angle);
 					ucmd.buttons.fields.button.run = true;
 					ucmd.moveForward((int8_t)(forwardValue * 127.f));
 					ucmd.moveRight((int8_t)(rightValue * 127.f));
 					ucmd.setAngles(30.f, angle, 0.f);
+
+					//MOHPC::Vector start(684.04f, -332.63f, -145.f);
+					//MOHPC::Vector end(241.34f, -328.43f, -145.f);
+					MOHPC::trace_t tr;
+
+					{
+						MOHPC::Vector start(499.125000f + 16.f, -427.312500f, -151.875000f);
+						MOHPC::Vector end(499.125824f, -426.720612f, -151.875000f);
+
+						cgame.trace(cm, tr, start, MOHPC::Vector(-15, -15, 0), MOHPC::Vector(15, 15, 96), end, 0, ContentFlags::MASK_PLAYERSOLID, true, true);
+					}
+
+					{
+						MOHPC::Vector start(499.133942f, -427.044525f, -151.875000f);
+						MOHPC::Vector end(499.125824f, -426.720612f, -151.875000f);
+
+						cgame.trace(cm, tr, start, MOHPC::Vector(-15, -15, 0), MOHPC::Vector(15, 15, 96), end, 0, ContentFlags::MASK_PLAYERSOLID, true, true);
+					}
 				});
 			});
 
@@ -388,9 +412,11 @@ public:
 							}
 						}
 					}
-
-					if (connection) {
-						connection->addReliableCommand(cmd);
+					else
+					{
+						if (connection) {
+							connection->addReliableCommand(buf);
+						}
 					}
 				}
 				else if (c == '\b')

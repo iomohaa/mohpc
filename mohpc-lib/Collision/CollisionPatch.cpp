@@ -242,85 +242,66 @@ POSITION TEST
 CollisionWorld::CM_PositionTestInPatchCollide
 ====================
 */
+// The following code from OpenMOHAA/Quake3 has been slightly modified to adapt to mohaa patch collision
 bool CollisionWorld::CM_PositionTestInPatchCollide(traceWork_t* tw, const patchCollide_t* pc) {
 	int i, j;
-	float offset, t;
+	float offset, d;
 	patchPlane_t* planes;
 	facet_t* facet;
-	float plane[4];
-	vec3_t startp;
+	uint8_t cross[4096];
 
-	if (tw->isPoint) {
-		return false;
+	// Check if it's within the patch bounds
+	for (i = 0; i < 3; i++)
+	{
+		if (tw->bounds[0][i] > pc->bounds[1][i] || tw->bounds[1][i] < pc->bounds[0][i]) {
+			return false;
+		}
 	}
+
+	// Check for planes that are crossing
+	if(pc->numPlanes > 0)
+	{
+		planes = pc->planes;
+
+		for (i = 0; i < pc->numPlanes; i++, planes++)
+		{
+			offset = ::fabsf(DotProduct(tw->offsets[planes->signbits], planes->plane));
+			d = DotProduct(tw->start, planes->plane) - planes->plane[3];
+
+			if (-offset > d) {
+				cross[i] = 0;
+			}
+			else if (offset < d) {
+				cross[i] = 1;
+			}
+			else {
+				cross[i] = 2;
+			}
+		}
+	}
+
+	//if (tw->isPoint) {
+	//	return false;
+	//}
+
 	//
+	j = 0;
 	facet = pc->facets;
 	for (i = 0; i < pc->numFacets; i++, facet++) {
-		planes = &pc->planes[facet->surfacePlane];
-		VecCopy(planes->plane, plane);
-		plane[3] = planes->plane[3];
-		if (sphere.use) {
-			// adjust the plane distance apropriately for radius
-			plane[3] += sphere.radius;
-
-			// find the closest point on the capsule to the plane
-			t = DotProduct(plane, sphere.offset);
-			if (t > 0) {
-				VecSubtract(tw->start, sphere.offset, startp);
-			}
-			else {
-				VecAdd(tw->start, sphere.offset, startp);
-			}
-		}
-		else {
-			offset = DotProduct(tw->offsets[planes->signbits], plane);
-			plane[3] -= offset;
-			VecCopy(tw->start, startp);
-		}
-
-		if (DotProduct(plane, startp) - plane[3] > 0.0f) {
-			continue;
-		}
-
-		for (j = 0; j < facet->numBorders; j++) {
-			planes = &pc->planes[facet->borderPlanes[j]];
-			if (facet->borderInward[j]) {
-				VecNegate(planes->plane, plane);
-				plane[3] = -planes->plane[3];
-			}
-			else {
-				VecCopy(planes->plane, plane);
-				plane[3] = planes->plane[3];
-			}
-			if (sphere.use) {
-				// adjust the plane distance apropriately for radius
-				plane[3] += sphere.radius;
-
-				// find the closest point on the capsule to the plane
-				t = DotProduct(plane, sphere.offset);
-				if (t > 0.0f) {
-					VecSubtract(tw->start, sphere.offset, startp);
-				}
-				else {
-					VecAdd(tw->start, sphere.offset, startp);
+		if (cross[facet->surfacePlane] == 2) {
+			for (j = 0; j < facet->numBorders; j++) {
+				if (cross[facet->borderPlanes[j]] != 2 && cross[facet->borderPlanes[j]] != (uint8_t)facet->borderInward[j]) {
+					break;
 				}
 			}
-			else {
-				// NOTE: this works even though the plane might be flipped because the bbox is centered
-				offset = DotProduct(tw->offsets[planes->signbits], plane);
-				plane[3] += ::fabsf(offset);
-				VecCopy(tw->start, startp);
+
+			if (j < facet->numBorders) {
+				continue;
 			}
 
-			if (DotProduct(plane, startp) - plane[3] > 0.0f) {
-				break;
-			}
+			// inside this patch facet
+			return true;
 		}
-		if (j < facet->numBorders) {
-			continue;
-		}
-		// inside this patch facet
-		return true;
 	}
 	return false;
 }

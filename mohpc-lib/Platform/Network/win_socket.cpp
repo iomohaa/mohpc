@@ -104,7 +104,7 @@ public:
 
 	virtual bool wait(size_t timeout) override
 	{
-		timeval t;
+		timeval t{0};
 		t.tv_usec = (long)timeout * 1000;
 
 		fd_set readfds;

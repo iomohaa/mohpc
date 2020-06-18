@@ -1268,7 +1268,6 @@ void CollisionWorld::CM_TraceToLeaf(traceWork_t * tw, collisionLeaf_t * leaf)
 
 	if (leaf->numLeafTerrains != -1)
 	{
-
 		// test against all terrains
 		for (uintptr_t k = 0; k < leaf->numLeafTerrains; k++) {
 			terrain = this->leafterrains[leaf->firstLeafTerrain + k];

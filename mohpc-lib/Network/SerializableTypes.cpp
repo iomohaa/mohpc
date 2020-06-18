@@ -1120,8 +1120,12 @@ void MOHPC::SerializableEntityState::LoadDelta(MSG& msg, const ISerializableMess
 	if (!hasDelta)
 	{
 		state = *(entityState_t*)fromEnt;
+		state.number = entNum;
 		return;
 	}
+
+	// Set the new number
+	state.number = entNum;
 
 	constexpr size_t numFields = sizeof(entityStateFields) / sizeof(entityStateFields[0]);
 
@@ -1136,11 +1140,14 @@ void MOHPC::SerializableEntityState::LoadDelta(MSG& msg, const ISerializableMess
 
 	for (i = 0, field = entityStateFields; i < lc; i++, field++)
 	{
-		uint8_t* fromF = (uint8_t*)((uint8_t*)fromEnt + field->offset);
+		const uint8_t* fromF = (uint8_t*)((uint8_t*)fromEnt + field->offset);
 		uint8_t* toF = (uint8_t*)((uint8_t*)&state + field->offset);
 
 		const bool isDiff = msg.ReadBool();
-		if (!isDiff) {
+		if (!isDiff)
+		{
+			// no changes
+			memcpy(toF, fromF, field->size);
 			continue;
 		}
 
@@ -1211,8 +1218,12 @@ void MOHPC::SerializableEntityState_ver17::LoadDelta(MSG& msg, const ISerializab
 	if (!hasDelta)
 	{
 		state = *fromEnt;
+		state.number = entNum;
 		return;
 	}
+
+	// Set the new number
+	state.number = entNum;
 
 	constexpr size_t numFields = sizeof(entityStateFields_ver17) / sizeof(entityStateFields_ver17[0]);
 

@@ -51,7 +51,7 @@ namespace MOHPC
 			str shaderName;
 			int32_t surfaceFlags;
 			int32_t contentFlags;
-			int32_t subdivisions;
+			uint32_t subdivisions;
 			str fenceMaskImage;
 
 			ShaderRef shader;

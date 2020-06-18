@@ -26,7 +26,16 @@ public:
 
 		auto Asset = AM.LoadAsset<MOHPC::TIKI>("/models/weapons/m1_garand.tik");
 		Asset = AM.LoadAsset<MOHPC::TIKI>("/models/static/bush_full.tik");
-		Asset = AM.LoadAsset<MOHPC::TIKI>("/models/human/allied_airborne_soldier.tik");
+		//Asset = AM.LoadAsset<MOHPC::TIKI>("/models/human/allied_airborne_soldier.tik");
+		Asset = AM.LoadAsset<MOHPC::TIKI>("/models/player/allied_airborne.tik");
+		if (Asset)
+		{
+			MOHPC::ModelRenderer ModelRenderer;
+			ModelRenderer.InitAssetManager(&AM);
+			ModelRenderer.AddModel(Asset.get());
+			ModelRenderer.BuildBonesTransform();
+			ModelRenderer.BuildRenderData();
+		}
 
 		MOHPC::TIKIPtr Tiki = AM.LoadAsset<MOHPC::TIKI>("/models/static/toilet.tik");
 		if (Tiki)

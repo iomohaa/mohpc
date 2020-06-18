@@ -28,6 +28,8 @@
 #endif
 */
 
+static constexpr unsigned int MIN_MAP_SUBDIVISIONS = 16;
+
 static void ProfilableCode(const char *profileName, std::function<void()> Lambda)
 {
 #ifdef _DEBUG
@@ -1423,7 +1425,13 @@ void BSP::ParseMesh(const File_Surface* InSurface, const File_Vertice* InVertice
 
 	SubdividePatchToGrid(Width, Height, Points, Out);
 	Out->bIsPatch = true;
-	Out->pc = GeneratePatchCollide(Width, Height, Points, (float)Out->shader->subdivisions);
+
+	uint32_t subdivisions = Out->shader->subdivisions;
+	if (subdivisions < MIN_MAP_SUBDIVISIONS) {
+		subdivisions = MIN_MAP_SUBDIVISIONS;
+	}
+
+	Out->pc = GeneratePatchCollide(Width, Height, Points, (float)subdivisions);
 }
 
 void BSP::ParseFace(const File_Surface* InSurface, const File_Vertice* InVertices, const int32_t* InIndices, Surface* Out)
@@ -1797,7 +1805,7 @@ void BSP::LoadLeafs(const GameLump* GameLump)
 			out->area = in->area;
 			out->firstLeafBrush = in->firstLeafBrush;
 			out->numLeafBrushes = in->numLeafBrushes;
-			out->firstLeafSurface =in->firstLeafSurface;
+			out->firstLeafSurface = in->firstLeafSurface;
 			out->numLeafSurfaces = in->numLeafSurfaces;
 			out->firstLeafTerrain = in->firstTerraPatch;
 			out->numLeafTerrains = in->numTerraPatches;
@@ -1959,11 +1967,11 @@ void BSP::LoadSubmodels(const GameLump* GameLump)
 		size_t startLeafSurf = leafSurfaces.NumObjects();
 
 		if(numLeafBrushes) {
-			leafBrushes.SetNumObjectsUninitialized(leafBrushes.NumObjects() + numLeafBrushes);
+			leafBrushes.SetNumObjectsUninitialized(startLeafBrush + numLeafBrushes);
 		}
 
 		if(numLeafSurfaces) {
-			leafSurfaces.SetNumObjectsUninitialized(leafSurfaces.NumObjects() + numLeafSurfaces);
+			leafSurfaces.SetNumObjectsUninitialized(startLeafSurf + numLeafSurfaces);
 		}
 
 		for (size_t i = 0; i < Count; i++, In++, Out++)
@@ -2005,7 +2013,7 @@ void BSP::LoadSubmodels(const GameLump* GameLump)
 			}
 			else
 			{
-				Out->leaf.numLeafSurfaces = -1;
+				Out->leaf.firstLeafSurface = -1;
 			}
 
 			startLeafSurf += Out->leaf.numLeafSurfaces;
@@ -2327,11 +2335,16 @@ void BSP::FillCollisionWorld(CollisionWorld& cm)
 			for (size_t j = 0; j < colPatch->pc.numFacets; ++j)
 			{
 				const Facet& facet = pc->facets[j];
-
 				facet_t& colFacet = colPatch->pc.facets[j];
-				memcpy(colFacet.borderInward, facet.borderInward, sizeof(colFacet.borderInward));
-				memcpy(colFacet.borderPlanes, facet.borderPlanes, sizeof(colFacet.borderPlanes));
-				memcpy(colFacet.borderNoAdjust, facet.borderNoAdjust, sizeof(colFacet.borderNoAdjust));
+
+				const size_t maxBorders = sizeof(colFacet.borderInward) / sizeof(colFacet.borderInward[0]);
+				for (size_t k = 0; k < maxBorders; k++)
+				{
+					colFacet.borderInward[k] = facet.borderInward[k];
+					colFacet.borderNoAdjust[k] = facet.borderNoAdjust[k];
+					colFacet.borderPlanes[k] = facet.borderPlanes[k];
+				}
+
 				colFacet.surfacePlane = facet.surfacePlane;
 				colFacet.numBorders = facet.numBorders;
 			}
@@ -2340,8 +2353,8 @@ void BSP::FillCollisionWorld(CollisionWorld& cm)
 			for (size_t j = 0; j < colPatch->pc.numPlanes; ++j)
 			{
 				const PatchPlane& plane = pc->planes[j];
-
 				patchPlane_t& colPlane = colPatch->pc.planes[j];
+
 				for(size_t k = 0; k < 4; ++k) colPlane.plane[k] = plane.plane[k];
 				colPlane.signbits = plane.signbits;
 			}

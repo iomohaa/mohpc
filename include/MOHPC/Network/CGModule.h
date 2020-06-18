@@ -32,11 +32,12 @@ namespace MOHPC
 	static constexpr unsigned int DF_INFINITE_AMMO			= (1 << 14);
 	/** This should prevent footstep sounds to play. */
 	static constexpr unsigned int DF_NO_FOOTSTEPS			= (1 << 17);
-	// New flags in SH/BT
+	// New flags since SH
 	/** Allow leaning while in movement. */
 	static constexpr unsigned int DF_ALLOW_LEAN				= (1 << 18);
 	/** Specify that G43 is replaced with Kar98. */
 	static constexpr unsigned int DF_OLD_SNIPERRIFLE		= (1 << 19);
+	// New flags since BT
 	/** Axis use a shotgun rather than kar98 mortar. */
 	static constexpr unsigned int DF_GERMAN_SHOTGUN			= (1 << 20);
 	/** Allow landmine to be used on AA maps. */
@@ -834,7 +835,7 @@ namespace MOHPC
 			 * @param	mask		Trace mask.
 			 * @param	tr			Input/Output results.
 			 */
-			MOHPC_EXPORTS void clipMoveToEntities(CollisionWorld& cm, const Vector& start, const Vector& mins, const Vector& maxs, const Vector& end, uint16_t skipNumber, uint32_t mask, trace_t& tr);
+			MOHPC_EXPORTS void clipMoveToEntities(CollisionWorld& cm, const Vector& start, const Vector& mins, const Vector& maxs, const Vector& end, uint16_t skipNumber, uint32_t mask, bool cylinder, trace_t& tr);
 
 			/** Perform a trace from start to the end, taking entities into account.*/
 			MOHPC_EXPORTS void trace(CollisionWorld& cm, trace_t& tr, const Vector& start, const Vector& mins, const Vector& maxs, const Vector& end, uint16_t skipNumber, uint32_t mask, bool cylinder, bool cliptoentities);

@@ -317,7 +317,7 @@ void BSP::SubdividePatchToGrid(int32_t Width, int32_t Height, const Vertice* Poi
 	float		errorTable[2][MAX_GRID_SIZE];
 	int32_t numIndexes;
 	int32_t indexes[(MAX_GRID_SIZE - 1)*(MAX_GRID_SIZE - 1) * 2 * 3];
-	int32_t consecutiveComplete;
+	//int32_t consecutiveComplete;
 
 	for (i = 0; i < Width; i++) {
 		for (j = 0; j < Height; j++) {
@@ -331,10 +331,10 @@ void BSP::SubdividePatchToGrid(int32_t Width, int32_t Height, const Vertice* Poi
 			errorTable[dir][j] = 0;
 		}
 
-		consecutiveComplete = 0;
+		//consecutiveComplete = 0;
 
 		// horizontal subdivisions
-		for (j = 0; ; j = (j + 2) % (Width - 1)) {
+		for (j = 0; j + 2 < Width; j += 2) {
 			// check subdivided midpoints against control Points
 
 			// FIXME: also check midpoints of adjacent patches against the control Points
@@ -377,8 +377,8 @@ void BSP::SubdividePatchToGrid(int32_t Width, int32_t Height, const Vertice* Poi
 			if (maxLen < 0.1f) {
 				errorTable[dir][j + 1] = 999;
 				// if we go over the whole grid twice without adding any columns, stop
-				if (++consecutiveComplete >= Width)
-					break;
+				//if (++consecutiveComplete >= Width)
+				//	break;
 				continue;
 			}
 
@@ -391,14 +391,14 @@ void BSP::SubdividePatchToGrid(int32_t Width, int32_t Height, const Vertice* Poi
 			if (maxLen <= MUM_SUBDIVISIONS) {
 				errorTable[dir][j + 1] = 1.0f / maxLen;
 				// if we go over the whole grid twice without adding any columns, stop
-				if (++consecutiveComplete >= Width)
-					break;
+				//if (++consecutiveComplete >= Width)
+				//	break;
 				continue;	// didn't need subdivision
 			}
 
 			errorTable[dir][j + 2] = 1.0f / maxLen;
 
-			consecutiveComplete = 0;
+			//consecutiveComplete = 0;
 
 			// insert two columns and replace the peak
 			Width += 2;

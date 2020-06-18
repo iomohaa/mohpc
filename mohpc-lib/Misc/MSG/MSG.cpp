@@ -893,7 +893,7 @@ float MOHPC::MsgTypesHelper::ReadCoord() noexcept
 	}
 
 	read &= ~262144; //  uint=4294705151
-	return sign * read / 16.f;
+	return sign * (read / 16.f);
 }
 
 float MOHPC::MsgTypesHelper::ReadCoordSmall() noexcept
@@ -909,7 +909,7 @@ float MOHPC::MsgTypesHelper::ReadCoordSmall() noexcept
 	}
 
 	read &= ~65536; //  uint=4294705151
-	return sign * read / 8.f;
+	return sign * (read / 8.f);
 }
 
 int32_t MOHPC::MsgTypesHelper::ReadDeltaCoord(uint32_t offset) noexcept
