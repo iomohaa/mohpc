@@ -169,6 +169,7 @@ ClientGameConnection::ClientGameConnection(NetworkManager* inNetworkManager, con
 		readEntityNum_pf = &ClientGameConnection::readEntityNum_ver8;
 		readDeltaPlayerstate_pf = &ClientGameConnection::readDeltaPlayerstate_ver8;
 		readDeltaEntity_pf = &ClientGameConnection::readDeltaEntity_ver8;
+		getNormalizedConfigstring_pf = &ClientGameConnection::getNormalizedConfigstring_ver8;
 
 		cgameModule = new CGameModule8(imports, this);
 		break;
@@ -183,6 +184,7 @@ ClientGameConnection::ClientGameConnection(NetworkManager* inNetworkManager, con
 		readEntityNum_pf = &ClientGameConnection::readEntityNum_ver17;
 		readDeltaPlayerstate_pf = &ClientGameConnection::readDeltaPlayerstate_ver17;
 		readDeltaEntity_pf = &ClientGameConnection::readDeltaEntity_ver17;
+		getNormalizedConfigstring_pf = &ClientGameConnection::getNormalizedConfigstring_ver17;
 
 		cgameModule = new CGameModule17(imports, this);
 		break;
@@ -405,7 +407,7 @@ void Network::ClientGameConnection::parseGameState(MSG& msg)
 
 			const StringMessage stringValue = readStringMessage(msg);
 
-			configStringModified(stringNum, stringValue);
+			configStringModified(getNormalizedConfigstring(stringNum), stringValue);
 		}
 		break;
 		case svc_ops_e::Baseline:
@@ -1323,7 +1325,7 @@ bool MOHPC::Network::ClientGameConnection::getServerCommand(uintptr_t serverComm
 		const char* csString = tokenized.GetString(true, false);
 
 		// Notify about modification
-		configStringModified(num, csString);
+		configStringModified(getNormalizedConfigstring(num), csString);
 
 		if (num == CS_SYSTEMINFO || num == CS_SERVERINFO)
 		{
@@ -1461,9 +1463,28 @@ bool MOHPC::Network::ClientGameConnection::readyToSendPacket(uint64_t currentTim
 	return true;
 }
 
+cs_t MOHPC::Network::ClientGameConnection::getNormalizedConfigstring(cs_t num)
+{
+	return (this->*getNormalizedConfigstring_pf)(num);
+}
+
 MOHPC::Network::CGameModuleBase& Network::ClientGameConnection::getCGModule()
 {
 	return *cgameModule;
+}
+
+cs_t ClientGameConnection::getNormalizedConfigstring_ver8(cs_t num)
+{
+	if (num <= CS_WARMUP || num >= 26) {
+		return num;
+	}
+
+	return num - 2;
+}
+
+cs_t ClientGameConnection::getNormalizedConfigstring_ver17(cs_t num)
+{
+	return num;
 }
 
 void MOHPC::Network::gameState_t::setConfigString(size_t num, const char* configString, size_t len)

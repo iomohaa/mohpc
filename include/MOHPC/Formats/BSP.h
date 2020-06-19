@@ -17,6 +17,7 @@ namespace MOHPC
 	class File;
 	class Shader;
 	class CollisionWorld;
+	struct patchWork_t;
 
 	class BSP : public Asset
 	{
@@ -77,7 +78,7 @@ namespace MOHPC
 		struct PatchPlane
 		{
 			float plane[4];
-			int32_t signbits;
+			uint8_t signbits;
 		} ;
 
 		struct Facet
@@ -85,7 +86,7 @@ namespace MOHPC
 			int32_t surfacePlane;
 			int32_t numBorders;
 			int32_t borderPlanes[4 + 6 + 16];
-			int32_t borderInward[4 + 6 + 16];
+			bool borderInward[4 + 6 + 16];
 			bool borderNoAdjust[4 + 6 + 16];
 		};
 
@@ -580,9 +581,9 @@ namespace MOHPC
 		void LoadLightmaps(const GameLump* GameLump);
 
 		void CreateSurfaceGridMesh(int32_t width, int32_t height, BSP::Vertice *ctrl, int32_t numIndexes, int32_t *indexes, BSP::Surface* grid);
-		void SubdividePatchToGrid(int32_t Width, int32_t Height, const Vertice* Points, Surface* Out);
-		PatchCollide* GeneratePatchCollide(int32_t width, int32_t height, const Vertice *points, float subdivisions);
-		void ParseMesh(const File_Surface* InSurface, const File_Vertice* InVertices, Surface* Out);
+		void SubdividePatchToGrid(patchWork_t& pw, int32_t Width, int32_t Height, const Vertice* Points, Surface* Out);
+		PatchCollide* GeneratePatchCollide(patchWork_t& pw, int32_t width, int32_t height, const Vertice *points, float subdivisions);
+		void ParseMesh(const File_Surface* InSurface, const File_Vertice* InVertices, Surface* Out, patchWork_t& pw);
 		void ParseFace(const File_Surface* InSurface, const File_Vertice* InVertices, const int32_t* InIndices, Surface* Out);
 		void ParseTriSurf(const File_Surface* InSurface, const File_Vertice* InVertices, const int32_t* InIndices, Surface* Out);
 		void LoadSurfaces(const GameLump* Surfaces, const GameLump* Vertices, const GameLump* Indices);
@@ -686,4 +687,12 @@ namespace MOHPC
 		varnodeIndex varnodeIndexes[2][8][8][2];
 	};
 	using BSPPtr = SharedPtr<BSP>;
+
+	struct patchWork_t
+	{
+		uint32_t numPlanes;
+		uint32_t numFacets;
+		BSP::PatchPlane planes[4096];
+		BSP::Facet facets[1024];
+	};
 }

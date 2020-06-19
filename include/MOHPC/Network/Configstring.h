@@ -15,6 +15,7 @@ namespace MOHPC
 		static constexpr unsigned int MAX_WEAPONS = 48;
 		static constexpr unsigned int MAX_CLIENTS = 64;
 
+		// Configstring values here are matching for SH/BT (and normalized for AA to match SH/BT)
 		// an info string with all the serverinfo cvars
 		static constexpr unsigned int CS_SERVERINFO = 0;
 		// an info string for server system to client system configuration (timescale, etc)
@@ -32,28 +33,35 @@ namespace MOHPC
 		static constexpr unsigned int CS_WARMUP = 5;
 
 		// MUSIC_NewSoundtrack(cs)
-		static constexpr unsigned int CS_MUSIC = 8;
+		static constexpr unsigned int CS_MUSIC = 6;
 		// cg.farplane_cull cg.farplane_distance cg.farplane_color[3]
-		static constexpr unsigned int CS_FOGINFO = 9;
+		static constexpr unsigned int CS_FOGINFO = 7;
 		// cg.sky_alpha cg.sky_portal
-		static constexpr unsigned int CS_SKYINFO = 10;
+		static constexpr unsigned int CS_SKYINFO = 8;
 
-		static constexpr unsigned int CS_GAME_VERSION = 11;
+		static constexpr unsigned int CS_GAME_VERSION = 9;
 		// so the timer only shows the current level cgs.levelStartTime
-		static constexpr unsigned int CS_LEVEL_START_TIME = 12;
+		static constexpr unsigned int CS_LEVEL_START_TIME = 10;
 
-		static constexpr unsigned int CS_CURRENT_OBJECTIVE = 13;
+		static constexpr unsigned int CS_CURRENT_OBJECTIVE = 11;
 
 		// cg.rain
-		static constexpr unsigned int CS_RAIN_DENSITY = 14;
-		static constexpr unsigned int CS_RAIN_SPEED = 15;
-		static constexpr unsigned int CS_RAIN_SPEEDVARY = 16;
-		static constexpr unsigned int CS_RAIN_SLANT = 17;
-		static constexpr unsigned int CS_RAIN_LENGTH = 18;
-		static constexpr unsigned int CS_RAIN_MINDIST = 19;
-		static constexpr unsigned int CS_RAIN_WIDTH = 20;
-		static constexpr unsigned int CS_RAIN_SHADER = 21;
-		static constexpr unsigned int CS_RAIN_NUMSHADERS = 22;
+		static constexpr unsigned int CS_RAIN_DENSITY = 12;
+		static constexpr unsigned int CS_RAIN_SPEED = 13;
+		static constexpr unsigned int CS_RAIN_SPEEDVARY = 14;
+		static constexpr unsigned int CS_RAIN_SLANT = 15;
+		static constexpr unsigned int CS_RAIN_LENGTH = 16;
+		static constexpr unsigned int CS_RAIN_MINDIST = 17;
+		static constexpr unsigned int CS_RAIN_WIDTH = 18;
+		static constexpr unsigned int CS_RAIN_SHADER = 19;
+		static constexpr unsigned int CS_RAIN_NUMSHADERS = 20;
+
+		// voting (only in SH and BT)
+		static constexpr unsigned int CS_VOTE_TIME = 21;
+		static constexpr unsigned int CS_VOTE_STRING = 22;
+		static constexpr unsigned int CS_VOTES_YES = 23;
+		static constexpr unsigned int CS_VOTES_NO = 24;
+		static constexpr unsigned int CS_VOTES_UNDECIDED = 25;
 
 		// cgs.matchEndTime
 		static constexpr unsigned int CS_MATCHEND = 26;

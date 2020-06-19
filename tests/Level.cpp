@@ -197,13 +197,13 @@ public:
 
 	virtual unsigned int priority() override
 	{
-		return 4;
+		return 0;
 	}
 
 	virtual void run(MOHPC::AssetManager& AM) override
 	{
 		//MOHPC::BSPPtr Level = AM.LoadAsset<MOHPC::BSP>("/maps/lib/mp_anzio_lib.bsp");
-		MOHPC::BSPPtr Asset = AM.LoadAsset<MOHPC::BSP>("/maps/dm/mohdm1.bsp");
+		MOHPC::BSPPtr Asset = AM.LoadAsset<MOHPC::BSP>("/maps/dm/mohdm6.bsp");
 		traceTest(Asset);
 		leafTesting(Asset);
 		MOHPC::DCLPtr DCL = AM.LoadAsset<MOHPC::DCL>("/maps/dm/mohdm4.dcl");
@@ -235,11 +235,13 @@ public:
 
 			//cm.CM_BoxTrace(&results, start, end, MOHPC::Vector(-15, -15, 0), MOHPC::Vector(15, 15, 96), 0, MOHPC::ContentFlags::MASK_PLAYERSOLID, true);
 			cm.CM_TransformedBoxTrace(&results, start, end, mins, maxs, 37, MOHPC::ContentFlags::MASK_PLAYERSOLID, origin, MOHPC::vec_origin, true);
+			assert(results.fraction < 0.01f);
 		}
 
 		MOHPC::Vector start(0, 0, 0);
 		MOHPC::Vector end(0, 0, -500);
 		cm.CM_BoxTrace(&results, start, end, MOHPC::Vector(), MOHPC::Vector(), 0, MOHPC::ContentFlags::MASK_PLAYERSOLID, true);
+		assert(results.fraction < 0.3f);
 
 		ArchiveWriter ar;
 		cm.save(ar);

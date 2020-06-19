@@ -946,7 +946,6 @@ namespace MOHPC
 		size_t	CM_BoxLeafnums(const Vector& mins, const Vector& maxs, int* list, size_t listsize, int* lastLeaf);
 		collisionShader_t* CM_ShaderPointer(int iShaderNum);
 		uintptr_t CM_PointBrushNum(const vec3_t p, clipHandle_t model);
-		int	CM_TransformedPointContents(const vec3_t p, clipHandle_t model, const vec3_t origin, const vec3_t angles);
 		uint8_t* CM_ClusterPVS(int cluster);
 		void CM_FloodArea_r(int areaNum, int floodnum);
 		void CM_FloodAreaConnections(void);

@@ -1379,7 +1379,7 @@ void BSP::LoadLightmaps(const GameLump* GameLump)
 	}
 }
 
-void BSP::ParseMesh(const File_Surface* InSurface, const File_Vertice* InVertices, Surface* Out)
+void BSP::ParseMesh(const File_Surface* InSurface, const File_Vertice* InVertices, Surface* Out, patchWork_t& pw)
 {
 	Out->shader = GetShader(InSurface->shaderNum);
 
@@ -1423,7 +1423,7 @@ void BSP::ParseMesh(const File_Surface* InSurface, const File_Vertice* InVertice
 		//ColorShiftLightingFloats(color, Points[i].color, 1.0f / 255.0f);
 	}
 
-	SubdividePatchToGrid(Width, Height, Points, Out);
+	SubdividePatchToGrid(pw, Width, Height, Points, Out);
 	Out->bIsPatch = true;
 
 	uint32_t subdivisions = Out->shader->subdivisions;
@@ -1431,7 +1431,7 @@ void BSP::ParseMesh(const File_Surface* InSurface, const File_Vertice* InVertice
 		subdivisions = MIN_MAP_SUBDIVISIONS;
 	}
 
-	Out->pc = GeneratePatchCollide(Width, Height, Points, (float)subdivisions);
+	Out->pc = GeneratePatchCollide(pw, Width, Height, Points, (float)subdivisions);
 }
 
 void BSP::ParseFace(const File_Surface* InSurface, const File_Vertice* InVertices, const int32_t* InIndices, Surface* Out)
@@ -1615,6 +1615,8 @@ void BSP::LoadSurfaces(const GameLump* surfaces, const GameLump* vertices, const
 		return;
 	}
 
+	patchWork_t pw;
+
 	size_t Count = surfaces->Length / sizeof(File_Surface);
 	if (Count)
 	{
@@ -1641,7 +1643,7 @@ void BSP::LoadSurfaces(const GameLump* surfaces, const GameLump* vertices, const
 			switch (In->surfaceType)
 			{
 			case MST_PATCH:
-				ParseMesh(In, InVerts, Out);
+				ParseMesh(In, InVerts, Out, pw);
 				break;
 			case MST_TRIANGLE_SOUP:
 				ParseTriSurf(In, InVerts, InIndexes, Out);

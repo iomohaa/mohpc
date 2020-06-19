@@ -1429,8 +1429,11 @@ void Pmove::moveSingle()
 
 	pml.frametime = pml.msec * 0.001f;
 
-	if( ( pm.cmd.buttons.flags & ( BUTTON_LEANLEFT | BUTTON_LEANRIGHT ) &&
-		( pm.cmd.buttons.flags & ( BUTTON_LEANLEFT | BUTTON_LEANRIGHT ) ) != ( BUTTON_LEANLEFT | BUTTON_LEANRIGHT ) ) )
+	if ((pm.cmd.buttons.flags & (BUTTON_LEANLEFT | BUTTON_LEANRIGHT) &&
+		(pm.cmd.buttons.flags & (BUTTON_LEANLEFT | BUTTON_LEANRIGHT)) != (BUTTON_LEANLEFT | BUTTON_LEANRIGHT))
+		&& (!pm.cmd.forwardmove || pm.canLean)
+		&& (!pm.cmd.rightmove || pm.canLean)
+		&& (!pm.cmd.upmove || pm.canLean))
 	{
 		if( pm.cmd.buttons.flags & BUTTON_LEANLEFT )
 		{
@@ -1510,7 +1513,7 @@ void Pmove::moveSingle()
 	tempVec[ YAW ] = pm.ps->viewangles[ YAW ];
 	AngleVectorsLeft( tempVec, pml.flat_forward, pml.flat_left, pml.flat_up );
 
-	if ( pm.ps->pm_type >= pmType_e::PM_DEAD )
+	if (pm.ps->pm_type >= pmType_e::PM_DEAD)
 	{
 		pm.cmd.forwardmove = 0;
 		pm.cmd.rightmove = 0;
@@ -1518,15 +1521,16 @@ void Pmove::moveSingle()
 		pm.ps->fLeanAngle = 0.0f;
 	}
 
-	if ( pm.ps->pm_type == pmType_e::PM_NOCLIP )
+	if (pm.ps->pm_type == pmType_e::PM_NOCLIP)
 	{
 		PM_NoclipMove();
 		PM_DropTimers();
 		return;
 	}
 
-	if( ( pm.ps->pm_flags & PMF_NO_MOVE ) || ( pm.ps->pm_flags & PMF_FROZEN ) )
+	if ((pm.ps->pm_flags & PMF_NO_MOVE) || (pm.ps->pm_flags & PMF_FROZEN))
 	{
+		PM_CheckDuck();
 		return;
 	}
 

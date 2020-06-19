@@ -304,7 +304,7 @@ void BSP::CreateSurfaceGridMesh(int32_t width, int32_t height, BSP::Vertice *ctr
 	grid->cullInfo.radius = (float)tmpVec.length();
 }
 
-void BSP::SubdividePatchToGrid(int32_t Width, int32_t Height, const Vertice* Points, Surface* Out)
+void BSP::SubdividePatchToGrid(patchWork_t& pw, int32_t Width, int32_t Height, const Vertice* Points, Surface* Out)
 {
 	int32_t i, j, k, l;
 	Vertice prev;

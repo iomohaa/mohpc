@@ -121,7 +121,7 @@ namespace MOHPC
 	class playerState_t;
 
 	using TraceFunction = std::function<void(trace_t* results, const Vector& start, const Vector& mins, const Vector& maxs, const Vector& end, uintptr_t passEntityNum, uintptr_t contentMask, bool capsule, bool traceDeep)>;
-	using PointContentsFunction = std::function<int(const Vector& point, uintptr_t passEntityNum)>;
+	using PointContentsFunction = std::function<uint32_t(const Vector& point, uintptr_t passEntityNum)>;
 
 	void stubTrace(trace_t* results, const Vector& start, const Vector& mins, const Vector& maxs, const Vector& end, uintptr_t passEntityNum, uintptr_t contentMask, bool capsule, bool traceDeep);
 	int stubPointContents(const Vector& point, uintptr_t passEntityNum);
@@ -139,6 +139,7 @@ namespace MOHPC
 		int debugLevel;
 		// if the game is setup for no footsteps by the server
 		bool noFootsteps;
+		bool canLean;
 
 		int framecount;
 

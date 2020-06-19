@@ -34,6 +34,8 @@ namespace MOHPC
 		static constexpr size_t CMD_MASK = CMD_BACKUP - 1;
 		static constexpr size_t MAX_PACKET_USERCMDS = 32;
 
+		using cs_t = uint16_t;
+
 		class INetchan;
 		struct gameState_t;
 
@@ -468,6 +470,7 @@ namespace MOHPC
 			using readEntityNum_f = entityNum_t (ClientGameConnection::*)(MsgTypesHelper& msgHelper);
 			using readDeltaPlayerstate_f = void(ClientGameConnection::*)(MSG& msg, const playerState_t* from, playerState_t* to);
 			using readDeltaEntity_f = void(ClientGameConnection::*)(MSG& msg, const entityState_t* from, entityState_t* to, entityNum_t newNum);
+			using getNormalizedConfigstring_f = cs_t(ClientGameConnection::*)(cs_t num);
 
 		private:
 			INetchanPtr netchan;
@@ -482,6 +485,7 @@ namespace MOHPC
 			readEntityNum_f readEntityNum_pf;
 			readDeltaPlayerstate_f readDeltaPlayerstate_pf;
 			readDeltaEntity_f readDeltaEntity_pf;
+			getNormalizedConfigstring_f getNormalizedConfigstring_pf;
 			CGameModuleBase* cgameModule;
 			IEncodingPtr encoder;
 			uint64_t realTimeStart;
@@ -677,6 +681,7 @@ namespace MOHPC
 			entityNum_t readEntityNum(MsgTypesHelper& msgHelper);
 			void readDeltaPlayerstate(MSG& msg, const playerState_t* from, playerState_t* to);
 			void readDeltaEntity(MSG& msg, const entityState_t* from, entityState_t* to, uint16_t newNum);
+			cs_t getNormalizedConfigstring(cs_t num);
 
 		private:
 			static StringMessage readStringMessage_normal(MSG& msg);
@@ -693,6 +698,8 @@ namespace MOHPC
 			void readDeltaPlayerstate_ver17(MSG& msg, const playerState_t* from, playerState_t* to);
 			void readDeltaEntity_ver8(MSG& msg, const entityState_t* from, entityState_t* to, entityNum_t newNum);
 			void readDeltaEntity_ver17(MSG& msg, const entityState_t* from, entityState_t* to, entityNum_t newNum);
+			cs_t getNormalizedConfigstring_ver8(cs_t num);
+			cs_t getNormalizedConfigstring_ver17(cs_t num);
 		};
 
 		using ClientGameConnectionPtr = SharedPtr<ClientGameConnection>;

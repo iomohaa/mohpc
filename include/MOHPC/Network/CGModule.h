@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include "../Utilities/HandlerList.h"
+#include "../Utilities/PropertyMap.h"
 #include "../Vector.h"
 #include "Configstring.h"
 #include "InfoTypes.h"
@@ -453,11 +454,21 @@ namespace MOHPC
 
 		struct environment_t
 		{
+		public:
 			bool farplaneCull;
 			float farplaneDistance;
 			Vector farplaneColor;
 			float skyAlpha;
 			bool skyPortal;
+			// New in SH and BT
+			//
+			float skyboxFarplane;
+			float skyboxSpeed;
+			float farplaneBias;
+			float farclipOverride;
+			Vector farplaneColorOverride;
+			bool renderTerrain;
+			//
 
 		public:
 			environment_t();
@@ -470,6 +481,24 @@ namespace MOHPC
 
 			/** Fog color. */
 			MOHPC_EXPORTS const Vector& getFarplaneColor() const;
+
+			/** Fog bias. */
+			MOHPC_EXPORTS float getFarplaneBias() const;
+
+			/** Farplane in the skybox. */
+			MOHPC_EXPORTS float getSkyboxFarplane() const;
+
+			/** Skybox movement speed. */
+			MOHPC_EXPORTS float getSkyboxSpeed() const;
+
+			/** Farclip override. */
+			MOHPC_EXPORTS float getFarclipOverride() const;
+
+			/** Colors for temporarily overriding fog. */
+			MOHPC_EXPORTS const Vector& getFarplaneColorOverride() const;
+
+			/** True if terrain should be rendered. */
+			MOHPC_EXPORTS bool shouldRenderTerrain() const;
 
 			/** Sky alpha. */
 			MOHPC_EXPORTS float getSkyAlpha() const;
@@ -605,6 +634,14 @@ namespace MOHPC
 			uint32_t failed;
 		};
 
+		struct clientInfo_t
+		{
+		public:
+			str name;
+			teamType_e team;
+			PropertyObject properties;
+		};
+
 		class cgsInfo
 		{
 		public:
@@ -624,6 +661,11 @@ namespace MOHPC
 			str axisText[3];
 			str scoreboardPic;
 			str scoreboardPicOver;
+			uint64_t voteTime;
+			uint32_t numVotesYes;
+			uint32_t numVotesNo;
+			uint32_t numUndecidedVotes;
+			str voteString;
 
 		public:
 			cgsInfo();
@@ -763,6 +805,7 @@ namespace MOHPC
 			environment_t environment;
 			rain_t rain;
 			objective_t objectives[MAX_OBJECTIVES];
+			clientInfo_t clientInfo[MAX_CLIENTS];
 			SnapshotInfo oldSnap;
 			SnapshotInfo* nextSnap;
 			SnapshotInfo* snap;
@@ -827,6 +870,7 @@ namespace MOHPC
 			/**
 			 * Trace through various entities. This function should be used in conjunction to a previous trace.
 			 *
+			 * @param	cm			Collision world to use.
 			 * @param	start		Start trace.
 			 * @param	mins		Bounding box of the trace.
 			 * @param	maxs		Bounding box of the trace.
@@ -837,8 +881,28 @@ namespace MOHPC
 			 */
 			MOHPC_EXPORTS void clipMoveToEntities(CollisionWorld& cm, const Vector& start, const Vector& mins, const Vector& maxs, const Vector& end, uint16_t skipNumber, uint32_t mask, bool cylinder, trace_t& tr);
 
-			/** Perform a trace from start to the end, taking entities into account.*/
+			/**
+			 * Perform a trace from start to the end, taking entities into account.
+			 *
+			 * @param	cm			Collision world to use.
+			 * @param	start		Start trace.
+			 * @param	mins		Bounding box of the trace.
+			 * @param	maxs		Bounding box of the trace.
+			 * @param	end			End trace.
+			 * @param	skipNumber	Entity to ignore.
+			 * @param	mask		Trace mask.
+			 * @param	tr			Input/Output results.
+			 */
 			MOHPC_EXPORTS void trace(CollisionWorld& cm, trace_t& tr, const Vector& start, const Vector& mins, const Vector& maxs, const Vector& end, uint16_t skipNumber, uint32_t mask, bool cylinder, bool cliptoentities);
+
+			/**
+			 * Get contents of point.
+			 *
+			 * @param	cm				Collision world to use.
+			 * @param	point			Location to get contents from.
+			 * @param	passEntityNum	Entity number to skip.
+			 */
+			MOHPC_EXPORTS uint32_t pointContents(CollisionWorld& cm, const Vector& point, uintptr_t passEntityNum);
 
 			/** Return server rain settings. */
 			MOHPC_EXPORTS const rain_t& getRain() const;
@@ -857,6 +921,9 @@ namespace MOHPC
 		protected:
 			const HandlerListCGame& handlers() const;
 			virtual void handleCGMessage(MSG& msg, uint8_t msgType) = 0;
+			virtual void setupMove(Pmove& pmove);
+			virtual void normalizePlayerState(playerState_t& ps);
+			virtual void parseFogInfo(const char* s, environment_t& env) = 0;
 
 		private:
 			void parseServerInfo(const char* cs);
@@ -892,6 +959,8 @@ namespace MOHPC
 
 		protected:
 			virtual void handleCGMessage(MSG& msg, uint8_t msgType) override;
+			virtual void normalizePlayerState(playerState_t& ps) override;
+			virtual void parseFogInfo(const char* s, environment_t& env) override;
 
 		private:
 			effects_e getEffectId(uint32_t effectId);
@@ -905,6 +974,8 @@ namespace MOHPC
 
 		protected:
 			virtual void handleCGMessage(MSG& msg, uint8_t msgType) override;
+			virtual void setupMove(Pmove& pmove) override;
+			virtual void parseFogInfo(const char* s, environment_t& env) override;
 
 		private:
 			effects_e getEffectId(uint32_t effectId);

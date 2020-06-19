@@ -2708,7 +2708,7 @@ Handles offseting and rotation of the end points for moving and
 rotating entities
 ==================
 */
-int	CollisionWorld::CM_TransformedPointContents(const vec3_t p, clipHandle_t model, const vec3_t origin, const vec3_t angles) {
+int	CollisionWorld::CM_TransformedPointContents(const Vector& p, clipHandle_t model, const Vector& origin, const Vector& angles) {
 	vec3_t		p_l;
 	vec3_t		temp;
 	vec3_t		forward, right, up;

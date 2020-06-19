@@ -159,48 +159,58 @@ namespace MOHPC
 	static constexpr unsigned int ITEM_WEAPON	= 1;
 
 	// pmove->pm_flags
+	// Those flags correspond to SH/BT PlayerMove flags, which are normalized for AA
 
 	// player is ducked
 	static constexpr unsigned int PMF_DUCKED			= (1 << 0);
+	// Prone view
 	static constexpr unsigned int PMF_VIEW_PRONE		= (1 << 1);
+
+	// Those flags was deleted in SH/BT
+	//
 	// pm_time is time before rejump
-	static constexpr unsigned int PMF_TIME_LAND			= (1 << 2);
+	//static constexpr unsigned int PMF_TIME_LAND			= (1 << 2);
 	// pm_time is an air-accelerate only time
-	static constexpr unsigned int PMF_TIME_KNOCKBACK	= (1 << 3);
+	//static constexpr unsigned int PMF_TIME_KNOCKBACK	= (1 << 3);
 	// pm_time is waterjump
-	static constexpr unsigned int PMF_TIME_WATERJUMP	= (1 << 4);
+	//static constexpr unsigned int PMF_TIME_WATERJUMP	= (1 << 4);
+	//
+
+	// The player is spectating
+	static constexpr unsigned int PMF_SPECTATING		= (1 << 2);
 	// pm_time is teleport
-	static constexpr unsigned int PMF_TIME_TELEPORT		= (1 << 5);
-	static constexpr unsigned int PMF_RESPAWNED			= (1 << 5);
+	static constexpr unsigned int PMF_TIME_TELEPORT		= (1 << 3);
+	static constexpr unsigned int PMF_RESPAWNED			= (1 << 3);
 	// no prediction
-	static constexpr unsigned int PMF_NO_PREDICTION		= (1 << 6);
-	// player cannot move or look around
-	static constexpr unsigned int PMF_FROZEN			= (1 << 7);
+	static constexpr unsigned int PMF_NO_PREDICTION		= (1 << 4);
+	// player cannot move or look around (freezeplayer)
+	static constexpr unsigned int PMF_FROZEN			= (1 << 5);
 	// intermission view
-	static constexpr unsigned int PMF_INTERMISSION		= (1 << 8);
+	static constexpr unsigned int PMF_INTERMISSION		= (1 << 6);
 
 	// the following flag is required by the server and cannot be changed
 	//
 	//
 	// use camera view instead of ps view
-	static constexpr unsigned int PMF_CAMERA_VIEW		= (1 << 9);
+	static constexpr unsigned int PMF_CAMERA_VIEW		= (1 << 7);
 
-	// player cannot move but can still look around
-	static constexpr unsigned int PMF_NO_MOVE			= (1 << 10);
+	// player cannot move but can still look around (physics_off)
+	static constexpr unsigned int PMF_NO_MOVE			= (1 << 8);
 	// player has pulled up his legs so that he occupies only the top of his bounding box
-	static constexpr unsigned int PMF_LEGS_LIFTED		= (1 << 11);
-	static constexpr unsigned int PMF_VIEW_DUCK_RUN		= (1 << 11);
+	static constexpr unsigned int PMF_LEGS_LIFTED		= (1 << 9);
+	static constexpr unsigned int PMF_VIEW_DUCK_RUN		= (1 << 9);
 	// pm_time is stuckjump
-	static constexpr unsigned int PMF_TIME_STUCKJUMP	= (1 << 12);
-	static constexpr unsigned int PMF_VIEW_JUMP_START	= (1 << 12);
+	static constexpr unsigned int PMF_TIME_STUCKJUMP	= (1 << 10);
+	static constexpr unsigned int PMF_VIEW_JUMP_START	= (1 << 10);
 	// player is near an exit
-	static constexpr unsigned int PMF_LEVELEXIT			= (1 << 13);
+	static constexpr unsigned int PMF_LEVELEXIT			= (1 << 11);
 	// do not apply gravity to the player
-	static constexpr unsigned int PMF_NO_GRAVITY		= (1 << 14);
-	static constexpr unsigned int PMF_NO_HUD			= (1 << 15);
-	static constexpr unsigned int PMF_UNKNOWN			= (1 << 16);
+	static constexpr unsigned int PMF_NO_GRAVITY		= (1 << 12);
+	static constexpr unsigned int PMF_NO_HUD			= (1 << 13);
+	static constexpr unsigned int PMF_UNKNOWN			= (1 << 14);
 
-	static constexpr unsigned int PMF_ALL_TIMES			= (PMF_TIME_WATERJUMP | PMF_TIME_LAND | PMF_TIME_KNOCKBACK | PMF_TIME_TELEPORT | PMF_TIME_STUCKJUMP);
+	//static constexpr unsigned int PMF_ALL_TIMES			= (PMF_TIME_WATERJUMP | PMF_TIME_LAND | PMF_TIME_KNOCKBACK | PMF_TIME_TELEPORT | PMF_TIME_STUCKJUMP);
+	static constexpr unsigned int PMF_ALL_TIMES				= (PMF_TIME_TELEPORT | PMF_TIME_STUCKJUMP);
 
 	//
 	// Camera Flags

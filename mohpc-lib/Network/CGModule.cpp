@@ -221,7 +221,10 @@ SnapshotInfo* CGameModuleBase::readNextSnapshot()
 
 		processedSnapshotNum++;
 		bool r = getConnection()->getSnapshot(processedSnapshotNum, *dest);
-		if (r) {
+		if (r)
+		{
+			// Normalize fields so that they are compatible between AA/SH/BT
+			normalizePlayerState(dest->ps);
 			return dest;
 		}
 	}
@@ -571,11 +574,15 @@ void CGameModuleBase::predictPlayerState(uint64_t deltaTime)
 	pm.trace = traceFunction;
 	
 	if (pm.ps->pm_type == pmType_e::PM_DEAD) {
-		pm.tracemask = ContentFlags::MASK_PLAYERSOLID & ~ContentFlags::CONTENTS_BODY;
+		pm.tracemask = ContentFlags::MASK_PLAYERSOLID & ~ContentFlags::MASK_DYNAMICBODY;
 	}
 	else {
 		pm.tracemask = ContentFlags::MASK_PLAYERSOLID;
 	}
+	
+	pm.noFootsteps = (cgs.dmFlags & DF_NO_FOOTSTEPS) != 0;
+	// Set settings depending on the protocol/version
+	setupMove(pmove);
 
 	playerState_t oldPlayerState = predictedPlayerState;
 	const uintptr_t current = getConnection()->getCurrentCmdNumber();
@@ -883,6 +890,44 @@ void CGameModuleBase::trace(CollisionWorld& cm, trace_t& tr, const Vector& start
 	}
 }
 
+uint32_t MOHPC::Network::CGameModuleBase::pointContents(CollisionWorld& cm, const Vector& point, uintptr_t passEntityNum)
+{
+	// Get the contents in world
+	uint32_t contents = cm.CM_PointContents(point, 0);
+
+	for (size_t i = 0; i < numSolidEntities; i++) {
+		const EntityInfo* cent = solidEntities[i];
+
+		const entityState_t* ent = &cent->currentState;
+
+		if (ent->number == passEntityNum) {
+			continue;
+		}
+
+		// special value for bmodel
+		if (ent->solid != SOLID_BMODEL) {
+			continue;
+		}
+
+		clipHandle_t cmodel = cm.inlineModel(ent->modelindex);
+		if (!cmodel) {
+			continue;
+		}
+
+		contents |= cm.CM_TransformedPointContents(point, cmodel, ent->origin, ent->angles);
+	}
+
+	return contents;
+}
+
+void MOHPC::Network::CGameModuleBase::setupMove(Pmove& pmove)
+{
+}
+
+void MOHPC::Network::CGameModuleBase::normalizePlayerState(playerState_t& ps)
+{
+}
+
 const rain_t& CGameModuleBase::getRain() const
 {
 	return rain;
@@ -1052,18 +1097,8 @@ void CGameModuleBase::configStringModified(uint16_t num)
 		break;
 	case CS_FOGINFO:
 		{
-			int tmp = 0;
-			sscanf(
-				cs,
-				"%d %f %f %f %f",
-				&tmp,
-				&environment.farplaneDistance,
-				&environment.farplaneColor[0],
-				&environment.farplaneColor[1],
-				&environment.farplaneColor[2]
-			);
-			// Parse bool
-			environment.farplaneCull = tmp;
+			// Fog differs between games
+			parseFogInfo(cs, environment);
 		}
 		break;
 	case CS_SKYINFO:
@@ -1079,6 +1114,21 @@ void CGameModuleBase::configStringModified(uint16_t num)
 		break;
 	case CS_MATCHEND:
 		cgs.matchEndTme = atol(cs);
+		break;
+	case CS_VOTE_TIME:
+		cgs.voteTime = atol(cs);
+		break;
+	case CS_VOTE_STRING:
+		cgs.voteString = cs;
+		break;
+	case CS_VOTES_YES:
+		cgs.numVotesYes = atol(cs);
+		break;
+	case CS_VOTES_NO:
+		cgs.numVotesNo = atol(cs);
+		break;
+	case CS_VOTES_UNDECIDED:
+		cgs.numUndecidedVotes = atol(cs);
 		break;
 	}
 
@@ -1097,6 +1147,29 @@ void CGameModuleBase::configStringModified(uint16_t num)
 
 		const char* locStr = info.ValueForKey("loc", strLen);
 		sscanf(locStr, "%f %f %f", &objective.location[0], &objective.location[1], &objective.location[2]);
+	}
+
+	// Add all clients
+	if (num >= CS_PLAYERS && num < CS_PLAYERS + MAX_CLIENTS)
+	{
+		ReadOnlyInfo info(cs);
+
+		clientInfo_t& client = clientInfo[num - CS_PLAYERS];
+		client.name = info.ValueForKey("name");
+		// Specify a valid name if empty
+		if(!client.name.length()) client.name = "UnnamedSolider";
+
+		client.team = (teamType_e)atoi(info.ValueForKey("team"));
+
+		// Add other unknown properties
+		for (InfoIterator it = info.createConstIterator(); it; ++it)
+		{
+			const char* key = it.key();
+			if (str::icmp(key, "name") && str::icmp(key, "team"))
+			{
+				client.properties.SetPropertyValue(key, it.value());
+			}
+		}
 	}
 }
 
@@ -1688,6 +1761,40 @@ effects_e CGameModule8::getEffectId(uint32_t effectId)
 	return effects_e::bh_stone_hard;
 }
 
+void MOHPC::Network::CGameModule8::normalizePlayerState(playerState_t& ps)
+{
+	const uint32_t pmFlags = ps.pm_flags;
+	uint32_t newPmFlags = 0;
+
+	// Convert AA PlayerMove flags to SH/BT flags
+	newPmFlags |= pmFlags & PMF_DUCKED;
+	for (size_t i = 2; i < 32; ++i)
+	{
+		if (pmFlags & (1 << (i + 2))) {
+			newPmFlags |= (1 << i);
+		}
+	}
+
+	// So that flags are normalized across modules
+	ps.pm_flags = newPmFlags;
+}
+
+void MOHPC::Network::CGameModule8::parseFogInfo(const char* s, environment_t& env)
+{
+	int tmp = 0;
+	sscanf(
+		s,
+		"%d %f %f %f %f",
+		&tmp,
+		&env.farplaneDistance,
+		&env.farplaneColor[0],
+		&env.farplaneColor[1],
+		&env.farplaneColor[2]
+	);
+	// Parse bool
+	env.farplaneCull = tmp;
+}
+
 CGameModule17::CGameModule17(const CGameImports& inImports, ClientGameConnection* inConnection)
 	: CGameModuleBase(inImports, inConnection)
 {
@@ -2251,6 +2358,37 @@ effects_e CGameModule17::getEffectId(uint32_t effectId)
 	return effects_e::bh_stone_hard;
 }
 
+void MOHPC::Network::CGameModule17::setupMove(Pmove& pmove)
+{
+	pmove_t& pm = pmove.get();
+	pm.canLean = (getServerInfo().dmFlags & DF_ALLOW_LEAN) != 0;
+}
+
+void MOHPC::Network::CGameModule17::parseFogInfo(const char* s, environment_t& env)
+{
+	int tmp = 0, tmp2 = 0;
+	sscanf(
+		s,
+		"%d %f %f %f %f %f %f %f %d %f %f %f %f",
+		&tmp,
+		&env.farplaneDistance,
+		&env.farplaneBias,
+		&env.skyboxFarplane,
+		&env.skyboxSpeed,
+		&env.farplaneColor[0],
+		&env.farplaneColor[1],
+		&env.farplaneColor[2],
+		&tmp2,
+		&env.farclipOverride,
+		&env.farplaneColorOverride[0],
+		&env.farplaneColorOverride[1],
+		&env.farplaneColorOverride[2]
+	);
+	// Parse bool
+	env.farplaneCull = tmp;
+	env.renderTerrain = tmp2;
+}
+
 const char* Network::getEffectName(effects_e effect)
 {
 	return effectsModel[(size_t)effect];
@@ -2293,6 +2431,11 @@ environment_t::environment_t()
 	, farplaneDistance(0.f)
 	, skyAlpha(0.f)
 	, skyPortal(false)
+	, skyboxFarplane(0.f)
+	, skyboxSpeed(0.f)
+	, farplaneBias(0.f)
+	, farclipOverride(0.f)
+	, renderTerrain(true)
 {
 }
 
@@ -2319,6 +2462,36 @@ float environment_t::getSkyAlpha() const
 bool environment_t::isSkyPortal() const
 {
 	return skyPortal;
+}
+
+float MOHPC::Network::environment_t::getFarplaneBias() const
+{
+	return farplaneBias;
+}
+
+float MOHPC::Network::environment_t::getSkyboxFarplane() const
+{
+	return skyboxFarplane;
+}
+
+float MOHPC::Network::environment_t::getSkyboxSpeed() const
+{
+	return skyboxSpeed;
+}
+
+float MOHPC::Network::environment_t::getFarclipOverride() const
+{
+	return farclipOverride;
+}
+
+const Vector& MOHPC::Network::environment_t::getFarplaneColorOverride() const
+{
+	return farplaneColorOverride;
+}
+
+bool MOHPC::Network::environment_t::shouldRenderTerrain() const
+{
+	return renderTerrain;
 }
 
 Scoreboard::Scoreboard(gameType_e inGameType)

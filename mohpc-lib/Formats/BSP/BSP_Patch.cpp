@@ -16,22 +16,15 @@ using namespace MOHPC;
 #define	SIDE_ON		2
 #define	SIDE_CROSS	3
 
-
-static	int				numPlanes;
-static	BSP::PatchPlane	planes[MAX_PATCH_PLANES];
-
-static	int				numFacets;
-static	BSP::Facet		facets[MAX_PATCH_PLANES]; //maybe MAX_FACETS ??
-
-typedef struct {
+struct cGrid_t {
 	int32_t width;
 	int32_t height;
 	bool wrapWidth;
 	bool wrapHeight;
 	vec3_t points[MAX_GRID_SIZE][MAX_GRID_SIZE];	// [width][height]
-} cGrid_t;
+};
 
-static bool ValidateFacet(BSP::Facet *facet) {
+static bool ValidateFacet(patchWork_t& pw, BSP::Facet *facet) {
 	float		plane[4];
 	int			j;
 	winding_t	*w;
@@ -41,14 +34,14 @@ static bool ValidateFacet(BSP::Facet *facet) {
 		return false;
 	}
 
-	Vec4Copy(planes[facet->surfacePlane].plane, plane);
+	Vec4Copy(pw.planes[facet->surfacePlane].plane, plane);
 	w = BaseWindingForPlane(plane, plane[3]);
 	for (j = 0; j < facet->numBorders && w; j++) {
 		if (facet->borderPlanes[j] == -1) {
 			FreeWinding(w);
 			return false;
 		}
-		Vec4Copy(planes[facet->borderPlanes[j]].plane, plane);
+		Vec4Copy(pw.planes[facet->borderPlanes[j]].plane, plane);
 		if (!facet->borderInward[j]) {
 			VecSubtract(vec3_origin, plane, plane);
 			plane[3] = -plane[3];
@@ -137,32 +130,29 @@ bool BSP::PlaneFromPoints(vec4_t plane, vec3_t a, vec3_t b, vec3_t c)
 	return true;
 }
 
-int FindPlane2(float plane[4], int *flipped) {
-	int i;
-
+int FindPlane2(patchWork_t& pw, float plane[4], int *flipped) {
 	// see if the points are close enough to an existing plane
-	for (i = 0; i < numPlanes; i++) {
-		if (PlaneEqual(&planes[i], plane, flipped)) return i;
+	for (uint32_t i = 0; i < pw.numPlanes; i++) {
+		if (PlaneEqual(&pw.planes[i], plane, flipped)) return i;
 	}
 
 	// add a new plane
-	if (numPlanes == MAX_PATCH_PLANES) {
+	if (pw.numPlanes == MAX_PATCH_PLANES) {
 		assert(!"MAX_PATCH_PLANES");
 	}
 
-	Vec4Copy(plane, planes[numPlanes].plane);
-	planes[numPlanes].signbits = SignbitsForNormal(plane);
+	Vec4Copy(plane, pw.planes[pw.numPlanes].plane);
+	pw.planes[pw.numPlanes].signbits = SignbitsForNormal(plane);
 
-	numPlanes++;
+	pw.numPlanes++;
 
 	*flipped = false;
 
-	return numPlanes - 1;
+	return pw.numPlanes - 1;
 }
 
-static int FindPlane(float *p1, float *p2, float *p3) {
+static int FindPlane(patchWork_t& pw, float *p1, float *p2, float *p3) {
 	float	plane[4];
-	int		i;
 	float	d;
 
 	if (!BSP::PlaneFromPoints(plane, p1, p2, p3)) {
@@ -170,22 +160,22 @@ static int FindPlane(float *p1, float *p2, float *p3) {
 	}
 
 	// see if the points are close enough to an existing plane
-	for (i = 0; i < numPlanes; i++) {
-		if (DotProduct(plane, planes[i].plane) < 0) {
+	for (uint32_t i = 0; i < pw.numPlanes; i++) {
+		if (DotProduct(plane, pw.planes[i].plane) < 0) {
 			continue;	// allow backwards planes?
 		}
 
-		d = DotProduct(p1, planes[i].plane) - planes[i].plane[3];
+		d = DotProduct(p1, pw.planes[i].plane) - pw.planes[i].plane[3];
 		if (d < -PLANE_TRI_EPSILON || d > PLANE_TRI_EPSILON) {
 			continue;
 		}
 
-		d = DotProduct(p2, planes[i].plane) - planes[i].plane[3];
+		d = DotProduct(p2, pw.planes[i].plane) - pw.planes[i].plane[3];
 		if (d < -PLANE_TRI_EPSILON || d > PLANE_TRI_EPSILON) {
 			continue;
 		}
 
-		d = DotProduct(p3, planes[i].plane) - planes[i].plane[3];
+		d = DotProduct(p3, pw.planes[i].plane) - pw.planes[i].plane[3];
 		if (d < -PLANE_TRI_EPSILON || d > PLANE_TRI_EPSILON) {
 			continue;
 		}
@@ -195,16 +185,16 @@ static int FindPlane(float *p1, float *p2, float *p3) {
 	}
 
 	// add a new plane
-	if (numPlanes == MAX_PATCH_PLANES) {
+	if (pw.numPlanes == MAX_PATCH_PLANES) {
 		return -1;
 	}
 
-	Vec4Copy(plane, planes[numPlanes].plane);
-	planes[numPlanes].signbits = SignbitsForNormal(plane);
+	Vec4Copy(plane, pw.planes[pw.numPlanes].plane);
+	pw.planes[pw.numPlanes].signbits = SignbitsForNormal(plane);
 
-	numPlanes++;
+	pw.numPlanes++;
 
-	return numPlanes - 1;
+	return pw.numPlanes - 1;
 }
 
 static bool	NeedsSubdivision(vec3_t a, vec3_t b, vec3_t c, float subdivisions) {
@@ -419,14 +409,14 @@ static void RemoveDegenerateColumns(cGrid_t *grid) {
 	}
 }
 
-static int PointOnPlaneSide(float *p, int planeNum) {
+static int PointOnPlaneSide(patchWork_t& pw, float *p, int planeNum) {
 	float	*plane;
 	float	d;
 
 	if (planeNum == -1) {
 		return SIDE_ON;
 	}
-	plane = planes[planeNum].plane;
+	plane = pw.planes[planeNum].plane;
 
 	d = DotProduct(p, plane) - plane[3];
 
@@ -457,7 +447,7 @@ static int GridPlane(int gridPlanes[MAX_GRID_SIZE][MAX_GRID_SIZE][2], int i, int
 	return -1;
 }
 
-static int EdgePlaneNum(cGrid_t *grid, int gridPlanes[MAX_GRID_SIZE][MAX_GRID_SIZE][2], int i, int j, int k) {
+static int EdgePlaneNum(patchWork_t& pw, cGrid_t *grid, int gridPlanes[MAX_GRID_SIZE][MAX_GRID_SIZE][2], int i, int j, int k) {
 	float	*p1, *p2;
 	vec3_t		up;
 	int			p;
@@ -467,50 +457,50 @@ static int EdgePlaneNum(cGrid_t *grid, int gridPlanes[MAX_GRID_SIZE][MAX_GRID_SI
 		p1 = grid->points[i][j];
 		p2 = grid->points[i + 1][j];
 		p = GridPlane(gridPlanes, i, j, 0);
-		VectorMA(p1, 4, planes[p].plane, up);
-		return FindPlane(p1, p2, up);
+		VectorMA(p1, 4, pw.planes[p].plane, up);
+		return FindPlane(pw, p1, p2, up);
 
 	case 2:	// bottom border
 		p1 = grid->points[i][j + 1];
 		p2 = grid->points[i + 1][j + 1];
 		p = GridPlane(gridPlanes, i, j, 1);
-		VectorMA(p1, 4, planes[p].plane, up);
-		return FindPlane(p2, p1, up);
+		VectorMA(p1, 4, pw.planes[p].plane, up);
+		return FindPlane(pw, p2, p1, up);
 
 	case 3: // left border
 		p1 = grid->points[i][j];
 		p2 = grid->points[i][j + 1];
 		p = GridPlane(gridPlanes, i, j, 1);
-		VectorMA(p1, 4, planes[p].plane, up);
-		return FindPlane(p2, p1, up);
+		VectorMA(p1, 4, pw.planes[p].plane, up);
+		return FindPlane(pw, p2, p1, up);
 
 	case 1:	// right border
 		p1 = grid->points[i + 1][j];
 		p2 = grid->points[i + 1][j + 1];
 		p = GridPlane(gridPlanes, i, j, 0);
-		VectorMA(p1, 4, planes[p].plane, up);
-		return FindPlane(p1, p2, up);
+		VectorMA(p1, 4, pw.planes[p].plane, up);
+		return FindPlane(pw, p1, p2, up);
 
 	case 4:	// diagonal out of triangle 0
 		p1 = grid->points[i + 1][j + 1];
 		p2 = grid->points[i][j];
 		p = GridPlane(gridPlanes, i, j, 0);
-		VectorMA(p1, 4, planes[p].plane, up);
-		return FindPlane(p1, p2, up);
+		VectorMA(p1, 4, pw.planes[p].plane, up);
+		return FindPlane(pw, p1, p2, up);
 
 	case 5:	// diagonal out of triangle 1
 		p1 = grid->points[i][j];
 		p2 = grid->points[i + 1][j + 1];
 		p = GridPlane(gridPlanes, i, j, 1);
-		VectorMA(p1, 4, planes[p].plane, up);
-		return FindPlane(p1, p2, up);
+		VectorMA(p1, 4, pw.planes[p].plane, up);
+		return FindPlane(pw, p1, p2, up);
 
 	}
 
 	return -1;
 }
 
-static void SetBorderInward(BSP::Facet *facet, cGrid_t *grid, int gridPlanes[MAX_GRID_SIZE][MAX_GRID_SIZE][2],
+static void SetBorderInward(patchWork_t& pw, BSP::Facet *facet, cGrid_t *grid, int gridPlanes[MAX_GRID_SIZE][MAX_GRID_SIZE][2],
 	int i, int j, int which) {
 	int		k, l;
 	float	*points[4];
@@ -550,7 +540,7 @@ static void SetBorderInward(BSP::Facet *facet, cGrid_t *grid, int gridPlanes[MAX
 		for (l = 0; l < numPoints; l++) {
 			int		side;
 
-			side = PointOnPlaneSide(points[l], facet->borderPlanes[k]);
+			side = PointOnPlaneSide(pw, points[l], facet->borderPlanes[k]);
 			if (side == SIDE_FRONT) {
 				front++;
 			} if (side == SIDE_BACK) {
@@ -575,7 +565,7 @@ static void SetBorderInward(BSP::Facet *facet, cGrid_t *grid, int gridPlanes[MAX
 	}
 }
 
-void AddFacetBevels(BSP::Facet *facet) {
+void AddFacetBevels(patchWork_t& pw, BSP::Facet *facet) {
 
 	int i, j, k, l;
 	int axis, dir, order, flipped;
@@ -583,12 +573,12 @@ void AddFacetBevels(BSP::Facet *facet) {
 	winding_t *w, *w2;
 	vec3_t mins, maxs, vec, vec2;
 
-	Vec4Copy(planes[facet->surfacePlane].plane, plane);
+	Vec4Copy(pw.planes[facet->surfacePlane].plane, plane);
 
 	w = BaseWindingForPlane(plane, plane[3]);
 	for (j = 0; j < facet->numBorders && w; j++) {
 		if (facet->borderPlanes[j] == facet->surfacePlane) continue;
-		Vec4Copy(planes[facet->borderPlanes[j]].plane, plane);
+		Vec4Copy(pw.planes[facet->borderPlanes[j]].plane, plane);
 
 		if (!facet->borderInward[j]) {
 			VecSubtract(vec3_origin, plane, plane);
@@ -603,7 +593,7 @@ void AddFacetBevels(BSP::Facet *facet) {
 
 	WindingBounds(w, mins, maxs);
 
-	// add the axial planes
+	// add the axial pw.planes
 	order = 0;
 	for (axis = 0; axis < 3; axis++)
 	{
@@ -618,18 +608,18 @@ void AddFacetBevels(BSP::Facet *facet) {
 				plane[3] = -mins[axis];
 			}
 			//if it's the surface plane
-			if (PlaneEqual(&planes[facet->surfacePlane], plane, &flipped)) {
+			if (PlaneEqual(&pw.planes[facet->surfacePlane], plane, &flipped)) {
 				continue;
 			}
 			// see if the plane is allready present
 			for (i = 0; i < facet->numBorders; i++) {
-				if (PlaneEqual(&planes[facet->borderPlanes[i]], plane, &flipped))
+				if (PlaneEqual(&pw.planes[facet->borderPlanes[i]], plane, &flipped))
 					break;
 			}
 
 			if (i == facet->numBorders) {
 				//if (facet->numBorders > 4 + 6 + 16) Com_Printf("ERROR: too many bevels\n");
-				facet->borderPlanes[facet->numBorders] = FindPlane2(plane, &flipped);
+				facet->borderPlanes[facet->numBorders] = FindPlane2(pw, plane, &flipped);
 				facet->borderNoAdjust[facet->numBorders] = 0;
 				facet->borderInward[facet->numBorders] = flipped;
 				facet->numBorders++;
@@ -679,19 +669,19 @@ void AddFacetBevels(BSP::Facet *facet) {
 					continue;
 
 				//if it's the surface plane
-				if (PlaneEqual(&planes[facet->surfacePlane], plane, &flipped)) {
+				if (PlaneEqual(&pw.planes[facet->surfacePlane], plane, &flipped)) {
 					continue;
 				}
 				// see if the plane is allready present
 				for (i = 0; i < facet->numBorders; i++) {
-					if (PlaneEqual(&planes[facet->borderPlanes[i]], plane, &flipped)) {
+					if (PlaneEqual(&pw.planes[facet->borderPlanes[i]], plane, &flipped)) {
 						break;
 					}
 				}
 
 				if (i == facet->numBorders) {
 					//if (facet->numBorders > 4 + 6 + 16) Com_Printf("ERROR: too many bevels\n");
-					facet->borderPlanes[facet->numBorders] = FindPlane2(plane, &flipped);
+					facet->borderPlanes[facet->numBorders] = FindPlane2(pw, plane, &flipped);
 
 					for (k = 0; k < facet->numBorders; k++) {
 						//if (facet->borderPlanes[facet->numBorders] ==
@@ -702,7 +692,7 @@ void AddFacetBevels(BSP::Facet *facet) {
 					facet->borderInward[facet->numBorders] = flipped;
 					//
 					w2 = CopyWinding(w);
-					Vec4Copy(planes[facet->borderPlanes[facet->numBorders]].plane, newplane);
+					Vec4Copy(pw.planes[facet->borderPlanes[facet->numBorders]].plane, newplane);
 					if (!facet->borderInward[facet->numBorders])
 					{
 						VecNegate(newplane, newplane);
@@ -745,7 +735,7 @@ typedef enum {
 	EN_LEFT
 } edgeName_t;
 
-static void PatchCollideFromGrid(cGrid_t *grid, BSP::PatchCollide *pf) {
+static void PatchCollideFromGrid(patchWork_t& pw, cGrid_t *grid, BSP::PatchCollide *pf) {
 	int				i, j;
 	float			*p1, *p2, *p3;
 	int				gridPlanes[MAX_GRID_SIZE][MAX_GRID_SIZE][2];
@@ -753,21 +743,21 @@ static void PatchCollideFromGrid(cGrid_t *grid, BSP::PatchCollide *pf) {
 	int				borders[4];
 	int				noAdjust[4];
 
-	numPlanes = 0;
-	numFacets = 0;
+	pw.numPlanes = 0;
+	pw.numFacets = 0;
 
-	// find the planes for each triangle of the grid
+	// find the pw.planes for each triangle of the grid
 	for (i = 0; i < grid->width - 1; i++) {
 		for (j = 0; j < grid->height - 1; j++) {
 			p1 = grid->points[i][j];
 			p2 = grid->points[i + 1][j];
 			p3 = grid->points[i + 1][j + 1];
-			gridPlanes[i][j][0] = FindPlane(p1, p2, p3);
+			gridPlanes[i][j][0] = FindPlane(pw, p1, p2, p3);
 
 			p1 = grid->points[i + 1][j + 1];
 			p2 = grid->points[i][j + 1];
 			p3 = grid->points[i][j];
-			gridPlanes[i][j][1] = FindPlane(p1, p2, p3);
+			gridPlanes[i][j][1] = FindPlane(pw, p1, p2, p3);
 		}
 	}
 
@@ -784,7 +774,7 @@ static void PatchCollideFromGrid(cGrid_t *grid, BSP::PatchCollide *pf) {
 			}
 			noAdjust[EN_TOP] = (borders[EN_TOP] == gridPlanes[i][j][0]);
 			if (borders[EN_TOP] == -1 || noAdjust[EN_TOP]) {
-				borders[EN_TOP] = EdgePlaneNum(grid, gridPlanes, i, j, 0);
+				borders[EN_TOP] = EdgePlaneNum(pw, grid, gridPlanes, i, j, 0);
 			}
 
 			borders[EN_BOTTOM] = -1;
@@ -796,7 +786,7 @@ static void PatchCollideFromGrid(cGrid_t *grid, BSP::PatchCollide *pf) {
 			}
 			noAdjust[EN_BOTTOM] = (borders[EN_BOTTOM] == gridPlanes[i][j][1]);
 			if (borders[EN_BOTTOM] == -1 || noAdjust[EN_BOTTOM]) {
-				borders[EN_BOTTOM] = EdgePlaneNum(grid, gridPlanes, i, j, 2);
+				borders[EN_BOTTOM] = EdgePlaneNum(pw, grid, gridPlanes, i, j, 2);
 			}
 
 			borders[EN_LEFT] = -1;
@@ -808,7 +798,7 @@ static void PatchCollideFromGrid(cGrid_t *grid, BSP::PatchCollide *pf) {
 			}
 			noAdjust[EN_LEFT] = (borders[EN_LEFT] == gridPlanes[i][j][1]);
 			if (borders[EN_LEFT] == -1 || noAdjust[EN_LEFT]) {
-				borders[EN_LEFT] = EdgePlaneNum(grid, gridPlanes, i, j, 3);
+				borders[EN_LEFT] = EdgePlaneNum(pw, grid, gridPlanes, i, j, 3);
 			}
 
 			borders[EN_RIGHT] = -1;
@@ -820,13 +810,13 @@ static void PatchCollideFromGrid(cGrid_t *grid, BSP::PatchCollide *pf) {
 			}
 			noAdjust[EN_RIGHT] = (borders[EN_RIGHT] == gridPlanes[i][j][0]);
 			if (borders[EN_RIGHT] == -1 || noAdjust[EN_RIGHT]) {
-				borders[EN_RIGHT] = EdgePlaneNum(grid, gridPlanes, i, j, 1);
+				borders[EN_RIGHT] = EdgePlaneNum(pw, grid, gridPlanes, i, j, 1);
 			}
 
-			if (numFacets == MAX_FACETS) {
+			if (pw.numFacets == MAX_FACETS) {
 				return;
 			}
-			facet = &facets[numFacets];
+			facet = &pw.facets[pw.numFacets];
 			memset(facet, 0, sizeof(*facet));
 
 			if (gridPlanes[i][j][0] == gridPlanes[i][j][1]) {
@@ -843,10 +833,10 @@ static void PatchCollideFromGrid(cGrid_t *grid, BSP::PatchCollide *pf) {
 				facet->borderNoAdjust[2] = noAdjust[EN_BOTTOM];
 				facet->borderPlanes[3] = borders[EN_LEFT];
 				facet->borderNoAdjust[3] = noAdjust[EN_LEFT];
-				SetBorderInward(facet, grid, gridPlanes, i, j, -1);
-				if (ValidateFacet(facet)) {
-					AddFacetBevels(facet);
-					numFacets++;
+				SetBorderInward(pw, facet, grid, gridPlanes, i, j, -1);
+				if (ValidateFacet(pw, facet)) {
+					AddFacetBevels(pw, facet);
+					pw.numFacets++;
 				}
 			}
 			else {
@@ -861,20 +851,20 @@ static void PatchCollideFromGrid(cGrid_t *grid, BSP::PatchCollide *pf) {
 				if (facet->borderPlanes[2] == -1) {
 					facet->borderPlanes[2] = borders[EN_BOTTOM];
 					if (facet->borderPlanes[2] == -1) {
-						facet->borderPlanes[2] = EdgePlaneNum(grid, gridPlanes, i, j, 4);
+						facet->borderPlanes[2] = EdgePlaneNum(pw, grid, gridPlanes, i, j, 4);
 					}
 				}
-				SetBorderInward(facet, grid, gridPlanes, i, j, 0);
-				if (ValidateFacet(facet)) {
-					AddFacetBevels(facet);
-					numFacets++;
+				SetBorderInward(pw, facet, grid, gridPlanes, i, j, 0);
+				if (ValidateFacet(pw, facet)) {
+					AddFacetBevels(pw, facet);
+					pw.numFacets++;
 				}
 
-				if (numFacets == MAX_FACETS) {
+				if (pw.numFacets == MAX_FACETS) {
 					return;
 				}
 
-				facet = &facets[numFacets];
+				facet = &pw.facets[pw.numFacets];
 				memset(facet, 0, sizeof(*facet));
 
 				facet->surfacePlane = gridPlanes[i][j][1];
@@ -887,28 +877,28 @@ static void PatchCollideFromGrid(cGrid_t *grid, BSP::PatchCollide *pf) {
 				if (facet->borderPlanes[2] == -1) {
 					facet->borderPlanes[2] = borders[EN_TOP];
 					if (facet->borderPlanes[2] == -1) {
-						facet->borderPlanes[2] = EdgePlaneNum(grid, gridPlanes, i, j, 5);
+						facet->borderPlanes[2] = EdgePlaneNum(pw, grid, gridPlanes, i, j, 5);
 					}
 				}
-				SetBorderInward(facet, grid, gridPlanes, i, j, 1);
-				if (ValidateFacet(facet)) {
-					AddFacetBevels(facet);
-					numFacets++;
+				SetBorderInward(pw, facet, grid, gridPlanes, i, j, 1);
+				if (ValidateFacet(pw, facet)) {
+					AddFacetBevels(pw, facet);
+					pw.numFacets++;
 				}
 			}
 		}
 	}
 
 	// copy the results out
-	pf->numPlanes = numPlanes;
-	pf->numFacets = numFacets;
-	pf->facets = new BSP::Facet[numFacets];
-	memcpy(pf->facets, facets, numFacets * sizeof(*pf->facets));
-	pf->planes = new BSP::PatchPlane[numPlanes];
-	memcpy(pf->planes, planes, numPlanes * sizeof(*pf->planes));
+	pf->numPlanes = pw.numPlanes;
+	pf->numFacets = pw.numFacets;
+	pf->facets = new BSP::Facet[pw.numFacets];
+	memcpy(pf->facets, pw.facets, pw.numFacets * sizeof(*pf->facets));
+	pf->planes = new BSP::PatchPlane[pw.numPlanes];
+	memcpy(pf->planes, pw.planes, pw.numPlanes * sizeof(*pf->planes));
 }
 
-BSP::PatchCollide* BSP::GeneratePatchCollide(int32_t width, int32_t height, const Vertice *points, float subdivisions)
+BSP::PatchCollide* BSP::GeneratePatchCollide(patchWork_t& pw, int32_t width, int32_t height, const Vertice *points, float subdivisions)
 {
 	PatchCollide	*pf;
 	cGrid_t			grid;
@@ -939,8 +929,8 @@ BSP::PatchCollide* BSP::GeneratePatchCollide(int32_t width, int32_t height, cons
 
 	for (i = 0; i < width; i++) {
 		for (j = 0; j < height; j++) {
-			FindPlane(grid.points[i][j], grid.points[i + 1][j], grid.points[i + 1][j + 1]);
-			FindPlane(grid.points[i + 1][j + 1], grid.points[i][j + 1], grid.points[i][j]);
+			FindPlane(pw, grid.points[i][j], grid.points[i + 1][j], grid.points[i + 1][j + 1]);
+			FindPlane(pw, grid.points[i + 1][j + 1], grid.points[i][j + 1], grid.points[i][j]);
 		}
 	}
 
@@ -967,7 +957,7 @@ BSP::PatchCollide* BSP::GeneratePatchCollide(int32_t width, int32_t height, cons
 	}
 
 	// generate a bsp tree for the surface
-	PatchCollideFromGrid(&grid, pf);
+	PatchCollideFromGrid(pw, &grid, pf);
 
 	// expand by one unit for epsilon purposes
 	pf->bounds[0][0] -= 1;
