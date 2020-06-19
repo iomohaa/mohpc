@@ -100,9 +100,8 @@ EntityInfo::EntityInfo()
 {
 }
 
-CGameModuleBase::CGameModuleBase(const CGameImports& inImports, ClientGameConnection* inConnection)
+CGameModuleBase::CGameModuleBase(const CGameImports& inImports)
 	: imports(inImports)
-	, connection(inConnection)
 	, snap(nullptr)
 	, nextSnap(nullptr)
 	, nextFrameTeleport(false)
@@ -206,11 +205,6 @@ const playerState_t& CGameModuleBase::getPredictedPlayerState() const
 	return predictedPlayerState;
 }
 
-ClientGameConnection* CGameModuleBase::getConnection() const
-{
-	return connection;
-}
-
 SnapshotInfo* CGameModuleBase::readNextSnapshot()
 {
 	SnapshotInfo* dest;
@@ -220,7 +214,7 @@ SnapshotInfo* CGameModuleBase::readNextSnapshot()
 		dest = &activeSnapshots[processedSnapshotNum % MAX_ACTIVE_SNAPSHOTS];
 
 		processedSnapshotNum++;
-		bool r = getConnection()->getSnapshot(processedSnapshotNum, *dest);
+		bool r = getImports().getSnapshot(processedSnapshotNum, *dest);
 		if (r)
 		{
 			// Normalize fields so that they are compatible between AA/SH/BT
@@ -236,7 +230,7 @@ void CGameModuleBase::processSnapshots()
 {
 	SnapshotInfo* foundSnap;
 
-	uintptr_t n = getConnection()->getCurrentSnapshotNumber();
+	uintptr_t n = getImports().getCurrentSnapshotNumber();
 	if (n != latestSnapshotNum) {
 		latestSnapshotNum = n;
 	}
@@ -278,7 +272,7 @@ void CGameModuleBase::processSnapshots()
 			setNextSnap(foundSnap);
 		}
 
-		const uint64_t serverStartTime = getConnection()->getServerStartTime();
+		const uint64_t serverStartTime = getImports().getServerStartTime();
 		// if our time is < nextFrame's, we have a nice interpolating state
 		if (svTime >= snap->serverTime && svTime < nextSnap->serverTime && snap->serverTime > serverStartTime) {
 			break;
@@ -355,7 +349,7 @@ void CGameModuleBase::setNextSnap(SnapshotInfo* newSnap)
 		nextFrameCameraCut = false;
 	}
 
-	if (snap->serverTime < getConnection()->getServerStartTime()) {
+	if (snap->serverTime < getImports().getServerStartTime()) {
 		nextFrameTeleport = true;
 	}
 
@@ -580,15 +574,15 @@ void CGameModuleBase::predictPlayerState(uint64_t deltaTime)
 		pm.tracemask = ContentFlags::MASK_PLAYERSOLID;
 	}
 	
-	pm.noFootsteps = (cgs.dmFlags & DF_NO_FOOTSTEPS) != 0;
+	pm.noFootsteps = cgs.hasAnyDMFlags(DMFlags::DF_NO_FOOTSTEPS);
 	// Set settings depending on the protocol/version
 	setupMove(pmove);
 
 	playerState_t oldPlayerState = predictedPlayerState;
-	const uintptr_t current = getConnection()->getCurrentCmdNumber();
+	const uintptr_t current = getImports().getCurrentCmdNumber();
 
 	usercmd_t latestCmd;
-	getConnection()->getUserCmd(current, latestCmd);
+	getImports().getUserCmd(current, latestCmd);
 
 	if (nextSnap && !nextFrameTeleport && !thisFrameTeleport)
 	{
@@ -607,7 +601,7 @@ void CGameModuleBase::predictPlayerState(uint64_t deltaTime)
 	bool moved = false;
 	for (uintptr_t cmdNum = current - CMD_BACKUP + 1; cmdNum <= current; ++cmdNum)
 	{
-		getConnection()->getUserCmd(cmdNum, pm.cmd);
+		getImports().getUserCmd(cmdNum, pm.cmd);
 
 		// don't do anything if the time is before the snapshot player time
 		if (pm.cmd.serverTime <= predictedPlayerState.commandTime) {
@@ -675,10 +669,10 @@ void CGameModuleBase::interpolatePlayerState(bool grabAngles)
 	// if we are still allowing local input, short circuit the view angles
 	if (grabAngles)
 	{
-		uintptr_t cmdNum = getConnection()->getCurrentCmdNumber();
+		uintptr_t cmdNum = getImports().getCurrentCmdNumber();
 
 		usercmd_t cmd;
-		getConnection()->getUserCmd(cmdNum, cmd);
+		getImports().getUserCmd(cmdNum, cmd);
 
 		Pmove::PM_UpdateViewAngles(out, &cmd);
 	}
@@ -835,7 +829,7 @@ void CGameModuleBase::executeNewServerCommands(uintptr_t serverCommandSequence, 
 	while (this->latestCommandSequence < serverCommandSequence)
 	{
 		TokenParser tokenized;
-		if (getConnection()->getServerCommand(++latestCommandSequence, tokenized)) {
+		if (getImports().getServerCommand(++latestCommandSequence, tokenized)) {
 			processServerCommand(tokenized);
 		}
 	}
@@ -920,6 +914,11 @@ uint32_t MOHPC::Network::CGameModuleBase::pointContents(CollisionWorld& cm, cons
 	return contents;
 }
 
+const MOHPC::Network::CGameImports& MOHPC::Network::CGameModuleBase::getImports() const
+{
+	return imports;
+}
+
 void MOHPC::Network::CGameModuleBase::setupMove(Pmove& pmove)
 {
 }
@@ -941,6 +940,20 @@ const environment_t& CGameModuleBase::getEnvironment() const
 const cgsInfo& CGameModuleBase::getServerInfo() const
 {
 	return cgs;
+}
+
+cgsInfo::cgsInfo()
+	: matchStartTime(0)
+	, matchEndTme(0)
+	, levelStartTime(0)
+	, serverLagTime(0)
+	, gameType(gameType_e::FreeForAll)
+	, dmFlags(0)
+	, teamFlags(0)
+	, maxClients(0)
+	, fragLimit(0)
+	, timeLimit(0)
+{
 }
 
 uint64_t cgsInfo::getMatchStartTime() const
@@ -1023,23 +1036,44 @@ const char* cgsInfo::getScoreboardPicOver() const
 	return scoreboardPicOver.c_str();
 }
 
-cgsInfo::cgsInfo()
-	: matchStartTime(0)
-	, matchEndTme(0)
-	, levelStartTime(0)
-	, serverLagTime(0)
-	, gameType(gameType_e::FreeForAll)
-	, dmFlags(0)
-	, teamFlags(0)
-	, maxClients(0)
-	, fragLimit(0)
-	, timeLimit(0)
+bool MOHPC::Network::cgsInfo::hasAnyDMFlags(uint32_t flags) const
 {
+	return (dmFlags & flags) != 0;
+}
+
+bool MOHPC::Network::cgsInfo::hasAllDMFlags(uint32_t flags) const
+{
+	return (dmFlags & flags) == flags;
+}
+
+uint64_t MOHPC::Network::cgsInfo::getVoteTime() const
+{
+	return voteTime;
+}
+
+uint32_t MOHPC::Network::cgsInfo::getNumVotesYes() const
+{
+	return numVotesYes;
+}
+
+uint32_t MOHPC::Network::cgsInfo::getNumVotesNo() const
+{
+	return numVotesNo;
+}
+
+uint32_t MOHPC::Network::cgsInfo::getNumVotesUndecided() const
+{
+	return numUndecidedVotes;
+}
+
+const char* MOHPC::Network::cgsInfo::getVoteString() const
+{
+	return voteString.c_str();
 }
 
 void CGameModuleBase::configStringModified(uint16_t num)
 {
-	const char* cs = getConnection()->getGameState().getConfigString(num);
+	const char* cs = getImports().getGameState().getConfigString(num);
 	switch (num)
 	{
 	case CS_SERVERINFO:
@@ -1132,6 +1166,7 @@ void CGameModuleBase::configStringModified(uint16_t num)
 		break;
 	}
 
+	// Add objectives
 	if (num >= CS_OBJECTIVES && num < CS_OBJECTIVES + MAX_OBJECTIVES)
 	{
 		ReadOnlyInfo info(cs);
@@ -1139,12 +1174,14 @@ void CGameModuleBase::configStringModified(uint16_t num)
 		objective_t& objective = objectives[num - CS_OBJECTIVES];
 	
 		size_t strLen;
+		// Get objective flags
 		const char* flStr = info.ValueForKey("flags", strLen);
 
 		objective.flags = atol(flStr);
 		// Get objective text
 		objective.text = info.ValueForKey("text");
 
+		// Get objective location
 		const char* locStr = info.ValueForKey("loc", strLen);
 		sscanf(locStr, "%f %f %f", &objective.location[0], &objective.location[1], &objective.location[2]);
 	}
@@ -1159,14 +1196,17 @@ void CGameModuleBase::configStringModified(uint16_t num)
 		// Specify a valid name if empty
 		if(!client.name.length()) client.name = "UnnamedSolider";
 
-		client.team = (teamType_e)atoi(info.ValueForKey("team"));
+		size_t strLen;
+		// Get the current team
+		const char* teamStr = info.ValueForKey("team", strLen);
+		client.team = (teamType_e)atoi(teamStr);
 
 		// Add other unknown properties
 		for (InfoIterator it = info.createConstIterator(); it; ++it)
 		{
 			const char* key = it.key();
-			if (str::icmp(key, "name") && str::icmp(key, "team"))
-			{
+			// Don't add first properties above
+			if (str::icmp(key, "name") && str::icmp(key, "team")) {
 				client.properties.SetPropertyValue(key, it.value());
 			}
 		}
@@ -1302,8 +1342,8 @@ void CGameModuleBase::SCmd_Stufftext(TokenParser& args)
 	handlers().notify<CGameHandlers::ServerCommand_Stufftext>(args);
 }
 
-CGameModule8::CGameModule8(const CGameImports& inImports, ClientGameConnection* inConnection)
-	: CGameModuleBase(inImports, inConnection)
+CGameModule8::CGameModule8(const CGameImports& inImports)
+	: CGameModuleBase(inImports)
 {
 }
 
@@ -1795,8 +1835,8 @@ void MOHPC::Network::CGameModule8::parseFogInfo(const char* s, environment_t& en
 	env.farplaneCull = tmp;
 }
 
-CGameModule17::CGameModule17(const CGameImports& inImports, ClientGameConnection* inConnection)
-	: CGameModuleBase(inImports, inConnection)
+CGameModule17::CGameModule17(const CGameImports& inImports)
+	: CGameModuleBase(inImports)
 {
 }
 
@@ -2361,7 +2401,7 @@ effects_e CGameModule17::getEffectId(uint32_t effectId)
 void MOHPC::Network::CGameModule17::setupMove(Pmove& pmove)
 {
 	pmove_t& pm = pmove.get();
-	pm.canLean = (getServerInfo().dmFlags & DF_ALLOW_LEAN) != 0;
+	pm.canLean = getServerInfo().hasAnyDMFlags(DMFlags::DF_ALLOW_LEAN);
 }
 
 void MOHPC::Network::CGameModule17::parseFogInfo(const char* s, environment_t& env)

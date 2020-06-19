@@ -156,6 +156,17 @@ ClientGameConnection::ClientGameConnection(NetworkManager* inNetworkManager, con
 {
 	CGameImports imports;
 
+	using namespace std::placeholders;
+	imports.getCurrentSnapshotNumber	= std::bind(&ClientGameConnection::getCurrentSnapshotNumber, this);
+	imports.getSnapshot					= std::bind(&ClientGameConnection::getSnapshot, this, _1, _2);
+	imports.getServerStartTime			= std::bind(&ClientGameConnection::getServerStartTime, this);
+	imports.getServerTime				= std::bind(&ClientGameConnection::getServerTime, this);
+	imports.getServerFrameFrequency		= std::bind(&ClientGameConnection::getServerFrameFrequency, this);
+	imports.getUserCmd					= std::bind(&ClientGameConnection::getUserCmd, this, _1, _2);
+	imports.getCurrentCmdNumber			= std::bind(&ClientGameConnection::getCurrentCmdNumber, this);
+	imports.getServerCommand			= std::bind(&ClientGameConnection::getServerCommand, this, _1, _2);
+	imports.getGameState				= std::bind(&ClientGameConnection::getGameState, this);
+
 	switch (protoType.getProtocolVersion())
 	{
 	case protocolVersion_e::ver100:
@@ -171,7 +182,7 @@ ClientGameConnection::ClientGameConnection(NetworkManager* inNetworkManager, con
 		readDeltaEntity_pf = &ClientGameConnection::readDeltaEntity_ver8;
 		getNormalizedConfigstring_pf = &ClientGameConnection::getNormalizedConfigstring_ver8;
 
-		cgameModule = new CGameModule8(imports, this);
+		cgameModule = new CGameModule8(imports);
 		break;
 	case protocolVersion_e::ver200:
 		// FIXME: Unimplemented
@@ -186,7 +197,7 @@ ClientGameConnection::ClientGameConnection(NetworkManager* inNetworkManager, con
 		readDeltaEntity_pf = &ClientGameConnection::readDeltaEntity_ver17;
 		getNormalizedConfigstring_pf = &ClientGameConnection::getNormalizedConfigstring_ver17;
 
-		cgameModule = new CGameModule17(imports, this);
+		cgameModule = new CGameModule17(imports);
 		break;
 	default:
 		throw BadProtocolVersionException((uint8_t)protoType.getProtocolVersion());

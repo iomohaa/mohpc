@@ -7,6 +7,7 @@
 #include "Configstring.h"
 #include "InfoTypes.h"
 #include "pm/bg_public.h"
+#include <type_traits>
 
 namespace MOHPC
 {
@@ -14,39 +15,64 @@ namespace MOHPC
 	class StringMessage;
 	class TokenParser;
 
-	// Values for dmflags
-	/** Players don't drop health on death. */
-	static constexpr unsigned int DF_NO_HEALTH				= (1 << 0);
-	/** Players don't drop powerups on death. */
-	static constexpr unsigned int DF_NO_POWERUPS			= (1 << 1);
-	/** Whether or not weapons in the level stays available on player pick up. */
-	static constexpr unsigned int DF_WEAPONS_STAY			= (1 << 2);
-	/** Prevent falling damage. */
-	static constexpr unsigned int DF_NO_FALLING				= (1 << 3);
-	/** This flag doesn't seem to be used at all. */
-	static constexpr unsigned int DF_INSTANT_ITEMS			= (1 << 4);
-	/** If anyone can walk across a TriggerChangeLevel without actually switching level. */
-	static constexpr unsigned int DF_SAME_LEVEL				= (1 << 5);
-	/** Prevent players from having an armor. */
-	static constexpr unsigned int DF_NO_ARMOR				= (1 << 11);
-	/** MOH:AA: Infinite clip ammo. MOH:SH/MOH:BT: Infinite magazines. */
-	static constexpr unsigned int DF_INFINITE_AMMO			= (1 << 14);
-	/** This should prevent footstep sounds to play. */
-	static constexpr unsigned int DF_NO_FOOTSTEPS			= (1 << 17);
-	// New flags since SH
-	/** Allow leaning while in movement. */
-	static constexpr unsigned int DF_ALLOW_LEAN				= (1 << 18);
-	/** Specify that G43 is replaced with Kar98. */
-	static constexpr unsigned int DF_OLD_SNIPERRIFLE		= (1 << 19);
-	// New flags since BT
-	/** Axis use a shotgun rather than kar98 mortar. */
-	static constexpr unsigned int DF_GERMAN_SHOTGUN			= (1 << 20);
-	/** Allow landmine to be used on AA maps. */
-	static constexpr unsigned int DF_ALLOW_OLDMAP_MINES		= (1 << 21);
+	namespace DMFlags
+	{
+		/**
+		 * Values for dmflags
+		 */
+		/** Players don't drop health on death. */
+		static constexpr unsigned int DF_NO_HEALTH				= (1 << 0);
+		/** Players don't drop powerups on death. */
+		static constexpr unsigned int DF_NO_POWERUPS			= (1 << 1);
+		/** Whether or not weapons in the level stays available on player pick up. */
+		static constexpr unsigned int DF_WEAPONS_STAY			= (1 << 2);
+		/** Prevent falling damage. */
+		static constexpr unsigned int DF_NO_FALLING				= (1 << 3);
+		/** This flag doesn't seem to be used at all. */
+		static constexpr unsigned int DF_INSTANT_ITEMS			= (1 << 4);
+		/** If anyone can walk across a TriggerChangeLevel without actually switching level. */
+		static constexpr unsigned int DF_SAME_LEVEL				= (1 << 5);
+		/** Prevent players from having an armor. */
+		static constexpr unsigned int DF_NO_ARMOR				= (1 << 11);
+		/** MOH:AA: Infinite clip ammo. MOH:SH/MOH:BT: Infinite magazines. */
+		static constexpr unsigned int DF_INFINITE_AMMO			= (1 << 14);
+		/** This should prevent footstep sounds to play. */
+		static constexpr unsigned int DF_NO_FOOTSTEPS			= (1 << 17);
+
+		/**
+		 * New flags since SH
+		 */
+		/** Allow leaning while in movement. */
+		static constexpr unsigned int DF_ALLOW_LEAN				= (1 << 18);
+		/** Specify that G43 is replaced with Kar98. */
+		static constexpr unsigned int DF_OLD_SNIPERRIFLE		= (1 << 19);
+		// New flags since BT
+		/** Axis use a shotgun rather than kar98 mortar. */
+		static constexpr unsigned int DF_GERMAN_SHOTGUN			= (1 << 20);
+		/** Allow landmine to be used on AA maps. */
+		static constexpr unsigned int DF_ALLOW_OLDMAP_MINES		= (1 << 21);
+
+		/**
+		 * Weapon type filtering
+		 */
+		/** Disallow the usage of rifles. */
+		static constexpr unsigned int DF_BAN_WEAP_RIFLE			= (1 << 26);
+		/** Disallow the usage of rifles. */
+		static constexpr unsigned int DF_BAN_WEAP_SNIPER		= (1 << 27);
+		/** Disallow the usage of snipers. */
+		static constexpr unsigned int DF_BAN_WEAP_SMG			= (1 << 28);
+		/** Disallow the usage of sub-machine guns. */
+		static constexpr unsigned int DF_BAN_WEAP_MG			= (1 << 29);
+		/** Disallow the usage of machine guns. */
+		static constexpr unsigned int DF_BAN_WEAP_HEAVY			= (1 << 30);
+		/** Disallow the usage of shotgun. */
+		static constexpr unsigned int DF_BAN_WEAP_SHOTGUN		= (1 << 31);
+	}
 
 	namespace Network
 	{
 		class ClientGameConnection;
+		struct gameState_t;
 
 		static constexpr size_t MAX_ACTIVE_SNAPSHOTS = 2;
 
@@ -649,22 +675,22 @@ namespace MOHPC
 			uint64_t matchEndTme;
 			uint64_t levelStartTime;
 			uint64_t serverLagTime;
+			uint64_t voteTime;
 			gameType_e gameType;
 			uint32_t dmFlags;
 			uint32_t teamFlags;
 			uint32_t maxClients;
 			int32_t fragLimit;
 			int32_t timeLimit;
+			uint32_t numVotesYes;
+			uint32_t numVotesNo;
+			uint32_t numUndecidedVotes;
 			str mapName;
 			str mapFilename;
 			str alliedText[3];
 			str axisText[3];
 			str scoreboardPic;
 			str scoreboardPicOver;
-			uint64_t voteTime;
-			uint32_t numVotesYes;
-			uint32_t numVotesNo;
-			uint32_t numUndecidedVotes;
 			str voteString;
 
 		public:
@@ -687,6 +713,44 @@ namespace MOHPC
 
 			/** Return current DF_ flags. */
 			MOHPC_EXPORTS uint32_t getDeathmatchFlags() const;
+
+			/** 
+			 * Return true if dmflags contain one or more of the specified flags.
+			 *
+			 * @param	flags	Flags to look for.
+			 * @return	true	if one of the following flags are valid.
+			 */
+			MOHPC_EXPORTS bool hasAnyDMFlags(uint32_t flags) const;
+
+			/**
+			 * Return true if dmflags contain the specified flags.
+			 *
+			 * @param	flags	Flags to look for.
+			 * @return	true	if all of the flags are valid.
+			 */
+			MOHPC_EXPORTS bool hasAllDMFlags(uint32_t flags) const;
+
+			/**
+			 * User version of hasAnyDMFlags that split each flags by arguments.
+			 * Checks if any of the specified flags matches.
+			 */
+			template<typename...Args>
+			bool hasAnyDMFlagsArgs(Args... args)
+			{
+				const uint32_t flags = (args | ...);
+				return hasAnyDMFlags(flags);
+			}
+
+			/**
+			 * User version of hasAnyDMFlags that split each flags by arguments.
+			 * Checks if all of the specified flags matches.
+			 */
+			template<typename...Args>
+			bool hasAllDMFlagsArgs(Args... args)
+			{
+				const uint32_t flags = (args | ...);
+				return hasAllDMFlags(flags);
+			}
 
 			/** Return teamFlags (doesn't seem to be used). */
 			MOHPC_EXPORTS uint32_t getTeamFlags() const;
@@ -717,18 +781,35 @@ namespace MOHPC
 
 			/** Return the scoreboard pic shader when game is over. */
 			MOHPC_EXPORTS const char* getScoreboardPicOver() const;
+
+			/** Return the last time vote has started. */
+			MOHPC_EXPORTS uint64_t getVoteTime() const;
+
+			/** Return the number of players that voted yes. */
+			MOHPC_EXPORTS uint32_t getNumVotesYes() const;
+
+			/** Return the number of players that voted no. */
+			MOHPC_EXPORTS uint32_t getNumVotesNo() const;
+
+			/** Return the number of players that didn't vote. */
+			MOHPC_EXPORTS uint32_t getNumVotesUndecided() const;
+
+			/** Return the vote name/text. */
+			MOHPC_EXPORTS const char* getVoteString() const;
 		};
 
 		class CGameImports
 		{
-		/*
 		public:
-			uintptr_t (ClientGameConnection::*getCurrentSnapshotNumber_pf)() const;
-			bool (ClientGameConnection::*getSnapshot_pf)(uintptr_t snapshotNum, SnapshotInfo& outSnapshot);
-
-			void getCurrentSnapshotNumber();
-			bool getSnapshot(uintptr_t snapshotNum, SnapshotInfo& outSnapshot);
-		*/
+			std::function<uintptr_t()> getCurrentSnapshotNumber;
+			std::function<bool(uintptr_t snapshotNum, SnapshotInfo& outSnapshot)> getSnapshot;
+			std::function<uint64_t()> getServerStartTime;
+			std::function<uint64_t()> getServerTime;
+			std::function<uint64_t()> getServerFrameFrequency;
+			std::function<uintptr_t()> getCurrentCmdNumber;
+			std::function<bool(uintptr_t cmdNum, usercmd_t& outCmd)> getUserCmd;
+			std::function<bool(uintptr_t serverCommandNumber, TokenParser& tokenized)> getServerCommand;
+			std::function<const gameState_t&()> getGameState;
 		};
 
 		class CGameModuleBase
@@ -779,7 +860,6 @@ namespace MOHPC
 			CGameImports imports;
 
 		private:
-			ClientGameConnection* connection;
 			HandlerListCGame handlerList;
 			TraceFunction traceFunction;
 			PointContentsFunction pointContentsFunction;
@@ -815,7 +895,7 @@ namespace MOHPC
 			EntityInfo* triggerEntities[MAX_ENTITIES_IN_SNAPSHOT];
 
 		public:
-			CGameModuleBase(const CGameImports& inImports, ClientGameConnection* connection);
+			CGameModuleBase(const CGameImports& inImports);
 			virtual ~CGameModuleBase() = default;
 
 			/** Tick function for CGame module. */
@@ -849,9 +929,6 @@ namespace MOHPC
 
 			/** Return the predicted player state. */
 			MOHPC_EXPORTS const playerState_t& getPredictedPlayerState() const;
-
-			/** Get the connection associated with this module. */
-			MOHPC_EXPORTS ClientGameConnection* getConnection() const;
 
 			/**
 			 * Set the function used to trace through the world.
@@ -920,6 +997,7 @@ namespace MOHPC
 
 		protected:
 			const HandlerListCGame& handlers() const;
+			const CGameImports& getImports() const;
 			virtual void handleCGMessage(MSG& msg, uint8_t msgType) = 0;
 			virtual void setupMove(Pmove& pmove);
 			virtual void normalizePlayerState(playerState_t& ps);
@@ -955,7 +1033,7 @@ namespace MOHPC
 		class CGameModule8 : public CGameModuleBase
 		{
 		public:
-			CGameModule8(const CGameImports& inImports, ClientGameConnection* connection);
+			CGameModule8(const CGameImports& inImports);
 
 		protected:
 			virtual void handleCGMessage(MSG& msg, uint8_t msgType) override;
@@ -970,7 +1048,7 @@ namespace MOHPC
 		class CGameModule17 : public CGameModuleBase
 		{
 		public:
-			CGameModule17(const CGameImports& inImports, ClientGameConnection* connection);
+			CGameModule17(const CGameImports& inImports);
 
 		protected:
 			virtual void handleCGMessage(MSG& msg, uint8_t msgType) override;
