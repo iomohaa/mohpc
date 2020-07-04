@@ -119,10 +119,7 @@ ClientSnapshot::ClientSnapshot()
 {
 }
 
-MOHPC::Network::ClientGameConnection::HandlerListClient& Network::ClientGameConnection::getHandlerList()
-{
-	return handlerList;
-}
+MOHPC_OBJECT_DEFINITION(ClientGameConnection);
 
 ClientGameConnection::ClientGameConnection(NetworkManager* inNetworkManager, const INetchanPtr& inNetchan, const netadr_t& inAdr, uint32_t challengeResponse, const protocolType_c& protoType, ClientInfo&& cInfo)
 	: ITickableNetwork(inNetworkManager)
@@ -134,6 +131,7 @@ ClientGameConnection::ClientGameConnection(NetworkManager* inNetworkManager, con
 	, oldServerTime(0)
 	, oldFrameServerTime(0)
 	, lastPacketSendTime(0)
+	, timeoutTime(30000)
 	, maxPackets(30)
 	, maxTickPackets(60)
 	, parseEntitiesNum(0)
@@ -170,34 +168,30 @@ ClientGameConnection::ClientGameConnection(NetworkManager* inNetworkManager, con
 	switch (protoType.getProtocolVersion())
 	{
 	case protocolVersion_e::ver100:
-		// FIXME: Unimplemented
-		break;
 	case protocolVersion_e::ver111:
 		readStringMessage_pf = &ClientGameConnection::readStringMessage_normal;
 		writeStringMessage_pf = &ClientGameConnection::writeStringMessage_normal;
-		parseGameState_pf = &ClientGameConnection::parseGameState_ver8;
-		hashKey_pf = &ClientGameConnection::hashKey_ver8;
-		readEntityNum_pf = &ClientGameConnection::readEntityNum_ver8;
-		readDeltaPlayerstate_pf = &ClientGameConnection::readDeltaPlayerstate_ver8;
-		readDeltaEntity_pf = &ClientGameConnection::readDeltaEntity_ver8;
-		getNormalizedConfigstring_pf = &ClientGameConnection::getNormalizedConfigstring_ver8;
+		parseGameState_pf = &ClientGameConnection::parseGameState_ver6;
+		hashKey_pf = &ClientGameConnection::hashKey_ver6;
+		readEntityNum_pf = &ClientGameConnection::readEntityNum_ver6;
+		readDeltaPlayerstate_pf = &ClientGameConnection::readDeltaPlayerstate_ver6;
+		readDeltaEntity_pf = &ClientGameConnection::readDeltaEntity_ver6;
+		getNormalizedConfigstring_pf = &ClientGameConnection::getNormalizedConfigstring_ver6;
 
-		cgameModule = new CGameModule8(imports);
+		cgameModule = new CGameModule6(imports);
 		break;
 	case protocolVersion_e::ver200:
-		// FIXME: Unimplemented
-		break;
 	case protocolVersion_e::ver211:
 		readStringMessage_pf = &ClientGameConnection::readStringMessage_scrambled;
 		writeStringMessage_pf = &ClientGameConnection::writeStringMessage_scrambled;
-		parseGameState_pf = &ClientGameConnection::parseGameState_ver17;
-		hashKey_pf = &ClientGameConnection::hashKey_ver17;
-		readEntityNum_pf = &ClientGameConnection::readEntityNum_ver17;
-		readDeltaPlayerstate_pf = &ClientGameConnection::readDeltaPlayerstate_ver17;
-		readDeltaEntity_pf = &ClientGameConnection::readDeltaEntity_ver17;
-		getNormalizedConfigstring_pf = &ClientGameConnection::getNormalizedConfigstring_ver17;
+		parseGameState_pf = &ClientGameConnection::parseGameState_ver15;
+		hashKey_pf = &ClientGameConnection::hashKey_ver15;
+		readEntityNum_pf = &ClientGameConnection::readEntityNum_ver15;
+		readDeltaPlayerstate_pf = &ClientGameConnection::readDeltaPlayerstate_ver15;
+		readDeltaEntity_pf = &ClientGameConnection::readDeltaEntity_ver15;
+		getNormalizedConfigstring_pf = &ClientGameConnection::getNormalizedConfigstring_ver15;
 
-		cgameModule = new CGameModule17(imports);
+		cgameModule = new CGameModule15(imports);
 		break;
 	default:
 		throw BadProtocolVersionException((uint8_t)protoType.getProtocolVersion());
@@ -215,30 +209,40 @@ ClientGameConnection::ClientGameConnection(NetworkManager* inNetworkManager, con
 
 ClientGameConnection::~ClientGameConnection()
 {
-	addReliableCommand("disconnect");
+	disconnect();
+}
 
-	for (size_t i = 0; i < 3; ++i) {
-		writePacket(serverMessageSequence, 0);
-	}
+MOHPC::Network::ClientGameConnection::HandlerListClient& Network::ClientGameConnection::getHandlerList()
+{
+	return handlerList;
 }
 
 void ClientGameConnection::tick(uint64_t deltaTime, uint64_t currentTime)
 {
-	if (timeoutTime > 0)
+	if (!isChannelValid()) {
+		return;
+	}
+
+	using namespace std::chrono;
+	if (timeoutTime > milliseconds::zero())
 	{
-		using namespace std::chrono;
-		time_point<steady_clock> clockTime = steady_clock::now();
+		steady_clock::time_point clockTime = steady_clock::now();
+		steady_clock::time_point nextTimeoutTime = lastTimeoutTime + timeoutTime;
 		if (clockTime >= nextTimeoutTime)
 		{
 			// The server or the client timed out
-			handlerList.notify<ClientHandlers::ClientGameTimeout>();
+			handlerList.notify<ClientHandlers::Timeout>();
+
+			// Disconnect from server
+			serverDisconnected(nullptr);
+			return;
 		}
 	}
 
 	size_t count = 0;
 
 	IUdpSocket* socket = getNetchan()->getRawSocket();
-	while(socket->dataAvailable() && count++ < maxTickPackets)
+	while(isChannelValid() && socket->dataAvailable() && count++ < maxTickPackets)
 	{
 		std::vector<uint8_t> data(65536);
 		FixedDataMessageStream stream(data.data(), data.size());
@@ -267,7 +271,8 @@ void ClientGameConnection::tick(uint64_t deltaTime, uint64_t currentTime)
 
 void ClientGameConnection::setTimeout(size_t inTimeoutTime)
 {
-	timeoutTime = inTimeoutTime;
+	using namespace std::chrono;
+	timeoutTime = milliseconds(inTimeoutTime);
 }
 
 const INetchanPtr& ClientGameConnection::getNetchan() const
@@ -297,12 +302,49 @@ void Network::ClientGameConnection::receive(const netadr_t& from, MSG& msg, uint
 		{
 			MOHPC_LOG(Error, "got exception of type %s: \"%s\"", typeid(e).name(), e.what().c_str());
 
-			// Call the handler
+			// call the handler
 			handlerList.notify<ClientHandlers::Error>(e);
 		}
 
 		using namespace std::chrono;
-		nextTimeoutTime = steady_clock::now() + milliseconds(timeoutTime);
+		lastTimeoutTime = steady_clock::now();
+	}
+	else if (serverMessageSequence == -1)
+	{
+		// a message without sequence number indicates a connectionless packet
+		// the only possible connectionless packet should be the disconnect command
+		// it may trigger if the client gets kicke during map loading
+
+		// read the direction
+		uint8_t direction = msg.ReadByte();
+
+		// read the command
+		StringMessage data = msg.ReadString();
+
+		// parse command arguments
+		TokenParser parser;
+		parser.Parse(data, strlen(data));
+
+		// get the connectionless command
+		const char* cmd = parser.GetToken(true);
+
+		if (!str::icmp(cmd, "disconnect"))
+		{
+			// disconnect message, may happen during map loading
+			serverDisconnected(nullptr);
+		}
+		else if (!str::icmp(cmd, "droperror"))
+		{
+			// server is kicking the client due to an error
+
+			// trim leading spaces/crlf
+			parser.SkipWhiteSpace(true);
+			// get the reason of the kick
+			const char* reason = parser.GetCurrentScript();
+
+			// Supply the reason when disconnecting
+			serverDisconnected(reason);
+		}
 	}
 }
 
@@ -330,7 +372,7 @@ void Network::ClientGameConnection::parseServerMessage(MSG& msg, uint32_t server
 		reliableAcknowledge = reliableSequence;
 	}
 
-	for (;;)
+	while(cgameModule)
 	{
 		uint8_t cmdNum = msg.ReadByte();
 
@@ -900,6 +942,16 @@ void Network::ClientGameConnection::parseCommandString(MSG& msg)
 
 	// notify about the new command
 	handlerList.notify<ClientHandlers::ServerCommand>(commandName.c_str(), ev);
+
+	if (!str::icmp(commandName, "disconnect"))
+	{
+		// Server kicking out the client
+
+		// Wipe the channel as it has been closed on server already
+		wipeChannel();
+		// Disconnect the client
+		disconnect();
+	}
 }
 
 void Network::ClientGameConnection::parseCenterprint(MSG& msg)
@@ -1108,7 +1160,7 @@ void ClientGameConnection::writeStringMessage_scrambled(MSG& msg, const char* s)
 	msg.WriteScrambledString(s, charByteMapping);
 }
 
-uint32_t ClientGameConnection::hashKey_ver8(const char* string, size_t maxlen)
+uint32_t ClientGameConnection::hashKey_ver6(const char* string, size_t maxlen)
 {
 	uint32_t hash = 0;
 
@@ -1120,7 +1172,7 @@ uint32_t ClientGameConnection::hashKey_ver8(const char* string, size_t maxlen)
 	return hash;
 }
 
-uint32_t ClientGameConnection::hashKey_ver17(const char* string, size_t maxlen)
+uint32_t ClientGameConnection::hashKey_ver15(const char* string, size_t maxlen)
 {
 	uint32_t hash = 0;
 
@@ -1132,44 +1184,44 @@ uint32_t ClientGameConnection::hashKey_ver17(const char* string, size_t maxlen)
 	return hash;
 }
 
-entityNum_t ClientGameConnection::readEntityNum_ver8(MsgTypesHelper& msgHelper)
+entityNum_t ClientGameConnection::readEntityNum_ver6(MsgTypesHelper& msgHelper)
 {
 	return msgHelper.ReadEntityNum();
 }
 
-entityNum_t ClientGameConnection::readEntityNum_ver17(MsgTypesHelper& msgHelper)
+entityNum_t ClientGameConnection::readEntityNum_ver15(MsgTypesHelper& msgHelper)
 {
 	return msgHelper.ReadEntityNum2();
 }
 
-void ClientGameConnection::parseGameState_ver8(MSG& msg)
+void ClientGameConnection::parseGameState_ver6(MSG& msg)
 {
 }
 
-void ClientGameConnection::parseGameState_ver17(MSG& msg)
+void ClientGameConnection::parseGameState_ver15(MSG& msg)
 {
 	// FIXME: Should it be stored somewhere?
 	const float deltaTime = msg.ReadFloat();
 }
 
-void ClientGameConnection::readDeltaPlayerstate_ver8(MSG& msg, const playerState_t* from, playerState_t* to)
+void ClientGameConnection::readDeltaPlayerstate_ver6(MSG& msg, const playerState_t* from, playerState_t* to)
 {
 	msg.ReadDeltaClass(from ? &SerializablePlayerState(*const_cast<playerState_t*>(from)) : nullptr, &SerializablePlayerState(*to));
 }
 
-void ClientGameConnection::readDeltaPlayerstate_ver17(MSG& msg, const playerState_t* from, playerState_t* to)
+void ClientGameConnection::readDeltaPlayerstate_ver15(MSG& msg, const playerState_t* from, playerState_t* to)
 {
 	msg.ReadDeltaClass(from ? &SerializablePlayerState_ver17(*const_cast<playerState_t*>(from)) : nullptr, &SerializablePlayerState_ver17(*to));
 }
 
-void ClientGameConnection::readDeltaEntity_ver8(MSG& msg, const entityState_t* from, entityState_t* to, entityNum_t newNum)
+void ClientGameConnection::readDeltaEntity_ver6(MSG& msg, const entityState_t* from, entityState_t* to, entityNum_t newNum)
 {
 	msg.ReadDeltaClass(from ? &SerializableEntityState(*const_cast<entityState_t*>(from), newNum) : nullptr, &SerializableEntityState(*to, newNum));
 }
 
-void ClientGameConnection::readDeltaEntity_ver17(MSG& msg, const entityState_t* from, entityState_t* to, entityNum_t newNum)
+void ClientGameConnection::readDeltaEntity_ver15(MSG& msg, const entityState_t* from, entityState_t* to, entityNum_t newNum)
 {
-	msg.ReadDeltaClass(from ? &SerializableEntityState_ver17(*const_cast<entityState_t*>(from), newNum) : nullptr, &SerializableEntityState_ver17(*to, newNum));
+	msg.ReadDeltaClass(from ? &SerializableEntityState_ver15(*const_cast<entityState_t*>(from), newNum) : nullptr, &SerializableEntityState_ver15(*to, newNum));
 }
 
 const gameState_t& MOHPC::Network::ClientGameConnection::getGameState() const
@@ -1230,6 +1282,9 @@ ClientInfo& MOHPC::Network::ClientGameConnection::getUserInfo()
 void MOHPC::Network::ClientGameConnection::initTime(uint64_t currentTime)
 {
 	realTimeStart = currentTime;
+
+	using namespace std::chrono;
+	lastTimeoutTime = steady_clock::time_point(milliseconds(currentTime));
 }
 
 uintptr_t MOHPC::Network::ClientGameConnection::getCurrentSnapshotNumber() const
@@ -1350,6 +1405,47 @@ bool MOHPC::Network::ClientGameConnection::getServerCommand(uintptr_t serverComm
 	return true;
 }
 
+void MOHPC::Network::ClientGameConnection::disconnect()
+{
+	if(getNetchan())
+	{
+		addReliableCommand("disconnect");
+
+		for (size_t i = 0; i < 3; ++i) {
+			writePacket(serverMessageSequence, 0);
+		}
+
+		// Network channel is not needed anymore
+		wipeChannel();
+	}
+
+	// Terminate the connection
+	terminateConnection(nullptr);
+}
+
+void MOHPC::Network::ClientGameConnection::serverDisconnected(const char* reason)
+{
+	wipeChannel();
+
+	// Terminate after wiping channel
+	terminateConnection(reason);
+}
+
+void MOHPC::Network::ClientGameConnection::terminateConnection(const char* reason)
+{
+	// Clear out the server id
+	serverId = 0;
+
+	if (cgameModule)
+	{
+		handlerList.notify<ClientHandlers::Disconnect>(reason);
+
+		// Delete the CG module
+		delete cgameModule;
+		cgameModule = nullptr;
+	}
+}
+
 void MOHPC::Network::ClientGameConnection::configStringModified(uint16_t num, const char* newString)
 {
 	// Set the config string in gamestate
@@ -1360,6 +1456,16 @@ void MOHPC::Network::ClientGameConnection::configStringModified(uint16_t num, co
 
 	// Notify about the change
 	handlerList.notify<ClientHandlers::Configstring>(num, newString);
+}
+
+void MOHPC::Network::ClientGameConnection::wipeChannel()
+{
+	netchan = nullptr;
+}
+
+bool MOHPC::Network::ClientGameConnection::isChannelValid() const
+{
+	return netchan != nullptr;
 }
 
 void MOHPC::Network::ClientGameConnection::setCGameTime(uint64_t currentTime)
@@ -1459,6 +1565,12 @@ void MOHPC::Network::ClientGameConnection::firstSnapshot(uint64_t currentTime)
 
 bool MOHPC::Network::ClientGameConnection::readyToSendPacket(uint64_t currentTime) const
 {
+	if (!cgameModule)
+	{
+		// Disconnected from server
+		return false;
+	}
+
 	if (!serverId)
 	{
 		// Send one packet per second when loading
@@ -1484,7 +1596,7 @@ MOHPC::Network::CGameModuleBase& Network::ClientGameConnection::getCGModule()
 	return *cgameModule;
 }
 
-cs_t ClientGameConnection::getNormalizedConfigstring_ver8(cs_t num)
+cs_t ClientGameConnection::getNormalizedConfigstring_ver6(cs_t num)
 {
 	if (num <= CS_WARMUP || num >= 26) {
 		return num;
@@ -1493,7 +1605,7 @@ cs_t ClientGameConnection::getNormalizedConfigstring_ver8(cs_t num)
 	return num - 2;
 }
 
-cs_t ClientGameConnection::getNormalizedConfigstring_ver17(cs_t num)
+cs_t ClientGameConnection::getNormalizedConfigstring_ver15(cs_t num)
 {
 	return num;
 }

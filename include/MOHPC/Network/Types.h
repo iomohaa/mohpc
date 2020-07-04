@@ -41,33 +41,23 @@ namespace MOHPC
 
 		struct netadr_t
 		{
+		public:
 			netadrtype_t type;
-			uint8_t ip[4];
 			uint8_t ipx[10];
+			uint8_t ip[4];
 			uint16_t port;
 
-			netadr_t()
-				: type(netadrtype_t::Bad)
-				, ip{ 0 }
-				, ipx{ 0 }
-				, port(0)
-			{}
+		public:
+			MOHPC_EXPORTS netadr_t();
 
-			bool operator==(const netadr_t& other) const
-			{
-				return *(uint32_t*)ip == *(uint32_t*)other.ip;
-			}
-
-			bool operator!=(const netadr_t& other) const
-			{
-				return *(uint32_t*)ip != *(uint32_t*)other.ip;
-			}
+			MOHPC_EXPORTS bool operator==(const netadr_t& other) const;
+			MOHPC_EXPORTS bool operator!=(const netadr_t& other) const;
 		};
 		
 		//==
 		// Protocol versions
 		// 6	=> MOHAA 1.0
-		// 8	=> MOHAA 1.11
+		// 8	=> MOHAA 1.1
 		// 15	=> MOHSH 2.0
 		// 17	=> MOHSH 2.11 / 2.15 | MOHBT 2.30 / 2.40b
 		// Breakthrough adds a "clientType breakthrough" when connecting
@@ -89,7 +79,7 @@ namespace MOHPC
 			/** MOHAA 1.0 -> not (yet) supported. */
 			ver100 = 6,
 
-			/** MOHAA 1.11. */
+			/** MOHAA 1.1. */
 			ver111 = 8,
 
 			/** Spearhead 2.0 -> not (yet) supported. */

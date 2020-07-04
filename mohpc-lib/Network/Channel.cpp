@@ -58,7 +58,7 @@ bool Network::Netchan::receive(IMessageStream& stream)
 
 	// Read the sequence num
 	uint32_t sequenceNum;
-	msgRead.SerializeUInteger(sequenceNum);
+	sequenceNum = msgRead.ReadUInteger();
 
 	bool fragmented;
 	// check for fragment information
@@ -75,8 +75,8 @@ bool Network::Netchan::receive(IMessageStream& stream)
 	uint16_t fragmentLength = 0;
 
 	if (fragmented) {
-		msgRead.SerializeUInteger(fragmentStart);
-		msgRead.SerializeUShort(fragmentLength);
+		fragmentStart = msgRead.ReadUInteger();
+		fragmentLength = msgRead.ReadUShort();
 	}
 
 	// discard out of order or duplicated packets

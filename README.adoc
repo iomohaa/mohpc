@@ -2,12 +2,13 @@
 :rouge-style: pastie
 
 = MOHPC
+Author Ludovic
 :toc:
 :sectnums:
 
 == Introduction
 
-This library helps you to read Medal of Honor: Allied Assault (all versions) assets using C++. It's working fine on a big project (https://moh-rises.com/[MOHUE]) and is considered stable.
+This library helps you to read Medal of Honor: Allied Assault (all versions) assets using C++. It's working fine on a big project (link:https://moh-rises.com/[MOHUE]) and is considered stable.
 
 == Requirements
 

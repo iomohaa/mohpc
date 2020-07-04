@@ -544,25 +544,25 @@ namespace MOHPC
 	// a trace is returned when a box is swept through the world
 	struct MOHPC_EXPORTS trace_t
 	{
-		// if true, plane is not valid
-		bool allsolid;
-		// if true, the initial point was in a solid area
-		bool startsolid;
+		uintptr_t shaderNum;
 		// time completed, 1.0 = didn't hit anything
 		float fraction;
 		// final position
 		Vector endpos;
-		// surface normal at impact, transformed to world space
-		collisionPlane_t plane;
 		// surface hit
 		uint32_t surfaceFlags;
-		uintptr_t shaderNum;
 		// contents on other side of surface hit
 		uint32_t contents;
+		// surface normal at impact, transformed to world space
+		collisionPlane_t plane;
 		// entity the contacted surface is a part of
 		uint16_t entityNum;
 		// Bone location when using traceDeep
 		uint8_t location;
+		// if true, plane is not valid
+		bool allsolid;
+		// if true, the initial point was in a solid area
+		bool startsolid;
 
 	public:
 		trace_t();
@@ -571,9 +571,9 @@ namespace MOHPC
 	// Used for oriented capsule collision detection
 	struct sphere_t
 	{
-		bool use;
-		float radius;
 		Vector offset;
+		float radius;
+		bool use;
 
 	public:
 		sphere_t();
@@ -597,10 +597,10 @@ namespace MOHPC
 		float radius;
 		// ored contents of the model tracing through
 		uint32_t contents;
-		// optimized case
-		bool isPoint;
 		// returned from trace call
 		trace_t trace;
+		// optimized case
+		bool isPoint;
 
 	public:
 		traceWork_t();

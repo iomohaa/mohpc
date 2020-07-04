@@ -1067,3 +1067,8 @@ const char* TokenParser::Token(void)
 {
 	return token.c_str();
 }
+
+const char* MOHPC::TokenParser::GetCurrentScript() const
+{
+	return script_p;
+}

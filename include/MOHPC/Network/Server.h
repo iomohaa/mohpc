@@ -7,6 +7,7 @@
 #include "../Managers/NetworkManager.h"
 #include "ClientGame.h"
 #include "GamespyRequest.h"
+#include "../Object.h"
 #include <functional>
 
 namespace MOHPC
@@ -85,6 +86,8 @@ namespace MOHPC
 
 		class EngineServer : public ITickableNetwork, public std::enable_shared_from_this<EngineServer>
 		{
+			MOHPC_OBJECT_DECLARATION(EngineServer);
+
 		private:
 			using ConnectResponse = std::function<void(uint16_t qport, uint32_t challenge, const protocolType_c& protoType, ClientInfo&& cInfo, const char* errorMessage)>;
 

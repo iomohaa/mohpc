@@ -106,6 +106,11 @@ Pmove::Pmove()
 {
 }
 
+pmove_t& Pmove::get()
+{
+	return pm;
+}
+
 /*
 ===============
 PM_AddEvent
@@ -1612,29 +1617,30 @@ void Pmove::move()
 {
 	unsigned int finalTime = pm.cmd.serverTime;
 
-	if( finalTime < pm.ps->commandTime ) {
-		return;	// should not happen
+	if (finalTime < pm.ps->commandTime)
+	{
+		// should not happen
+		return;
 	}
 
-	if( finalTime > pm.ps->commandTime + 1000 ) {
+	if (finalTime > pm.ps->commandTime + 1000) {
 		pm.ps->commandTime = finalTime - 1000;
 	}
 
 	// chop the move up if it is too long, to prevent framerate
 	// dependent behavior
-	while( pm.ps->commandTime != finalTime ) {
+	while (pm.ps->commandTime != finalTime) {
 		int		msec;
 
 		msec = finalTime - pm.ps->commandTime;
 
-		if( pm.pmove_fixed )
+		if (pm.pmove_fixed)
 		{
-			if( msec > pm.pmove_msec )
-			{
+			if (msec > pm.pmove_msec) {
 				msec = pm.pmove_msec;
 			}
 		}
-		else if( msec > 66 ) {
+		else if (msec > 66) {
 			msec = 66;
 		}
 

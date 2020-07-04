@@ -19,6 +19,15 @@ namespace MOHPC
 		Container<class ITickableNetwork*> tickables;
 
 	public:
+		NetworkManager();
+		~NetworkManager();
+
+		NetworkManager(const NetworkManager&) = delete;
+		NetworkManager& operator=(const NetworkManager&) = delete;
+		NetworkManager(NetworkManager&&) = delete;
+		NetworkManager& operator=(NetworkManager&&) = delete;
+
+		MOHPC_EXPORTS bool hasAnyTicks() const;
 		MOHPC_EXPORTS void processTicks();
 
 		MOHPC_EXPORTS void addTickable(ITickableNetwork* tickable);

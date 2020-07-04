@@ -21,7 +21,7 @@ namespace MOHPC
 		spriteType_e spriteType;
 		union {
 			SharedPtr<class TIKI>* Tiki;
-			class ShaderRef* Shader;
+			SharedPtr<class Shader>* Shader;
 			void* pointerValue;
 		};
 

@@ -773,17 +773,24 @@ FileEntryList FileManager::ListFilteredFiles(const char* Directory, const MOHPC:
 			const std::string currentDir = GP->Directory.generic_string();
 			const std::string requestedFullDir = std::string(currentDir).append(requestedDir, 1, std::string::npos);
 
-			if (bRecursive)
+			try
 			{
-				for (auto it = fs::recursive_directory_iterator(requestedFullDir, std::filesystem::directory_options::skip_permission_denied); it != fs::recursive_directory_iterator(); it++) {
-					InsertVirtualFile(currentDir, it->path(), requestedDir, Extensions, fileList);
+				if (bRecursive)
+				{
+					for (auto it = fs::recursive_directory_iterator(requestedFullDir, std::filesystem::directory_options::skip_permission_denied); it != fs::recursive_directory_iterator(); it++) {
+						InsertVirtualFile(currentDir, it->path(), requestedDir, Extensions, fileList);
+					}
+				}
+				else
+				{
+					for (auto it = fs::directory_iterator(requestedFullDir, std::filesystem::directory_options::skip_permission_denied); it != fs::directory_iterator(); it++) {
+						InsertVirtualFile(currentDir, it->path(), requestedDir, Extensions, fileList);
+					}
 				}
 			}
-			else
+			catch (std::filesystem::filesystem_error&)
 			{
-				for (auto it = fs::directory_iterator(requestedFullDir, std::filesystem::directory_options::skip_permission_denied); it != fs::directory_iterator(); it++) {
-					InsertVirtualFile(currentDir, it->path(), requestedDir, Extensions, fileList);
-				}
+
 			}
 		}
 	}

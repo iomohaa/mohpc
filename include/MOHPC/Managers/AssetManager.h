@@ -127,7 +127,7 @@ namespace MOHPC
 			SharedPtr<T> A = staticPointerCast<T>(CacheFindAsset(Filename));
 			if (!A)
 			{
-				A = SharedPtr<T>(T::CreateInstance());
+				A = SharedPtr<T>(T::CreateInstance(), &T::Delete);
 				if (!CacheLoadAsset(Filename, A)) {
 					return nullptr;
 				}

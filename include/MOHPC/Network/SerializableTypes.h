@@ -207,10 +207,10 @@ namespace MOHPC
 		entityState_t* GetState() const { return &state; }
 	};
 
-	class MOHPC_EXPORTS SerializableEntityState_ver17 : public SerializableEntityState
+	class MOHPC_EXPORTS SerializableEntityState_ver15 : public SerializableEntityState
 	{
 	public:
-		SerializableEntityState_ver17(entityState_t& inState, entityNum_t newNum)
+		SerializableEntityState_ver15(entityState_t& inState, entityNum_t newNum)
 			: SerializableEntityState(inState, newNum)
 		{}
 

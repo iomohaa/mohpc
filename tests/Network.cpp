@@ -153,38 +153,11 @@ public:
 
 		MOHPC::Network::netadr_t adr;
 		adr.ip[0] = 127; adr.ip[1] = 0; adr.ip[2] = 0; adr.ip[3] = 1;
-		//adr.ip[0] = 0; adr.ip[1] = 0; adr.ip[2] = 0; adr.ip[3] = 1;
+		//adr.ip[0] = 0; adr.ip[1] = 0; adr.ip[2] = 0; adr.ip[3] = 0;
 
 		adr.port = 12203;
 
-		MOHPC::Network::EngineServerPtr clientBase = MOHPC::makeShared<MOHPC::Network::EngineServer>(manager, adr);
-		//MOHPC::Network::ClientInstance netInst(nullptr);
-
-		/*
-		clientBase->getInfo([](const MOHPC::ReadOnlyInfo* info)
-			{
-				for (MOHPC::InfoIterator it = info->createConstIterator(); it; ++it)
-				{
-					std::cout << "key: " << it.key() << std::endl;
-					std::cout << "value: " << it.value() << std::endl;
-				}
-			}, []()
-			{
-				std::cout << "timed out" << std::endl;
-			});
-		*/
-
-		/*
-		clientBase->getStatus(adr, [](const MOHPC::ReadOnlyInfo* info)
-			{
-				for (MOHPC::InfoIterator it = info->createConstIterator(); it; ++it)
-				{
-					std::cout << "key: " << it.key() << std::endl;
-					std::cout << "value: " << it.value() << std::endl;
-				}
-			});
-		*//*
-
+		MOHPC::Network::EngineServerPtr clientBase = MOHPC::Network::EngineServer::create(manager, adr); //MOHPC::makeShared<MOHPC::Network::EngineServer>(manager, adr);
 		/*
 		MOHPC::Network::ServerList master(manager, MOHPC::Network::gameListType_e::mohaa);
 		master.fetch(
@@ -212,6 +185,7 @@ public:
 		using namespace MOHPC::Network;
 
 		MOHPC::Network::ClientGameConnectionPtr connection;
+		bool wantsDisconnect = false;
 
 		float forwardValue = 0.f;
 		float rightValue = 0.f;
@@ -224,7 +198,7 @@ public:
 		MOHPC::Network::ClientInfo clientInfo;
 		clientInfo.setName("mohpc_test");
 		clientInfo.setRate(25000);
-		clientBase->connect(std::move(clientInfo), [&logPtr, &connection, &clientBase, &forwardValue, &rightValue, &angle, &cm](const MOHPC::Network::ClientGameConnectionPtr& cg, const char* errorMessage)
+		clientBase->connect(std::move(clientInfo), [&logPtr, &connection, &wantsDisconnect, &clientBase, &forwardValue, &rightValue, &angle, &cm](const MOHPC::Network::ClientGameConnectionPtr& cg, const char* errorMessage)
 			{
 				if (errorMessage)
 				{
@@ -239,7 +213,7 @@ public:
 					});
 
 				CGameModuleBase& cgame = connection->getCGModule();
-				cgame.setCallback<CGameHandlers::EntityAdded>([&connection](const EntityInfo& entity)
+				fnHandle_t cb = cgame.setCallback<CGameHandlers::EntityAdded>([&connection](const EntityInfo& entity)
 					{
 						const char* modelName = connection->getGameState().getConfigString(CS_MODELS + entity.currentState.modelindex);
 						MOHPC_LOG(VeryVerbose, "new entity %d, model \"%s\"", entity.currentState.number, modelName);
@@ -299,6 +273,17 @@ public:
 						MOHPC_LOG(VeryVerbose, "voice %d: sound \"%s\"", num++, soundName);
 					});
 
+				connection->setCallback<ClientHandlers::Disconnect>([&wantsDisconnect](const char* reason)
+					{
+						MOHPC_LOG(VeryVerbose, "Requested disconnect. Reason -> \"%s\"", reason ? reason : "");
+						wantsDisconnect = true;
+					});
+
+				connection->setCallback<ClientHandlers::Timeout>([]()
+					{
+						MOHPC_LOG(VeryVerbose, "Server connection timed out");
+					});
+
 				connection->setCallback<ClientHandlers::UserInput>([&forwardValue, &rightValue, &angle, &cgame, &cm](usercmd_t& ucmd, usereyes_t& eyeinfo)
 				{
 					eyeinfo.setAngle(30.f, angle);
@@ -325,12 +310,14 @@ public:
 						cgame.trace(cm, tr, start, MOHPC::Vector(-15, -15, 0), MOHPC::Vector(15, 15, 96), end, 0, ContentFlags::MASK_PLAYERSOLID, true, true);
 					}
 				});
+
+
 			});
 
 		char buf[512];
 		size_t count = 0;
 
-		for (;;)
+		while(!wantsDisconnect)
 		{
 			if (kbhit())
 			{
@@ -344,10 +331,7 @@ public:
 
 					const char* cmd = parser.GetToken(false);
 
-					if (!strcmp(cmd, "disconnect")) {
-						break;
-					}
-					else if (!strcmp(cmd, "forward")) {
+					if (!strcmp(cmd, "forward")) {
 						forwardValue = 1.f;
 					}
 					else if(!strcmp(cmd, "backward")) {
@@ -415,7 +399,7 @@ public:
 					else
 					{
 						if (connection) {
-							connection->addReliableCommand(buf);
+							connection->disconnect();
 						}
 					}
 				}

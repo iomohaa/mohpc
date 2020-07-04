@@ -133,7 +133,7 @@ namespace MOHPC
 		uintptr_t receive(const uint8_t* fin, size_t& bloc) const
 		{
 			const constNode_t* node = tree;
-			while (node && node->symbol == INTERNAL_NODE) {
+			while (node && node->symbol == Huff::INTERNAL_NODE) {
 				node = Huff::getBit(fin, bloc) ? node->right : node->left;
 			}
 			return node ? node->symbol : 0;

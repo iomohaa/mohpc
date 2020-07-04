@@ -119,6 +119,8 @@ void MOHPC::Network::LANServer::query(Callbacks::Query&& response, Callbacks::Se
 	response(info);
 }
 
+MOHPC_OBJECT_DEFINITION(EngineServer);
+
 EngineServer::EngineServer(NetworkManager* inManager, const netadr_t& inAddress)
 	: ITickableNetwork(inManager)
 	, socket(ISocketFactory::get()->createUdp(addressType_e::IPv4))
@@ -182,7 +184,8 @@ void EngineServer::onConnect(const Callbacks::Connect result, uint16_t qport, ui
 		// Create a net channel
 		INetchanPtr newChannel = makeShared<Netchan>(socket, address, qport);
 		// And pass it to the new client game connection
-		ClientGameConnectionPtr connection = makeShared<ClientGameConnection>(
+		// Using CreatePtr to use the deleter from the library itself
+		ClientGameConnectionPtr connection = ClientGameConnection::create(
 			getManager(),
 			newChannel,
 			address,
@@ -202,23 +205,6 @@ void EngineServer::onConnect(const Callbacks::Connect result, uint16_t qport, ui
 		result(nullptr, errorMessage);
 	}
 }
-
-#if 0
-INetchan* IClient::getNetchan() const
-{
-	return netchan.get();
-}
-
-void ClientInstance::setClient(const IClientPtr& newClient)
-{
-	client = newClient;
-}
-
-IClientPtr ClientInstance::getClient() const
-{
-	return client;
-}
-#endif
 
 ClientInfo::ClientInfo()
 	: snaps(20)

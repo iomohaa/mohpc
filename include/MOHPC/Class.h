@@ -2,6 +2,7 @@
 
 #include "Global.h"
 #include "SafePtr.h"
+#include "Utilities/SharedPtr.h"
 
 namespace MOHPC
 {
@@ -11,10 +12,14 @@ namespace MOHPC
 #define CLASS_BODY(c) \
 	public: \
 	MOHPC_EXPORTS static c* CreateInstance(); \
+	MOHPC_EXPORTS static SharedPtr<c> CreatePtr(); \
+	MOHPC_EXPORTS static void Delete(c* instance); \
 	private:
 
 #define CLASS_DEFINITION(c) \
-	c* c::CreateInstance() { return new c(); }
+	c* c::CreateInstance() { return new c(); } \
+	SharedPtr<c> c::CreatePtr() { return SharedPtr<c>(new c(), &c::Delete); } \
+	void c::Delete(c* instance) { delete instance; }
 
 	class Class : public SafePtrClass
 	{

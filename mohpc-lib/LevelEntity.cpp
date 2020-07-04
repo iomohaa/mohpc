@@ -233,3 +233,8 @@ PropertyMapIterator MOHPC::LevelEntity::GetIterator() const
 {
 	return propertyObject.GetIterator();
 }
+
+const MOHPC::PropertyObject& LevelEntity::GetPropertyObject() const
+{
+	return propertyObject;
+}

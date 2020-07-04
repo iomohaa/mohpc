@@ -57,8 +57,8 @@ namespace MOHPC
 	{
 	public:
 		void send(const uint8_t* buf, size_t size) {};
-		size_t receive(uint8_t* buf, size_t size) {};
-		bool hasData() {};
+		size_t receive(uint8_t* buf, size_t size) { return 0; };
+		bool hasData() { return false; };
 		size_t receiveSize() { return 0; }
 	};
 

@@ -1419,10 +1419,10 @@ void EmitterListener::SetModel(Event* ev)
 		{
 			resourceName.StripExtension();
 			emitter->sprite.spriteType = Sprite::ST_Shader;
-			ShaderRef shader = GetManager<ShaderManager>()->GetShader(resourceName);
+			ShaderPtr shader = GetManager<ShaderManager>()->GetShader(resourceName);
 			if (shader)
 			{
-				emitter->sprite.Shader = new ShaderRef(std::move(shader));
+				emitter->sprite.Shader = new ShaderPtr(std::move(shader));
 			}
 		}
 		else if (!str::icmp(extension, "tik"))

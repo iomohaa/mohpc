@@ -37,6 +37,11 @@ int main(int argc, char *argv[])
 	{
 		MOHPC::AssetManager AM;
 		MOHPC::FileManager* FM = AM.GetFileManager();
+	}
+
+	{
+		MOHPC::AssetManager AM;
+		MOHPC::FileManager* FM = AM.GetFileManager();
 
 		printf("Loading pak files...\n");
 
@@ -46,7 +51,7 @@ int main(int argc, char *argv[])
 		FM->FillGameDirectory("/mnt/i/Jeux/Mohaa");
 #endif
 		{
-			MOHPC::FileEntryList entries = FM->ListFilteredFiles("/", "", true, false);
+			MOHPC::FileEntryList entries = FM->ListFilteredFiles("/maps", "", true, false);
 		}
 
 		IUnitTest::runAll(AM);

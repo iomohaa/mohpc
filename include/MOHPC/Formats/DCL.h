@@ -12,7 +12,7 @@ namespace MOHPC
 	struct DCLMarkDef
 	{
 		/** Shader used for this decal. */
-		ShaderRef shader;
+		ShaderPtr shader;
 
 		/** Location of the decal. */
 		Vector position;

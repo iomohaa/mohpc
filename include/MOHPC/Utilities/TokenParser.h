@@ -77,6 +77,7 @@ namespace MOHPC
 		MOHPC_EXPORTS const char* GetLine(bool crossline);
 		MOHPC_EXPORTS const char* GetRaw(void);
 		MOHPC_EXPORTS const char* GetString(bool crossline, bool escape = true);
+		MOHPC_EXPORTS const char* GetCurrentScript() const;
 		MOHPC_EXPORTS bool GetSpecific(const char* string);
 		MOHPC_EXPORTS bool GetBoolean(bool crossline);
 		MOHPC_EXPORTS int GetInteger(bool crossline);

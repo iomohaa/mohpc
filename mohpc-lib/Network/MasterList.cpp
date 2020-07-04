@@ -37,6 +37,8 @@ MOHPC::Network::IServerList::IServerList(NetworkManager* inManager)
 {
 }
 
+MOHPC_OBJECT_DEFINITION(ServerList);
+
 Network::ServerList::ServerList(NetworkManager* inManager, gameListType_e type)
 	: IServerList(inManager)
 	, gameType(type)
@@ -294,6 +296,8 @@ void Network::ServerList::Request_FetchServers::nullCallback(const IServerPtr& s
 
 	MOHPC_LOG(VeryVerbose, "Request_FetchServers::nullCallback: found %d.%d.%d.%d:%d", address.ip[0], address.ip[1], address.ip[2], address.ip[3], address.port);
 }
+
+MOHPC_OBJECT_DEFINITION(ServerListLAN);
 
 ServerListLAN::ServerListLAN(NetworkManager* inManager)
 	: IServerList(inManager)

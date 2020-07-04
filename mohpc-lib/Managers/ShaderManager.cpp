@@ -2261,7 +2261,7 @@ void ShaderManager::AddShader(const ShaderPtr &shader)
 	*/
 }
 
-ShaderRef ShaderManager::GetShader(const char *name) const
+ShaderPtr ShaderManager::GetShader(const char *name) const
 {
 	str newname;
 
@@ -2287,10 +2287,10 @@ ShaderRef ShaderManager::GetShader(const char *name) const
 	}
 	*/
 
-	return pShader->get();
+	return *pShader;
 }
 
-ShaderRef ShaderManager::GetDefaultShader() const
+Shader* ShaderManager::GetDefaultShader() const
 {
 	return &m_defaultshader;
 }

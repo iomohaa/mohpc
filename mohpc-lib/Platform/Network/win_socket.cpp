@@ -95,7 +95,7 @@ public:
 			&addrSz
 		);
 
-		memcpy(from.ip, &fromAddr.sin_addr, sizeof(fromAddr));
+		memcpy(from.ip, &fromAddr.sin_addr, sizeof(from.ip));
 		from.type = MOHPC::Network::netadrtype_t::IP;
 		from.port = htons(fromAddr.sin_port);
 

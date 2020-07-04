@@ -1194,12 +1194,12 @@ void MOHPC::SerializableEntityState::LoadDelta(MSG& msg, const ISerializableMess
 	// FIXME: not sure if origin, angles and bone_angles should be set
 }
 
-void MOHPC::SerializableEntityState_ver17::SaveDelta(MSG& msg, const ISerializableMessage* from)
+void MOHPC::SerializableEntityState_ver15::SaveDelta(MSG& msg, const ISerializableMessage* from)
 {
 
 }
 
-void MOHPC::SerializableEntityState_ver17::LoadDelta(MSG& msg, const ISerializableMessage* from)
+void MOHPC::SerializableEntityState_ver15::LoadDelta(MSG& msg, const ISerializableMessage* from)
 {
 	MsgTypesHelper msgHelper(msg);
 

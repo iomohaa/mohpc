@@ -36,7 +36,7 @@ MOHPC::Sprite& MOHPC::Sprite::operator=(const Sprite& sprite)
 		}
 		else if (spriteType == ST_Shader)
 		{
-			Shader = new ShaderRef(*sprite.Shader);
+			Shader = new ShaderPtr(*sprite.Shader);
 		}
 	}
 

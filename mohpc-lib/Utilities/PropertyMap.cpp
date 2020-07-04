@@ -222,10 +222,43 @@ void MOHPC::PropertyObject::clear()
 	keyValues.clear();
 }
 
-PropertyMapIterator::PropertyMapIterator(const PropertyMap& inMap)
-	: map(inMap)
+bool PropertyObject::hasAnyProperty() const
 {
-	it = new PropertyMap::const_iterator(map.begin());
+	return keyValues.size() > 0;
+}
+
+size_t PropertyObject::count() const
+{
+	return keyValues.size();
+}
+
+PropertyMapIterator::PropertyMapIterator(const PropertyMap& inMap)
+	: map(&inMap)
+{
+	it = new PropertyMap::const_iterator(map->begin());
+}
+
+PropertyMapIterator::PropertyMapIterator(PropertyMapIterator&& other)
+{
+	it = other.it;
+	map = other.map;
+	other.it = nullptr;
+	other.map = nullptr;
+}
+
+PropertyMapIterator::PropertyMapIterator()
+{
+	it = nullptr;
+	map = nullptr;
+}
+
+PropertyMapIterator& PropertyMapIterator::operator=(PropertyMapIterator&& other)
+{
+	it = other.it;
+	map = other.map;
+	other.it = nullptr;
+	other.map = nullptr;
+	return *this;
 }
 
 PropertyMapIterator::~PropertyMapIterator()
@@ -235,7 +268,7 @@ PropertyMapIterator::~PropertyMapIterator()
 
 PropertyMapIterator::operator bool() const
 {
-	return *it != map.end();
+	return it && *it != map->end();
 }
 
 const PropertyDef& PropertyMapIterator::key() const
@@ -254,3 +287,7 @@ PropertyMapIterator& PropertyMapIterator::operator++()
 	return *this;
 }
 
+const PropertyMap* PropertyMapIterator::getMap() const
+{
+	return map;
+}

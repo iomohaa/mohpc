@@ -62,7 +62,6 @@ namespace MOHPC
 
 		MOHPC_EXPORTS PropertyMapIterator GetIterator() const;
 
-		// Can't be used outside of the module due to STL cross-boundaries
-		const PropertyMap& GetPropertyMap() const;
+		MOHPC_EXPORTS const PropertyObject& GetPropertyObject() const;
 	};
 }

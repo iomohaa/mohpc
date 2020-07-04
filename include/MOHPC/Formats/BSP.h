@@ -55,7 +55,7 @@ namespace MOHPC
 			uint32_t subdivisions;
 			str fenceMaskImage;
 
-			ShaderRef shader;
+			ShaderPtr shader;
 		};
 
 		struct Plane
@@ -481,34 +481,34 @@ namespace MOHPC
 		MOHPC_EXPORTS size_t GetNumBrushes() const;
 
 		/** Returns the brush at the specified number. */
-		MOHPC_EXPORTS const Brush *GetBrush(size_t brushNum) const;
-
-		/** Returns the number of submodels. */
-		MOHPC_EXPORTS size_t GetNumSubmodels() const;
-
-		/** Returns the leaf at the specified number. */
-		MOHPC_EXPORTS const Leaf *GetLeaf(size_t leafNum) const;
+		MOHPC_EXPORTS const Brush* GetBrush(size_t brushNum) const;
 
 		/** Returns the number of leafs. */
 		MOHPC_EXPORTS size_t GetNumLeafs() const;
 
-		/** Returns the node at the specified number. */
-		MOHPC_EXPORTS const Node* GetNode(size_t nodeNum) const;
+		/** Returns the leaf at the specified number. */
+		MOHPC_EXPORTS const Leaf* GetLeaf(size_t leafNum) const;
 
 		/** Returns the number of nodes. */
 		MOHPC_EXPORTS size_t GetNumNodes() const;
 
-		/** Returns the leaf brush at the specified number. */
-		MOHPC_EXPORTS uintptr_t GetLeafBrush(size_t leafBrushNum) const;
+		/** Returns the node at the specified number. */
+		MOHPC_EXPORTS const Node* GetNode(size_t nodeNum) const;
 
 		/** Returns the number of leaf brushes. */
 		MOHPC_EXPORTS size_t GetNumLeafBrushes() const;
 
-		/** Returns the leaf surface at the specified number. */
-		MOHPC_EXPORTS uintptr_t GetLeafSurface(size_t leafSurfNum) const;
+		/** Returns the leaf brush at the specified number. */
+		MOHPC_EXPORTS uintptr_t GetLeafBrush(size_t leafBrushNum) const;
 
 		/** Returns the number of leaf surfaces. */
 		MOHPC_EXPORTS size_t GetNumLeafSurfaces() const;
+
+		/** Returns the leaf surface at the specified number. */
+		MOHPC_EXPORTS uintptr_t GetLeafSurface(size_t leafSurfNum) const;
+
+		/** Returns the number of submodels. */
+		MOHPC_EXPORTS size_t GetNumSubmodels() const;
 
 		/** Returns the submodel at the specified number. */
 		MOHPC_EXPORTS const Model *GetSubmodel(size_t submodelNum) const;

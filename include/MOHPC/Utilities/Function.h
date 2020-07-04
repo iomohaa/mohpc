@@ -1,9 +1,11 @@
 #pragma once
 
+#include "../Script/Container.h"
 #include <functional>
 
 namespace MOHPC
 {
+	/*
 	template <class>
 	// false value attached to a dependent name (for static_assert)
 	constexpr bool AlwaysFalse = false;
@@ -54,5 +56,76 @@ namespace MOHPC
 		Function(std::function<Type>&& inFunc)
 			: FunctionBase(std::move(inFunc))
 		{}
+	};
+	*/
+
+	template<typename T>
+	using Function = std::function<T>;
+
+	using fnHandle_t = uint32_t;
+
+	template<typename T>
+	class FunctionList
+	{
+	private:
+		struct FnStorage
+		{
+			T func;
+			fnHandle_t id;
+
+		public:
+			FnStorage(uint32_t inId, T&& inFunc)
+				: func(std::forward<T>(inFunc))
+				, id(inId)
+			{}
+
+			//FnStorage(FnStorage&& other) = default;
+			//FnStorage& operator=(FnStorage&& other) = default;
+			// Non-copyable
+			//FnStorage(const FnStorage&& other) = delete;
+			//FnStorage& operator=(const FnStorage&& other) = delete;
+		};
+
+	private:
+		Container<FnStorage> functionList;
+		fnHandle_t cid;
+
+	public:
+		FunctionList()
+			: cid(0)
+		{}
+
+		fnHandle_t add(T&& func)
+		{
+			// Add the function and return the id
+			new(functionList) FnStorage(++cid, std::forward<T>(func));
+
+			// Return the handle
+			return cid;
+		}
+
+		void remove(fnHandle_t handle)
+		{
+			for (size_t i = functionList.NumObjects(); i > 0; i--)
+			{
+				FnStorage& fn = functionList[i - 1];
+				if (fn.id == handle)
+				{
+					functionList.RemoveObjectAt(i);
+					return;
+				}
+			}
+		}
+
+		template<typename...Args>
+		void broadcast(Args&&... args) const
+		{
+			// Call all registered functions
+			for (size_t i = functionList.NumObjects(); i > 0; i--)
+			{
+				const FnStorage& fn = functionList[i - 1];
+				fn.func(std::forward<Args>(args)...);
+			}
+		}
 	};
 }

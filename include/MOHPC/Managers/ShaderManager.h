@@ -572,8 +572,8 @@ namespace MOHPC
 		MOHPC_EXPORTS ShaderPtr AllocShader(ShaderContainer *shaderContainer);
 		MOHPC_EXPORTS void FreeShader(const ShaderPtr& shader);
 		MOHPC_EXPORTS void AddShader(const ShaderPtr& shader);
-		MOHPC_EXPORTS ShaderRef GetShader(const char *name) const;
-		MOHPC_EXPORTS ShaderRef GetDefaultShader() const;
+		MOHPC_EXPORTS ShaderPtr GetShader(const char *name) const;
+		MOHPC_EXPORTS Shader* GetDefaultShader() const;
 		MOHPC_EXPORTS ImageCache* FindImage(const char *name);
 		MOHPC_EXPORTS size_t GetNumShaderContainers() const;
 		MOHPC_EXPORTS const ShaderContainer* GetShaderContainer(size_t num) const;

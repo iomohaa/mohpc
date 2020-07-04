@@ -4,6 +4,23 @@
 using namespace MOHPC;
 using namespace Network;
 
+netadr_t::netadr_t()
+	: type(netadrtype_t::Bad)
+	, ip{ 0 }
+	, ipx{ 0 }
+	, port(0)
+{}
+
+bool netadr_t::operator==(const netadr_t& other) const
+{
+	return *(uint32_t*)ip == *(uint32_t*)other.ip;
+}
+
+bool netadr_t::operator!=(const netadr_t& other) const
+{
+	return *(uint32_t*)ip != *(uint32_t*)other.ip;
+}
+
 usercmd_t::usercmd_t(uint32_t inServerTime)
 	: usercmd_t()
 {
@@ -154,8 +171,6 @@ entityState_t::entityState_t()
 	, renderfx(0)
 	, shader_data{ 0.f }
 	, shader_time(0.f)
-	, quat{ 0.f }
-
 {
 }
 

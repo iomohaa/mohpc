@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include "../Utilities/HandlerList.h"
 #include "../Utilities/PropertyMap.h"
+#include "../Utilities/Function.h"
 #include "../Vector.h"
 #include "Configstring.h"
 #include "InfoTypes.h"
@@ -30,7 +31,7 @@ namespace MOHPC
 		static constexpr unsigned int DF_NO_FALLING				= (1 << 3);
 		/** This flag doesn't seem to be used at all. */
 		static constexpr unsigned int DF_INSTANT_ITEMS			= (1 << 4);
-		/** If anyone can walk across a TriggerChangeLevel without actually switching level. */
+		/** TriggerChangeLevel won't switch level. */
 		static constexpr unsigned int DF_SAME_LEVEL				= (1 << 5);
 		/** Prevent players from having an armor. */
 		static constexpr unsigned int DF_NO_ARMOR				= (1 << 11);
@@ -46,7 +47,10 @@ namespace MOHPC
 		static constexpr unsigned int DF_ALLOW_LEAN				= (1 << 18);
 		/** Specify that G43 is replaced with Kar98. */
 		static constexpr unsigned int DF_OLD_SNIPERRIFLE		= (1 << 19);
-		// New flags since BT
+
+		/**
+		 * New flags since BT
+		 */
 		/** Axis use a shotgun rather than kar98 mortar. */
 		static constexpr unsigned int DF_GERMAN_SHOTGUN			= (1 << 20);
 		/** Allow landmine to be used on AA maps. */
@@ -56,18 +60,22 @@ namespace MOHPC
 		 * Weapon type filtering
 		 */
 		/** Disallow the usage of rifles. */
-		static constexpr unsigned int DF_BAN_WEAP_RIFLE			= (1 << 26);
+		static constexpr unsigned int DF_BAN_WEAP_RIFLE			= (1 << 22);
 		/** Disallow the usage of rifles. */
-		static constexpr unsigned int DF_BAN_WEAP_SNIPER		= (1 << 27);
+		static constexpr unsigned int DF_BAN_WEAP_SNIPER		= (1 << 23);
 		/** Disallow the usage of snipers. */
-		static constexpr unsigned int DF_BAN_WEAP_SMG			= (1 << 28);
+		static constexpr unsigned int DF_BAN_WEAP_SMG			= (1 << 24);
 		/** Disallow the usage of sub-machine guns. */
-		static constexpr unsigned int DF_BAN_WEAP_MG			= (1 << 29);
+		static constexpr unsigned int DF_BAN_WEAP_MG			= (1 << 25);
 		/** Disallow the usage of machine guns. */
-		static constexpr unsigned int DF_BAN_WEAP_HEAVY			= (1 << 30);
+		static constexpr unsigned int DF_BAN_WEAP_HEAVY			= (1 << 26);
 		/** Disallow the usage of shotgun. */
-		static constexpr unsigned int DF_BAN_WEAP_SHOTGUN		= (1 << 31);
+		static constexpr unsigned int DF_BAN_WEAP_SHOTGUN		= (1 << 27);
+		/** Disallow the usage of landmine. */
+		static constexpr unsigned int DF_BAN_WEAP_LANDMINE		= (1 << 28);
 	}
+
+	class Pmove;
 
 	namespace Network
 	{
@@ -363,6 +371,15 @@ namespace MOHPC
 			struct EntityModified : public HandlerNotifyBase<void(const EntityInfo& entity)> {};
 
 			/**
+			 * Called each frame for replaying move that have not been executed yet on server.
+			 *
+			 * @param	ucmd	Input to replay.
+			 * @param	ps		Player state where to apply movement.
+			 * @param	msec	delta time between last cmd time and playerState command time. Usually client's frametime.
+			 */
+			struct ReplayMove : public HandlerNotifyBase<void(const usercmd_t& ucmd, playerState_t& ps, uint32_t msec)> {};
+
+			/**
 			 * Called to print a message on console.
 			 *
 			 * @param	type	Type of the message (see hudMessage_e).
@@ -419,11 +436,11 @@ namespace MOHPC
 		public:
 			entityState_t currentState;
 			entityState_t nextState;
-			bool currentValid;
-			bool interpolate;
-			bool teleported;
-			bool notified;
 			uint32_t snapshotTime;
+			bool currentValid : 1;
+			bool interpolate : 1;
+			bool teleported : 1;
+			bool notified : 1;
 
 		public:
 			EntityInfo();
@@ -433,13 +450,13 @@ namespace MOHPC
 		{
 			float density;
 			float speed;
-			uint32_t speedVary;
-			uint32_t slant;
 			float length;
 			float minDist;
 			float width;
-			str shader[16];
+			uint32_t speedVary;
+			uint32_t slant;
 			uint32_t numShaders;
+			str shader[16];
 
 		public:
 			rain_t();
@@ -481,20 +498,17 @@ namespace MOHPC
 		struct environment_t
 		{
 		public:
-			bool farplaneCull;
-			float farplaneDistance;
 			Vector farplaneColor;
+			Vector farplaneColorOverride;
+			float farplaneDistance;
 			float skyAlpha;
-			bool skyPortal;
-			// New in SH and BT
-			//
 			float skyboxFarplane;
 			float skyboxSpeed;
 			float farplaneBias;
 			float farclipOverride;
-			Vector farplaneColorOverride;
-			bool renderTerrain;
-			//
+			bool farplaneCull : 1;
+			bool skyPortal : 1;
+			bool renderTerrain : 1;
 
 		public:
 			environment_t();
@@ -508,22 +522,22 @@ namespace MOHPC
 			/** Fog color. */
 			MOHPC_EXPORTS const Vector& getFarplaneColor() const;
 
-			/** Fog bias. */
+			/** SH/BT: Fog bias. */
 			MOHPC_EXPORTS float getFarplaneBias() const;
 
-			/** Farplane in the skybox. */
+			/** SH/BT: Farplane in the skybox. */
 			MOHPC_EXPORTS float getSkyboxFarplane() const;
 
-			/** Skybox movement speed. */
+			/** SH/BT: Skybox movement speed. */
 			MOHPC_EXPORTS float getSkyboxSpeed() const;
 
-			/** Farclip override. */
+			/** SH/BT: Farclip override. */
 			MOHPC_EXPORTS float getFarclipOverride() const;
 
-			/** Colors for temporarily overriding fog. */
+			/** SH/BT: Colors for temporarily overriding fog. */
 			MOHPC_EXPORTS const Vector& getFarplaneColorOverride() const;
 
-			/** True if terrain should be rendered. */
+			/** SH/BT: True if terrain should be rendered. */
 			MOHPC_EXPORTS bool shouldRenderTerrain() const;
 
 			/** Sky alpha. */
@@ -666,8 +680,23 @@ namespace MOHPC
 			str name;
 			teamType_e team;
 			PropertyObject properties;
+
+		public:
+			clientInfo_t();
+
+			/** Name of the client. */
+			MOHPC_EXPORTS const char* getName() const;
+
+			/** Client's current team. */
+			MOHPC_EXPORTS teamType_e getTeam() const;
+
+			/** List of misc client properties. */
+			MOHPC_EXPORTS const PropertyObject& getProperties() const;
 		};
 
+		/**
+		 * Parsed server info data.
+		 */
 		class cgsInfo
 		{
 		public:
@@ -798,6 +827,9 @@ namespace MOHPC
 			MOHPC_EXPORTS const char* getVoteString() const;
 		};
 
+		/**
+		 * Various imports for CGame.
+		 */
 		class CGameImports
 		{
 		public:
@@ -812,6 +844,9 @@ namespace MOHPC
 			std::function<const gameState_t&()> getGameState;
 		};
 
+		/**
+		 * Base CG module, contains most implementations.
+		 */
 		class CGameModuleBase
 		{
 		private:
@@ -847,6 +882,7 @@ namespace MOHPC
 				MOHPC_HANDLERLIST_HANDLER1_NODEF(CGameHandlers::EntityAdded, entityAddedHandler, const EntityInfo&);
 				MOHPC_HANDLERLIST_HANDLER1_NODEF(CGameHandlers::EntityRemoved, entityRemovedHandler, const EntityInfo&);
 				MOHPC_HANDLERLIST_HANDLER1_NODEF(CGameHandlers::EntityModified, entityModifiedHandler, const EntityInfo&);
+				MOHPC_HANDLERLIST_HANDLER3(CGameHandlers::ReplayMove, replayCmdHandler, const usercmd_t&, playerState_t&, uint32_t);
 				MOHPC_HANDLERLIST_HANDLER2_NODEF(CGameHandlers::ServerCommand_Print, serverCommandPrintHandler, hudMessage_e, const char*);
 				MOHPC_HANDLERLIST_HANDLER2_NODEF(CGameHandlers::ServerCommand_HudPrint, scmdHudPrintHandler, hudMessage_e, const char*);
 				MOHPC_HANDLERLIST_HANDLER1(CGameHandlers::ServerCommand_Scores, scmdScoresHandler, const Scoreboard&);
@@ -860,26 +896,22 @@ namespace MOHPC
 			CGameImports imports;
 
 		private:
-			HandlerListCGame handlerList;
+			uint64_t svTime;
 			TraceFunction traceFunction;
 			PointContentsFunction pointContentsFunction;
-			bool nextFrameTeleport;
-			bool thisFrameTeleport;
-			bool validPPS;
-			bool nextFrameCameraCut;
-			float frameInterpolation;
-			playerState_t predictedPlayerState;
-			uint32_t physicsTime;
-			Vector predictedError;
-			Vector cameraAngles;
-			Vector cameraOrigin;
-			float cameraFov;
 			uintptr_t processedSnapshotNum;
 			uintptr_t latestSnapshotNum;
 			uintptr_t latestCommandSequence;
-			uint64_t svTime;
 			size_t numSolidEntities;
 			size_t numTriggerEntities;
+			uint32_t physicsTime;
+			float frameInterpolation;
+			float cameraFov;
+			Vector predictedError;
+			Vector cameraAngles;
+			Vector cameraOrigin;
+			playerState_t predictedPlayerState;
+			HandlerListCGame handlerList;
 			CollisionWorld boxHull;
 			cgsInfo cgs;
 			environment_t environment;
@@ -893,6 +925,11 @@ namespace MOHPC
 			EntityInfo clientEnts[MAX_GENTITIES];
 			EntityInfo* solidEntities[MAX_ENTITIES_IN_SNAPSHOT];
 			EntityInfo* triggerEntities[MAX_ENTITIES_IN_SNAPSHOT];
+			bool nextFrameTeleport : 1;
+			bool thisFrameTeleport : 1;
+			bool validPPS : 1;
+			bool nextFrameCameraCut : 1;
+			bool forceDisablePrediction : 1;
 
 		public:
 			CGameModuleBase(const CGameImports& inImports);
@@ -905,11 +942,24 @@ namespace MOHPC
 			 * Set a function to be called when a specific game event occurs.
 			 *
 			 * See CGameHandlers above.
+			 * @param	args...	Function
+			 * @return	callback handle so it can be later unregistered.
 			 */
-			template<typename T, typename...Args>
-			void setCallback(Args &&...args)
+			template<typename T>
+			fnHandle_t setCallback(typename T::Type&& handler)
 			{
-				handlerList.set<T>(std::forward<Args>(args)...);
+				return handlerList.set<T>(std::forward<T::Type>(handler));
+			}
+
+			/**
+			 * Unset a previously set callback.
+			 *
+			 * @param	handle	The returned handle when registering a callback.
+			 */
+			template<typename T>
+			void unsetCallback(fnHandle_t handle)
+			{
+				handlerList.unset<T>(handle);
 			}
 
 			/** Return the alpha interpolation between the current frame and the next frame. */
@@ -919,7 +969,7 @@ namespace MOHPC
 			MOHPC_EXPORTS uint64_t getTime() const;
 
 			/** Get the entity with the specified number. */
-			MOHPC_EXPORTS const EntityInfo* getEntity(uint16_t num);
+			MOHPC_EXPORTS const EntityInfo* getEntity(entityNum_t num);
 
 			/** Return the current snapshot. */
 			MOHPC_EXPORTS SnapshotInfo* getCurrentSnapshot() const;
@@ -987,40 +1037,99 @@ namespace MOHPC
 			/** Return server environment settings. */
 			MOHPC_EXPORTS const environment_t& getEnvironment() const;
 
+			/** Return the server info. */
 			MOHPC_EXPORTS const cgsInfo& getServerInfo() const;
 
-			/** Called internally by the connection. */
+			/** Disable local prediction on client. */
+			MOHPC_EXPORTS void disablePrediction();
+
+			/** Enable local prediction on client. */
+			MOHPC_EXPORTS void enablePrediction();
+
+			/** Get an objective in the interval of [0, MAX_OBJECTIVES]. */
+			MOHPC_EXPORTS const objective_t& getObjective(uint32_t objNum) const;
+
+			/** Get a client info in the interval of [0, MAX_CLIENTS]. */
+			MOHPC_EXPORTS const clientInfo_t& getClientInfo(uint32_t clientNum) const;
+
+			/** CG message notification. */
 			void parseCGMessage(MSG& msg);
 
-			/** Called by the connection when a configString has been modified. */
+			/** Notified when a configString has been modified. */
 			void configStringModified(uint16_t num);
 
 		protected:
+			/** Get the list of handlers. */
 			const HandlerListCGame& handlers() const;
+
+			/** Get imports list. */
 			const CGameImports& getImports() const;
+
+			/** Used to parse CG messages between different versions. */
 			virtual void handleCGMessage(MSG& msg, uint8_t msgType) = 0;
+
+			/** Setup move between versions. */
 			virtual void setupMove(Pmove& pmove);
+
+			/** Normalize some playerState fields so they all match between versions. */
 			virtual void normalizePlayerState(playerState_t& ps);
+
+			/** Parse fog/environment info between versions. */
 			virtual void parseFogInfo(const char* s, environment_t& env) = 0;
 
 		private:
 			void parseServerInfo(const char* cs);
+
+			/**
+			 * Snapshot parsing
+			 */
 			SnapshotInfo* readNextSnapshot();
 			void processSnapshots();
 			void setNextSnap(SnapshotInfo* newSnap);
 			void setInitialSnapshot(SnapshotInfo* newSnap);
+			//====
+
+			/**
+			 * Entity transitioning
+			 */
 			void transitionSnapshot(bool differentServer);
 			void transitionEntity(EntityInfo& entInfo);
 			void buildSolidList();
+			//====
+
+			/**
+			 * Client entities
+			 */
 			void addPacketEntities();
 			void addEntity(EntityInfo& entInfo);
+			//====
+
+			/**
+			 * Player state calculation
+			 */
 			void predictPlayerState(uint64_t deltaTime);
 			void interpolatePlayerState(bool grabAngles);
 			void interpolatePlayerStateCamera();
+			//====
+
+			/**
+			 * Server commands
+			 */
 			void executeNewServerCommands(uintptr_t serverCommandSequence, bool differentServer);
 			void processServerCommand(TokenParser& tokenized);
+			//====
+
+			/**
+			 * Player movement
+			 */
+			bool replayMove(Pmove& pmove);
+			void extendMove(Pmove& pmove, uint32_t msec);
+			//====
 		
 		private:
+			/**
+			 * Server commands
+			 */
 			void SCmd_Print(TokenParser& args);
 			void SCmd_HudPrint(TokenParser& args);
 			void SCmd_Scores(TokenParser& args);
@@ -1030,10 +1139,14 @@ namespace MOHPC
 			void SCmd_Stufftext(TokenParser& args);
 		};
 
-		class CGameModule8 : public CGameModuleBase
+		/**
+		 * CG Module for protocol version 6.
+		 * => MOH:AA ver 1.00.
+		 */
+		class CGameModule6 : public CGameModuleBase
 		{
 		public:
-			CGameModule8(const CGameImports& inImports);
+			CGameModule6(const CGameImports& inImports);
 
 		protected:
 			virtual void handleCGMessage(MSG& msg, uint8_t msgType) override;
@@ -1044,11 +1157,14 @@ namespace MOHPC
 			effects_e getEffectId(uint32_t effectId);
 		};
 
-
-		class CGameModule17 : public CGameModuleBase
+		/**
+		 * CG Module for protocol version 15.
+		 * => MOH:SH ver 2.00.
+		 */
+		class CGameModule15 : public CGameModuleBase
 		{
 		public:
-			CGameModule17(const CGameImports& inImports);
+			CGameModule15(const CGameImports& inImports);
 
 		protected:
 			virtual void handleCGMessage(MSG& msg, uint8_t msgType) override;

@@ -15,6 +15,20 @@ uint64_t Network::getCurrentTime()
 	return duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
 }
 
+NetworkManager::NetworkManager()
+{
+
+}
+
+NetworkManager::~NetworkManager()
+{
+}
+
+bool NetworkManager::hasAnyTicks() const
+{
+	return tickables.NumObjects() > 0;
+}
+
 void MOHPC::NetworkManager::processTicks()
 {
 	const uint64_t currentTime = getCurrentTime();

@@ -6,6 +6,7 @@
 #include "GamespyRequest.h"
 #include "../Utilities/RequestHandler.h"
 #include "../Managers/NetworkManager.h"
+#include "../Object.h"
 #include <stdint.h>
 #include  <queue>
 
@@ -39,9 +40,12 @@ namespace MOHPC
 			 */
 			 virtual void fetch(FoundServerCallback&& callback, MasterServerDone&& doneCallback = MasterServerDone()) = 0;
 		};
+		using IServerListPtr = SharedPtr<IServerList>;
 
 		class ServerList : public IServerList
 		{
+			MOHPC_OBJECT_DECLARATION(ServerList);
+
 		private:
 			class Request_SendCon : public IGamespyRequest
 			{
@@ -115,9 +119,12 @@ namespace MOHPC
 		private:
 			void sendRequest(IGamespyRequestPtr&& newRequest);
 		};
+		using ServerListPtr = SharedPtr<ServerList>;
 
 		class ServerListLAN : public IServerList
 		{
+			MOHPC_OBJECT_DECLARATION(ServerListLAN);
+
 		private:
 			class Request_InfoBroadcast : public IRequestBase, public std::enable_shared_from_this<Request_InfoBroadcast>
 			{
@@ -142,5 +149,6 @@ namespace MOHPC
 			void fetch(FoundServerCallback&& callback, MasterServerDone&& doneCallback) override;
 			virtual void tick(uint64_t deltaTime, uint64_t currentTime) override;
 		};
+		using ServerListLANPtr = SharedPtr<ServerListLAN>;
 	}
 }

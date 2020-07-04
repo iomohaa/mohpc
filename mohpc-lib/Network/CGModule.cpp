@@ -107,6 +107,7 @@ CGameModuleBase::CGameModuleBase(const CGameImports& inImports)
 	, nextFrameTeleport(false)
 	, thisFrameTeleport(false)
 	, validPPS(false)
+	, forceDisablePrediction(false)
 	, processedSnapshotNum(0)
 	, latestSnapshotNum(0)
 	, latestCommandSequence(0)
@@ -128,6 +129,7 @@ void CGameModuleBase::parseCGMessage(MSG& msg)
 {
 	MsgTypesHelper msgHelper(msg);
 
+	// loop until there is no message
 	bool hasMessage;
 	do
 	{
@@ -175,14 +177,16 @@ float CGameModuleBase::getFrameInterpolation() const
 	return frameInterpolation;
 }
 
-const EntityInfo* CGameModuleBase::getEntity(uint16_t num)
+const EntityInfo* CGameModuleBase::getEntity(entityNum_t num)
 {
 	if (num >= MAX_GENTITIES) {
 		return nullptr;
 	}
 
 	EntityInfo& entInfo = clientEnts[num];
-	if (!entInfo.currentValid) {
+	if (!entInfo.currentValid)
+	{
+		// invalid entity
 		return nullptr;
 	}
 
@@ -228,13 +232,12 @@ SnapshotInfo* CGameModuleBase::readNextSnapshot()
 
 void CGameModuleBase::processSnapshots()
 {
-	SnapshotInfo* foundSnap;
-
 	uintptr_t n = getImports().getCurrentSnapshotNumber();
 	if (n != latestSnapshotNum) {
 		latestSnapshotNum = n;
 	}
 
+	SnapshotInfo* foundSnap;
 	while (!this->snap)
 	{
 		foundSnap = readNextSnapshot();
@@ -363,10 +366,10 @@ void CGameModuleBase::setInitialSnapshot(SnapshotInfo* newSnap)
 
 	// sort out solid entities
 	buildSolidList();
-
+	// execute all commands at once that was received in this snap
 	executeNewServerCommands(this->snap->serverCommandSequence, false);
 
-	// Prepare entities
+	// Prepare entities that are present in this snapshot
 	for (uintptr_t i = 0; i < newSnap->numEntities; ++i)
 	{
 		entityState_t& state = newSnap->entities[i];
@@ -554,11 +557,11 @@ void CGameModuleBase::predictPlayerState(uint64_t deltaTime)
 	}
 
 	// non-predicting local movement will grab the latest angles
-	//if (1)
-	//{
-	//	interpolatePlayerState(true);
-	//	return;
-	//}
+	if (forceDisablePrediction)
+	{
+		interpolatePlayerState(true);
+		return;
+	}
 
 	// Pmove
 	Pmove pmove;
@@ -581,6 +584,7 @@ void CGameModuleBase::predictPlayerState(uint64_t deltaTime)
 	playerState_t oldPlayerState = predictedPlayerState;
 	const uintptr_t current = getImports().getCurrentCmdNumber();
 
+	// Grab the latest cmd
 	usercmd_t latestCmd;
 	getImports().getUserCmd(current, latestCmd);
 
@@ -620,27 +624,15 @@ void CGameModuleBase::predictPlayerState(uint64_t deltaTime)
 				predictedError = Vector();
 				thisFrameTeleport = false;
 			}
+
+			// FIXME: Should it have some sort of predicted error?
 		}
 
-		if (pm.ps->feetfalling && pm.waterlevel <= 1)
-		{
-			pm.cmd.forwardmove = 0;
-			pm.cmd.rightmove = 0;
-		}
-
-		const uint32_t msec = pm.cmd.serverTime - pm.ps->commandTime;
-
-		// Call move handler
-		pmove.move();
-		moved = true;
-
-		if (pm.ps->pm_type == pmType_e::PM_NOCLIP)
-		{
-			const float frametime = msec / 1000.f;
-			pm.ps->origin += pm.ps->velocity * frametime;
-		}
+		// Replay movement
+		moved |= replayMove(pmove);
 	}
 
+	// interpolate camera view (spectator, cutscenes, etc)
 	interpolatePlayerStateCamera();
 
 	if (predictedPlayerState.groundEntityNum != ENTITYNUM_NONE && predictedPlayerState.groundEntityNum != ENTITYNUM_WORLD)
@@ -658,8 +650,6 @@ void CGameModuleBase::predictPlayerState(uint64_t deltaTime)
 void CGameModuleBase::interpolatePlayerState(bool grabAngles)
 {
 	playerState_t* out = &predictedPlayerState;
-	SnapshotInfo* prev = snap;
-	SnapshotInfo* next = nextSnap;
 
 	*out = snap->ps;
 
@@ -682,6 +672,9 @@ void CGameModuleBase::interpolatePlayerState(bool grabAngles)
 		return;
 	}
 
+	const SnapshotInfo* prev = snap;
+	const SnapshotInfo* next = nextSnap;
+
 	if (!next || next->serverTime <= prev->serverTime)
 	{
 		if(!next) {
@@ -693,15 +686,20 @@ void CGameModuleBase::interpolatePlayerState(bool grabAngles)
 	const float f = frameInterpolation;
 
 	uint32_t i = next->ps.bobCycle;
-	if (i < prev->ps.bobCycle) {
-		i += 256;		// handle wraparound
+	if (i < prev->ps.bobCycle)
+	{
+		// handle wraparound
+		i += 256;
 	}
 
+	// interpolate the bob cycle
 	out->bobCycle = (uint8_t)((float)prev->ps.bobCycle + f * (float)(i - prev->ps.bobCycle));
 
+	// interpolate the lean angle
 	out->fLeanAngle = prev->ps.fLeanAngle +
 		f * (next->ps.fLeanAngle - prev->ps.fLeanAngle);
 
+	// interpolate angles, origin and velocity
 	for (i = 0; i < 3; i++) {
 		out->origin[i] = prev->ps.origin[i] + f * (next->ps.origin[i] - prev->ps.origin[i]);
 		if (!grabAngles) {
@@ -715,9 +713,6 @@ void CGameModuleBase::interpolatePlayerState(bool grabAngles)
 
 void CGameModuleBase::interpolatePlayerStateCamera()
 {
-	SnapshotInfo* prev = snap;
-	SnapshotInfo* next = nextSnap;
-
 	//
 	// copy in the current ones if nothing else
 	//
@@ -730,6 +725,9 @@ void CGameModuleBase::interpolatePlayerStateCamera()
 		return;
 	}
 
+	SnapshotInfo* prev = snap;
+	SnapshotInfo* next = nextSnap;
+
 	if (!next || next->serverTime <= prev->serverTime) {
 		return;
 	}
@@ -739,7 +737,9 @@ void CGameModuleBase::interpolatePlayerStateCamera()
 	// interpolate fov
 	cameraFov = prev->ps.fov + f * (next->ps.fov - prev->ps.fov);
 
-	if (!(snap->ps.pm_flags & PMF_CAMERA_VIEW)) {
+	if (!(snap->ps.pm_flags & PMF_CAMERA_VIEW))
+	{
+		// only interpolate if the player is in camera view
 		return;
 	}
 
@@ -774,23 +774,20 @@ void CGameModuleBase::setPointContentsFunction(PointContentsFunction&& inPointCo
 
 void CGameModuleBase::clipMoveToEntities(CollisionWorld& cm, const Vector& start, const Vector& mins, const Vector& maxs, const Vector& end, uint16_t skipNumber, uint32_t mask, bool cylinder, trace_t& tr)
 {
-	trace_t trace;
-	entityState_t* ent;
-	clipHandle_t cmodel;
-	Vector bmins, bmaxs;
-	Vector origin, angles;
-	EntityInfo* cent;
-
+	// iterate through entities and test their collision
 	for (size_t i = 0; i < numSolidEntities; i++)
 	{
-		cent = solidEntities[i];
-		ent = &cent->currentState;
+		const EntityInfo* cent = solidEntities[i];
+		const entityState_t* ent = &cent->currentState;
 
 		if (ent->number == skipNumber) {
 			continue;
 		}
 
 		CollisionWorld* world = &cm;
+		clipHandle_t cmodel;
+		Vector bmins, bmaxs;
+		Vector origin, angles;
 
 		if (ent->solid == SOLID_BMODEL)
 		{
@@ -807,10 +804,13 @@ void CGameModuleBase::clipMoveToEntities(CollisionWorld& cm, const Vector& start
 			cmodel = boxHull.CM_TempBoxModel(bmins, bmaxs, ContentFlags::CONTENTS_BODY);
 			angles = vec3_origin;
 			origin = cent->currentState.netorigin;
-			// Trace to the boxhull instead
+			// trace to the boxhull instead
+			// entities with a boundingbox use a boxhull
 			world = &boxHull;
 		}
 
+		trace_t trace;
+		// trace through the entity's submodel
 		world->CM_TransformedBoxTrace(&trace, start, end,
 			mins, maxs, cmodel, mask, origin, angles, cylinder);
 
@@ -843,6 +843,8 @@ void CGameModuleBase::processServerCommand(TokenParser& tokenized)
 		void (CGameModuleBase::*function)(TokenParser& arguments);
 	};
 
+	// predefined commands
+	// custom commands can be processed with a callback to server command
 	static cmd_t cmds[] =
 	{
 		{ "print", &CGameModuleBase::SCmd_Print },
@@ -856,6 +858,7 @@ void CGameModuleBase::processServerCommand(TokenParser& tokenized)
 	static constexpr size_t numCmds = sizeof(cmds)/sizeof(cmds[0]);
 
 	const char* command = tokenized.GetToken(false);
+	// find the command in list
 	for (size_t i = 0; i < numCmds; ++i)
 	{
 		const cmd_t& cmd = cmds[i];
@@ -870,28 +873,31 @@ void CGameModuleBase::processServerCommand(TokenParser& tokenized)
 
 void CGameModuleBase::trace(CollisionWorld& cm, trace_t& tr, const Vector& start, const Vector& mins, const Vector& maxs, const Vector& end, uint16_t skipNumber, uint32_t mask, bool cylinder, bool cliptoentities)
 {
-	// If there is a loaded collision from the game, use it instead
+	// if there is a loaded collision from the game, use it instead
 	cm.CM_BoxTrace(&tr, start, end, mins, maxs, 0, mask, cylinder);
-
+	// collision defaults to world
 	tr.entityNum = tr.fraction != 1.0 ? ENTITYNUM_WORLD : ENTITYNUM_NONE;
 
 	if (tr.startsolid) {
 		tr.entityNum = ENTITYNUM_WORLD;
 	}
 
-	if(cliptoentities) {
+	if(cliptoentities)
+	{
+		// also trace through entities
 		clipMoveToEntities(cm, start, mins, maxs, end, skipNumber, mask, cylinder, tr);
 	}
 }
 
 uint32_t MOHPC::Network::CGameModuleBase::pointContents(CollisionWorld& cm, const Vector& point, uintptr_t passEntityNum)
 {
-	// Get the contents in world
+	// get the contents in world
 	uint32_t contents = cm.CM_PointContents(point, 0);
 
-	for (size_t i = 0; i < numSolidEntities; i++) {
+	// also iterate through entities (that are using a submodel) to check if the point is inside
+	for (size_t i = 0; i < numSolidEntities; i++)
+	{
 		const EntityInfo* cent = solidEntities[i];
-
 		const entityState_t* ent = &cent->currentState;
 
 		if (ent->number == passEntityNum) {
@@ -914,6 +920,26 @@ uint32_t MOHPC::Network::CGameModuleBase::pointContents(CollisionWorld& cm, cons
 	return contents;
 }
 
+void MOHPC::Network::CGameModuleBase::disablePrediction()
+{
+	forceDisablePrediction = true;
+}
+
+void MOHPC::Network::CGameModuleBase::enablePrediction()
+{
+	forceDisablePrediction = false;
+}
+
+const objective_t& MOHPC::Network::CGameModuleBase::getObjective(uint32_t objNum) const
+{
+	return objectives[objNum];
+}
+
+const clientInfo_t& MOHPC::Network::CGameModuleBase::getClientInfo(uint32_t clientNum) const
+{
+	return clientInfo[clientNum];
+}
+
 const MOHPC::Network::CGameImports& MOHPC::Network::CGameModuleBase::getImports() const
 {
 	return imports;
@@ -925,6 +951,47 @@ void MOHPC::Network::CGameModuleBase::setupMove(Pmove& pmove)
 
 void MOHPC::Network::CGameModuleBase::normalizePlayerState(playerState_t& ps)
 {
+}
+
+bool MOHPC::Network::CGameModuleBase::replayMove(Pmove& pmove)
+{
+	pmove_t& pm = pmove.get();
+
+	if (pm.ps->feetfalling && pm.waterlevel <= 1)
+	{
+		// clear movement when falling/under water
+		pm.cmd.forwardmove = 0;
+		pm.cmd.rightmove = 0;
+	}
+
+	// calculate delta time
+	const uint32_t msec = pm.cmd.serverTime - pm.ps->commandTime;
+
+	// call move handler
+	pmove.move();
+
+	// additional movement
+	// can be anything, from jumping to events/fire prediction
+	extendMove(pmove, msec);
+
+	// valid move
+	return true;
+}
+
+void MOHPC::Network::CGameModuleBase::extendMove(Pmove& pmove, uint32_t msec)
+{
+	const pmove_t& pm = pmove.get();
+
+	if (pm.ps->pm_type == pmType_e::PM_NOCLIP)
+	{
+		const float frametime = msec / 1000.f;
+		pm.ps->origin += pm.ps->velocity * frametime;
+	}
+
+	// Notify to replay/predict other events that are not present in the original pm code
+	// It can be in PM related code, but it's not what the server expect
+	// PM must remain identical to the server PM code
+	handlers().notify<CGameHandlers::ReplayMove>(pm.cmd, *pm.ps, msec);
 }
 
 const rain_t& CGameModuleBase::getRain() const
@@ -1241,12 +1308,10 @@ void CGameModuleBase::parseServerInfo(const char* cs)
 
 void CGameModuleBase::buildSolidList()
 {
-	EntityInfo* cent;
-	SnapshotInfo* snap;
-	entityState_t* ent;
-
 	numSolidEntities = 0;
 	numTriggerEntities = 0;
+
+	SnapshotInfo* snap;
 
 	if (nextSnap && !nextFrameTeleport && !thisFrameTeleport) {
 		snap = nextSnap;
@@ -1257,14 +1322,17 @@ void CGameModuleBase::buildSolidList()
 
 	for (uintptr_t i = 0; i < snap->numEntities; i++)
 	{
-		cent = &clientEnts[snap->entities[i].number];
-		ent = &cent->currentState;
+		EntityInfo* cent = &clientEnts[snap->entities[i].number];
+		entityState_t* ent = &cent->currentState;
 
+		// Ignore item/triggers, they're always non-solid
 		if (ent->eType == entityType_e::item || ent->eType == entityType_e::push_trigger || ent->eType == entityType_e::teleport_trigger) {
 			continue;
 		}
 
-		if (cent->nextState.solid) {
+		if (cent->nextState.solid)
+		{
+			// Add solid entities
 			solidEntities[numSolidEntities] = cent;
 			numSolidEntities++;
 			continue;
@@ -1327,7 +1395,6 @@ void CGameModuleBase::SCmd_Stopwatch(TokenParser& args)
 {
 	const uint64_t startTime = args.GetInteger64(false);
 	const uint64_t endTime = args.GetInteger64(false);
-
 	handlers().notify<CGameHandlers::ServerCommand_Stopwatch>(startTime, endTime);
 }
 
@@ -1342,14 +1409,14 @@ void CGameModuleBase::SCmd_Stufftext(TokenParser& args)
 	handlers().notify<CGameHandlers::ServerCommand_Stufftext>(args);
 }
 
-CGameModule8::CGameModule8(const CGameImports& inImports)
+CGameModule6::CGameModule6(const CGameImports& inImports)
 	: CGameModuleBase(inImports)
 {
 }
 
-void CGameModule8::handleCGMessage(MSG& msg, uint8_t msgId)
+void CGameModule6::handleCGMessage(MSG& msg, uint8_t msgId)
 {
-	// Version 8
+	// Version 6
 	enum class cgmessage_e
 	{
 		bullet1 = 1,
@@ -1668,7 +1735,7 @@ void CGameModule8::handleCGMessage(MSG& msg, uint8_t msgId)
 	}
 }
 
-effects_e CGameModule8::getEffectId(uint32_t effectId)
+effects_e CGameModule6::getEffectId(uint32_t effectId)
 {
 	static effects_e effectList[] =
 	{
@@ -1801,7 +1868,7 @@ effects_e CGameModule8::getEffectId(uint32_t effectId)
 	return effects_e::bh_stone_hard;
 }
 
-void MOHPC::Network::CGameModule8::normalizePlayerState(playerState_t& ps)
+void MOHPC::Network::CGameModule6::normalizePlayerState(playerState_t& ps)
 {
 	const uint32_t pmFlags = ps.pm_flags;
 	uint32_t newPmFlags = 0;
@@ -1819,7 +1886,7 @@ void MOHPC::Network::CGameModule8::normalizePlayerState(playerState_t& ps)
 	ps.pm_flags = newPmFlags;
 }
 
-void MOHPC::Network::CGameModule8::parseFogInfo(const char* s, environment_t& env)
+void MOHPC::Network::CGameModule6::parseFogInfo(const char* s, environment_t& env)
 {
 	int tmp = 0;
 	sscanf(
@@ -1835,14 +1902,14 @@ void MOHPC::Network::CGameModule8::parseFogInfo(const char* s, environment_t& en
 	env.farplaneCull = tmp;
 }
 
-CGameModule17::CGameModule17(const CGameImports& inImports)
+CGameModule15::CGameModule15(const CGameImports& inImports)
 	: CGameModuleBase(inImports)
 {
 }
 
-void CGameModule17::handleCGMessage(MSG& msg, uint8_t msgId)
+void CGameModule15::handleCGMessage(MSG& msg, uint8_t msgId)
 {
-	// Version 17
+	// Version 15
 	enum class cgmessage_e
 	{
 		bullet1 = 1,
@@ -2250,7 +2317,7 @@ void CGameModule17::handleCGMessage(MSG& msg, uint8_t msgId)
 	}
 }
 
-effects_e CGameModule17::getEffectId(uint32_t effectId)
+effects_e CGameModule15::getEffectId(uint32_t effectId)
 {
 	static effects_e effectList[] =
 	{
@@ -2398,13 +2465,15 @@ effects_e CGameModule17::getEffectId(uint32_t effectId)
 	return effects_e::bh_stone_hard;
 }
 
-void MOHPC::Network::CGameModule17::setupMove(Pmove& pmove)
+void MOHPC::Network::CGameModule15::setupMove(Pmove& pmove)
 {
 	pmove_t& pm = pmove.get();
+	// in SH/BT, can't lean by default
+	// unless a dmflag specify it
 	pm.canLean = getServerInfo().hasAnyDMFlags(DMFlags::DF_ALLOW_LEAN);
 }
 
-void MOHPC::Network::CGameModule17::parseFogInfo(const char* s, environment_t& env)
+void MOHPC::Network::CGameModule15::parseFogInfo(const char* s, environment_t& env)
 {
 	int tmp = 0, tmp2 = 0;
 	sscanf(
@@ -2750,4 +2819,24 @@ uint32_t Scoreboard::player_t::getPing() const
 bool Scoreboard::player_t::isAlive() const
 {
 	return alive;
+}
+
+MOHPC::Network::clientInfo_t::clientInfo_t()
+	: team(teamType_e::None)
+{
+}
+
+const char* MOHPC::Network::clientInfo_t::getName() const
+{
+	return name.c_str();
+}
+
+MOHPC::Network::teamType_e MOHPC::Network::clientInfo_t::getTeam() const
+{
+	return team;
+}
+
+const MOHPC::PropertyObject& MOHPC::Network::clientInfo_t::getProperties() const
+{
+	return properties;
 }

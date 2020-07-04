@@ -14,7 +14,7 @@ namespace MOHPC
 	struct ModelSurfaceMaterial
 	{
 		str name;
-		Container<ShaderRef> shaders;
+		Container<ShaderPtr> shaders;
 	};
 
 	struct ModelMorph

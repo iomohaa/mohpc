@@ -31,13 +31,19 @@ namespace MOHPC
 	{
 	private:
 		PropertyMap::const_iterator* it;
-		const PropertyMap& map;
+		const PropertyMap* map;
 
 	public:
+		MOHPC_EXPORTS PropertyMapIterator();
 		MOHPC_EXPORTS PropertyMapIterator(const PropertyMap& map);
+		MOHPC_EXPORTS PropertyMapIterator(PropertyMapIterator&& other);
+		MOHPC_EXPORTS PropertyMapIterator& operator=(PropertyMapIterator&& other);
+		MOHPC_EXPORTS PropertyMapIterator(const PropertyMapIterator& iterator) = delete;
+		MOHPC_EXPORTS PropertyMapIterator& operator=(const PropertyMapIterator& iterator) = delete;
 		MOHPC_EXPORTS ~PropertyMapIterator();
 
 		MOHPC_EXPORTS operator bool() const;
+		MOHPC_EXPORTS const PropertyMap* getMap() const;
 
 		MOHPC_EXPORTS const PropertyDef& key() const;
 		MOHPC_EXPORTS const str& value() const;
@@ -53,6 +59,8 @@ namespace MOHPC
 	public:
 		MOHPC_EXPORTS void clear();
 		MOHPC_EXPORTS bool HasProperty(const char* Key) const;
+		MOHPC_EXPORTS bool hasAnyProperty() const;
+		MOHPC_EXPORTS size_t count() const;
 		MOHPC_EXPORTS const char* GetPropertyRawValue(const char* Key) const;
 		MOHPC_EXPORTS const str& GetPropertyStringValue(const char* Key, const str& defaultValue = "") const;
 		MOHPC_EXPORTS int8_t GetPropertyCharValue(const char* Key, int8_t defaultValue = 0) const;

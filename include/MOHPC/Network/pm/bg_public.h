@@ -27,9 +27,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #pragma once
 
-#include <MOHPC/Math.h>
-#include <MOHPC/Network/InfoTypes.h>
-#include <functional>
+#include "../../Math.h"
+#include "../InfoTypes.h"
+#include "../../Utilities/Function.h"
 
 namespace MOHPC
 {
@@ -120,8 +120,8 @@ namespace MOHPC
 
 	class playerState_t;
 
-	using TraceFunction = std::function<void(trace_t* results, const Vector& start, const Vector& mins, const Vector& maxs, const Vector& end, uintptr_t passEntityNum, uintptr_t contentMask, bool capsule, bool traceDeep)>;
-	using PointContentsFunction = std::function<uint32_t(const Vector& point, uintptr_t passEntityNum)>;
+	using TraceFunction = Function<void(trace_t* results, const Vector& start, const Vector& mins, const Vector& maxs, const Vector& end, uintptr_t passEntityNum, uintptr_t contentMask, bool capsule, bool traceDeep)>;
+	using PointContentsFunction = Function<uint32_t(const Vector& point, uintptr_t passEntityNum)>;
 
 	void stubTrace(trace_t* results, const Vector& start, const Vector& mins, const Vector& maxs, const Vector& end, uintptr_t passEntityNum, uintptr_t contentMask, bool capsule, bool traceDeep);
 	int stubPointContents(const Vector& point, uintptr_t passEntityNum);
@@ -209,7 +209,7 @@ namespace MOHPC
 	public:
 		MOHPC_EXPORTS Pmove();
 
-		MOHPC_EXPORTS pmove_t& get() { return pm; };
+		MOHPC_EXPORTS pmove_t& get();
 
 		// if a full pmove isn't done on the client, you can just update the angles
 		void PM_GetMove(float* pfForward, float* pfRight);

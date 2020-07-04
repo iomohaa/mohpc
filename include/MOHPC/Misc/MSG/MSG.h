@@ -164,8 +164,8 @@ namespace MOHPC
 			return *this;
 		}
 
-		template<>
-		MSG& SerializeDeltaType<bool>(const bool& a, bool& b, intptr_t key) noexcept;
+		//template<>
+		//MSG& SerializeDeltaType<bool>(const bool& a, bool& b, intptr_t key) noexcept;
 
 		/** Serialize a boolean value with 1 bit. */
 		MSG& SerializeBool(bool& value) noexcept;
@@ -390,12 +390,12 @@ namespace MOHPC
 		}
 
 		// Special code for float
-		template<>
-		float XORType(const float& b, intptr_t key);
+		//template<>
+		//float XORType(const float& b, intptr_t key);
 
 		// Special code for double
-		template<>
-		double XORType(const double& b, intptr_t key);
+		//template<>
+		//double XORType(const double& b, intptr_t key);
 
 		StringMessage ReadStringInternal(const char* byteCharMapping);
 public:
