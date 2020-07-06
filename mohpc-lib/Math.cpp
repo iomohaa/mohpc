@@ -553,6 +553,20 @@ void MOHPC::MatrixCopy(const matrix_t in, matrix_t out)
 	out[3] = in[3];		out[7] = in[7];		out[11] = in[11];	out[15] = in[15];
 }
 
+void MOHPC::Matrix3Copy(float in[3][3], float out[3][3])
+{
+	out[0][0] = in[0][0]; out[1][0] = in[1][0]; out[2][0] = in[2][0];
+	out[0][1] = in[0][1]; out[1][1] = in[1][1]; out[2][1] = in[2][1];
+	out[0][2] = in[0][2]; out[1][2] = in[1][2]; out[2][2] = in[2][2];
+}
+
+void MOHPC::Matrix4_3Copy(float in[4][3], float out[3][3])
+{
+	out[0][0] = in[0][0]; out[1][0] = in[1][0]; out[2][0] = in[2][0];
+	out[0][1] = in[0][1]; out[1][1] = in[1][1]; out[2][1] = in[2][1];
+	out[0][2] = in[0][2]; out[1][2] = in[1][2]; out[2][2] = in[2][2];
+}
+
 void MOHPC::AddPointToBounds(const Vector& v, Vector& mins, Vector& maxs)
 {
 	for (int i = 0; i < 3; i++)

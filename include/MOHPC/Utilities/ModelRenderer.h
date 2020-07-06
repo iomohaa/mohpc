@@ -4,12 +4,14 @@
 #include "../Formats/Skel.h"
 #include "../Managers/ShaderManager.h"
 #include "../Script/str.h"
+#include "../Object.h"
 
 namespace MOHPC
 {
 	class Shader;
 	class TIKI;
 	class Skeleton;
+	class skelAnimStoreFrameList_c;
 
 	struct ModelSurfaceMaterial
 	{
@@ -63,14 +65,14 @@ namespace MOHPC
 	/*
 	 * Class used to render models with animations support
 	 */
-	class ModelRenderer : public Class
+	class ModelRenderer : public Object
 	{
-		CLASS_BODY(ModelRenderer);
+		MOHPC_OBJECT_DECLARATION(ModelRenderer);
 
 	private:
 		struct Pose
 		{
-			SafePtr<const SkeletonAnimation> animation;
+			ConstSkeletonAnimationPtr animation;
 			uintptr_t frameNum;
 			float weight;
 
@@ -82,26 +84,28 @@ namespace MOHPC
 		};
 
 	private:
-		Container<SafePtr<const Skeleton>> meshes;
-		SkeletonChannelList boneList;
+		Container<WeakPtr<Skeleton>> meshes;
 		Container<ModelSurfaceMaterial> materials;
-		Pose poses[MAX_ANIM_POSES];
 		Container<ModelBoneTransform> bonesTransform;
 		Container<ModelBone> bones;
-		skelBone_Base** skelBones;
 		Container<ModelSurface> surfaces;
-		Vector delta;
+		skelBone_Base** skelBones;
+		SkeletonChannelList boneList;
 		SkeletonChannelList m_morphTargetList;
+		Pose poses[MAX_ANIM_POSES];
+		Vector delta;
 
-	public:
-		MOHPC_EXPORTS ModelRenderer();
+	private:
+		/** Requires AssetManager in order to access skeleton names table. */
+		MOHPC_EXPORTS ModelRenderer(const MOHPC::AssetManagerPtr& AssetManager);
 		MOHPC_EXPORTS ~ModelRenderer();
 
+	public:
 		/** Adds all skeletons to be rendered from the tiki. */
 		MOHPC_EXPORTS void AddModel(const TIKI* Tiki);
 
 		/** Adds a skeleton to be rendered and return the index to the skeleton (used for materials). */
-		MOHPC_EXPORTS intptr_t AddModel(const Skeleton* Skel);
+		MOHPC_EXPORTS intptr_t AddModel(const SkeletonPtr& Skel);
 
 		/** Clears all poses. */
 		MOHPC_EXPORTS void ClearPoses();
@@ -113,7 +117,7 @@ namespace MOHPC
 		 * @param FrameNumber : The frame number from the animation
 		 * @param Weight : The animation weight
 		 */
-		MOHPC_EXPORTS void SetMovementPose(const SkeletonAnimation* Animation, uint32_t PoseIndex, uintptr_t FrameNumber = 0, float Weight = 1.f);
+		MOHPC_EXPORTS void SetMovementPose(const SkeletonAnimationPtr& Animation, uint32_t PoseIndex, uintptr_t FrameNumber = 0, float Weight = 1.f);
 
 		/**
 		 * Sets the model's action pose to a corresponding animation.
@@ -122,7 +126,7 @@ namespace MOHPC
 		 * @param FrameNumber : The frame number from the animation
 		 * @param Weight : The animation weight
 		 */
-		MOHPC_EXPORTS void SetActionPose(const SkeletonAnimation*, uint32_t PoseIndex, uintptr_t FrameNumber = 0, float Weight = 1.f);
+		MOHPC_EXPORTS void SetActionPose(const SkeletonAnimationPtr& Animation, uint32_t PoseIndex, uintptr_t FrameNumber = 0, float Weight = 1.f);
 
 		/** Increments the frame number of all poses. */
 		MOHPC_EXPORTS void AdvancePosesFrame();
@@ -167,6 +171,7 @@ namespace MOHPC
 		MOHPC_EXPORTS const ModelSurface* GetSurface(size_t index) const;
 
 	private:
+		bool SetPose(uintptr_t poseIndex, skelAnimStoreFrameList_c& frameList);
 		void CacheBones();
 		void MarkAllBonesAsDirty();
 		void ClearBonesCache();
@@ -178,4 +183,5 @@ namespace MOHPC
 		void SkelMorphGetXyz(const Skeleton::SkeletorMorph *morph, int *morphcache, Vector& out);
 		const ModelSurfaceMaterial* FindMaterialByName(const str& name);
 	};
+	using ModelRendererPtr = SharedPtr<ModelRenderer>;
 }

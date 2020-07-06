@@ -25,15 +25,15 @@ namespace MOHPC
 	struct skelAnimBlendFrame_t
 	{
 		float weight;
-		const SkeletonAnimation *pAnimationData;
+		ConstSkeletonAnimationPtr pAnimationData;
 		SkeletonAnimation::AnimFrame *frame;
 	};
 
 	struct SkanBlendInfo
 	{
 		float weight;
-		SafePtr<const SkeletonAnimation> pAnimationData;
-		size_t frame;
+		ConstSkeletonAnimationPtr pAnimationData;
+		uintptr_t frame;
 	};
 
 	class skelAnimStoreFrameList_c
@@ -54,7 +54,7 @@ namespace MOHPC
 	public:
 		struct FrameInfo
 		{
-			SafePtr<const SkeletonAnimation> anim;
+			ConstSkeletonAnimationPtr anim;
 			float time;
 			float weight;
 		};

@@ -108,7 +108,7 @@ static constexpr unsigned int RF_ALWAYSDRAW			= (1<<30);
 	{
 	public:
 		uint32_t serverTime;
-		struct {
+		struct buttons_t {
 			union {
 				struct {
 					// Button flags
@@ -137,6 +137,19 @@ static constexpr unsigned int RF_ALWAYSDRAW			= (1<<30);
 	public:
 		usercmd_t();
 		usercmd_t(uint32_t inServerTime);
+
+		/** Return buttons that are held. */
+		buttons_t getButtons() const;
+
+		/** Get the user angles. */
+		void getAngles(uint16_t& pitch, uint16_t& yaw, uint16_t& roll);
+
+		/** Get the forward value. Range [-128, 127]. */
+		int8_t getForwardValue() const;
+		/** Get the right value. Range [-128, 127]. */
+		int8_t getRightValue() const;
+		/** Get the up value. Range [-128, 127]. */
+		int8_t getUpValue() const;
 
 		/** Sends a weapon command. */
 		void setWeaponCommand(weaponCommand_e weaponCommand);
@@ -175,8 +188,14 @@ static constexpr unsigned int RF_ALWAYSDRAW			= (1<<30);
 		/** Set the offset of eyes view. The offset is the head position starting from the player's origin (feet). */
 		void setOffset(int8_t x, int8_t y, int8_t z);
 
+		/** Return the view offset. */
+		void getOffset(int8_t xyz[3]);
+
 		/** Set the eyes angles. */
-		void setAngle(float pitch, float yaw);
+		void setAngles(float pitch, float yaw);
+
+		/** Return the eyes angles. */
+		void getAngles(float& pitch, float& yaw);
 	};
 
 	static constexpr size_t GENTITYNUM_BITS = 10; // don't need to send any more
@@ -185,33 +204,6 @@ static constexpr unsigned int RF_ALWAYSDRAW			= (1<<30);
 	static constexpr size_t ENTITYNUM_NONE = (MAX_GENTITIES - 1);
 	static constexpr size_t ENTITYNUM_WORLD = (MAX_GENTITIES - 2);
 	static constexpr size_t ENTITYNUM_MAX_NORMAL = (MAX_GENTITIES - 2);
-
-
-	/*
-	// plane_t structure
-	// !!! if this is changed, it must be changed in asm code too !!!
-	typedef struct cplane_s {
-		vec3_t normal;
-		float dist;
-		uint8_t type;			// for fast side tests: 0,1,2 = axial, 3 = nonaxial
-		uint8_t signbits;		// signx + (signy<<1) + (signz<<2), used as lookup during collision
-	} cplane_t;
-
-	// a trace is returned when a box is swept through the world
-	struct trace_t  {
-		bool	allsolid;	// if true, plane is not valid
-		bool	startsolid;	// if true, the initial point was in a solid area
-		float		fraction;	// time completed, 1.0 = didn't hit anything
-		Vector		endpos;		// final position
-		cplane_t	plane;		// surface normal at impact, transformed to world space
-		int			surfaceFlags;	// surface hit
-		int			shaderNum;
-		int			contents;	// contents on other side of surface hit
-		int			entityNum;	// entity the contacted surface is a part of
-
-		int			location;
-	};
-	*/
 
 	// current ammo
 	static constexpr unsigned int ITEM_AMMO		= 0;
@@ -336,11 +328,11 @@ static constexpr unsigned int RF_ALWAYSDRAW			= (1<<30);
 	class MOHPC_EXPORTS playerState_t
 	{
 	public:
-		static constexpr size_t MAX_STATS = 32;
-		static constexpr size_t MAX_ACTIVEITEMS = 8;
-		static constexpr size_t MAX_AMMO = 16;
-		static constexpr size_t MAX_AMMO_AMOUNT = 16;
-		static constexpr size_t MAX_MAX_AMMO_AMOUNT = 16;
+		static constexpr unsigned long MAX_STATS = 32;
+		static constexpr unsigned long MAX_ACTIVEITEMS = 8;
+		static constexpr unsigned long MAX_AMMO = 16;
+		static constexpr unsigned long MAX_AMMO_AMOUNT = 16;
+		static constexpr unsigned long MAX_MAX_AMMO_AMOUNT = 16;
 
 	public:
 		Vector origin;
@@ -403,22 +395,141 @@ static constexpr unsigned int RF_ALWAYSDRAW			= (1<<30);
 
 	public:
 		playerState_t();
+
+		// Accessor for cross-dll access
+
+		/** Elapsed playerState server time. */
+		uint32_t getCommandTime() const;
+		/** Movement type. */
+		pmType_e getPlayerMoveType() const;
+		/** Movement flags (see PMF_*). */
+		uint16_t getPlayerMoveFlags() const;
+		/** Time in PM code. */
+		uint16_t getPlayerMoveTime() const;
+		/** Bob movement cycle. */
+		uint8_t getBobCycle() const;
+
+		/** The origin of the playerState. */
+		const Vector& getOrigin() const;
+		/** The movement velocity. */
+		const Vector& getVelocity() const;
+
+		/** Current gravity. (Can be different across playerState in rare cases)*/
+		uint16_t getGravity() const;
+		/** Current speed. Often changes when crouching, jumping... */
+		uint16_t getSpeed() const;
+		/** Delta angles. Set on spawning and on firing weapons with recoil. */
+		void getDeltaAngles(uint16_t angles[3]) const;
+
+		/** The current entity the player is landing at. */
+		entityNum_t getGroundEntityNum() const;
+
+		/** Whether or not the player is walking or in air. */
+		bool isWalking() const;
+		/** True if the player is on a valid plane. */
+		bool isGroundPlane() const;
+		/** Set when the player is landing on a ledge so that he slides. */
+		uint8_t getFeetFalling() const;
+		/** The fall direction of the player. */
+		const Vector& getFalldir() const;
+		/** The last valid trace_t on ground. */
+		const trace_t& getGroundTrace() const;
+
+		/** Player cient number. */
+		uint8_t getClientNum() const;
+
+		/** Current view angles of the player. */
+		const Vector& getViewAngles() const;
+		/** The view height. */
+		uint8_t getViewHeight() const;
+
+		/** The angles at which the player is leaning. */
+		float getLeanAngles() const;
+		/** Return the current view model animation number. */
+		uint8_t getViewModelAnim() const;
+		/** Value that changes when the current viewmodelanim is the same but is repeating. */
+		uint8_t getViewModelAnimChanges() const;
+
+		/** Return the value for the specified stats at index. */
+		uint16_t getStats(playerstat_e statIndex) const;
+		/** Return the index of the active item. */
+		uint16_t getActiveItems(uint32_t index) const;
+		/** Ammo name in CS_* at the specified index. */
+		uint16_t getAmmoNameIndex(uint32_t index) const;
+		/** Ammo amount at index. */
+		uint16_t getAmmoAmount(uint32_t index) const;
+		/** Max ammo amount at index. */
+		uint16_t getMaxAmmoAmount(uint32_t index) const;
+
+		/** Mood of the current music. */
+		uint8_t getCurrentMusicMood() const;
+		/** Mood to fallback on. */
+		uint8_t getFallbackMusicMood() const;
+		/** Volume of the current music. */
+		float getMusicVolume() const;
+		/** Time to fade to 0. */
+		float getMusicVolumeFadeTime() const;
+		/** Type of the reverb to use. */
+		uint8_t getReverbType() const;
+		/** The level of reverb to use. */
+		float getReverbLevel() const;
+		/** View target blending (RGBA colors). */
+		void getBlend(float outBlend[4]) const;
+		/** Field-of-View the player was assigned (usually 80). */
+		float getFov() const;
+
+		/** The following values are valid when pm_flags is set to PMF_CAMERA_VIEW. */
+		//
+		/** The current camera origin. */
+		const Vector& getCameraOrigin() const;
+		/** The current camera angles. */
+		const Vector& getCameraAngles() const;
+		/** Time elapsed in camera mode. */
+		float getCameraTime() const;
+		/** Get the camera offset to add to origin (relative location). */
+		const Vector& getCameraOffset() const;
+		/** Get the position offset of camera to add to origin. */
+		const Vector& getCameraPositionOffset() const;
+		/** Camera flags (see CF_* values). */
+		uint16_t getCameraFlags() const;
+		//
+
+		/** Additive angles when damaged. */
+		const Vector& getDamageAngles() const;
+
+		/** Information on the player compass in an SH/BT server. */
+		uint32_t getRadarInfo() const;
+
+		/** Whether or not the player has voted in an SH/BT server. */
+		bool hasVoted() const;
 	};
 
-	struct MOHPC_EXPORTS trajectory_t {
+	struct MOHPC_EXPORTS trajectory_t
+	{
+	public:
 		Vector trDelta;
-		int trTime;
+		uint32_t trTime;
 
+	public:
 		trajectory_t();
+
+		const Vector& getDelta() const;
+		uint32_t getTime() const;
 	};
 
 	struct MOHPC_EXPORTS frameInfo_t
 	{
-		int index;
+	public:
+		uint32_t index;
 		float time;
 		float weight;
 
+	public:
 		frameInfo_t();
+
+		uint32_t getIndex() const;
+		float getTime() const;
+		float getWeight() const;
 	};
 
 	static constexpr unsigned int EF_TELEPORT_BIT = (1 << 2);
@@ -553,54 +664,145 @@ static constexpr unsigned int RF_ALWAYSDRAW			= (1<<30);
 
 	public:
 		entityState_t();
+
+		/** Entity number. */
+		entityNum_t getNumber() const;
+		/** Type of the entity. */
+		entityType_e getType() const;
+		/** Flags of the entity (see EF_* values). */
+		uint16_t getEntityFlags() const;
+
+		/** Entity's trajectory (delta movement and time). */
+		const trajectory_t& getTrajectory() const;
+
+		/** Network origin. */
+		const Vector& getNetOrigin() const;
+		/** Network secondary origin. */
+		const Vector& getAlternateOrigin() const;
+		/** Network angles. */
+		const Vector& getNetAngles() const;
+
+		/** Entity's RGBA values from constant light. */
+		uint32_t getConstantLight() const;
+		/** Extract RGBA values from constant light. */
+		void getConstantLight(uint8_t& red, uint8_t& green, uint8_t& blue, uint8_t& intensity);
+
+		/** Whether or not entity is looping sound. */
+		bool doesLoopsound() const;
+		/** Looping sound volume. */
+		float getLoopsoundVolume() const;
+		/** Looping sound minimum distance. */
+		float getLoopsoundMinDist() const;
+		/** Looping sound maximum distance. */
+		float getLoopsoundMaxDist() const;
+		/** Looping sound flags. */
+		uint32_t getLoopsoundFlags() const;
+
+		/** Entity's parent if it has one. None = ENTITYNUM_NONE. */
+		entityNum_t getParent() const;
+		/** Tag num of the entity's parent (usually 0). */
+		uint16_t getTagNum() const;
+
+		/** Whether or not to also bind the entity's angles. */
+		bool doesAttachUseAngle() const;
+		/** Attachment offset (relative location). */
+		const Vector& getAttachOffset() const;
+
+		/** Beam number of the entity. */
+		uint16_t getBeamEntityNum() const;
+
+		/** Model index (starting from CS_MODELS)*/
+		uint16_t getModelIndex() const;
+		/** Usage index of the entity. */
+		uint16_t getUsageIndex() const;
+		/** Skin number. */
+		uint16_t getSkinNum() const;
+		/** This field doesn't seem to have a reason to exist. */
+		uint16_t getWasFrame() const;
+		/** Frame info at the specified index. */
+		const frameInfo_t& getFrameInfo(uint8_t frameIndex) const;
+		/** Get the torso action weight if it's a player. */
+		float getActionWeight() const;
+
+		/** Get bone number for index. */
+		uint8_t getBoneTag(uint8_t boneIndex) const;
+		/** Bone angles at index. */
+		const Vector& getBoneAngles(uint8_t boneIndex);
+		/** Surface flags index. */
+		uint8_t getSurface(uint8_t surfaceIndex) const;
+
+		/** Client number of the entity if it's a player. */
+		uint8_t getClientNum() const;
+		/** Number of the entity it is landing on. */
+		uint16_t getGroundEntityNum() const;
+
+		/** Contains bounding box values. SOLID_BMODEL for brushmodel collision. */
+		uint32_t getSolid() const;
+
+		/** Scale multiplier. */
+		float getScale() const;
+		/** Render alpha. */
+		float getAlpha() const;
+		/** Render flags of the entity (see RF_* values). */
+		uint32_t getRenderFlags() const;
+		/** Shader data. */
+		float getShaderData(uint8_t shaderIndex) const;
+		/** Shader time. */
+		float getShaderTime() const;
 	};
 
 	struct sound_t
 	{
-		/** The entity that the sound is playing on. */
+	public:
 		const entityState_t* entity;
-
-		/** The name of the sound (retrieved from configstrings). */
 		const char* soundName;
-
-		/** The sound origin if it's spatialized. */
 		Vector origin;
-
-		/** Sound's volume. */
 		float volume;
-
-		/** The minimum distance the sound will play at full volume. */
 		float minDist;
-
-		/** The maximum distance before the sound stops playing. */
 		float maxDist;
-
-		/** The pitch of the sound. */
 		float pitch;
-
-		/** The channel the sound is playing on. */
 		uint8_t channel;
-
-		/** Whether or not the sound has stopped playing. */
 		bool hasStopped : 1;
-
-		/** If the whole sound is not into memory. */
 		bool isStreamed : 1;
-
-		/** If the sound is spatialized (check origin).*/
 		bool isSpatialized : 1;
-
-		/** Volume is assigned if yes. */
 		bool hasVolume : 1;
-
-		/** minDist is assigned if yes. */
 		bool hasDist : 1;
-
-		/** pitch is assigned if yes. */
 		bool hasPitch : 1;
 
 	public:
 		sound_t();
+
+		/** The entity that the sound is playing on. */
+		MOHPC_EXPORTS const entityState_t* getEntityState() const;
+		/** The name of the sound (retrieved from configstrings). */
+		MOHPC_EXPORTS const char* getName() const;
+		/** The sound origin if it's spatialized. */
+		MOHPC_EXPORTS const Vector& getOrigin() const;
+
+		/** Sound's volume. */
+		MOHPC_EXPORTS float getVolume() const;
+		/** The minimum distance the sound will play at full volume. */
+		MOHPC_EXPORTS float getMinimumDistance() const;
+		/** The maximum distance before the sound stops playing. */
+		MOHPC_EXPORTS float getMaximumDistance() const;
+		/** The pitch of the sound. */
+		MOHPC_EXPORTS float getPitch();
+		/** The channel the sound is playing on. */
+		MOHPC_EXPORTS uint8_t getChannel() const;
+
+		/** Whether or not the sound has stopped playing. */
+		MOHPC_EXPORTS bool hasSoundStopped() const;
+		/** If the whole sound is not into memory. */
+		MOHPC_EXPORTS bool isStreamedSound() const;
+		/** If the sound is spatialized (check origin).*/
+		MOHPC_EXPORTS bool isSpatializedSound() const;
+
+		/** Volume is assigned if yes. */
+		MOHPC_EXPORTS bool hasSoundVolume() const;
+		/** minDist is assigned if yes. */
+		MOHPC_EXPORTS bool hasSoundDistance() const;
+		/** pitch is assigned if yes. */
+		MOHPC_EXPORTS bool hasSoundPitch() const;
 	};
 
 	namespace Network
@@ -639,6 +841,35 @@ static constexpr unsigned int RF_ALWAYSDRAW			= (1<<30);
 
 		public:
 			SnapshotInfo();
+
+			/** Flags of the snap (see SNAPFLAG_* values). */
+			MOHPC_EXPORTS uint32_t getSnapFlags() const;
+			/** Ping of the client in snap. */
+			MOHPC_EXPORTS uint32_t getPing() const;
+
+			/** Server time when the server sent the snap. */
+			MOHPC_EXPORTS uint32_t getServerTime() const;
+
+			/** Area mask at index (for visibility). */
+			MOHPC_EXPORTS uint8_t getAreaMask(uint8_t index) const;
+
+			/** Current playerState in snap. */
+			MOHPC_EXPORTS const playerState_t& getPlayerState() const
+			;
+			/** Number of entities in this snap. */
+			size_t getNumEntities() const;
+			/** Entity at the specified index. */
+			MOHPC_EXPORTS const entityState_t& getEntityState(entityNum_t number) const;
+
+			/** Number of server commands that was received in this snap. */
+			MOHPC_EXPORTS size_t getNumServerCommands();
+			/** Start sequence number of the command in list. */
+			MOHPC_EXPORTS size_t getServerCommandSequence() const;
+
+			/** Number of sounds in this snap*/
+			MOHPC_EXPORTS size_t getNumSounds() const;
+			/** Sound at the specified index. */
+			MOHPC_EXPORTS const sound_t& getSound(uint8_t index) const;
 		};
 	}
 }

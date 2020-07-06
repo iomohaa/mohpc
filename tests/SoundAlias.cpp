@@ -10,9 +10,9 @@ public:
 		return "Sound alias";
 	}
 
-	virtual void run(MOHPC::AssetManager& AM) override
+	virtual void run(const MOHPC::AssetManagerPtr& AM) override
 	{
-		MOHPC::SoundManager* SoundManager = AM.GetManager<MOHPC::SoundManager>();
+		MOHPC::SoundManager* SoundManager = AM->GetManager<MOHPC::SoundManager>();
 		const MOHPC::SoundNode* Alias = SoundManager->FindAlias("30cal_leftwing");
 	}
 };

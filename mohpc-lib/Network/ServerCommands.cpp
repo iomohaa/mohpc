@@ -171,7 +171,7 @@ str Network::EngineServer::ConnectRequest::generateRequest()
 	info.SetValueForKey("qport", str::printf("%i", qport));
 
 	// Set user info
-	data.info.fillInfoString(info);
+	data.info->fillInfoString(info);
 
 	// Send user info string
 	connectArgs.reserve(info.GetInfoLength() + 2);
@@ -198,7 +198,7 @@ IRequestPtr MOHPC::Network::EngineServer::ConnectRequest::handleResponse(const c
 	if (!str::icmp(name, "droperror"))
 	{
 		const char* error = parser.GetLine(true);
-		data.response(0, 0, protocolType_c(), std::move(data.info), error);
+		data.response(0, 0, protocolType_c(), data.info, error);
 		return nullptr;
 	}
 

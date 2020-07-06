@@ -128,9 +128,9 @@ namespace MOHPC
 
 		// animations
 		MOHPC_EXPORTS size_t GetNumAnimations() const;
-		MOHPC_EXPORTS SkeletonAnimation* GetAnimation(size_t num) const;
+		MOHPC_EXPORTS SkeletonAnimationPtr GetAnimation(size_t num) const;
 		MOHPC_EXPORTS const TIKIAnim::AnimDef* GetAnimDef(size_t num) const;
-		MOHPC_EXPORTS SkeletonAnimation* GetAnimationByName(const char *name) const;
+		MOHPC_EXPORTS SkeletonAnimationPtr GetAnimationByName(const char *name) const;
 		MOHPC_EXPORTS const TIKIAnim::AnimDef* GetAnimDefByName(const char *name) const;
 		MOHPC_EXPORTS const TIKIAnim::AnimDef* GetRandomAnimation(const char *name) const;
 		MOHPC_EXPORTS void GetAllAnimations(const char *name, MOHPC::Container<TIKIAnim::AnimDef*>& out) const;
@@ -144,7 +144,7 @@ namespace MOHPC
 
 		// meshes
 		MOHPC_EXPORTS size_t GetNumMeshes() const;
-		MOHPC_EXPORTS Skeleton *GetMesh(size_t index) const;
+		MOHPC_EXPORTS SkeletonPtr GetMesh(size_t index) const;
 
 		// surfaces
 		MOHPC_EXPORTS size_t GetNumSurfaces() const;

@@ -6,6 +6,7 @@
 #include "../Utilities/SharedPtr.h"
 #include "../Script/Container.h"
 #include "../Script/str.h"
+#include "../Object.h"
 
 namespace MOHPC
 {
@@ -639,6 +640,8 @@ namespace MOHPC
 	 */
 	class CollisionWorld
 	{
+		MOHPC_OBJECT_DECLARATION(CollisionWorld);
+
 	private:
 		Container<collisionFencemask_t> fencemasks;
 		Container<collisionShader_t> shaders;
@@ -668,7 +671,7 @@ namespace MOHPC
 
 	public:
 		MOHPC_EXPORTS CollisionWorld();
-		MOHPC_EXPORTS ~CollisionWorld();
+		~CollisionWorld();
 
 		MOHPC_EXPORTS void clearAll();
 		void reserve(

@@ -200,13 +200,13 @@ public:
 		return 0;
 	}
 
-	virtual void run(MOHPC::AssetManager& AM) override
+	virtual void run(const MOHPC::AssetManagerPtr& AM) override
 	{
-		//MOHPC::BSPPtr Level = AM.LoadAsset<MOHPC::BSP>("/maps/lib/mp_anzio_lib.bsp");
-		MOHPC::BSPPtr Asset = AM.LoadAsset<MOHPC::BSP>("/maps/dm/mohdm6.bsp");
+		//MOHPC::BSPPtr Level = AM->LoadAsset<MOHPC::BSP>("/maps/lib/mp_anzio_lib.bsp");
+		MOHPC::BSPPtr Asset = AM->LoadAsset<MOHPC::BSP>("/maps/dm/mohdm6.bsp");
 		traceTest(Asset);
 		leafTesting(Asset);
-		MOHPC::DCLPtr DCL = AM.LoadAsset<MOHPC::DCL>("/maps/dm/mohdm4.dcl");
+		MOHPC::DCLPtr DCL = AM->LoadAsset<MOHPC::DCL>("/maps/dm/mohdm4.dcl");
 
 		MOHPC::BSP::TerrainCollide collision;
 		Asset->GenerateTerrainCollide(Asset->GetTerrainPatch(0), collision);
@@ -214,15 +214,15 @@ public:
 
 	void traceTest(MOHPC::BSPPtr Asset)
 	{
-		MOHPC::CollisionWorld cm;
-		Asset->FillCollisionWorld(cm);
+		MOHPC::CollisionWorldPtr cm = MOHPC::CollisionWorld::create();
+		Asset->FillCollisionWorld(*cm);
 
 		MOHPC::trace_t results;
 
 		{
 			MOHPC::Vector start(1011.12500f, 1136.81250f ,116.125000f);
 			MOHPC::Vector end(1011.12500f, 1136.81250f, 98.1250000f);
-			cm.CM_BoxTrace(&results, start, end, MOHPC::Vector(-15, -15, 0), MOHPC::Vector(15, 15, 96), 0, MOHPC::ContentFlags::MASK_PLAYERSOLID, true);
+			cm->CM_BoxTrace(&results, start, end, MOHPC::Vector(-15, -15, 0), MOHPC::Vector(15, 15, 96), 0, MOHPC::ContentFlags::MASK_PLAYERSOLID, true);
 		}
 
 		// Patch testing
@@ -234,25 +234,25 @@ public:
 			MOHPC::Vector origin(476.f, -400.f, -150.f);
 
 			//cm.CM_BoxTrace(&results, start, end, MOHPC::Vector(-15, -15, 0), MOHPC::Vector(15, 15, 96), 0, MOHPC::ContentFlags::MASK_PLAYERSOLID, true);
-			cm.CM_TransformedBoxTrace(&results, start, end, mins, maxs, 37, MOHPC::ContentFlags::MASK_PLAYERSOLID, origin, MOHPC::vec_origin, true);
+			cm->CM_TransformedBoxTrace(&results, start, end, mins, maxs, 37, MOHPC::ContentFlags::MASK_PLAYERSOLID, origin, MOHPC::vec_origin, true);
 			assert(results.fraction < 0.01f);
 		}
 
 		MOHPC::Vector start(0, 0, 0);
 		MOHPC::Vector end(0, 0, -500);
-		cm.CM_BoxTrace(&results, start, end, MOHPC::Vector(), MOHPC::Vector(), 0, MOHPC::ContentFlags::MASK_PLAYERSOLID, true);
+		cm->CM_BoxTrace(&results, start, end, MOHPC::Vector(), MOHPC::Vector(), 0, MOHPC::ContentFlags::MASK_PLAYERSOLID, true);
 		assert(results.fraction < 0.3f);
 
 		ArchiveWriter ar;
-		cm.save(ar);
+		cm->save(ar);
 
 		const MOHPC::Container<uint8_t>& data = ar.getData();
 
 		ArchiveReader arReader(data.Data(), data.NumObjects());
-		cm.load(arReader);
+		cm->load(arReader);
 
 		end = MOHPC::Vector(1000, 1000, 0);
-		cm.CM_BoxTrace(&results, start, end, MOHPC::Vector(), MOHPC::Vector(), 0, MOHPC::ContentFlags::MASK_PLAYERSOLID, true);
+		cm->CM_BoxTrace(&results, start, end, MOHPC::Vector(), MOHPC::Vector(), 0, MOHPC::ContentFlags::MASK_PLAYERSOLID, true);
 	}
 
 	void leafTesting(MOHPC::BSPPtr Asset)

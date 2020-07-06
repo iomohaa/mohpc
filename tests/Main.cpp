@@ -34,14 +34,15 @@ int main(int argc, char *argv[])
 	_CrtSetDbgFlag(tmpFlag);
 #endif
 
+	// Test if it destroys well
 	{
-		MOHPC::AssetManager AM;
-		MOHPC::FileManager* FM = AM.GetFileManager();
+		MOHPC::AssetManagerPtr AM = MOHPC::AssetManager::create();
+		MOHPC::FileManager* FM = AM->GetFileManager();
 	}
 
 	{
-		MOHPC::AssetManager AM;
-		MOHPC::FileManager* FM = AM.GetFileManager();
+		MOHPC::AssetManagerPtr AM = MOHPC::AssetManager::create();
+		MOHPC::FileManager* FM = AM->GetFileManager();
 
 		printf("Loading pak files...\n");
 

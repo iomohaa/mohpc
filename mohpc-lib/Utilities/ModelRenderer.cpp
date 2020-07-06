@@ -7,8 +7,10 @@
 
 using namespace MOHPC;
 
-CLASS_DEFINITION(ModelRenderer);
-ModelRenderer::ModelRenderer()
+MOHPC_OBJECT_DEFINITION(ModelRenderer);
+
+ModelRenderer::ModelRenderer(const MOHPC::AssetManagerPtr& AssetManager)
+	: Object(AssetManager)
 {
 	skelBones = nullptr;
 }
@@ -30,8 +32,10 @@ void ModelRenderer::CacheBones()
 		const size_t numMeshes = meshes.size();
 		for (size_t i = 0; i < numMeshes; i++)
 		{
-			const Skeleton* Skel = meshes[i];
-			Skel->LoadBonesFromBuffer(&boneList, skelBones);
+			const SkeletonPtr Skel = meshes[i].lock();
+			if(Skel) {
+				Skel->LoadBonesFromBuffer(&boneList, skelBones);
+			}
 		}
 
 		bones.reserve(numBones);
@@ -124,9 +128,9 @@ void ModelRenderer::AddModel(const TIKI* Tiki)
 
 		for (size_t i = 0; i < numMeshes; i++)
 		{
-			const MOHPC::Skeleton* Skel = Tiki->GetMesh(i);
+			const SkeletonPtr Skel = Tiki->GetMesh(i);
 			meshes.push_back(Skel);
-			LoadMorphTargetNames(Skel);
+			LoadMorphTargetNames(Skel.get());
 		}
 
 		const size_t numSurfaces = Tiki->GetNumSurfaces();
@@ -155,13 +159,13 @@ void ModelRenderer::AddModel(const TIKI* Tiki)
 
 	m_morphTargetList.PackChannels();
 
-	if (poses[MAX_ANIM_MOVEMENTS_POSES].animation == nullptr && Tiki->GetNumAnimations())
+	if (poses[MAX_ANIM_MOVEMENTS_POSES].animation && Tiki->GetNumAnimations())
 	{
 		SetActionPose(Tiki->GetAnimation(0), 0, 0, 1.f);
 	}
 }
 
-intptr_t ModelRenderer::AddModel(const Skeleton* Skel)
+intptr_t ModelRenderer::AddModel(const SkeletonPtr& Skel)
 {
 	ClearBonesCache();
 
@@ -186,13 +190,13 @@ void ModelRenderer::ClearPoses()
 	for (size_t i = 0; i < numPoses; i++)
 	{
 		Pose* pose = &poses[i];
-		pose->animation = nullptr;
+		pose->animation.reset();
 		pose->frameNum = 0;
 		pose->weight = 0.f;
 	}
 }
 
-void ModelRenderer::SetMovementPose(const SkeletonAnimation* Animation, uint32_t PoseIndex, uintptr_t FrameNumber, float Weight)
+void ModelRenderer::SetMovementPose(const SkeletonAnimationPtr& Animation, uint32_t PoseIndex, uintptr_t FrameNumber, float Weight)
 {
 	if (PoseIndex < 0 || PoseIndex > MAX_ANIM_MOVEMENTS_POSES)
 	{
@@ -205,7 +209,7 @@ void ModelRenderer::SetMovementPose(const SkeletonAnimation* Animation, uint32_t
 	pose->weight = Weight;
 }
 
-void ModelRenderer::SetActionPose(const SkeletonAnimation* Animation, uint32_t PoseIndex, uintptr_t FrameNumber, float Weight)
+void ModelRenderer::SetActionPose(const SkeletonAnimationPtr& Animation, uint32_t PoseIndex, uintptr_t FrameNumber, float Weight)
 {
 	if (PoseIndex < 0 || PoseIndex > MAX_ANIM_ACTIONS_POSES)
 	{
@@ -244,91 +248,46 @@ void ModelRenderer::BuildBonesTransform()
 
 	for (size_t i = 0; i < MAX_ANIM_MOVEMENTS_POSES; i++)
 	{
-		Pose* pose = &poses[i];
-		if (pose->animation)
-		{
-			for (size_t j = 0; j <= pose->frameNum; j++)
-			{
-				const SkeletonAnimation::AnimFrame* animFrame = pose->animation->GetFrame(j);
-				delta += (float*)animFrame->delta;
-			}
-
-			frameList.m_blendInfo[i].pAnimationData = pose->animation;
-			frameList.m_blendInfo[i].frame = pose->frameNum;
-			frameList.m_blendInfo[i].weight = pose->weight;
+		if (SetPose(i, frameList)) {
 			frameList.numMovementFrames++;
-		}
-		else
-		{
-			frameList.m_blendInfo[i].pAnimationData = nullptr;
-			frameList.m_blendInfo[i].frame = 0;
-			frameList.m_blendInfo[i].weight = 0.f;
 		}
 	}
 
 	for (size_t i = 0; i < MAX_ANIM_ACTIONS_POSES; i++)
 	{
-		Pose* pose = &poses[MAX_ANIM_MOVEMENTS_POSES + i];
-		if (pose->animation)
-		{
-			for (size_t j = 0; j <= pose->frameNum; j++)
-			{
-				const SkeletonAnimation::AnimFrame* animFrame = pose->animation->GetFrame(j);
-				delta += (float*)animFrame->delta;
-			}
-
-			frameList.m_blendInfo[MAX_ANIM_MOVEMENTS_POSES + i].pAnimationData = pose->animation;
-			frameList.m_blendInfo[MAX_ANIM_MOVEMENTS_POSES + i].frame = pose->frameNum;
-			frameList.m_blendInfo[MAX_ANIM_MOVEMENTS_POSES + i].weight = pose->weight;
-			frameList.actionWeight += pose->weight;
+		if (SetPose(MAX_ANIM_MOVEMENTS_POSES + i, frameList)) {
 			frameList.numActionFrames++;
-		}
-		else
-		{
-			frameList.m_blendInfo[MAX_ANIM_MOVEMENTS_POSES + i].pAnimationData = nullptr;
-			frameList.m_blendInfo[MAX_ANIM_MOVEMENTS_POSES + i].frame = 0;
-			frameList.m_blendInfo[MAX_ANIM_MOVEMENTS_POSES + i].weight = 0.f;
 		}
 	}
 
 	// Retrieve all skeleton bones to be later used
 	CacheBones();
 
-	// We must guarantee that all bones transform are calculated accordingly
+	// Must guarantee that all bones transform are calculated accordingly
 	MarkAllBonesAsDirty();
 
-	bonesTransform.clear();
+	bonesTransform.FreeObjectList();
 
 	const size_t numBones = boneList.NumChannels();
-	bonesTransform.reserve(numBones);
+	bonesTransform.Resize(numBones);
 
-	// Calculate all bonesTransform transform
+	// Calculate all bones transform
 	for (size_t i = 0; i < numBones; i++)
 	{
+		// Get the matrix bone transform
 		SkelMat4 transform = skelBones[i]->GetTransform(&frameList);
 
-		ModelBoneTransform boneTransform;
-		boneTransform.baseBone = &bones[i];
-		boneTransform.offset = transform[3];
-		boneTransform.matrix[0][0] = transform[0][0];
-		boneTransform.matrix[0][1] = transform[0][1];
-		boneTransform.matrix[0][2] = transform[0][2];
-		boneTransform.matrix[1][0] = transform[1][0];
-		boneTransform.matrix[1][1] = transform[1][1];
-		boneTransform.matrix[1][2] = transform[1][2];
-		boneTransform.matrix[2][0] = transform[2][0];
-		boneTransform.matrix[2][1] = transform[2][1];
-		boneTransform.matrix[2][2] = transform[2][2];
-		MatToQuat(boneTransform.matrix, boneTransform.quat);
-
-		bonesTransform.push_back(boneTransform);
+		ModelBoneTransform* boneTransform = new(bonesTransform) ModelBoneTransform();
+		boneTransform->baseBone = &bones[i];
+		boneTransform->offset = transform[3];
+		Matrix4_3Copy(transform.val, boneTransform->matrix);
+		MatToQuat(boneTransform->matrix, boneTransform->quat);
 	}
 }
 
 void ModelRenderer::BuildRenderData()
 {
-	if (!meshes.size())
-	{
+	if (!meshes.size()) {
 		return;
 	}
 
@@ -337,14 +296,17 @@ void ModelRenderer::BuildRenderData()
 	const size_t numMeshes = meshes.size();
 	for (size_t i = 0; i < numMeshes; i++)
 	{
-		const Skeleton* Skel = meshes[i];
-		numSurfaces += Skel->GetNumSurfaces();
+		const SkeletonPtr Skel = meshes[i].lock();
+		if(Skel) {
+			numSurfaces += Skel->GetNumSurfaces();
+		}
 		//numTotalMorphs += Skel->GetNumMorphTargets();
 	}
 
 	surfaces.clear();
 	surfaces.reserve(numSurfaces);
 
+	// This code was used to calculate morph, but it doesn't seem to work
 	/*
 	std::vector<float> morphData;
 	morphData.insert(morphData.begin(), numTotalMorphs, 0);
@@ -401,9 +363,13 @@ void ModelRenderer::BuildRenderData()
 
 	size_t materialIdx = 0;
 
+	// Calculate vertices and weights
 	for (size_t meshIdx = 0; meshIdx < numMeshes; meshIdx++)
 	{
-		const Skeleton* Skel = meshes[meshIdx];
+		const SkeletonPtr Skel = meshes[meshIdx].lock();
+		if (!Skel) {
+			continue;
+		}
 
 		const size_t numMeshSurfaces = Skel->GetNumSurfaces();
 		for (size_t surfIdx = 0; surfIdx < numMeshSurfaces; surfIdx++)
@@ -474,12 +440,10 @@ void ModelRenderer::BuildRenderData()
 						boneNum = boneList.GetLocalFromGlobal(channelNum);
 						bone = &bonesTransform[boneNum];
 
-						if (!weightNum)
-						{
+						if (!weightNum) {
 							SkelWeightMorphGetXyz(skelWeight, bone, totalMorph, Vertice.xyz);
 						}
-						else
-						{
+						else {
 							SkelWeightGetXyz(skelWeight, bone, Vertice.xyz);
 						}
 
@@ -705,6 +669,34 @@ void ModelRenderer::SkelMorphGetXyz(const Skeleton::SkeletorMorph *morph, int *m
 const MOHPC::Vector& MOHPC::ModelRenderer::GetDelta() const
 {
 	return delta;
+}
+
+bool ModelRenderer::SetPose(uintptr_t poseIndex, skelAnimStoreFrameList_c& frameList)
+{
+	Pose* pose = &poses[poseIndex];
+	SkanBlendInfo& blendInfo = frameList.m_blendInfo[poseIndex];
+	if (pose->animation)
+	{
+		for (size_t j = 0; j <= pose->frameNum; j++)
+		{
+			const SkeletonAnimation::AnimFrame* animFrame = pose->animation->GetFrame(j);
+			delta += (float*)animFrame->delta;
+		}
+
+		blendInfo.pAnimationData = pose->animation;
+		blendInfo.frame = pose->frameNum;
+		blendInfo.weight = pose->weight;
+	}
+	else
+	{
+		blendInfo.pAnimationData.reset();
+		blendInfo.frame = 0;
+		blendInfo.weight = 0.f;
+		// No animation
+		return false;
+	}
+
+	return true;
 }
 
 const MOHPC::ModelSurfaceMaterial* MOHPC::ModelRenderer::FindMaterialByName(const str& name)

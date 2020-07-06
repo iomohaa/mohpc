@@ -16,11 +16,11 @@ public:
 		return "Shader";
 	}
 
-	virtual void run(MOHPC::AssetManager& AM) override
+	virtual void run(const MOHPC::AssetManagerPtr& AM) override
 	{
 		printf("Loading shaders...\n");
 
-		MOHPC::ShaderManager* SM = AM.GetManager<MOHPC::ShaderManager>();
+		MOHPC::ShaderManager* SM = AM->GetManager<MOHPC::ShaderManager>();
 
 		auto Shader = SM->GetShader("textures/common/caulk");
 		if (Shader && Shader->GetNumStages())

@@ -28,7 +28,7 @@ IUnitTest::~IUnitTest()
 	if (last == this) last = prev;
 }
 
-void IUnitTest::runAll(MOHPC::AssetManager& AM)
+void IUnitTest::runAll(const MOHPC::AssetManagerPtr& AM)
 {
 	std::cout << "--- Running unit testing" << std::endl;
 

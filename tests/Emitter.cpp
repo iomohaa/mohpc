@@ -11,15 +11,15 @@ public:
 		return "Emitter";
 	}
 
-	virtual void run(MOHPC::AssetManager& AM) override
+	virtual void run(const MOHPC::AssetManagerPtr& AM) override
 	{
 		printf("Loading test emitter...\n");
 		auto start = std::chrono::system_clock().now();
-		MOHPC::TIKIPtr Tiki = AM.LoadAsset<MOHPC::TIKI>("/models/fx/fx_tank_explosion.tik");
+		MOHPC::TIKIPtr Tiki = AM->LoadAsset<MOHPC::TIKI>("/models/fx/fx_tank_explosion.tik");
 		auto end = std::chrono::system_clock().now();
 		printf("%lf time\n", std::chrono::duration<double>(end - start).count());
 
-		MOHPC::EmitterManager* EmitterManager = AM.GetManager<MOHPC::EmitterManager>();
+		MOHPC::EmitterManager* EmitterManager = AM->GetManager<MOHPC::EmitterManager>();
 
 		if (Tiki)
 		{

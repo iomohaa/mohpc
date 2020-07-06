@@ -12,24 +12,23 @@ public:
 		return "Anim rendering";
 	}
 
-	virtual void run(MOHPC::AssetManager& AM) override
+	virtual void run(const MOHPC::AssetManagerPtr& AM) override
 	{
-		MOHPC::SkeletonAnimationPtr Animation = AM.LoadAsset<MOHPC::SkeletonAnimation>("/models/human/animation/deaths/death_chest.skc");
-		MOHPC::TIKIPtr Tiki = AM.LoadAsset<MOHPC::TIKI>("/models/player/american_army.tik");
-		MOHPC::SkeletonPtr TikiArms = AM.LoadAsset<MOHPC::Skeleton>("/models/player/us_army/USarmyplyr.skd");
+		MOHPC::SkeletonAnimationPtr Animation = AM->LoadAsset<MOHPC::SkeletonAnimation>("/models/human/animation/deaths/death_chest.skc");
+		MOHPC::TIKIPtr Tiki = AM->LoadAsset<MOHPC::TIKI>("/models/player/american_army.tik");
+		MOHPC::SkeletonPtr TikiArms = AM->LoadAsset<MOHPC::Skeleton>("/models/player/us_army/USarmyplyr.skd");
 
 		if (Tiki)
 		{
-			MOHPC::ModelRenderer ModelRenderer;
-			ModelRenderer.InitAssetManager(&AM);
-			ModelRenderer.AddModel(Tiki.get());
-			ModelRenderer.AddModel(TikiArms.get());
+			MOHPC::ModelRendererPtr ModelRenderer = MOHPC::ModelRenderer::create(AM);
+			ModelRenderer->AddModel(Tiki.get());
+			ModelRenderer->AddModel(TikiArms);
 
 			for (size_t i = 0; i < Animation->GetNumFrames(); i++)
 			{
-				ModelRenderer.SetActionPose(Animation.get(), 0, i);
-				ModelRenderer.BuildBonesTransform();
-				ModelRenderer.BuildRenderData();
+				ModelRenderer->SetActionPose(Animation, 0, i);
+				ModelRenderer->BuildBonesTransform();
+				ModelRenderer->BuildRenderData();
 			}
 		}
 	}

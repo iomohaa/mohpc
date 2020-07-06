@@ -89,12 +89,12 @@ namespace MOHPC
 			MOHPC_OBJECT_DECLARATION(EngineServer);
 
 		private:
-			using ConnectResponse = std::function<void(uint16_t qport, uint32_t challenge, const protocolType_c& protoType, ClientInfo&& cInfo, const char* errorMessage)>;
+			using ConnectResponse = std::function<void(uint16_t qport, uint32_t challenge, const protocolType_c& protoType, const ClientInfoPtr& cInfo, const char* errorMessage)>;
 
 			struct ConnectionParams
 			{
 				ConnectResponse response;
-				ClientInfo info;
+				ClientInfoPtr info;
 
 				ConnectionParams() {}
 				// Remove copy constructor
@@ -245,7 +245,7 @@ namespace MOHPC
 			 * @param	clientInfo	Settings containing some important information (to avoid useless allocations this parameter will be moved out)
 			 * @param	result		Callback that will be called when finished connecting or when an error occured
 			 */
-			MOHPC_EXPORTS void connect(ClientInfo&& clientInfo, Callbacks::Connect&& result, Callbacks::ServerTimeout&& timeoutResult = Callbacks::ServerTimeout());
+			MOHPC_EXPORTS void connect(const ClientInfoPtr& clientInfo, Callbacks::Connect&& result, Callbacks::ServerTimeout&& timeoutResult = Callbacks::ServerTimeout());
 
 			/**
 			 * Retrieve various settings from the specified server.
@@ -275,7 +275,7 @@ namespace MOHPC
 			void sendRequest(IEngineRequestPtr&& req, Callbacks::ServerTimeout&& timeoutResult = Callbacks::ServerTimeout());
 
 		private:
-			void onConnect(const Callbacks::Connect result, uint16_t qport, uint32_t challengeResponse, const protocolType_c& protoType, ClientInfo&& cInfo, const char* errorMessage);
+			void onConnect(const Callbacks::Connect result, uint16_t qport, uint32_t challengeResponse, const protocolType_c& protoType, const ClientInfoPtr& cInfo, const char* errorMessage);
 		};
 
 		using EngineServerPtr = SharedPtr<EngineServer>;

@@ -23,7 +23,7 @@ public:
 		return "MSG";
 	}
 
-	virtual void run(MOHPC::AssetManager& AM) override
+	virtual void run(const MOHPC::AssetManagerPtr& AM) override
 	{
 		std::vector<uint8_t> msgBuffer(65536, 0);
 		std::vector<uint8_t> msgBuffer2(16, 0);

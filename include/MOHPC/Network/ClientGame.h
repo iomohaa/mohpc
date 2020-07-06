@@ -388,18 +388,23 @@ namespace MOHPC
 		/** Class for handling client specifing settings. */
 		class ClientInfo
 		{
+			MOHPC_OBJECT_DECLARATION(ClientInfo);
+
 		private:
 			str name;
 			uint32_t rate;
 			uint32_t snaps;
 			PropertyObject properties;
 
-		public:
+		private:
 			MOHPC_EXPORTS ClientInfo();
-			MOHPC_EXPORTS ClientInfo(ClientInfo&& other) = default;
-			MOHPC_EXPORTS ClientInfo& operator=(ClientInfo && other) = default;
-			MOHPC_EXPORTS ~ClientInfo() = default;
+			ClientInfo(ClientInfo&& other) = default;
+			ClientInfo& operator=(ClientInfo&& other) = default;
+			ClientInfo(const ClientInfo& other) = delete;
+			ClientInfo& operator=(const ClientInfo& other) = delete;
+			~ClientInfo() = default;
 
+		public:
 			/**
 			 * Set/get the client rate, in kbps. Common rates are :
 			 * - 2500 : 28.8k modem
@@ -436,6 +441,8 @@ namespace MOHPC
 			/** Build info string from properties. */
 			MOHPC_EXPORTS void fillInfoString(Info& info) const;
 		};
+		using ClientInfoPtr = SharedPtr<ClientInfo>;
+		using ConstClientInfoPtr = SharedPtr<const ClientInfo>;
 		
 		// FIXME: Store server config/properties
 		class ClientGameConnection : public ITickableNetwork
@@ -525,7 +532,7 @@ namespace MOHPC
 			usereyes_t userEyes;
 			ReadOnlyInfo serverSystemInfo;
 			ReadOnlyInfo serverGameInfo;
-			ClientInfo userInfo;
+			ClientInfoPtr userInfo;
 			gameState_t gameState;
 			ClientSnapshot currentSnap;
 			ClientSnapshot snapshots[PACKET_BACKUP];
@@ -544,7 +551,7 @@ namespace MOHPC
 			 * @param	challengeResponse	Challenge used to XOR data.
 			 * @param	protocolVersion		Version of the protocol to use.
 			 */
-			ClientGameConnection(NetworkManager* inNetworkManager, const INetchanPtr& netchan, const netadr_t& inAdr, uint32_t challengeResponse, const protocolType_c& protoType, ClientInfo&& cInfo);
+			ClientGameConnection(NetworkManager* inNetworkManager, const INetchanPtr& netchan, const netadr_t& inAdr, uint32_t challengeResponse, const protocolType_c& protoType, const ClientInfoPtr& cInfo);
 			~ClientGameConnection();
 
 			// ITickableNetwork
@@ -602,11 +609,11 @@ namespace MOHPC
 			/** Retrieve the server game configuration, such as the hostname, gametype, force respawn, timelimit, ... */
 			MOHPC_EXPORTS const ReadOnlyInfo& getServerGameInfo() const;
 
-			/** Return modifiable user info. */
-			MOHPC_EXPORTS const ClientInfo& getUserInfo() const;
+			/** Return read-only user info. */
+			MOHPC_EXPORTS ConstClientInfoPtr getUserInfo() const;
 
 			/** Return modifiable user info. */
-			MOHPC_EXPORTS ClientInfo& getUserInfo();
+			MOHPC_EXPORTS const ClientInfoPtr& getUserInfo();
 
 			/** Send the server a new user info string. Must be called after having finished modifying the userinfo. */
 			MOHPC_EXPORTS void updateUserInfo();

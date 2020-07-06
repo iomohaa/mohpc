@@ -24,6 +24,8 @@ static void SetPlaneSignbits(collisionPlane_t* out)
 	out->signbits = bits;
 }
 
+MOHPC_OBJECT_DEFINITION(CollisionWorld);
+
 CollisionWorld::CollisionWorld()
 {
 	checkcount = 0;

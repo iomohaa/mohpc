@@ -10,6 +10,8 @@ using namespace MOHPC;
 
 #define MOHPC_LOG_NAMESPACE "assetmanager"
 
+MOHPC_OBJECT_DEFINITION(AssetManager);
+
 template<>
 intptr_t MOHPC::HashCode<std::type_index>(const std::type_index& key)
 {
@@ -109,7 +111,9 @@ void AssetManager::SetFileManager(FileManager* FileManager)
 void AssetManager::AddManager(const std::type_index& ti, Manager* manager)
 {
 	//m_managers[ti] = manager;
+	manager->AM = this;
 	m_managers.addKeyValue(ti) = manager;
+	manager->Init();
 }
 
 Manager* AssetManager::GetManager(const std::type_index& ti) const

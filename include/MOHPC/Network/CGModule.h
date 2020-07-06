@@ -444,6 +444,13 @@ namespace MOHPC
 
 		public:
 			EntityInfo();
+
+			MOHPC_EXPORTS const entityState_t& getCurrentState() const;
+			MOHPC_EXPORTS const entityState_t& getNextState() const;
+			MOHPC_EXPORTS uint32_t getSnapshotTime() const;
+			MOHPC_EXPORTS bool isValid() const;
+			MOHPC_EXPORTS bool isInterpolating() const;
+			MOHPC_EXPORTS bool hasTeleported() const;
 		};
 
 		struct rain_t
@@ -460,6 +467,16 @@ namespace MOHPC
 
 		public:
 			rain_t();
+
+			MOHPC_EXPORTS float getDensity() const;
+			MOHPC_EXPORTS float getSpeed() const;
+			MOHPC_EXPORTS uint32_t getSpeedVariation() const;
+			MOHPC_EXPORTS uint32_t getSlant() const;
+			MOHPC_EXPORTS float getLength() const;
+			MOHPC_EXPORTS float getMinimumDistance() const;
+			MOHPC_EXPORTS float getWidth() const;
+			MOHPC_EXPORTS uint32_t getNumShaders() const;
+			MOHPC_EXPORTS const char* getShader(uint8_t index) const;
 		};
 
 		struct objective_t
@@ -1159,7 +1176,7 @@ namespace MOHPC
 
 		/**
 		 * CG Module for protocol version 15.
-		 * => MOH:SH ver 2.00.
+		 * => MOH:SH ver 2.00 and above.
 		 */
 		class CGameModule15 : public CGameModuleBase
 		{

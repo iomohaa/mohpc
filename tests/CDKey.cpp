@@ -13,7 +13,7 @@ public:
 		return "CD-Key";
 	}
 
-	virtual void run(MOHPC::AssetManager& AM) override
+	virtual void run(const MOHPC::AssetManagerPtr& AM) override
 	{
 		srand((unsigned int)time(NULL));
 

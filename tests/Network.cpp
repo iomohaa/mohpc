@@ -126,7 +126,7 @@ public:
 		return "Networking";
 	}
 
-	virtual void run(MOHPC::AssetManager& AM) override
+	virtual void run(const MOHPC::AssetManagerPtr& AM) override
 	{
 		MOHPC::Info info;
 		info.SetValueForKey("testKey1", "value");
@@ -144,7 +144,7 @@ public:
 		someKeyVal = info.ValueForKey("keyToBe");
 		assert(someKeyVal.isEmpty());
 
-		MOHPC::NetworkManager* manager = AM.GetManager<MOHPC::NetworkManager>();
+		MOHPC::NetworkManager* manager = AM->GetManager<MOHPC::NetworkManager>();
 
 		// Set new log
 		using namespace MOHPC::Log;
@@ -191,14 +191,14 @@ public:
 		float rightValue = 0.f;
 		float angle = 0.f;
 
-		MOHPC::BSPPtr Asset = AM.LoadAsset<MOHPC::BSP>("/maps/dm/mohdm6.bsp");
-		MOHPC::CollisionWorld cm;
-		Asset->FillCollisionWorld(cm);
+		MOHPC::BSPPtr Asset = AM->LoadAsset<MOHPC::BSP>("/maps/dm/mohdm6.bsp");
+		MOHPC::CollisionWorldPtr cm = MOHPC::CollisionWorld::create();
+		Asset->FillCollisionWorld(*cm);
 
-		MOHPC::Network::ClientInfo clientInfo;
-		clientInfo.setName("mohpc_test");
-		clientInfo.setRate(25000);
-		clientBase->connect(std::move(clientInfo), [&logPtr, &connection, &wantsDisconnect, &clientBase, &forwardValue, &rightValue, &angle, &cm](const MOHPC::Network::ClientGameConnectionPtr& cg, const char* errorMessage)
+		MOHPC::Network::ClientInfoPtr clientInfo = MOHPC::Network::ClientInfo::create();
+		clientInfo->setName("mohpc_test");
+		clientInfo->setRate(25000);
+		clientBase->connect(clientInfo, [&logPtr, &connection, &wantsDisconnect, &clientBase, &forwardValue, &rightValue, &angle, &cm](const MOHPC::Network::ClientGameConnectionPtr& cg, const char* errorMessage)
 			{
 				if (errorMessage)
 				{
@@ -286,7 +286,7 @@ public:
 
 				connection->setCallback<ClientHandlers::UserInput>([&forwardValue, &rightValue, &angle, &cgame, &cm](usercmd_t& ucmd, usereyes_t& eyeinfo)
 				{
-					eyeinfo.setAngle(30.f, angle);
+					eyeinfo.setAngles(30.f, angle);
 					ucmd.buttons.fields.button.run = true;
 					ucmd.moveForward((int8_t)(forwardValue * 127.f));
 					ucmd.moveRight((int8_t)(rightValue * 127.f));
@@ -300,14 +300,14 @@ public:
 						MOHPC::Vector start(499.125000f + 16.f, -427.312500f, -151.875000f);
 						MOHPC::Vector end(499.125824f, -426.720612f, -151.875000f);
 
-						cgame.trace(cm, tr, start, MOHPC::Vector(-15, -15, 0), MOHPC::Vector(15, 15, 96), end, 0, ContentFlags::MASK_PLAYERSOLID, true, true);
+						cgame.trace(*cm, tr, start, MOHPC::Vector(-15, -15, 0), MOHPC::Vector(15, 15, 96), end, 0, ContentFlags::MASK_PLAYERSOLID, true, true);
 					}
 
 					{
 						MOHPC::Vector start(499.133942f, -427.044525f, -151.875000f);
 						MOHPC::Vector end(499.125824f, -426.720612f, -151.875000f);
 
-						cgame.trace(cm, tr, start, MOHPC::Vector(-15, -15, 0), MOHPC::Vector(15, 15, 96), end, 0, ContentFlags::MASK_PLAYERSOLID, true, true);
+						cgame.trace(*cm, tr, start, MOHPC::Vector(-15, -15, 0), MOHPC::Vector(15, 15, 96), end, 0, ContentFlags::MASK_PLAYERSOLID, true, true);
 					}
 				});
 
@@ -358,10 +358,10 @@ public:
 					{
 						if (connection)
 						{
-							ClientInfo& userInfo = connection->getUserInfo();
-							userInfo.setRate(30000);
-							userInfo.setName("modified");
-							userInfo.setSnaps(1);
+							const ClientInfoPtr& userInfo = connection->getUserInfo();
+							userInfo->setRate(30000);
+							userInfo->setName("modified");
+							userInfo->setSnaps(1);
 							connection->updateUserInfo();
 						}
 					}
@@ -373,8 +373,8 @@ public:
 							const uint32_t rate = parser.GetInteger(false);
 							if(connection)
 							{
-								ClientInfo& userInfo = connection->getUserInfo();
-								userInfo.setRate(rate);
+								const ClientInfoPtr& userInfo = connection->getUserInfo();
+								userInfo->setRate(rate);
 								connection->updateUserInfo();
 							}
 						}
@@ -383,8 +383,8 @@ public:
 							const uint32_t snaps = parser.GetInteger(false);
 							if (connection)
 							{
-								ClientInfo& userInfo = connection->getUserInfo();
-								userInfo.setSnaps(snaps);
+								const ClientInfoPtr& userInfo = connection->getUserInfo();
+								userInfo->setSnaps(snaps);
 								connection->updateUserInfo();
 							}
 						}

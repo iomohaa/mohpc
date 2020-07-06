@@ -121,7 +121,7 @@ ClientSnapshot::ClientSnapshot()
 
 MOHPC_OBJECT_DEFINITION(ClientGameConnection);
 
-ClientGameConnection::ClientGameConnection(NetworkManager* inNetworkManager, const INetchanPtr& inNetchan, const netadr_t& inAdr, uint32_t challengeResponse, const protocolType_c& protoType, ClientInfo&& cInfo)
+ClientGameConnection::ClientGameConnection(NetworkManager* inNetworkManager, const INetchanPtr& inNetchan, const netadr_t& inAdr, uint32_t challengeResponse, const protocolType_c& protoType, const ClientInfoPtr& cInfo)
 	: ITickableNetwork(inNetworkManager)
 	, netchan(inNetchan)	
 	, adr(inAdr)
@@ -150,7 +150,7 @@ ClientGameConnection::ClientGameConnection(NetworkManager* inNetworkManager, con
 	, serverCommands{ nullptr }
 	, reliableCmdStrings{ 0 }
 	, serverCmdStrings{ 0 }
-	, userInfo(std::move(cInfo))
+	, userInfo(cInfo)
 {
 	CGameImports imports;
 
@@ -1229,7 +1229,12 @@ const gameState_t& MOHPC::Network::ClientGameConnection::getGameState() const
 	return gameState;
 }
 
-const ClientInfo& MOHPC::Network::ClientGameConnection::getUserInfo() const
+ConstClientInfoPtr MOHPC::Network::ClientGameConnection::getUserInfo() const
+{
+	return userInfo;
+}
+
+const ClientInfoPtr& MOHPC::Network::ClientGameConnection::getUserInfo()
 {
 	return userInfo;
 }
@@ -1237,7 +1242,7 @@ const ClientInfo& MOHPC::Network::ClientGameConnection::getUserInfo() const
 void MOHPC::Network::ClientGameConnection::updateUserInfo()
 {
 	Info info;
-	userInfo.fillInfoString(info);
+	userInfo->fillInfoString(info);
 	// Send the new user info.
 	addReliableCommand(str::printf("userinfo \"%s\"", info.GetString()));
 }
@@ -1272,11 +1277,6 @@ void MOHPC::Network::ClientGameConnection::setMaxTickPackets(uint32_t inMaxPacke
 	else if (maxTickPackets > 1000) {
 		maxTickPackets = 1000;
 	}
-}
-
-ClientInfo& MOHPC::Network::ClientGameConnection::getUserInfo()
-{
-	return userInfo;
 }
 
 void MOHPC::Network::ClientGameConnection::initTime(uint64_t currentTime)
@@ -1621,3 +1621,89 @@ void MOHPC::Network::gameState_t::setConfigString(size_t num, const char* config
 	memcpy(stringData + dataCount, configString, len + 1);
 	dataCount += len + 1;
 }
+
+MOHPC_OBJECT_DEFINITION(ClientInfo);
+
+ClientInfo::ClientInfo()
+	: snaps(20)
+	, rate(5000)
+{
+}
+
+void MOHPC::Network::ClientInfo::setRate(uint32_t inRate)
+{
+	rate = inRate;
+}
+
+uint32_t MOHPC::Network::ClientInfo::getRate() const
+{
+	return rate;
+}
+
+void MOHPC::Network::ClientInfo::setSnaps(uint32_t inSnaps)
+{
+	snaps = inSnaps;
+}
+
+uint32_t MOHPC::Network::ClientInfo::getSnaps() const
+{
+	return snaps;
+}
+
+void ClientInfo::setName(const char* newName)
+{
+	name = newName;
+}
+
+const char* ClientInfo::getName() const
+{
+	return name.c_str();
+}
+
+void ClientInfo::setPlayerAlliedModel(const char* newModel)
+{
+	properties.SetPropertyValue("dm_playermodel", newModel);
+}
+
+const char* ClientInfo::getPlayerAlliedModel() const
+{
+	return properties.GetPropertyRawValue("dm_playermodel");
+}
+
+void ClientInfo::setPlayerGermanModel(const char* newModel)
+{
+	properties.SetPropertyValue("dm_playergermanmodel", newModel);
+}
+
+const char* ClientInfo::getPlayerGermanModel() const
+{
+	return properties.GetPropertyRawValue("dm_playergermanmodel");
+}
+
+void MOHPC::Network::ClientInfo::setUserKeyValue(const char* key, const char* value)
+{
+	properties.SetPropertyValue(key, value);
+}
+
+const char* MOHPC::Network::ClientInfo::getUserKeyValue(const char* key) const
+{
+	return properties.GetPropertyRawValue(key);
+}
+
+void ClientInfo::fillInfoString(Info& info) const
+{
+	// Build mandatory variables
+	info.SetValueForKey("rate", str::printf("%i", rate));
+	info.SetValueForKey("snaps", str::printf("%i", snaps));
+	info.SetValueForKey("name", name.c_str());
+
+	// Build miscellaneous values
+	for (PropertyMapIterator it = properties.GetIterator(); it; ++it)
+	{
+		info.SetValueForKey(
+			it.key().GetFullPropertyName(),
+			it.value()
+		);
+	}
+}
+

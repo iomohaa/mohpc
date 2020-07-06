@@ -167,9 +167,9 @@ Skeletor::Skeletor(TIKI *tiki)
 	size_t numMeshes = tiki->GetNumMeshes();
 	for (size_t mesh = 0; mesh < numMeshes; mesh++)
 	{
-		Skeleton *skelmodel = tiki->GetMesh(mesh);
+		const SkeletonPtr skelmodel = tiki->GetMesh(mesh);
 		skelmodel->LoadBonesFromBuffer(tiki->GetBoneList(), m_bone);
-		LoadMorphTargetNames(skelmodel);
+		LoadMorphTargetNames(skelmodel.get());
 	}
 
 	m_morphTargetList.PackChannels();
@@ -352,7 +352,7 @@ void Skeletor::SetPose(const FrameInfo *frameInfo, const int32_t *contIndices, c
 	{
 		if (frameInfo[i].weight > cutoff_weight)
 		{
-			const SkeletonAnimation* animData = frameInfo[i].anim; //m_Tiki->GetAnimation(frameInfo[i].index);
+			const ConstSkeletonAnimationPtr animData = frameInfo[i].anim;
 			if (animData->HasDelta())
 			{
 				blendFrame = movementBlendFrame;

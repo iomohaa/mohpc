@@ -33,12 +33,12 @@ size_t TIKI::GetNumAnimations() const
 	return tikianim ? tikianim->animdefs.size() : 0;
 }
 
-SkeletonAnimation *TIKI::GetAnimation(size_t num) const
+SkeletonAnimationPtr TIKI::GetAnimation(size_t num) const
 {
 	const TIKIAnim::AnimDef* panimdef = GetAnimDef(num);
 	if (panimdef)
 	{
-		return panimdef->animData.get();
+		return panimdef->animData;
 	}
 
 	return nullptr;
@@ -58,12 +58,12 @@ const TIKIAnim::AnimDef* TIKI::GetAnimDef(size_t num) const
 	}
 }
 
-SkeletonAnimation *TIKI::GetAnimationByName(const char *name) const
+SkeletonAnimationPtr TIKI::GetAnimationByName(const char *name) const
 {
 	const TIKIAnim::AnimDef* panimdef = GetAnimDefByName(name);
 	if (panimdef)
 	{
-		return panimdef->animData.get();
+		return panimdef->animData;
 	}
 
 	return nullptr;
@@ -254,7 +254,7 @@ bool TIKI::IsStaticModel() const
 	{
 		for (size_t animNum = 0; animNum < GetNumAnimations(); ++animNum)
 		{
-			SkeletonAnimation* Animation = GetAnimation(animNum);
+			const SkeletonAnimationPtr Animation = GetAnimation(animNum);
 
 			bool bFoundPrev = false;
 

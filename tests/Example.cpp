@@ -4,11 +4,11 @@
 
 void ExampleCode()
 {
-	MOHPC::AssetManager AM;
+	MOHPC::AssetManagerPtr AM = MOHPC::AssetManager::create();
 
 	// Retrieves the file manager associated with the asset manager
 	// So we can open a file
-	MOHPC::FileManager* FM = AM.GetFileManager();
+	MOHPC::FileManager* FM = AM->GetFileManager();
 
 	// Adds up the main folder from MOHAA
 	FM->AddGameDirectory("C:\\Games\\MOHPC\\main");

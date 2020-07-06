@@ -82,15 +82,14 @@ size_t TIKI::GetNumMeshes() const
 	return meshes.size();
 }
 
-Skeleton *TIKI::GetMesh(size_t index) const
+SkeletonPtr TIKI::GetMesh(size_t index) const
 {
 	assert(index >= 0 && index < meshes.size());
-	if (index < 0 || index >= meshes.size())
-	{
+	if (index < 0 || index >= meshes.size()) {
 		return NULL;
 	}
 
-	return meshes[index].get();
+	return meshes[index];
 }
 
 size_t TIKI::GetNumSurfaces() const

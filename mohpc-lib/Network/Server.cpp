@@ -144,7 +144,7 @@ void EngineServer::tick(uint64_t deltaTime, uint64_t currentTime)
 	handler.handle();
 }
 
-void EngineServer::connect(ClientInfo&& clientInfo, Callbacks::Connect&& result, Callbacks::ServerTimeout&& timeoutResult)
+void EngineServer::connect(const ClientInfoPtr& clientInfo, Callbacks::Connect&& result, Callbacks::ServerTimeout&& timeoutResult)
 {
 	using namespace std::placeholders;
 
@@ -177,7 +177,7 @@ void EngineServer::sendRequest(IEngineRequestPtr&& req, Callbacks::ServerTimeout
 	handler.sendRequest(std::move(req), std::move(param), 10000);
 }
 
-void EngineServer::onConnect(const Callbacks::Connect result, uint16_t qport, uint32_t challengeResponse, const protocolType_c& protoType, ClientInfo&& cInfo, const char* errorMessage)
+void EngineServer::onConnect(const Callbacks::Connect result, uint16_t qport, uint32_t challengeResponse, const protocolType_c& protoType, const ClientInfoPtr& cInfo, const char* errorMessage)
 {
 	if (!errorMessage)
 	{
@@ -191,7 +191,7 @@ void EngineServer::onConnect(const Callbacks::Connect result, uint16_t qport, ui
 			address,
 			challengeResponse,
 			protoType,
-			std::move(cInfo)
+			cInfo
 		);
 		
 		// Init client time
@@ -203,89 +203,6 @@ void EngineServer::onConnect(const Callbacks::Connect result, uint16_t qport, ui
 	{
 		// Send the error message
 		result(nullptr, errorMessage);
-	}
-}
-
-ClientInfo::ClientInfo()
-	: snaps(20)
-	, rate(5000)
-{
-}
-
-void MOHPC::Network::ClientInfo::setRate(uint32_t inRate)
-{
-	rate = inRate;
-}
-
-uint32_t MOHPC::Network::ClientInfo::getRate() const
-{
-	return rate;
-}
-
-void MOHPC::Network::ClientInfo::setSnaps(uint32_t inSnaps)
-{
-	snaps = inSnaps;
-}
-
-uint32_t MOHPC::Network::ClientInfo::getSnaps() const
-{
-	return snaps;
-}
-
-void ClientInfo::setName(const char* newName)
-{
-	name = newName;
-}
-
-const char* ClientInfo::getName() const
-{
-	return name.c_str();
-}
-
-void ClientInfo::setPlayerAlliedModel(const char* newModel)
-{
-	properties.SetPropertyValue("dm_playermodel", newModel);
-}
-
-const char* ClientInfo::getPlayerAlliedModel() const
-{
-	return properties.GetPropertyRawValue("dm_playermodel");
-}
-
-void ClientInfo::setPlayerGermanModel(const char* newModel)
-{
-	properties.SetPropertyValue("dm_playergermanmodel", newModel);
-}
-
-const char* ClientInfo::getPlayerGermanModel() const
-{
-	return properties.GetPropertyRawValue("dm_playergermanmodel");
-}
-
-void MOHPC::Network::ClientInfo::setUserKeyValue(const char* key, const char* value)
-{
-	properties.SetPropertyValue(key, value);
-}
-
-const char* MOHPC::Network::ClientInfo::getUserKeyValue(const char* key) const
-{
-	return properties.GetPropertyRawValue(key);
-}
-
-void ClientInfo::fillInfoString(Info& info) const
-{
-	// Build mandatory variables
-	info.SetValueForKey("rate", str::printf("%i", rate));
-	info.SetValueForKey("snaps", str::printf("%i", snaps));
-	info.SetValueForKey("name", name.c_str());
-
-	// Build miscellaneous values
-	for (PropertyMapIterator it = properties.GetIterator(); it; ++it)
-	{
-		info.SetValueForKey(
-			it.key().GetFullPropertyName(),
-			it.value()
-		);
 	}
 }
 

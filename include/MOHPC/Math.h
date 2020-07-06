@@ -51,6 +51,8 @@ namespace MOHPC
 	MOHPC_EXPORTS void MatrixTransformVector(const vec3_t in, const float mat[3][3], vec3_t out);
 	MOHPC_EXPORTS void TransposeMatrix(float in[3][3], float out[3][3]);
 	MOHPC_EXPORTS void MatrixCopy(const matrix_t in, matrix_t out);
+	MOHPC_EXPORTS void Matrix3Copy(float in[3][3], float out[3][3]);
+	MOHPC_EXPORTS void Matrix4_3Copy(float in[4][3], float out[3][3]);
 	MOHPC_EXPORTS void AddPointToBounds(const Vector& v, Vector& mins, Vector& maxs);
 	MOHPC_EXPORTS void ClearBounds(Vector& mins, Vector& maxs);
 	MOHPC_EXPORTS void AxisClear(vec3_t axis[3]);

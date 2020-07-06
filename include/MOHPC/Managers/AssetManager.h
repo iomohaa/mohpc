@@ -2,6 +2,7 @@
 
 #include "../Global.h"
 #include "../Asset.h"
+#include "../Object.h"
 #include "../Utilities/SharedPtr.h"
 #include "../Utilities/WeakPtr.h"
 #include "../Script/con_set.h"
@@ -16,9 +17,11 @@ namespace MOHPC
 	{
 		friend class Class;
 
-	public:
+		MOHPC_OBJECT_DECLARATION(AssetManager);
+
+	private:
 		MOHPC_EXPORTS AssetManager();
-		MOHPC_EXPORTS ~AssetManager();
+		~AssetManager();
 
 	public:
 		MOHPC_EXPORTS FileManager * GetFileManager() const;
@@ -36,15 +39,13 @@ namespace MOHPC
 				if (manager == nullptr && !bPendingDestroy)
 				{
 					manager = T::CreateInstance();
-					manager->AM = this;
 					AddManager(ti, static_cast<Manager*>(manager));
-					((Manager*)manager)->Init();
 				}
 			}
 			return static_cast<T*>(manager);
 		}
 
-		// The following code doesn't compile with the cancerous linux g++ compiler
+		// The following code doesn't compile with the linux g++ compiler
 		/*
 		template<class T, class ...Args>
 		T* CreateAsset()
@@ -165,6 +166,7 @@ namespace MOHPC
 		//std::unordered_set<void*> m_allocatedObjects;
 		//std::unordered_set<void*> m_allocatedArrayObjects;
 	};
+	using AssetManagerPtr = SharedPtr<AssetManager>;
 
 	template<class T>
 	T* Class::GetManager() const

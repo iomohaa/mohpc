@@ -17,8 +17,8 @@ namespace MOHPC
 {
 	MOHPC_EXPORTS void AddToBounds(SkelVec3 *bounds, const SkelVec3 *newBounds);
 
-	typedef SharedPtr<class Skeleton> SkeletonPtr;
-	typedef SharedPtr<const class Skeleton> ConstSkeletonPtr;
+	using SkeletonPtr = SharedPtr<class Skeleton>;
+	using ConstSkeletonPtr = SharedPtr<const class Skeleton>;
 
 	struct SkeletonChannelName;
 	class SkeletonChannelNameTable;

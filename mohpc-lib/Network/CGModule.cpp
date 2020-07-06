@@ -100,6 +100,36 @@ EntityInfo::EntityInfo()
 {
 }
 
+const entityState_t& EntityInfo::getCurrentState() const
+{
+	return currentState;
+}
+
+const entityState_t& EntityInfo::getNextState() const
+{
+	return nextState;
+}
+
+uint32_t EntityInfo::getSnapshotTime() const
+{
+	return snapshotTime;
+}
+
+bool EntityInfo::isValid() const
+{
+	return currentValid;
+}
+
+bool EntityInfo::isInterpolating() const
+{
+	return interpolate;
+}
+
+bool EntityInfo::hasTeleported() const
+{
+	return teleported;
+}
+
 CGameModuleBase::CGameModuleBase(const CGameImports& inImports)
 	: imports(inImports)
 	, snap(nullptr)
@@ -889,7 +919,7 @@ void CGameModuleBase::trace(CollisionWorld& cm, trace_t& tr, const Vector& start
 	}
 }
 
-uint32_t MOHPC::Network::CGameModuleBase::pointContents(CollisionWorld& cm, const Vector& point, uintptr_t passEntityNum)
+uint32_t Network::CGameModuleBase::pointContents(CollisionWorld& cm, const Vector& point, uintptr_t passEntityNum)
 {
 	// get the contents in world
 	uint32_t contents = cm.CM_PointContents(point, 0);
@@ -920,40 +950,40 @@ uint32_t MOHPC::Network::CGameModuleBase::pointContents(CollisionWorld& cm, cons
 	return contents;
 }
 
-void MOHPC::Network::CGameModuleBase::disablePrediction()
+void Network::CGameModuleBase::disablePrediction()
 {
 	forceDisablePrediction = true;
 }
 
-void MOHPC::Network::CGameModuleBase::enablePrediction()
+void Network::CGameModuleBase::enablePrediction()
 {
 	forceDisablePrediction = false;
 }
 
-const objective_t& MOHPC::Network::CGameModuleBase::getObjective(uint32_t objNum) const
+const objective_t& Network::CGameModuleBase::getObjective(uint32_t objNum) const
 {
 	return objectives[objNum];
 }
 
-const clientInfo_t& MOHPC::Network::CGameModuleBase::getClientInfo(uint32_t clientNum) const
+const clientInfo_t& Network::CGameModuleBase::getClientInfo(uint32_t clientNum) const
 {
 	return clientInfo[clientNum];
 }
 
-const MOHPC::Network::CGameImports& MOHPC::Network::CGameModuleBase::getImports() const
+const Network::CGameImports& Network::CGameModuleBase::getImports() const
 {
 	return imports;
 }
 
-void MOHPC::Network::CGameModuleBase::setupMove(Pmove& pmove)
+void Network::CGameModuleBase::setupMove(Pmove& pmove)
 {
 }
 
-void MOHPC::Network::CGameModuleBase::normalizePlayerState(playerState_t& ps)
+void Network::CGameModuleBase::normalizePlayerState(playerState_t& ps)
 {
 }
 
-bool MOHPC::Network::CGameModuleBase::replayMove(Pmove& pmove)
+bool Network::CGameModuleBase::replayMove(Pmove& pmove)
 {
 	pmove_t& pm = pmove.get();
 
@@ -978,7 +1008,7 @@ bool MOHPC::Network::CGameModuleBase::replayMove(Pmove& pmove)
 	return true;
 }
 
-void MOHPC::Network::CGameModuleBase::extendMove(Pmove& pmove, uint32_t msec)
+void Network::CGameModuleBase::extendMove(Pmove& pmove, uint32_t msec)
 {
 	const pmove_t& pm = pmove.get();
 
@@ -1103,37 +1133,37 @@ const char* cgsInfo::getScoreboardPicOver() const
 	return scoreboardPicOver.c_str();
 }
 
-bool MOHPC::Network::cgsInfo::hasAnyDMFlags(uint32_t flags) const
+bool Network::cgsInfo::hasAnyDMFlags(uint32_t flags) const
 {
 	return (dmFlags & flags) != 0;
 }
 
-bool MOHPC::Network::cgsInfo::hasAllDMFlags(uint32_t flags) const
+bool Network::cgsInfo::hasAllDMFlags(uint32_t flags) const
 {
 	return (dmFlags & flags) == flags;
 }
 
-uint64_t MOHPC::Network::cgsInfo::getVoteTime() const
+uint64_t Network::cgsInfo::getVoteTime() const
 {
 	return voteTime;
 }
 
-uint32_t MOHPC::Network::cgsInfo::getNumVotesYes() const
+uint32_t Network::cgsInfo::getNumVotesYes() const
 {
 	return numVotesYes;
 }
 
-uint32_t MOHPC::Network::cgsInfo::getNumVotesNo() const
+uint32_t Network::cgsInfo::getNumVotesNo() const
 {
 	return numVotesNo;
 }
 
-uint32_t MOHPC::Network::cgsInfo::getNumVotesUndecided() const
+uint32_t Network::cgsInfo::getNumVotesUndecided() const
 {
 	return numUndecidedVotes;
 }
 
-const char* MOHPC::Network::cgsInfo::getVoteString() const
+const char* Network::cgsInfo::getVoteString() const
 {
 	return voteString.c_str();
 }
@@ -1868,7 +1898,7 @@ effects_e CGameModule6::getEffectId(uint32_t effectId)
 	return effects_e::bh_stone_hard;
 }
 
-void MOHPC::Network::CGameModule6::normalizePlayerState(playerState_t& ps)
+void Network::CGameModule6::normalizePlayerState(playerState_t& ps)
 {
 	const uint32_t pmFlags = ps.pm_flags;
 	uint32_t newPmFlags = 0;
@@ -1886,7 +1916,7 @@ void MOHPC::Network::CGameModule6::normalizePlayerState(playerState_t& ps)
 	ps.pm_flags = newPmFlags;
 }
 
-void MOHPC::Network::CGameModule6::parseFogInfo(const char* s, environment_t& env)
+void Network::CGameModule6::parseFogInfo(const char* s, environment_t& env)
 {
 	int tmp = 0;
 	sscanf(
@@ -2465,7 +2495,7 @@ effects_e CGameModule15::getEffectId(uint32_t effectId)
 	return effects_e::bh_stone_hard;
 }
 
-void MOHPC::Network::CGameModule15::setupMove(Pmove& pmove)
+void Network::CGameModule15::setupMove(Pmove& pmove)
 {
 	pmove_t& pm = pmove.get();
 	// in SH/BT, can't lean by default
@@ -2473,7 +2503,7 @@ void MOHPC::Network::CGameModule15::setupMove(Pmove& pmove)
 	pm.canLean = getServerInfo().hasAnyDMFlags(DMFlags::DF_ALLOW_LEAN);
 }
 
-void MOHPC::Network::CGameModule15::parseFogInfo(const char* s, environment_t& env)
+void Network::CGameModule15::parseFogInfo(const char* s, environment_t& env)
 {
 	int tmp = 0, tmp2 = 0;
 	sscanf(
@@ -2515,6 +2545,51 @@ rain_t::rain_t()
 {
 }
 
+float rain_t::getDensity() const
+{
+	return density;
+}
+
+float rain_t::getSpeed() const
+{
+	return speed;
+}
+
+float rain_t::getLength() const
+{
+	return length;
+}
+
+float rain_t::getMinimumDistance() const
+{
+	return minDist;
+}
+
+float rain_t::getWidth() const
+{
+	return width;
+}
+
+uint32_t rain_t::getSpeedVariation() const
+{
+	return speedVary;
+}
+
+uint32_t rain_t::getSlant() const
+{
+	return slant;
+}
+
+uint32_t rain_t::getNumShaders() const
+{
+	return numShaders;
+}
+
+const char* rain_t::getShader(uint8_t index) const
+{
+	return shader[index].c_str();
+}
+
 objective_t::objective_t()
 	: flags(0)
 {
@@ -2530,7 +2605,7 @@ const char* objective_t::getText() const
 	return text;
 }
 
-const MOHPC::Vector& objective_t::getLocation() const
+const Vector& objective_t::getLocation() const
 {
 	return location;
 }
@@ -2573,32 +2648,32 @@ bool environment_t::isSkyPortal() const
 	return skyPortal;
 }
 
-float MOHPC::Network::environment_t::getFarplaneBias() const
+float Network::environment_t::getFarplaneBias() const
 {
 	return farplaneBias;
 }
 
-float MOHPC::Network::environment_t::getSkyboxFarplane() const
+float Network::environment_t::getSkyboxFarplane() const
 {
 	return skyboxFarplane;
 }
 
-float MOHPC::Network::environment_t::getSkyboxSpeed() const
+float Network::environment_t::getSkyboxSpeed() const
 {
 	return skyboxSpeed;
 }
 
-float MOHPC::Network::environment_t::getFarclipOverride() const
+float Network::environment_t::getFarclipOverride() const
 {
 	return farclipOverride;
 }
 
-const Vector& MOHPC::Network::environment_t::getFarplaneColorOverride() const
+const Vector& Network::environment_t::getFarplaneColorOverride() const
 {
 	return farplaneColorOverride;
 }
 
-bool MOHPC::Network::environment_t::shouldRenderTerrain() const
+bool Network::environment_t::shouldRenderTerrain() const
 {
 	return renderTerrain;
 }
@@ -2821,22 +2896,22 @@ bool Scoreboard::player_t::isAlive() const
 	return alive;
 }
 
-MOHPC::Network::clientInfo_t::clientInfo_t()
+Network::clientInfo_t::clientInfo_t()
 	: team(teamType_e::None)
 {
 }
 
-const char* MOHPC::Network::clientInfo_t::getName() const
+const char* Network::clientInfo_t::getName() const
 {
 	return name.c_str();
 }
 
-MOHPC::Network::teamType_e MOHPC::Network::clientInfo_t::getTeam() const
+Network::teamType_e Network::clientInfo_t::getTeam() const
 {
 	return team;
 }
 
-const MOHPC::PropertyObject& MOHPC::Network::clientInfo_t::getProperties() const
+const PropertyObject& Network::clientInfo_t::getProperties() const
 {
 	return properties;
 }

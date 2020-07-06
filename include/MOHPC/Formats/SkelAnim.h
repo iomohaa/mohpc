@@ -10,9 +10,9 @@ namespace MOHPC
 	typedef SharedPtr<class SkeletonAnimation> SkeletonAnimationPtr;
 	typedef SharedPtr<const class SkeletonAnimation> ConstSkeletonAnimationPtr;
 
-#define MAX_ANIM_POSES 64
-#define MAX_ANIM_MOVEMENTS_POSES (MAX_ANIM_POSES >> 1)
-#define MAX_ANIM_ACTIONS_POSES (MAX_ANIM_POSES >> 1)
+	static constexpr unsigned int MAX_ANIM_POSES = 64;
+	static constexpr unsigned int MAX_ANIM_MOVEMENTS_POSES = (MAX_ANIM_POSES >> 1);
+	static constexpr unsigned int MAX_ANIM_ACTIONS_POSES = (MAX_ANIM_POSES >> 1);
 
 	struct SkanAnimFrame
 	{

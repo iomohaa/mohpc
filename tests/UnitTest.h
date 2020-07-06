@@ -1,9 +1,6 @@
 #pragma once
 
-namespace MOHPC
-{
-	class AssetManager;
-}
+#include <MOHPC/Managers/AssetManager.h>
 
 class IUnitTest
 {
@@ -24,10 +21,10 @@ public:
 	virtual const char* name() = 0;
 
 	/** Function for running code after everything has initialized. */
-	virtual void run(MOHPC::AssetManager& AM) = 0;
+	virtual void run(const MOHPC::AssetManagerPtr& AM) = 0;
 
 	/** Run all unit tests. */
-	static void runAll(MOHPC::AssetManager& AM);
+	static void runAll(const MOHPC::AssetManagerPtr& AM);
 };
 
 //#define DEFINE_UNIT_TEST(classname) \
