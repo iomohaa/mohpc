@@ -40,13 +40,13 @@ namespace MOHPC
 	struct netField_t
 	{
 		const char* name;
-		size_t offset;
-		size_t size;
-		intptr_t bits;
+		uint16_t offset;
+		uint8_t size;
+		int8_t bits;
 		// see fieldType_e
 		uint8_t type : 4;
 
-		constexpr netField_t(const char* inName, size_t inOffset, size_t inSize, intptr_t inBits, uint8_t inType)
+		constexpr netField_t(const char* inName, uint16_t inOffset, uint8_t inSize, int8_t inBits, uint8_t inType)
 			: name(inName)
 			, offset(inOffset)
 			, size(inSize)

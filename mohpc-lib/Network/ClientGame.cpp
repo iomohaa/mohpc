@@ -224,13 +224,15 @@ void ClientGameConnection::tick(uint64_t deltaTime, uint64_t currentTime)
 	}
 
 	using namespace std::chrono;
+	// Check if there is a timeout time
 	if (timeoutTime > milliseconds::zero())
 	{
 		steady_clock::time_point clockTime = steady_clock::now();
 		steady_clock::time_point nextTimeoutTime = lastTimeoutTime + timeoutTime;
+		// Check if the clock has reached the timeout point
 		if (clockTime >= nextTimeoutTime)
 		{
-			// The server or the client timed out
+			// The server or the client has timed out
 			handlerList.notify<ClientHandlers::Timeout>();
 
 			// Disconnect from server
@@ -242,13 +244,16 @@ void ClientGameConnection::tick(uint64_t deltaTime, uint64_t currentTime)
 	size_t count = 0;
 
 	IUdpSocket* socket = getNetchan()->getRawSocket();
+	// Loop until there is no valid data
+	// or the max number of processed packets has reached the limit
 	while(isChannelValid() && socket->dataAvailable() && count++ < maxTickPackets)
 	{
-		std::vector<uint8_t> data(65536);
-		FixedDataMessageStream stream(data.data(), data.size());
+		// No need to be more
+		uint8_t data[MAX_UDP_DATA_SIZE];
+		FixedDataMessageStream stream(data, MAX_UDP_DATA_SIZE);
 
 		netadr_t from;
-		socket->receive(data.data(), data.size(), from);
+		socket->receive(data, MAX_UDP_DATA_SIZE, from);
 
 		// Prepare for reading
 		MSG msg(stream, msgMode_e::Reading);
@@ -290,12 +295,18 @@ void Network::ClientGameConnection::receive(const netadr_t& from, MSG& msg, uint
 
 	if (getNetchan()->receive(stream))
 	{
+		// Decode the stream itself
 		encoder->decode(stream, stream);
 
+		// Needs to be resetted as the stream has been decoded
 		msg.Reset();
+
+		using namespace std::chrono;
+		lastTimeoutTime = steady_clock::now();
 
 		try
 		{
+			// All messages will be parsed from there
 			parseServerMessage(msg, serverMessageSequence, currentTime);
 		}
 		catch (NetworkException& e)
@@ -305,15 +316,12 @@ void Network::ClientGameConnection::receive(const netadr_t& from, MSG& msg, uint
 			// call the handler
 			handlerList.notify<ClientHandlers::Error>(e);
 		}
-
-		using namespace std::chrono;
-		lastTimeoutTime = steady_clock::now();
 	}
 	else if (serverMessageSequence == -1)
 	{
 		// a message without sequence number indicates a connectionless packet
 		// the only possible connectionless packet should be the disconnect command
-		// it may trigger if the client gets kicke during map loading
+		// it is received when the client gets kicked out during map loading
 
 		// read the direction
 		uint8_t direction = msg.ReadByte();
@@ -432,10 +440,6 @@ void Network::ClientGameConnection::parseGameState(MSG& msg)
 {
 	MOHPC_LOG(Verbose, "Received gamestate");
 
-	if (serverId) {
-		MOHPC_LOG(Warning, "Server has resent gamestate while in-game");
-	}
-
 	MsgTypesHelper msgHelper(msg);
 
 	serverCommandSequence = msg.ReadInteger();
@@ -489,10 +493,19 @@ void Network::ClientGameConnection::parseGameState(MSG& msg)
 	checksumFeed = msg.ReadUInteger();
 
 	(this->*parseGameState_pf)(msg);
+	
+	const uint32_t oldServerId = serverId;
 	systemInfoChanged();
 
+	const bool isDiff = isDifferentServer(oldServerId);
+	if (isDiff) {
+		clearState();
+	} else {
+		MOHPC_LOG(Warning, "Server has resent gamestate while in-game");
+	}
+
 	// Notify about the new game state
-	getHandlerList().notify<ClientHandlers::GameStateParsed, const gameState_t&>(getGameState());
+	getHandlerList().notify<ClientHandlers::GameStateParsed>(getGameState(), isDiff);
 }
 
 void Network::ClientGameConnection::parseSnapshot(MSG& msg, uint32_t serverMessageSequence, uint64_t currentTime)
@@ -977,11 +990,8 @@ void Network::ClientGameConnection::parseCGMessage(MSG& msg)
 
 void Network::ClientGameConnection::systemInfoChanged()
 {
-	const char* systemInfoStr = gameState.stringData + gameState.stringOffsets[CS_SYSTEMINFO];
-	const char* serverInfoStr = gameState.stringData + gameState.stringOffsets[CS_SERVERINFO];
-
-	serverSystemInfo = systemInfoStr;
-	serverGameInfo = serverInfoStr;
+	ReadOnlyInfo serverSystemInfo = getServerSystemInfo();
+	ReadOnlyInfo serverGameInfo = getServerGameInfo();
 
 	serverId = atoi(serverSystemInfo.ValueForKey("sv_serverid"));
 	const uint32_t sv_fps = atoi(serverGameInfo.ValueForKey("sv_fps"));
@@ -1229,6 +1239,16 @@ const gameState_t& MOHPC::Network::ClientGameConnection::getGameState() const
 	return gameState;
 }
 
+ReadOnlyInfo MOHPC::Network::ClientGameConnection::getServerSystemInfo() const
+{
+	return gameState.getConfigString(CS_SYSTEMINFO);
+}
+
+ReadOnlyInfo MOHPC::Network::ClientGameConnection::getServerGameInfo() const
+{
+	return gameState.getConfigString(CS_SERVERINFO);
+}
+
 ConstClientInfoPtr MOHPC::Network::ClientGameConnection::getUserInfo() const
 {
 	return userInfo;
@@ -1468,9 +1488,21 @@ bool MOHPC::Network::ClientGameConnection::isChannelValid() const
 	return netchan != nullptr;
 }
 
+void ClientGameConnection::clearState()
+{
+	parseEntitiesNum = 0;
+	cmdNumber = 0;
+	isActive = false;
+}
+
+bool ClientGameConnection::isDifferentServer(uint32_t id)
+{
+	return id != serverId;
+}
+
 void MOHPC::Network::ClientGameConnection::setCGameTime(uint64_t currentTime)
 {
-	if(!serverId)
+	if(!isActive)
 	{
 		if (newSnapshots)
 		{

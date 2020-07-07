@@ -104,6 +104,8 @@ static constexpr unsigned int RF_ALWAYSDRAW			= (1<<30);
 	static const unsigned int BUTTON_LEANLEFT = (1 << 4);
 	static const unsigned int BUTTON_LEANRIGHT = (1 << 5);
 
+	class playerState_t;
+
 	class MOHPC_EXPORTS usercmd_t
 	{
 	public:
@@ -156,6 +158,9 @@ static constexpr unsigned int RF_ALWAYSDRAW			= (1<<30);
 
 		/** Converts and set angles. */
 		void setAngles(float pitch, float yaw, float roll);
+
+		/** Set angles relative to player's deltaAngles. */
+		void setAnglesRelativeTo(const playerState_t& ps, float pitch, float yaw, float roll);
 
 		/** Move forward by the specified value. Range [-128, 127]. */
 		void moveForward(int8_t value);
@@ -264,9 +269,9 @@ static constexpr unsigned int RF_ALWAYSDRAW			= (1<<30);
 	//static constexpr unsigned int PMF_ALL_TIMES			= (PMF_TIME_WATERJUMP | PMF_TIME_LAND | PMF_TIME_KNOCKBACK | PMF_TIME_TELEPORT | PMF_TIME_STUCKJUMP);
 	static constexpr unsigned int PMF_ALL_TIMES				= (PMF_TIME_TELEPORT | PMF_TIME_STUCKJUMP);
 
-	//
-	// Camera Flags
-	//
+	/**
+	 * Camera Flags
+	 */
 	/** Absolute angles.*/
 	static constexpr unsigned int CF_CAMERA_ANGLES_ABSOLUTE		= (1 << 0);
 	/** Ignore pitch for camera_angles. */
@@ -280,8 +285,90 @@ static constexpr unsigned int RF_ALWAYSDRAW			= (1<<30);
 	/** this bit gets toggled everytime we do a hard camera cut */
 	static constexpr unsigned int CF_CAMERA_CUT_BIT = (1 << 7);
 
+	/**
+	 * Cinematic stats flags.
+	 */
+	static constexpr unsigned int CINE_CINEMATIC				= (1 << 0);
+	static constexpr unsigned int CINE_CAMERA					= (1 << 1);
+
+	static constexpr unsigned int MAX_LETTERBOX_SIZE			= 0x7fff;
+	static constexpr unsigned int STAT_DEAD_YAW					= 5;
+
 	enum class playerstat_e : unsigned char {
-		STAT_HEALTH,
+		/** Player's current health. */
+		Health,
+		/** Max player health. */
+		MaxHealth,
+
+		/** Number of equipped weapon. */
+		Weapons,
+		/** Index to the name of the weapon currently equipped. */
+		EquippedWeapon,
+		/** Ammo remaining for filling the weapon. */
+		Ammo,
+		/** Max value for the weapon ammo. */
+		MaxAmmo,
+		/** Current ammo on clip. */
+		ClipAmmo,
+		/** Max clip size. */
+		MaxClipAmmo,
+
+		/** Whether or not the player is zooming. */
+		InZoom,
+		/** Whether or not the crosshair is drawn. */
+		Crosshair,
+
+		/** Last pain damage taken. */
+		LastPain,
+
+		Unused2,
+
+		/** Value of bosshealth cvar. */
+		BossHealth,
+
+		/** Non-zero for cinematic. See CINE_* flags. */
+		Cinematic,
+		/** Whether or not to use blend values on playerState. */
+		AddFade,
+		/** Size of letterbox (see MAX_LETTERBOX_SIZE). */
+		LetterBox,
+
+		/** North of the world. */
+		CompassNorth,
+		/** Objective left direction on the compass. */
+		ObjectiveLeft,
+		/** Objective right direction on the compass. */
+		ObjectiveRight,
+		/** Objective center direction on the compass. */
+		ObjectiveCenter,
+
+		/** The player's current team. */
+		Team,
+		/** On FFA: Number of kills the player made. On TDM: Number of kills the team the player is in made. On objective: Number of team wins. */
+		Kills,
+		/** On FFA: Number of kills the player made. On TDM/Objective: Number of times the player's current team died.*/
+		Deaths,
+		Unused3,
+		Unused4,
+		/** The highest score in game. */
+		HighestScore,
+
+		/** Client number of the last attacker. -1 = no attacker. */
+		AttackerClient,
+		/** Client number of the client the player is aiming at. */
+		InfoClient,
+		/** Health of the info client. */
+		InfoClientHealth,
+		/** Direction of the damage. */
+		DamageDir,
+
+		LastStat,
+
+		/**
+		/* Old names for backward compatibility
+		 */
+		//
+		STAT_HEALTH = Health,
 		STAT_MAXHEALTH,
 		STAT_WEAPONS,
 		STAT_EQUIPPED_WEAPON,
@@ -854,10 +941,10 @@ static constexpr unsigned int RF_ALWAYSDRAW			= (1<<30);
 			MOHPC_EXPORTS uint8_t getAreaMask(uint8_t index) const;
 
 			/** Current playerState in snap. */
-			MOHPC_EXPORTS const playerState_t& getPlayerState() const
-			;
+			MOHPC_EXPORTS const playerState_t& getPlayerState() const;
+
 			/** Number of entities in this snap. */
-			size_t getNumEntities() const;
+			MOHPC_EXPORTS size_t getNumEntities() const;
 			/** Entity at the specified index. */
 			MOHPC_EXPORTS const entityState_t& getEntityState(entityNum_t number) const;
 

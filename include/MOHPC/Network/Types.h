@@ -11,8 +11,9 @@ namespace MOHPC
 {
 	namespace Network
 	{
-		static constexpr size_t MAX_RELIABLE_COMMANDS = 64;
-		static constexpr size_t MAX_STRING_CHARS = 2048;
+		static constexpr unsigned long MAX_RELIABLE_COMMANDS = 64;
+		static constexpr unsigned long MAX_STRING_CHARS = 2048;
+		static constexpr unsigned long MAX_UDP_DATA_SIZE = 65507;
 		static constexpr char CLIENT_VERSION[] = "3.00";
 
 		class NetworkException

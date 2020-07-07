@@ -76,6 +76,13 @@ void usercmd_t::setAngles(float pitch, float yaw, float roll)
 	angles[2] = AngleToShort(roll);
 }
 
+void usercmd_t::setAnglesRelativeTo(const playerState_t& ps, float pitch, float yaw, float roll)
+{
+	angles[0] = AngleToShort(pitch) - ps.delta_angles[0];
+	angles[1] = AngleToShort(yaw) - ps.delta_angles[1];
+	angles[2] = AngleToShort(roll) + ps.delta_angles[2];
+}
+
 void usercmd_t::moveForward(int8_t value)
 {
 	forwardmove = value;

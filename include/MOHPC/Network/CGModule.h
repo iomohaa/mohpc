@@ -812,9 +812,11 @@ namespace MOHPC
 
 			/** Return the current map name. */
 			MOHPC_EXPORTS const char* getMapName() const;
+			MOHPC_EXPORTS const str& getMapNameStr() const;
 
 			/** Return the path to the map name. */
 			MOHPC_EXPORTS const char* getMapFilename() const;
+			MOHPC_EXPORTS const str& getMapFilenameStr() const;
 
 			/** Return the allied text in the range of [0..2]*/
 			MOHPC_EXPORTS const char* getAlliedText(size_t index) const;

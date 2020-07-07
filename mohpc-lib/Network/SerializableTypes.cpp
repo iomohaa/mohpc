@@ -91,7 +91,7 @@ void MOHPC::SerializableUserEyes::SerializeDelta(MSG& msg, const ISerializableMe
 	}
 }
 
-#define	PSF(x) #x,(size_t)&((playerState_t*)0)->x,sizeof(playerState_t::x)
+#define	PSF(x) #x,(uint16_t)(size_t)&((playerState_t*)0)->x,sizeof(playerState_t::x)
 static constexpr intptr_t FLOAT_INT_BITS = 13;
 static constexpr size_t FLOAT_INT_BIAS = (1 << (FLOAT_INT_BITS - 1));
 
@@ -216,7 +216,7 @@ const netField_t playerStateFields_ver17[] =
 
 static_assert(sizeof(playerStateFields_ver17) == sizeof(netField_t) * 55);
 
-#define	NETF(x) #x,(size_t)&((entityState_t*)0)->x,sizeof(entityState_t::x)
+#define	NETF(x) #x,(uint16_t)(size_t)&((entityState_t*)0)->x,sizeof(entityState_t::x)
 
 const netField_t entityStateFields[] =
 {

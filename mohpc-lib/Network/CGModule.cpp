@@ -1133,6 +1133,16 @@ const char* cgsInfo::getScoreboardPicOver() const
 	return scoreboardPicOver.c_str();
 }
 
+const str& cgsInfo::getMapNameStr() const
+{
+	return mapName;
+}
+
+const str& MOHPC::Network::cgsInfo::getMapFilenameStr() const
+{
+	return mapFilename;
+}
+
 bool Network::cgsInfo::hasAnyDMFlags(uint32_t flags) const
 {
 	return (dmFlags & flags) != 0;

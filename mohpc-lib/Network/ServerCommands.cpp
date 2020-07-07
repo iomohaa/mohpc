@@ -49,7 +49,7 @@ IRequestPtr MOHPC::Network::EngineServer::VerBeforeChallengeRequest::handleRespo
 		return nullptr;
 	}
 
-	MOHPC_LOG(Error, "server type %d protocol version %d game version \"%s\"", serverType, protocolVersionNumber, value.c_str());
+	MOHPC_LOG(Log, "server type %d protocol version %d game version \"%s\"", serverType, protocolVersionNumber, value.c_str());
 	return makeShared<ChallengeRequest>(protocolType_c(serverType, protocolVersion), std::move(data));
 }
 

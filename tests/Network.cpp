@@ -99,18 +99,47 @@ private:
 	public:
 		virtual void log(MOHPC::Log::logType_e type, const char* serviceName, const char* fmt, ...) override
 		{
+			using namespace MOHPC::Log;
+
 			char mbstr[100];
 			time_t t = std::time(nullptr);
 			std::strftime(mbstr, sizeof(mbstr), "%H:%M:%S", std::localtime(&t));
 
-			printf("[%s] (%s): ", mbstr, serviceName);
+			const char* typeStr;
+			switch (type)
+			{
+			case logType_e::VeryVerbose:
+				typeStr = "dbg";
+				break;
+			case logType_e::Verbose:
+				typeStr = "verb";
+				break;
+			case logType_e::Log:
+				typeStr = "info";
+				break;
+			case logType_e::Warning:
+				typeStr = "warn";
+				break;
+			case logType_e::Error:
+				typeStr = "err";
+				break;
+			case logType_e::Disconnect:
+				typeStr = "fatal";
+				break;
+			default:
+				typeStr = "";
+				break;
+			}
+
+			printf("[%s] (%s) @_%s => ", mbstr, serviceName, typeStr);
+
 			va_list va;
 			va_start(va, fmt);
 			vprintf(fmt, va);
-
 			va_end(va);
 
 			printf("\n");
+			// Immediately print
 			fflush(stdout);
 		}
 	};
@@ -128,7 +157,10 @@ public:
 
 	virtual void run(const MOHPC::AssetManagerPtr& AM) override
 	{
-		MOHPC::Info info;
+		using namespace MOHPC;
+		using namespace MOHPC::Network;
+
+		Info info;
 		info.SetValueForKey("testKey1", "value");
 		info.SetValueForKey("testKey2", "value2");
 		info.SetValueForKey("somekey", "somevalue");
@@ -138,40 +170,40 @@ public:
 		info.RemoveKey("keyToBe");
 		info.SetValueForKey("afterkey", "deletion");
 
-		MOHPC::str someKeyVal = info.ValueForKey("somekey");
+		str someKeyVal = info.ValueForKey("somekey");
 		assert(someKeyVal == "somevalue");
 
 		someKeyVal = info.ValueForKey("keyToBe");
 		assert(someKeyVal.isEmpty());
 
-		MOHPC::NetworkManager* manager = AM->GetManager<MOHPC::NetworkManager>();
+		NetworkManager* manager = AM->GetManager<NetworkManager>();
 
 		// Set new log
-		using namespace MOHPC::Log;
+		using namespace Log;
 		ILogPtr logPtr = std::make_shared<Logger>();
 		ILog::set(logPtr);
 
-		MOHPC::Network::netadr_t adr;
+		Network::netadr_t adr;
 		adr.ip[0] = 127; adr.ip[1] = 0; adr.ip[2] = 0; adr.ip[3] = 1;
 		//adr.ip[0] = 0; adr.ip[1] = 0; adr.ip[2] = 0; adr.ip[3] = 0;
 
 		adr.port = 12203;
 
-		MOHPC::Network::EngineServerPtr clientBase = MOHPC::Network::EngineServer::create(manager, adr); //MOHPC::makeShared<MOHPC::Network::EngineServer>(manager, adr);
+		Network::EngineServerPtr clientBase = Network::EngineServer::create(manager, adr); //makeShared<Network::EngineServer>(manager, adr);
 		/*
-		MOHPC::Network::ServerList master(manager, MOHPC::Network::gameListType_e::mohaa);
+		Network::ServerList master(manager, Network::gameListType_e::mohaa);
 		master.fetch(
-			[](const MOHPC::Network::IServerPtr& ptr)
+			[](const Network::IServerPtr& ptr)
 			{
-				ptr->query([ptr](const MOHPC::ReadOnlyInfo& response)
+				ptr->query([ptr](const ReadOnlyInfo& response)
 					{
-						const MOHPC::Network::netadr_t& address = ptr->getAddress();
-						const MOHPC::str version = response.ValueForKey("gamever");
+						const Network::netadr_t& address = ptr->getAddress();
+						const str version = response.ValueForKey("gamever");
 						printf("Ping: %d.%d.%d.%d:%d -> version %s\n", address.ip[0], address.ip[1], address.ip[2], address.ip[3], address.port, version.c_str());
 					},
 					[ptr]()
 					{
-						const MOHPC::Network::netadr_t& address = ptr->getAddress();
+						const Network::netadr_t& address = ptr->getAddress();
 						printf("Timed out: %d.%d.%d.%d:%d\n", address.ip[0], address.ip[1], address.ip[2], address.ip[3], address.port);
 					});
 			},
@@ -181,38 +213,49 @@ public:
 			});
 		*/
 
-		using namespace MOHPC;
-		using namespace MOHPC::Network;
-
-		MOHPC::Network::ClientGameConnectionPtr connection;
+		Network::ClientGameConnectionPtr connection;
 		bool wantsDisconnect = false;
 
 		float forwardValue = 0.f;
 		float rightValue = 0.f;
 		float angle = 0.f;
 
-		MOHPC::BSPPtr Asset = AM->LoadAsset<MOHPC::BSP>("/maps/dm/mohdm6.bsp");
-		MOHPC::CollisionWorldPtr cm = MOHPC::CollisionWorld::create();
+		str mapfilename;
+
+		BSPPtr Asset = AM->LoadAsset<BSP>("/maps/dm/mohdm6.bsp");
+		CollisionWorldPtr cm = CollisionWorld::create();
 		Asset->FillCollisionWorld(*cm);
 
-		MOHPC::Network::ClientInfoPtr clientInfo = MOHPC::Network::ClientInfo::create();
+		Network::ClientInfoPtr clientInfo = Network::ClientInfo::create();
 		clientInfo->setName("mohpc_test");
 		clientInfo->setRate(25000);
-		clientBase->connect(clientInfo, [&logPtr, &connection, &wantsDisconnect, &clientBase, &forwardValue, &rightValue, &angle, &cm](const MOHPC::Network::ClientGameConnectionPtr& cg, const char* errorMessage)
+		clientBase->connect(clientInfo, [&](const Network::ClientGameConnectionPtr& cg, const char* errorMessage)
 			{
+				connection = cg;
+				CGameModuleBase& cgame = connection->getCGModule();
+
 				if (errorMessage)
 				{
 					printf("server returned error: \"%s\"\n", errorMessage);
 					return;
 				}
-				connection = cg;
 
-				connection->setCallback<ClientHandlers::Error>([](const MOHPC::Network::NetworkException& exception)
+				connection->setCallback<ClientHandlers::Error>([](const Network::NetworkException& exception)
 					{
 
 					});
 
-				CGameModuleBase& cgame = connection->getCGModule();
+				connection->setCallback<ClientHandlers::GameStateParsed>([&cgame, &mapfilename](const Network::gameState_t& gameState, bool differentMap)
+					{
+						const cgsInfo& cgs = cgame.getServerInfo();
+						const str& loadedMap = cgs.getMapFilenameStr();
+						if (differentMap)
+						{
+							MOHPC_LOG(Log, "New map: \"%s\"", loadedMap.c_str());
+							mapfilename = loadedMap;
+						}
+					});
+
 				fnHandle_t cb = cgame.setCallback<CGameHandlers::EntityAdded>([&connection](const EntityInfo& entity)
 					{
 						const char* modelName = connection->getGameState().getConfigString(CS_MODELS + entity.currentState.modelindex);
@@ -292,22 +335,22 @@ public:
 					ucmd.moveRight((int8_t)(rightValue * 127.f));
 					ucmd.setAngles(30.f, angle, 0.f);
 
-					//MOHPC::Vector start(684.04f, -332.63f, -145.f);
-					//MOHPC::Vector end(241.34f, -328.43f, -145.f);
-					MOHPC::trace_t tr;
+					//Vector start(684.04f, -332.63f, -145.f);
+					//Vector end(241.34f, -328.43f, -145.f);
+					trace_t tr;
 
 					{
-						MOHPC::Vector start(499.125000f + 16.f, -427.312500f, -151.875000f);
-						MOHPC::Vector end(499.125824f, -426.720612f, -151.875000f);
+						Vector start(499.125000f + 16.f, -427.312500f, -151.875000f);
+						Vector end(499.125824f, -426.720612f, -151.875000f);
 
-						cgame.trace(*cm, tr, start, MOHPC::Vector(-15, -15, 0), MOHPC::Vector(15, 15, 96), end, 0, ContentFlags::MASK_PLAYERSOLID, true, true);
+						cgame.trace(*cm, tr, start, Vector(-15, -15, 0), Vector(15, 15, 96), end, 0, ContentFlags::MASK_PLAYERSOLID, true, true);
 					}
 
 					{
-						MOHPC::Vector start(499.133942f, -427.044525f, -151.875000f);
-						MOHPC::Vector end(499.125824f, -426.720612f, -151.875000f);
+						Vector start(499.133942f, -427.044525f, -151.875000f);
+						Vector end(499.125824f, -426.720612f, -151.875000f);
 
-						cgame.trace(*cm, tr, start, MOHPC::Vector(-15, -15, 0), MOHPC::Vector(15, 15, 96), end, 0, ContentFlags::MASK_PLAYERSOLID, true, true);
+						cgame.trace(*cm, tr, start, Vector(-15, -15, 0), Vector(15, 15, 96), end, 0, ContentFlags::MASK_PLAYERSOLID, true, true);
 					}
 				});
 
@@ -396,10 +439,16 @@ public:
 							}
 						}
 					}
-					else
+					else if (!strcmp(cmd, "disconnect") || !strcmp(cmd, "quit") || !strcmp(cmd, "exit"))
 					{
 						if (connection) {
 							connection->disconnect();
+						}
+					}
+					else
+					{
+						if (connection) {
+							connection->addReliableCommand(buf);
 						}
 					}
 				}

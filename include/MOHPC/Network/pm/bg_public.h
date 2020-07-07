@@ -248,9 +248,6 @@ namespace MOHPC
 		void PM_CheckTerminalVelocity();
 	};
 
-	static constexpr unsigned int MAX_LETTERBOX_SIZE = 0x7fff;
-	static constexpr unsigned int STAT_DEAD_YAW = 5;
-
 	//===================================================================================
 
 	// means of death

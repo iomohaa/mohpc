@@ -52,6 +52,7 @@ namespace MOHPC
 
 			/**
 			 * Called when an exception occurs within the game client.
+			 * The callee can safely disconnect the game client.
 			 *
 			 * @param	exception	The exception that has occurred.
 			 */
@@ -118,7 +119,7 @@ namespace MOHPC
 			struct UserInput : public HandlerNotifyBase<void(usercmd_t& cmd, usereyes_t& eyes)> {};
 
 			/**
-			 * Called when receiving the first valid snapshot. Useful to get the server time at this point.
+			 * Called when receiving the first valid snapshot on each map load. Useful to get the server time at this point.
 			 *
 			 * @param	snap	The first snapshot received.
 			 */
@@ -133,10 +134,11 @@ namespace MOHPC
 
 			/**
 			 * Called the game state was parsed. Can be called multiple times.
+			 * This is the callback to use for map change/loading.
 			 *
 			 * @param	gameState	New game state.
 			 */
-			struct GameStateParsed : public HandlerNotifyBase<void(const gameState_t& gameState)> {};
+			struct GameStateParsed : public HandlerNotifyBase<void(const gameState_t& gameState, bool differentMap)> {};
 		}
 
 		enum class svc_ops_e : uint8_t
@@ -473,7 +475,7 @@ namespace MOHPC
 				MOHPC_HANDLERLIST_NOTIFY1(const ClientSnapshot&);
 				MOHPC_HANDLERLIST_HANDLER1_NODEF(ClientHandlers::FirstSnapshot, firstSnapshotHandler, const ClientSnapshot&);
 				MOHPC_HANDLERLIST_HANDLER1_NODEF(ClientHandlers::SnapReceived, snapshotReceivedHandler, const ClientSnapshot&);
-				MOHPC_HANDLERLIST_HANDLER1_NODEF(ClientHandlers::GameStateParsed, gameStateParsedHandler, const gameState_t&);
+				MOHPC_HANDLERLIST_HANDLER2(ClientHandlers::GameStateParsed, gameStateParsedHandler, const gameState_t&, bool);
 			};
 
 		private:
@@ -500,6 +502,7 @@ namespace MOHPC
 			CGameModuleBase* cgameModule;
 			IEncodingPtr encoder;
 			INetchanPtr netchan;
+			ClientInfoPtr userInfo;
 			uint64_t realTimeStart;
 			uint64_t serverStartTime;
 			uint64_t serverTime;
@@ -530,9 +533,6 @@ namespace MOHPC
 			char reliableCmdStrings[MAX_STRING_CHARS * MAX_RELIABLE_COMMANDS];
 			char serverCmdStrings[MAX_STRING_CHARS * MAX_RELIABLE_COMMANDS];
 			usereyes_t userEyes;
-			ReadOnlyInfo serverSystemInfo;
-			ReadOnlyInfo serverGameInfo;
-			ClientInfoPtr userInfo;
 			gameState_t gameState;
 			ClientSnapshot currentSnap;
 			ClientSnapshot snapshots[PACKET_BACKUP];
@@ -604,10 +604,10 @@ namespace MOHPC
 			MOHPC_EXPORTS CGameModuleBase& getCGModule();
 
 			/** Retrieve the server system info such as the serverid, the timescale, cheats allowed, ... */
-			MOHPC_EXPORTS const ReadOnlyInfo& getServerSystemInfo() const;
+			MOHPC_EXPORTS ReadOnlyInfo getServerSystemInfo() const;
 
 			/** Retrieve the server game configuration, such as the hostname, gametype, force respawn, timelimit, ... */
-			MOHPC_EXPORTS const ReadOnlyInfo& getServerGameInfo() const;
+			MOHPC_EXPORTS ReadOnlyInfo getServerGameInfo() const;
 
 			/** Return read-only user info. */
 			MOHPC_EXPORTS ConstClientInfoPtr getUserInfo() const;
@@ -697,6 +697,8 @@ namespace MOHPC
 			void parseLocprint(MSG& msg);
 			void parseCGMessage(MSG& msg);
 
+			void clearState();
+			bool isDifferentServer(uint32_t id);
 			void setCGameTime(uint64_t currentTime);
 			void adjustTimeDelta(uint64_t realTime);
 			void firstSnapshot(uint64_t currentTime);
