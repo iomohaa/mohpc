@@ -1449,6 +1449,11 @@ void CGameModuleBase::SCmd_Stufftext(TokenParser& args)
 	handlers().notify<CGameHandlers::ServerCommand_Stufftext>(args);
 }
 
+CGameModuleBase::HandlerListCGame& CGameModuleBase::getHandlerList()
+{
+	return handlerList;
+}
+
 CGameModule6::CGameModule6(const CGameImports& inImports)
 	: CGameModuleBase(inImports)
 {

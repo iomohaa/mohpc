@@ -29,7 +29,7 @@ namespace MOHPC
 			netadr_t address;
 
 		public:
-			IServer(NetworkManager* inManager, const netadr_t& adr);
+			IServer(const NetworkManagerPtr& inManager, const netadr_t& adr);
 
 			virtual void query(Callbacks::Query&& response, Callbacks::ServerTimeout&& timeoutResult = Callbacks::ServerTimeout()) = 0;
 			MOHPC_EXPORTS const netadr_t& getAddress() const;
@@ -62,7 +62,7 @@ namespace MOHPC
 			IUdpSocketPtr socket;
 
 		public:
-			GSServer(NetworkManager* inManager, const netadr_t& adr);
+			GSServer(const NetworkManagerPtr& inManager, const netadr_t& adr);
 
 			virtual void tick(uint64_t deltaTime, uint64_t currentTime) override;
 
@@ -76,7 +76,7 @@ namespace MOHPC
 			char* dataStr;
 
 		public:
-			LANServer(NetworkManager* inManager, const netadr_t& inAddress, char* inInfo, size_t infoSize);
+			LANServer(const NetworkManagerPtr& inManager, const netadr_t& inAddress, char* inInfo, size_t infoSize);
 			~LANServer();
 
 			virtual void tick(uint64_t deltaTime, uint64_t currentTime) override;
@@ -233,7 +233,7 @@ namespace MOHPC
 			RequestHandler<IRequestBase, GamespyUDPRequestParam> handler;
 
 		public:
-			MOHPC_EXPORTS EngineServer(NetworkManager* inManager, const netadr_t& inAddress);
+			MOHPC_EXPORTS EngineServer(const NetworkManagerPtr& inManager, const netadr_t& inAddress);
 			MOHPC_EXPORTS ~EngineServer();
 
 			virtual void tick(uint64_t deltaTime, uint64_t currentTime) override;
@@ -277,7 +277,6 @@ namespace MOHPC
 		private:
 			void onConnect(const Callbacks::Connect result, uint16_t qport, uint32_t challengeResponse, const protocolType_c& protoType, const ClientInfoPtr& cInfo, const char* errorMessage);
 		};
-
 		using EngineServerPtr = SharedPtr<EngineServer>;
 	}
 }

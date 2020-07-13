@@ -40,7 +40,7 @@ void ScriptManager::InitConstStrings()
 	}
 	*/
 
-	EventManager* eventManager = GetManager<EventManager>();
+	EventManagerPtr eventManager = GetManager<EventManager>();
 
 	eventManager->normalCommandList.clear();
 	eventManager->returnCommandList.clear();
@@ -379,7 +379,7 @@ GameScript* ScriptManager::GetGameScript(const str& filename, bool recompile)
 				}
 			}
 
-			AssetManager* AM = GetAssetManager();
+			AssetManagerPtr AM = GetAssetManager();
 
 			for (uintptr_t i = 1; i <= list.NumObjects(); i++)
 			{

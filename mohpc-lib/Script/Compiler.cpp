@@ -285,7 +285,7 @@ void ScriptCompiler::EmitAssignmentStatement( sval_t lhs, uint32_t sourcePos )
 		}
 	}
 
-	ScriptManager* Director = GetScriptManager();
+	ScriptManagerPtr Director = GetScriptManager();
 
 	const_str index = Director->AddString( name );
 
@@ -569,7 +569,7 @@ void ScriptCompiler::EmitField( sval_t listener_val, sval_t field_val, uint32_t 
 		str name2 = field_val.stringValue;
 		name2.tolower();
 
-		ScriptManager* Director = GetScriptManager();
+		ScriptManagerPtr Director = GetScriptManager();
 
 		index = Director->AddString( name );
 		eventnum = GetEventManager()->FindGetterEventNum( name2 );
@@ -664,7 +664,7 @@ void ScriptCompiler::EmitFunction( int iParamCount, sval_t val, uint32_t sourceP
 	SetOpcodeVarStackOffset( OP_FUNC, -iParamCount );
 	EmitOpcode( OP_FUNC, sourcePos );
 
-	ScriptManager* Director = GetScriptManager();
+	ScriptManagerPtr Director = GetScriptManager();
 
 	if( !found )
 	{
@@ -1131,7 +1131,7 @@ void ScriptCompiler::EmitStatementList( sval_t val )
 
 void ScriptCompiler::EmitString( str value, uint32_t sourcePos )
 {
-	ScriptManager* Director = GetScriptManager();
+	ScriptManagerPtr Director = GetScriptManager();
 	uint32_t index = Director->AddString( value );
 
 	/*
@@ -1954,7 +1954,7 @@ str ScriptCompiler::GetLine( str content, int line )
 
 void ScriptCompiler::CompileAssemble( const char *filename, const char *outputfile )
 {
-	ScriptManager* Director = GetScriptManager();
+	ScriptManagerPtr Director = GetScriptManager();
 	GameScript *gameScript = Director->GetGameScript( filename );
 
 	if( !gameScript->m_ProgBuffer || !gameScript->m_ProgLength )

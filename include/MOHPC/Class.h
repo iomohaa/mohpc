@@ -3,12 +3,14 @@
 #include "Global.h"
 #include "SafePtr.h"
 #include "Utilities/SharedPtr.h"
+#include "Object.h"
 
 namespace MOHPC
 {
 	class AssetManager;
 	class FileManager;
 
+	/*
 #define CLASS_BODY(c) \
 	public: \
 	MOHPC_EXPORTS static c* CreateInstance(); \
@@ -20,40 +22,27 @@ namespace MOHPC
 	c* c::CreateInstance() { return new c(); } \
 	SharedPtr<c> c::CreatePtr() { return SharedPtr<c>(new c(), &c::Delete); } \
 	void c::Delete(c* instance) { delete instance; }
+	*/
 
-	class Class : public SafePtrClass
+#define CLASS_BODY			MOHPC_OBJECT_DECLARATION
+#define CLASS_DEFINITION	MOHPC_OBJECT_DEFINITION
+
+	class Class : public SafePtrClass, public Object
 	{
 		friend AssetManager;
 
 		CLASS_BODY(Class);
 
-	private:
-		AssetManager * AM;
-
 	protected:
 		MOHPC_EXPORTS Class();
 		MOHPC_EXPORTS virtual ~Class();
-		
-		Class(const Class& Object);
-		//Class& operator=(const Class& Object) = delete;
-
-		// Non-moveable
-		//Class(Class&& Object) = delete;
-		//Class& operator=(Class&& Object) = delete;
 
 	public:
 		/** Init the asset manager property. */
-		MOHPC_EXPORTS void InitAssetManager(AssetManager* AM);
+		//MOHPC_EXPORTS void InitAssetManager(AssetManager* AM);
 
 		/** Init the asset manager property from another class. */
-		MOHPC_EXPORTS void InitAssetManager(const Class* Object);
-
-		/** Wrapper to AssetManager::GetManager */
-		template<class T>
-		T* GetManager() const;
-
-		MOHPC_EXPORTS AssetManager* GetAssetManager() const;
-		MOHPC_EXPORTS FileManager* GetFileManager() const;
+		//MOHPC_EXPORTS void InitAssetManager(const Class* Object);
 	};
 }
 

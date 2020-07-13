@@ -6,6 +6,7 @@
 #include <MOHPC/Network/Event.h>
 #include <MOHPC/Network/Types.h>
 #include <MOHPC/Network/MasterList.h>
+#include <MOHPC/Network/RemoteConsole.h>
 #include <MOHPC/Misc/MSG/Stream.h>
 #include <MOHPC/Script/str.h>
 #include <MOHPC/Utilities/Info.h>
@@ -176,7 +177,7 @@ public:
 		someKeyVal = info.ValueForKey("keyToBe");
 		assert(someKeyVal.isEmpty());
 
-		NetworkManager* manager = AM->GetManager<NetworkManager>();
+		NetworkManagerPtr manager = AM->GetManager<NetworkManager>();
 
 		// Set new log
 		using namespace Log;
@@ -189,8 +190,18 @@ public:
 
 		adr.port = 12203;
 
+		// Send remote command
+		RemoteConsolePtr RCon = RemoteConsole::create(manager, adr, "12345");
+		RCon->getHandlerList().set<RConHandlers::Print>([](const char* text)
+		{
+			MOHPC_LOG(Log, "Remote console \"%s\"", text);
+		});
+		RCon->send("echo test");
+
 		Network::EngineServerPtr clientBase = Network::EngineServer::create(manager, adr); //makeShared<Network::EngineServer>(manager, adr);
-		/*
+
+#if 0
+		// Query server list
 		Network::ServerList master(manager, Network::gameListType_e::mohaa);
 		master.fetch(
 			[](const Network::IServerPtr& ptr)
@@ -211,7 +222,7 @@ public:
 			{
 				printf("done listing\n");
 			});
-		*/
+#endif
 
 		Network::ClientGameConnectionPtr connection;
 		bool wantsDisconnect = false;

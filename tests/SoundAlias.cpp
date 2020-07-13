@@ -12,7 +12,7 @@ public:
 
 	virtual void run(const MOHPC::AssetManagerPtr& AM) override
 	{
-		MOHPC::SoundManager* SoundManager = AM->GetManager<MOHPC::SoundManager>();
+		MOHPC::SoundManagerPtr SoundManager = AM->GetManager<MOHPC::SoundManager>();
 		const MOHPC::SoundNode* Alias = SoundManager->FindAlias("30cal_leftwing");
 	}
 };

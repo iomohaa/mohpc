@@ -121,7 +121,7 @@ ClientSnapshot::ClientSnapshot()
 
 MOHPC_OBJECT_DEFINITION(ClientGameConnection);
 
-ClientGameConnection::ClientGameConnection(NetworkManager* inNetworkManager, const INetchanPtr& inNetchan, const netadr_t& inAdr, uint32_t challengeResponse, const protocolType_c& protoType, const ClientInfoPtr& cInfo)
+ClientGameConnection::ClientGameConnection(const NetworkManagerPtr& inNetworkManager, const INetchanPtr& inNetchan, const netadr_t& inAdr, uint32_t challengeResponse, const protocolType_c& protoType, const ClientInfoPtr& cInfo)
 	: ITickableNetwork(inNetworkManager)
 	, netchan(inNetchan)	
 	, adr(inAdr)

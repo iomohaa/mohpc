@@ -551,7 +551,7 @@ namespace MOHPC
 			 * @param	challengeResponse	Challenge used to XOR data.
 			 * @param	protocolVersion		Version of the protocol to use.
 			 */
-			ClientGameConnection(NetworkManager* inNetworkManager, const INetchanPtr& netchan, const netadr_t& inAdr, uint32_t challengeResponse, const protocolType_c& protoType, const ClientInfoPtr& cInfo);
+			ClientGameConnection(const NetworkManagerPtr& inNetworkManager, const INetchanPtr& netchan, const netadr_t& inAdr, uint32_t challengeResponse, const protocolType_c& protoType, const ClientInfoPtr& cInfo);
 			~ClientGameConnection();
 
 			// ITickableNetwork

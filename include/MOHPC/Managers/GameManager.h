@@ -33,4 +33,5 @@ namespace MOHPC
 	protected:
 		virtual void Init();
 	};
+	using GameManagerPtr = SharedPtr<GameManager>;
 };

@@ -53,18 +53,18 @@ void MOHPC::NetworkManager::removeTickable(ITickableNetwork* tickable)
 	tickables.RemoveObject(tickable);
 }
 
-MOHPC::ITickableNetwork::ITickableNetwork(NetworkManager* manager)
+MOHPC::ITickableNetwork::ITickableNetwork(const NetworkManagerPtr& manager)
 	: owner(manager)
 {
-	owner->addTickable(this);
+	owner.lock()->addTickable(this);
 }
 
-MOHPC::NetworkManager* MOHPC::ITickableNetwork::getManager() const
+MOHPC::NetworkManagerPtr MOHPC::ITickableNetwork::getManager() const
 {
-	return owner;
+	return owner.lock();
 }
 
 MOHPC::ITickableNetwork::~ITickableNetwork()
 {
-	owner->removeTickable(this);
+	if (!owner.expired()) owner.lock()->removeTickable(this);
 }

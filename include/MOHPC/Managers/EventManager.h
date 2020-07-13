@@ -88,4 +88,5 @@ namespace MOHPC
 		static int compareEvents(const void *arg1, const void *arg2, void *context);
 #endif
 	};
+	using EventManagerPtr = SharedPtr<EventManager>;
 };

@@ -562,7 +562,7 @@ Event *EventManager::NewEvent(const str& command, uint8_t type)
 {
 	uintptr_t *index;
 
-	ScriptManager* Director = GetManager<ScriptManager>();
+	ScriptManagerPtr Director = GetManager<ScriptManager>();
 
 	if (type == EV_NORMAL)
 	{

@@ -584,4 +584,5 @@ namespace MOHPC
 		void ParseShaderContainer(ShaderContainer *shaderContainer, const char *name, const char *buffer, std::streamsize length = 0);
 		//string ParseTextureExtension(const string& name);
 	};
+	using ShaderManagerPtr = SharedPtr<ShaderManager>;
 };

@@ -1682,9 +1682,9 @@ void ScriptVariable::operator%=(const ScriptVariable& value)
 			ScriptError("Division by zero error\n");
 		}
 
-		m_data.vectorValue[0] = (float)fmod(m_data.vectorValue[0], value.m_data.intValue);
-		m_data.vectorValue[1] = (float)fmod(m_data.vectorValue[1], value.m_data.intValue);
-		m_data.vectorValue[2] = (float)fmod(m_data.vectorValue[2], value.m_data.intValue);
+		m_data.vectorValue[0] = (float)fmodf(m_data.vectorValue[0], (float)value.m_data.intValue);
+		m_data.vectorValue[1] = (float)fmodf(m_data.vectorValue[1], (float)value.m_data.intValue);
+		m_data.vectorValue[2] = (float)fmodf(m_data.vectorValue[2], (float)value.m_data.intValue);
 		break;
 
 	case VARIABLE_VECTOR + VARIABLE_FLOAT * VARIABLE_MAX: // ( vector ) % ( float )
@@ -1692,9 +1692,9 @@ void ScriptVariable::operator%=(const ScriptVariable& value)
 			ScriptError("Division by zero error\n");
 		}
 
-		m_data.vectorValue[0] = (float)fmod(m_data.vectorValue[0], value.m_data.floatValue);
-		m_data.vectorValue[1] = (float)fmod(m_data.vectorValue[1], value.m_data.floatValue);
-		m_data.vectorValue[2] = (float)fmod(m_data.vectorValue[2], value.m_data.floatValue);
+		m_data.vectorValue[0] = (float)fmodf(m_data.vectorValue[0], value.m_data.floatValue);
+		m_data.vectorValue[1] = (float)fmodf(m_data.vectorValue[1], value.m_data.floatValue);
+		m_data.vectorValue[2] = (float)fmodf(m_data.vectorValue[2], value.m_data.floatValue);
 		break;
 
 	case VARIABLE_INTEGER + VARIABLE_FLOAT * VARIABLE_MAX: // ( int ) % ( float )
@@ -1702,7 +1702,7 @@ void ScriptVariable::operator%=(const ScriptVariable& value)
 			ScriptError("Division by zero error\n");
 		}
 
-		setFloatValue(fmod((float)m_data.intValue, value.m_data.floatValue));
+		setFloatValue(fmodf((float)m_data.intValue, value.m_data.floatValue));
 		break;
 
 	case VARIABLE_FLOAT + VARIABLE_FLOAT * VARIABLE_MAX: // ( float ) % ( float )
@@ -1710,7 +1710,7 @@ void ScriptVariable::operator%=(const ScriptVariable& value)
 			ScriptError("Division by zero error\n");
 		}
 
-		m_data.floatValue = fmod(m_data.floatValue, value.m_data.floatValue);
+		m_data.floatValue = fmodf(m_data.floatValue, value.m_data.floatValue);
 		break;
 
 	case VARIABLE_FLOAT + VARIABLE_INTEGER * VARIABLE_MAX: // ( float ) % ( int )
@@ -1718,7 +1718,7 @@ void ScriptVariable::operator%=(const ScriptVariable& value)
 			ScriptError("Division by zero error\n");
 		}
 
-		m_data.floatValue = fmod(m_data.floatValue, (float)value.m_data.intValue);
+		m_data.floatValue = fmodf(m_data.floatValue, (float)value.m_data.intValue);
 		break;
 
 	case VARIABLE_INTEGER + VARIABLE_VECTOR * VARIABLE_MAX: // ( int ) % ( vector )
@@ -1730,9 +1730,9 @@ void ScriptVariable::operator%=(const ScriptVariable& value)
 
 		setVectorValue(vec_zero);
 
-		m_data.vectorValue[0] = fmod(value.m_data.vectorValue[0], mult);
-		m_data.vectorValue[1] = fmod(value.m_data.vectorValue[1], mult);
-		m_data.vectorValue[2] = fmod(value.m_data.vectorValue[2], mult);
+		m_data.vectorValue[0] = fmodf(value.m_data.vectorValue[0], mult);
+		m_data.vectorValue[1] = fmodf(value.m_data.vectorValue[1], mult);
+		m_data.vectorValue[2] = fmodf(value.m_data.vectorValue[2], mult);
 		break;
 
 	case VARIABLE_FLOAT + VARIABLE_VECTOR * VARIABLE_MAX: // ( float ) % ( vector )
@@ -1744,24 +1744,24 @@ void ScriptVariable::operator%=(const ScriptVariable& value)
 
 		setVectorValue(vec_zero);
 
-		m_data.vectorValue[0] = fmod(m_data.vectorValue[0], mult);
-		m_data.vectorValue[1] = fmod(m_data.vectorValue[1], mult);
-		m_data.vectorValue[2] = fmod(m_data.vectorValue[2], mult);
+		m_data.vectorValue[0] = fmodf(m_data.vectorValue[0], mult);
+		m_data.vectorValue[1] = fmodf(m_data.vectorValue[1], mult);
+		m_data.vectorValue[2] = fmodf(m_data.vectorValue[2], mult);
 		break;
 
 	case VARIABLE_VECTOR + VARIABLE_VECTOR * VARIABLE_MAX: // ( vector ) % ( vector )
 		m_data.vectorValue = vec_zero;
 
 		if (value.m_data.vectorValue[0] != 0) {
-			m_data.vectorValue[0] = fmod(m_data.vectorValue[0], value.m_data.vectorValue[0]);
+			m_data.vectorValue[0] = fmodf(m_data.vectorValue[0], value.m_data.vectorValue[0]);
 		}
 
 		if (value.m_data.vectorValue[1] != 0) {
-			m_data.vectorValue[1] = fmod(m_data.vectorValue[1], value.m_data.vectorValue[1]);
+			m_data.vectorValue[1] = fmodf(m_data.vectorValue[1], value.m_data.vectorValue[1]);
 		}
 
 		if (value.m_data.vectorValue[2] != 0) {
-			m_data.vectorValue[2] = fmod(m_data.vectorValue[2], value.m_data.vectorValue[2]);
+			m_data.vectorValue[2] = fmodf(m_data.vectorValue[2], value.m_data.vectorValue[2]);
 		}
 
 		break;

@@ -51,7 +51,7 @@ ScriptVM::ScriptVM(ScriptContainer *scriptClass, unsigned char *pCodePos, Script
 		localStackSize = 1;
 	}
 
-	AssetManager* AM = GetAssetManager();
+	AssetManagerPtr AM = GetAssetManager();
 
 	localStack = new ScriptVariable[localStackSize];
 
@@ -77,7 +77,7 @@ ScriptVM::~ScriptVM()
 		LeaveFunction();
 	}
 
-	AssetManager* AM = GetAssetManager();
+	AssetManagerPtr AM = GetAssetManager();
 	delete[] localStack;
 	delete fastEvent;
 }
@@ -151,10 +151,9 @@ executeCommand
 */
 void ScriptVM::executeCommand(Listener *listener, uint16_t iParamCount, int eventnum, bool bMethod, bool bReturn)
 {
-	Event ev;
 	ScriptVariable *var;
 
-	ev = Event(eventnum);
+	Event ev(eventnum);
 	ev.InitAssetManager(this);
 
 	if (bReturn)
@@ -166,7 +165,7 @@ void ScriptVM::executeCommand(Listener *listener, uint16_t iParamCount, int even
 		var = pTop + 1;
 	}
 
-	AssetManager* AM = GetAssetManager();
+	AssetManagerPtr AM = GetAssetManager();
 
 	ev.dataSize = iParamCount;
 	if (iParamCount)
@@ -210,13 +209,12 @@ executeGetter
 */
 bool ScriptVM::executeGetter(Listener *listener, const_str name)
 {
-	EventManager* eventManager = GetEventManager();
+	EventManagerPtr eventManager = GetEventManager();
 	uintptr_t eventnum = eventManager->FindGetterEventNum(name);
 
 	if (eventnum && listener->classinfo()->GetDef(eventnum))
 	{
-		Event ev;
-		ev = Event(eventnum);
+		Event ev(eventnum);
 		ev.InitAssetManager(this);
 		ev.fromScript = true;
 
@@ -259,13 +257,12 @@ executeSetter
 */
 bool ScriptVM::executeSetter(Listener *listener, const_str name)
 {
-	EventManager* eventManager = GetEventManager();
+	EventManagerPtr eventManager = GetEventManager();
 	uintptr_t eventnum = eventManager->FindSetterEventNum(name);
 
 	if (eventnum && listener->classinfo()->GetDef(eventnum))
 	{
-		Event ev;
-		ev = Event(eventnum);
+		Event ev(eventnum);
 		ev.InitAssetManager(this);
 		ev.fromScript = true;
 
@@ -331,7 +328,7 @@ void ScriptVM::loadTop(Listener *listener, bool noTop)
 
 	if (variable != -1)
 	{
-		ScriptManager* Director = GetScriptManager();
+		ScriptManagerPtr Director = GetScriptManager();
 
 		if (!executeSetter(listener, variable))
 		{
@@ -408,7 +405,7 @@ void ScriptVM::LeaveFunction()
 {
 	size_t num = callStack.NumObjects();
 
-	AssetManager* AM = GetAssetManager();
+	AssetManagerPtr AM = GetAssetManager();
 
 	if (num)
 	{
@@ -484,7 +481,7 @@ void ScriptVM::Execute(ScriptVariable *data, int dataSize, str label)
 		}
 	}
 
-	ScriptManager* Director = GetScriptManager();
+	ScriptManagerPtr Director = GetScriptManager();
 
 	if (Director->GetStackCount() >= MAX_STACK_DEPTH)
 	{
@@ -505,9 +502,9 @@ void ScriptVM::Execute(ScriptVariable *data, int dataSize, str label)
 
 	state = STATE_RUNNING;
 
-	GameManager* gameManager = GetGameManager();
-	EventManager* eventManager = GetEventManager();
-	AssetManager* AM = GetAssetManager();
+	GameManagerPtr gameManager = GetGameManager();
+	EventManagerPtr eventManager = GetEventManager();
+	AssetManagerPtr AM = GetAssetManager();
 
 	Level* level = gameManager->GetLevel();
 	float cmdTime = level->GetTimeSeconds();
@@ -1699,7 +1696,7 @@ const str& ScriptVM::Filename()
 const str& ScriptVM::Label()
 {
 	const_str label = m_ScriptContainer->NearestLabel(m_CodePos);
-	ScriptManager* Director = GetScriptManager();
+	ScriptManagerPtr Director = GetScriptManager();
 	return Director->GetString(label);
 }
 
@@ -1776,7 +1773,7 @@ void ScriptVM::AllowContextSwitch(bool allow)
 
 void ScriptVM::RequestContextSwitch()
 {
-	ScriptManager* Director = GetScriptManager();
+	ScriptManagerPtr Director = GetScriptManager();
 
 	if (!m_bAllowContextSwitch || !Director->IsContextSwitchAllowed())
 	{

@@ -3424,7 +3424,7 @@ void ScriptThread::ScriptExecute(ScriptVariable *data, int dataSize, ScriptVaria
 
 void ScriptThread::ScriptExecuteInternal(ScriptVariable *data, int dataSize)
 {
-	ScriptManager* Director = GetScriptManager();
+	ScriptManagerPtr Director = GetScriptManager();
 	SafePtr< ScriptThread > previousThread = Director->m_PreviousThread;
 	SafePtr< ScriptThread > currentThread = Director->m_CurrentThread;
 
@@ -3693,7 +3693,7 @@ void ScriptMutex::Lock(void)
 {
 	mutex_thread_list_t *list;
 
-	ScriptManager* Director = GetScriptManager();
+	ScriptManagerPtr Director = GetScriptManager();
 
 	list = new mutex_thread_list_t;
 	list->m_pThread = Director->CurrentThread();
@@ -3706,7 +3706,7 @@ void ScriptMutex::Unlock(void)
 {
 	mutex_thread_list_t *list, *next;
 
-	ScriptManager* Director = GetScriptManager();
+	ScriptManagerPtr Director = GetScriptManager();
 
 	m_iLockCount--;
 
@@ -3743,7 +3743,7 @@ void ScriptMutex::Unlock(void)
 
 void ScriptMutex::StoppedNotify(void)
 {
-	ScriptManager* Director = GetScriptManager();
+	ScriptManagerPtr Director = GetScriptManager();
 
 	if (Director->CurrentThread() == m_pLockThread)
 	{

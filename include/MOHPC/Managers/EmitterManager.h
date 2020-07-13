@@ -124,4 +124,5 @@ namespace MOHPC
 	private:
 		bool ProcessCommand(const Container<str>& Arguments, class EmitterListener& Listener);
 	};
+	using EmitterManagerPtr = SharedPtr<EmitterManager>;
 }

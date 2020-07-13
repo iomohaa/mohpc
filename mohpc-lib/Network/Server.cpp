@@ -11,7 +11,7 @@ using namespace Network;
 
 #define MOHPC_LOG_NAMESPACE "gs_server"
 
-MOHPC::Network::GSServer::GSServer(NetworkManager* inManager, const netadr_t& adr)
+MOHPC::Network::GSServer::GSServer(const NetworkManagerPtr& inManager, const netadr_t& adr)
 	: IServer(inManager, adr)
 {
 	socket = ISocketFactory::get()->createUdp(addressType_e::IPv4);
@@ -86,7 +86,7 @@ MOHPC::SharedPtr<MOHPC::IRequestBase> MOHPC::Network::GSServer::Request_Query::t
 	return nullptr;
 }
 
-MOHPC::Network::IServer::IServer(NetworkManager* inManager, const netadr_t& adr)
+MOHPC::Network::IServer::IServer(const NetworkManagerPtr& inManager, const netadr_t& adr)
 	: ITickableNetwork(inManager)
 	, address(adr)
 {
@@ -97,7 +97,7 @@ const netadr_t& IServer::getAddress() const
 	return address;
 }
 
-MOHPC::Network::LANServer::LANServer(NetworkManager* inManager, const netadr_t& inAddress, char* inInfo, size_t infoSize)
+MOHPC::Network::LANServer::LANServer(const NetworkManagerPtr& inManager, const netadr_t& inAddress, char* inInfo, size_t infoSize)
 	: IServer(inManager, inAddress)
 	, info(ReadOnlyInfo(inInfo, infoSize))
 	, dataStr(inInfo)
@@ -121,7 +121,7 @@ void MOHPC::Network::LANServer::query(Callbacks::Query&& response, Callbacks::Se
 
 MOHPC_OBJECT_DEFINITION(EngineServer);
 
-EngineServer::EngineServer(NetworkManager* inManager, const netadr_t& inAddress)
+EngineServer::EngineServer(const NetworkManagerPtr& inManager, const netadr_t& inAddress)
 	: ITickableNetwork(inManager)
 	, socket(ISocketFactory::get()->createUdp(addressType_e::IPv4))
 	, address(inAddress)

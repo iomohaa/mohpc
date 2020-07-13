@@ -25,4 +25,5 @@ namespace MOHPC
 		SkeletonChannelNameTable* m_channelNames;
 		skelBone_World* m_worldBone;
 	};
+	using SkeletorManagerPtr = SharedPtr<SkeletorManager>;
 }

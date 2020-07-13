@@ -121,7 +121,7 @@ void ModelRenderer::AddModel(const TIKI* Tiki)
 
 		boneList.PackChannels();
 
-		ShaderManager* shaderMan = GetAssetManager()->GetManager<ShaderManager>();
+		ShaderManagerPtr shaderMan = GetAssetManager()->GetManager<ShaderManager>();
 
 		meshes.reserve(meshes.size() + numMeshes);
 		materials.reserve(materials.size() + numMeshes);

@@ -377,7 +377,7 @@ void MOHPC::SkeletonAnimation::WriteEncodedFrames(class MSG* msg)
 void MOHPC::SkeletonAnimation::WriteEncodedFramesEx(class MSG* msg)
 {
 	size_t nTotalChannels = ary_channels.size();
-	SkeletorManager* skeletorManager = GetManager<SkeletorManager>();
+	SkeletorManagerPtr skeletorManager = GetManager<SkeletorManager>();
 	for (size_t i = 0; i < nTotalChannels; i++)
 	{
 		SkanChannelHdr* pChannel = &ary_channels[i];
@@ -486,7 +486,7 @@ void SkeletonAnimation::ReadEncodedFrames(class MSG* msg)
 void SkeletonAnimation::ReadEncodedFramesEx(class MSG* msg)
 {
 	size_t nTotalChannels = ary_channels.size();
-	SkeletorManager* skeletorManager = GetManager<SkeletorManager>();
+	SkeletorManagerPtr skeletorManager = GetManager<SkeletorManager>();
 	for (size_t i = 0; i < nTotalChannels; i++)
 	{
 		SkanChannelHdr *pChannel = &ary_channels[i];

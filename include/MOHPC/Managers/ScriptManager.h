@@ -116,4 +116,5 @@ namespace MOHPC
 	protected:
 		virtual void Init() override;
 	};
+	using ScriptManagerPtr = SharedPtr<ScriptManager>;
 };

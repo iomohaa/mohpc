@@ -9,6 +9,174 @@ collisionBrush_t* box_brush;
 
 static constexpr float SURFACE_CLIP_EPSILON = 0.125f;
 static constexpr clipHandle_t BOX_MODEL_HANDLE = 1023;
+MOHPC::sphere_t::sphere_t()
+	: use(false)
+	, radius(0.f)
+{
+}
+
+MOHPC::trace_t::trace_t()
+	: allsolid(0)
+	, startsolid(0)
+	, fraction(0)
+	, endpos()
+	, surfaceFlags(0)
+	, shaderNum(0)
+	, contents(0)
+	, entityNum(0)
+	, location(0)
+{
+}
+
+MOHPC::pointtrace_t::pointtrace_t()
+	: tw(nullptr)
+	, tc(nullptr)
+	, i(0)
+	, j(0)
+	, fSurfaceClipEpsilon(0.f)
+{
+}
+
+MOHPC::collisionPlane_t::collisionPlane_t()
+	: dist(0.f)
+	, type(0)
+	, signbits(0)
+{
+}
+
+MOHPC::collisionNode_t::collisionNode_t()
+	: plane(nullptr)
+	, children{ 0 }
+{
+}
+
+MOHPC::collisionLeaf_t::collisionLeaf_t()
+	: cluster(0)
+	, area(0)
+	, firstLeafBrush(0)
+	, numLeafBrushes(0)
+	, firstLeafSurface(0)
+	, numLeafSurfaces(0)
+	, firstLeafTerrain(0)
+	, numLeafTerrains(0)
+{
+}
+
+MOHPC::collisionFencemask_t::collisionFencemask_t()
+	: iWidth(0)
+	, iHeight(0)
+	, pData(nullptr)
+	, pNext(nullptr)
+{
+}
+
+MOHPC::collisionShader_t::collisionShader_t()
+	: surfaceFlags(0)
+	, contentFlags(0)
+	, mask(nullptr)
+{
+}
+
+MOHPC::terrainCollideSquare_t::terrainCollideSquare_t()
+	: eMode(0)
+{
+}
+
+MOHPC::terrainCollide_t::terrainCollide_t()
+{
+}
+
+MOHPC::collisionTerrain_t::collisionTerrain_t()
+	: checkcount(0)
+	, surfaceFlags(0)
+	, contents(0)
+	, shaderNum(0)
+{
+}
+
+MOHPC::collisionArea_t::collisionArea_t()
+	: floodnum(0)
+	, floodvalid(0)
+{
+}
+
+MOHPC::collisionModel_t::collisionModel_t()
+{
+}
+
+MOHPC::collisionSideEq_t::collisionSideEq_t()
+	: fSeq{ 0 }
+	, fTeq{ 0 }
+{
+}
+
+MOHPC::collisionBrushSide_t::collisionBrushSide_t()
+	: plane(nullptr)
+	, surfaceFlags(0)
+	, shaderNum(0)
+	, pEq(nullptr)
+{
+}
+
+MOHPC::collisionBrush_t::collisionBrush_t()
+	: shaderNum(0)
+	, contents(0)
+	, numsides(0)
+	, sides(nullptr)
+	, checkcount(0)
+{
+}
+
+MOHPC::patchPlane_t::patchPlane_t()
+	: plane{ 0 }
+	, signbits(0)
+{
+}
+
+MOHPC::facet_t::facet_t()
+	: surfacePlane(0)
+	, numBorders(0)
+	, borderPlanes{ 0 }
+	, borderInward{ false }
+	, borderNoAdjust{ false }
+{
+}
+
+MOHPC::patchCollide_t::patchCollide_t()
+	: numPlanes(0)
+	, planes(nullptr)
+	, numFacets(0)
+	, facets(nullptr)
+{
+}
+
+MOHPC::collisionPatch_t::collisionPatch_t()
+	: checkcount(0)
+	, surfaceFlags(0)
+	, contents(0)
+	, shaderNum(0)
+	, subdivisions(0)
+{
+}
+
+MOHPC::traceWork_t::traceWork_t()
+	: maxOffset(0.f)
+	, height(0.f)
+	, radius(0.f)
+	, contents(0)
+	, isPoint(false)
+{
+}
+
+MOHPC::leafList_t::leafList_t()
+	: count(0)
+	, maxcount(0)
+	, overflowed(false)
+	, list(nullptr)
+	, lastLeaf(0)
+	, storeLeafs(nullptr)
+{
+}
 
 static void SetPlaneSignbits(collisionPlane_t* out)
 {

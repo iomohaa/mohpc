@@ -981,6 +981,9 @@ namespace MOHPC
 				handlerList.unset<T>(handle);
 			}
 
+			/** Return the handler list. */
+			MOHPC_EXPORTS HandlerListCGame& getHandlerList();
+
 			/** Return the alpha interpolation between the current frame and the next frame. */
 			MOHPC_EXPORTS float getFrameInterpolation() const;
 			

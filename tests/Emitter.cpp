@@ -19,7 +19,7 @@ public:
 		auto end = std::chrono::system_clock().now();
 		printf("%lf time\n", std::chrono::duration<double>(end - start).count());
 
-		MOHPC::EmitterManager* EmitterManager = AM->GetManager<MOHPC::EmitterManager>();
+		MOHPC::EmitterManagerPtr EmitterManager = AM->GetManager<MOHPC::EmitterManager>();
 
 		if (Tiki)
 		{

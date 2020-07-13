@@ -412,7 +412,7 @@ void Listener::CancelEventsOfType(Event *ev)
 	EventQueueNode *next;
 	uintptr_t eventnum;
 
-	EventManager* eventManager = GetEventManager();
+	EventManagerPtr eventManager = GetEventManager();
 
 	node = eventManager->EventQueue.next;
 
@@ -439,7 +439,7 @@ void Listener::CancelFlaggedEvents(int flags)
 	EventQueueNode *node;
 	EventQueueNode *next;
 
-	EventManager* eventManager = GetEventManager();
+	EventManagerPtr eventManager = GetEventManager();
 
 	node = eventManager->EventQueue.next;
 
@@ -460,7 +460,7 @@ void Listener::CancelPendingEvents(void)
 	EventQueueNode *node;
 	EventQueueNode *next;
 
-	EventManager* eventManager = GetEventManager();
+	EventManagerPtr eventManager = GetEventManager();
 	if (eventManager)
 	{
 		node = eventManager->EventQueue.next;
@@ -483,7 +483,7 @@ bool Listener::EventPending(Event &ev)
 	EventQueueNode *event;
 	uintptr_t eventnum;
 
-	EventManager* eventManager = GetEventManager();
+	EventManagerPtr eventManager = GetEventManager();
 
 	event = eventManager->EventQueue.next;
 
@@ -527,7 +527,7 @@ EventQueueNode *Listener::PostEventInternal(Event *ev, float delay, int flags)
 
 	node = new EventQueueNode;
 
-	EventManager* eventManager = GetEventManager();
+	EventManagerPtr eventManager = GetEventManager();
 
 	i = eventManager->EventQueue.next;
 	time = GetGameManager()->GetLevel()->GetTimeSeconds() + (delay + 0.0005f);
@@ -568,7 +568,7 @@ bool Listener::PostponeAllEvents(float time)
 	EventQueueNode *event;
 	EventQueueNode *node;
 	
-	EventManager* eventManager = GetEventManager();
+	EventManagerPtr eventManager = GetEventManager();
 
 	event = eventManager->EventQueue.next;
 	while (event != &eventManager->EventQueue)
@@ -602,7 +602,7 @@ bool Listener::PostponeEvent(Event &ev, float time)
 
 	eventnum = ev.eventnum;
 
-	EventManager* eventManager = GetEventManager();
+	EventManagerPtr eventManager = GetEventManager();
 
 	event = eventManager->EventQueue.next;
 	while (event != &eventManager->EventQueue)
@@ -798,7 +798,7 @@ bool Listener::ProcessPendingEvents(void)
 
 	t = GetGameManager()->GetLevel()->GetTimeSeconds();
 
-	EventManager* eventManager = GetEventManager();
+	EventManagerPtr eventManager = GetEventManager();
 
 	event = eventManager->EventQueue.next;
 	while (event != &eventManager->EventQueue)
@@ -1103,7 +1103,7 @@ void Listener::RegisterTarget(const_str name, Listener *listener)
 
 void Listener::Unregister(const str& name)
 {
-	ScriptManager* scriptManager = GetScriptManager();
+	ScriptManagerPtr scriptManager = GetScriptManager();
 	if (scriptManager)
 	{
 		Unregister(scriptManager->AddString(name));
@@ -1201,7 +1201,7 @@ void Listener::Unregister(const_str name)
 
 void Listener::Unregister(const str& name, Listener *listener)
 {
-	ScriptManager* scriptManager = GetScriptManager();
+	ScriptManagerPtr scriptManager = GetScriptManager();
 	if (scriptManager)
 	{
 		Unregister(scriptManager->AddString(name));

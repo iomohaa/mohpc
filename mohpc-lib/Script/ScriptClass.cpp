@@ -533,17 +533,17 @@ const char *ScriptClass::getSuperclass(void) const
 	return classinfo()->superclass;
 }
 
-GameManager* BaseScriptClass::GetGameManager() const
+GameManagerPtr BaseScriptClass::GetGameManager() const
 {
 	return GetManager<GameManager>();
 }
 
-EventManager* BaseScriptClass::GetEventManager() const
+EventManagerPtr BaseScriptClass::GetEventManager() const
 {
 	return GetManager<EventManager>();
 }
 
-ScriptManager* BaseScriptClass::GetScriptManager() const
+ScriptManagerPtr BaseScriptClass::GetScriptManager() const
 {
 	return GetManager<ScriptManager>();
 }

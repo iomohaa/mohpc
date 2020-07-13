@@ -20,7 +20,7 @@ public:
 	{
 		printf("Loading shaders...\n");
 
-		MOHPC::ShaderManager* SM = AM->GetManager<MOHPC::ShaderManager>();
+		MOHPC::ShaderManagerPtr SM = AM->GetManager<MOHPC::ShaderManager>();
 
 		auto Shader = SM->GetShader("textures/common/caulk");
 		if (Shader && Shader->GetNumStages())

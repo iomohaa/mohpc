@@ -175,7 +175,7 @@ void BSP::GenerateTerrainPatch2(const TerrainPatch* Patch, Surface* Out)
 {
 	Out->shader = Patch->shader;
 
-	MOHPC::ShaderManager* ShaderManager = GetAssetManager()->GetManager<MOHPC::ShaderManager>();
+	MOHPC::ShaderManagerPtr ShaderManager = GetAssetManager()->GetManager<MOHPC::ShaderManager>();
 	ShaderPtr Shader = ShaderManager->GetShader(Out->shader->shaderName.c_str());
 
 	if (!Patch->drawInfo.vertHead || !Patch->drawInfo.triHead)

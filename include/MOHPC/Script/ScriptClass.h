@@ -176,9 +176,9 @@ namespace MOHPC
 	class BaseScriptClass : public Class
 	{
 	public:
-		class GameManager* GetGameManager() const;
-		class EventManager* GetEventManager() const;
-		class ScriptManager* GetScriptManager() const;
+		SharedPtr<class GameManager> GetGameManager() const;
+		SharedPtr<class EventManager> GetEventManager() const;
+		SharedPtr<class ScriptManager> GetScriptManager() const;
 	};
 
 	class ScriptClass : public BaseScriptClass

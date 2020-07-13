@@ -122,4 +122,5 @@ namespace MOHPC
 		/** Sort the node list. */
 		void SortList();
 	};
+	using SoundManagerPtr = SharedPtr<SoundManager>;
 }

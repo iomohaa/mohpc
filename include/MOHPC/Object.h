@@ -21,8 +21,16 @@ namespace MOHPC
 	MOHPC_EXPORTS static void* allocate(); \
 
 #define MOHPC_OBJECT_DEFINITION(c) \
-	SharedPtr<c> c::makePtr(c* ThisPtr) { return SharedPtr<c>(ThisPtr, &c::destroy); } \
-	void c::destroy(c* instance) { instance->~c(); delete[] reinterpret_cast<unsigned char*>(instance); } \
+	MOHPC::SharedPtr<c> c::makePtr(c* ThisPtr) { return MOHPC::SharedPtr<c>(ThisPtr, &c::destroy); } \
+	void c::destroy(c* instance) \
+	{ \
+		/** Extract type from namespace */ \
+		using Type = c; \
+		/** Call destructor */ \
+		instance->~Type(); \
+		/** Free up memory */ \
+		delete[] reinterpret_cast<unsigned char*>(instance); \
+	} \
 	void* c::allocate() { return new unsigned char[sizeof(c)]; };
 
 	class Object
@@ -33,13 +41,25 @@ namespace MOHPC
 		WeakPtr<AssetManager> AM;
 
 	protected:
-		MOHPC_EXPORTS Object(const SharedPtr<AssetManager>& AssetManager);
+		MOHPC_EXPORTS Object();
+		MOHPC_EXPORTS Object(const SharedPtr<AssetManager>& assetManager);
 		MOHPC_EXPORTS virtual ~Object();
 
+		Object(const Object& Object) = default;
+		Object& operator=(const Object& Object) = default;
+		Object(Object&& Object) noexcept = default;
+		Object& operator=(Object&& Object) noexcept = default;
+
 	public:
+		/** Init the asset manager property. */
+		MOHPC_EXPORTS void InitAssetManager(const SharedPtr<AssetManager>& assetManager);
+
+		/** Init the asset manager property from another class. */
+		MOHPC_EXPORTS void InitAssetManager(const Object* obj);
+
 		/** Wrapper to AssetManager::GetManager */
 		template<class T>
-		T* GetManager() const
+		SharedPtr<T> GetManager() const
 		{
 			SharedPtr<AssetManager> AssetManager = GetAssetManager();
 			return AssetManager ? AssetManager->GetManager<T>() : nullptr;

@@ -32,14 +32,14 @@ static const char* gameName[gameListType_e::max] =
 	"mohaab"
 };
 
-MOHPC::Network::IServerList::IServerList(NetworkManager* inManager)
+MOHPC::Network::IServerList::IServerList(const NetworkManagerPtr& inManager)
 	: ITickableNetwork(inManager)
 {
 }
 
 MOHPC_OBJECT_DEFINITION(ServerList);
 
-Network::ServerList::ServerList(NetworkManager* inManager, gameListType_e type)
+Network::ServerList::ServerList(const NetworkManagerPtr& inManager, gameListType_e type)
 	: IServerList(inManager)
 	, gameType(type)
 {
@@ -69,7 +69,7 @@ void Network::ServerList::sendRequest(IGamespyRequestPtr&& newRequest)
 //===================
 //= SendCon         =
 //===================
-Network::ServerList::Request_SendCon::Request_SendCon(NetworkManager* inNetworkManager, gameListType_e inType)
+Network::ServerList::Request_SendCon::Request_SendCon(const NetworkManagerPtr& inNetworkManager, gameListType_e inType)
 	: networkManager(inNetworkManager)
 	, gameType(inType)
 {
@@ -103,7 +103,7 @@ void Network::ServerList::Request_SendCon::generateInfo(Info& info)
 //===================
 //= SendToken       =
 //===================
-Network::ServerList::Request_SendToken::Request_SendToken(NetworkManager* inNetworkManager, const char* challenge, gameListType_e inType)
+Network::ServerList::Request_SendToken::Request_SendToken(const NetworkManagerPtr& inNetworkManager, const char* challenge, gameListType_e inType)
 	: networkManager(inNetworkManager)
 	, gameType(inType)
 {
@@ -222,7 +222,7 @@ void ServerList::Request_SendToken::encrypt(const uint8_t* key, int key_len, uin
 //===================
 //= FetchServers    =
 //===================
-Network::ServerList::Request_FetchServers::Request_FetchServers(NetworkManager* inNetworkManager, gameListType_e inGameType, FoundServerCallback&& inCallback, MasterServerDone&& inDoneCallback)
+Network::ServerList::Request_FetchServers::Request_FetchServers(const NetworkManagerPtr& inNetworkManager, gameListType_e inGameType, FoundServerCallback&& inCallback, MasterServerDone&& inDoneCallback)
 	: networkManager(inNetworkManager)
 	, key(gameKeys[(uint8_t)inGameType])
 	, game(gameName[(uint8_t)inGameType])
@@ -299,7 +299,7 @@ void Network::ServerList::Request_FetchServers::nullCallback(const IServerPtr& s
 
 MOHPC_OBJECT_DEFINITION(ServerListLAN);
 
-ServerListLAN::ServerListLAN(NetworkManager* inManager)
+ServerListLAN::ServerListLAN(const NetworkManagerPtr& inManager)
 	: IServerList(inManager)
 {
 	socket = ISocketFactory::get()->createUdp(addressType_e::IPv4);
@@ -318,7 +318,7 @@ void ServerListLAN::tick(uint64_t deltaTime, uint64_t currentTime)
 	handler.handle();
 }
 
-Network::ServerListLAN::Request_InfoBroadcast::Request_InfoBroadcast(NetworkManager* inNetworkManager, FoundServerCallback&& inResponse)
+Network::ServerListLAN::Request_InfoBroadcast::Request_InfoBroadcast(const NetworkManagerPtr& inNetworkManager, FoundServerCallback&& inResponse)
 	: networkManager(inNetworkManager)
 	, response(inResponse)
 {

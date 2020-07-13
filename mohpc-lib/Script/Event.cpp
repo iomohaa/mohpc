@@ -799,7 +799,7 @@ ScriptVariable&	Event::GetValue()
 {
 	ScriptVariable *tmp = data;
 
-	AssetManager* AM = GetAssetManager();
+	AssetManagerPtr AM = GetAssetManager();
 
 	data = new ScriptVariable[dataSize + 1];
 

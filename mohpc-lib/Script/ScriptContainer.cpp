@@ -20,7 +20,7 @@ ScriptContainer::ScriptContainer(GameScript *gameScript, Listener *self)
 	m_Script = gameScript;
 	m_Threads = NULL;
 
-	ScriptManager* Director = GetScriptManager();
+	ScriptManagerPtr Director = GetScriptManager();
 	LL_SafeAddFirst(Director->ContainerHead, this, Next, Prev);
 }
 
@@ -30,7 +30,7 @@ ScriptContainer::ScriptContainer()
 	m_Script = NULL;
 	m_Threads = NULL;
 
-	ScriptManager* Director = GetScriptManager();
+	ScriptManagerPtr Director = GetScriptManager();
 	LL_SafeAddFirst(Director->ContainerHead, this, Next, Prev);
 }
 
@@ -42,7 +42,7 @@ ScriptContainer::~ScriptContainer()
 		return;
 	}
 
-	ScriptManager* Director = GetScriptManager();
+	ScriptManagerPtr Director = GetScriptManager();
 	LL_SafeRemoveRoot(Director->ContainerHead, this, Next, Prev);
 
 	KillThreads();
@@ -120,7 +120,7 @@ ScriptThread *ScriptContainer::CreateThreadInternal(const ScriptVariable& label)
 	GameScript *scr;
 	ScriptThread *thread = NULL;
 
-	ScriptManager* Director = GetScriptManager();
+	ScriptManagerPtr Director = GetScriptManager();
 
 	if (label.GetType() == VARIABLE_STRING || label.GetType() == VARIABLE_CONSTSTRING)
 	{
@@ -160,7 +160,7 @@ ScriptThread *ScriptContainer::CreateScriptInternal(const ScriptVariable& label)
 	GameScript *scr;
 	ScriptThread *thread = NULL;
 
-	ScriptManager* Director = GetScriptManager();
+	ScriptManagerPtr Director = GetScriptManager();
 
 	if (label.GetType() == VARIABLE_STRING || label.GetType() == VARIABLE_CONSTSTRING)
 	{

@@ -21,48 +21,12 @@ intptr_t MOHPC::HashCode<std::type_index>(const std::type_index& key)
 AssetManager::AssetManager()
 {
 	FM = NULL;
-	bPendingDestroy = false;
 
 	MOHPC_LOG(Verbose, "MOHPC %s version %s build %d", VERSION_ARCHITECTURE, VERSION_SHORT_STRING, VERSION_BUILD);
 }
 
 AssetManager::~AssetManager()
 {
-	bPendingDestroy = true;
-
-#if 0
-	// Delete remaining objects
-	for (void* Memory : m_allocatedObjects)
-	{
-		if (Memory)
-		{
-			DestructObject((Class*)Memory);
-		}
-	}
-	for (void* Memory : m_allocatedArrayObjects)
-	{
-		if (Memory)
-		{
-			DestructObjects((Class*)Memory);
-		}
-	}
-
-	for (void* Memory : m_allocatedObjects)
-	{
-		if (Memory)
-		{
-			free(Memory);
-		}
-	}
-	for (void* Memory : m_allocatedArrayObjects)
-	{
-		if (Memory)
-		{
-			free(Memory);
-		}
-	}
-#endif
-
 	/*
 	// Delete managers last
 	for (auto& it : m_managers)
@@ -76,6 +40,7 @@ AssetManager::~AssetManager()
 	}
 	*/
 
+	/*
 	con_set_enum en(m_managers);
 	for (auto it = en.NextElement(); it; it = en.NextElement())
 	{
@@ -86,37 +51,33 @@ AssetManager::~AssetManager()
 			delete A;
 		}
 	}
+	*/
 
-	// Delete the file manager
 	if (FM)
 	{
+		// Delete the file manager
 		delete FM;
 	}
 }
 
 FileManager* AssetManager::GetFileManager() const
 {
-	if (!FM)
-	{
+	if (!FM) {
 		FM = new FileManager;
 	}
 	return FM;
 }
 
-void AssetManager::SetFileManager(FileManager* FileManager)
-{
-	FM = FileManager;
-}
-
-void AssetManager::AddManager(const std::type_index& ti, Manager* manager)
+void AssetManager::AddManager(const std::type_index& ti, const SharedPtr<Manager>& manager)
 {
 	//m_managers[ti] = manager;
-	manager->AM = this;
+	//manager->AM = this;
+	manager->InitAssetManager(shared_from_this());
 	m_managers.addKeyValue(ti) = manager;
 	manager->Init();
 }
 
-Manager* AssetManager::GetManager(const std::type_index& ti) const
+SharedPtr<Manager> AssetManager::GetManager(const std::type_index& ti) const
 {
 	/*
 	auto it = m_managers.find(ti);
@@ -129,7 +90,7 @@ Manager* AssetManager::GetManager(const std::type_index& ti) const
 		return nullptr;
 	}
 	*/
-	Manager* const* manager = m_managers.findKeyValue(ti);
+	const SharedPtr<Manager>* manager = m_managers.findKeyValue(ti);
 	if (manager) {
 		return *manager;
 	}
@@ -138,28 +99,30 @@ Manager* AssetManager::GetManager(const std::type_index& ti) const
 
 SharedPtr<Asset> AssetManager::CacheFindAsset(const char *Filename)
 {
-	/*
-	auto it = m_assetCache.find(Filename);
-	if (it == m_assetCache.end())
-	{
-		return NULL;
-	}
-	return it->second.Lock();
-	*/
-
 	WeakPtr<Asset>* asset = m_assetCache.findKeyValue(Filename);
-	if (asset && !asset->expired()) {
-		return asset->lock();
+	if (asset)
+	{
+		if(!asset->expired())
+		{
+			// Lock and return the shared pointer
+			return asset->lock();
+		}
+		else
+		{
+			// Not keeping a null asset
+			m_assetCache.remove(Filename);
+		}
 	}
 	return nullptr;
 }
 
-bool AssetManager::CacheLoadAsset(const char *Filename, SharedPtr<Asset> A)
+bool AssetManager::CacheLoadAsset(const char *Filename, const SharedPtr<Asset>& A)
 {
-	A->AM = this;
+	A->InitAssetManager(shared_from_this());
 	A->Init(Filename);
 	if (!A->Load())
 	{
+		// Can't continue
 		return false;
 	}
 
@@ -169,129 +132,6 @@ bool AssetManager::CacheLoadAsset(const char *Filename, SharedPtr<Asset> A)
 	m_assetCache.addKeyValue(Filename) = A;
 	return true;
 }
-
-void AssetManager::CacheUnloadAsset(Asset* A)
-{
-	/*
-	for (auto it = m_assetCache.begin(); it != m_assetCache.end(); it++)
-	{
-		Asset* EnumA = it->second;
-		if (EnumA == A)
-		{
-			m_assetCache.erase(it);
-			DeleteObject((Class*)EnumA);
-			break;
-		}
-	}
-
-	//DeleteUnreferencedAssets();
-	*/
-}
-
-void AssetManager::DeleteUnreferencedAssets()
-{
-	/*
-	for (auto it = m_assetCache.begin(); it != m_assetCache.end();)
-	{
-		AssetPtr& EnumA = it->second;
-		if (!EnumA.Pointer() || EnumA.GetRefCount() <= 1)
-		{
-			if (EnumA.Pointer())
-			{
-				DeleteObject((Class*)EnumA.Pointer());
-			}
-			it = m_assetCache.erase(it);
-		}
-		else
-		{
-			it++;
-		}
-	}
-	*/
-}
-
-#if 0
-void *AssetManager::AllocObject(size_t ObjectSize)
-{
-	Class *Object = nullptr;
-	void *Memory = (Class*)malloc(ObjectSize);
-	if (Memory)
-	{
-		Object = (Class*)Memory;
-		InitializeObject(Object);
-		m_allocatedObjects.insert(Memory);
-	}
-	return Object;
-}
-
-void *AssetManager::AllocObjects(size_t ObjectSize, size_t Count)
-{
-	Class *Object = nullptr;
-	void *Memory = (Class*)malloc(ObjectSize * Count + sizeof(size_t) * 2);
-	if (Memory)
-	{
-		*((size_t*)Memory) = ObjectSize;
-		*((size_t*)Memory + 1) = Count;
-
-		Object = (Class*)((size_t*)Memory + 2);
-
-		for (uintptr_t i = 0; i < Count; i++)
-		{
-			Class* C = (Class*)((char*)Object + ObjectSize * i);
-			InitializeObject(C);
-		}
-
-		m_allocatedArrayObjects.insert(Memory);
-	}
-	return Object;
-}
-
-void AssetManager::InitializeObject(Class* Object)
-{
-	Object->AM = this;
-}
-
-void AssetManager::DeleteObject(Class* Object)
-{
-	m_allocatedObjects.erase(Object);
-	//DestructObject(Object);
-	free(Object);
-}
-
-void AssetManager::DeleteObjects(Class* Object)
-{
-	void *Memory = ((size_t*)Object - 2);
-	m_allocatedArrayObjects.erase(Memory);
-	DestructObjects(Object);
-	free(Memory);
-}
-
-void AssetManager::DestructObject(Class *Object)
-{
-	Object->~Class();
-}
-
-void AssetManager::DestructObjects(Class *Object)
-{
-	void *Memory = ((size_t*)Object - 2);
-
-	const size_t ObjectSize = *((size_t*)Memory);
-	const size_t Count = *((size_t*)Memory + 1);
-
-	for (uintptr_t i = 0; i < Count; i++)
-	{
-		Class* C = (Class*)((char*)Object + ObjectSize * i);
-		C->~Class();
-	}
-}
-
-/*
-void AssetManager::DeleteObject(Asset* A)
-{
-	UnloadAsset(A);
-}
-*/
-#endif
 
 Manager::Manager()
 {
@@ -309,11 +149,6 @@ CLASS_DEFINITION(Class);
 Class::Class()
 {
 	// AM must be already set by the asset manager
-}
-
-Class::Class(const Class& Object)
-{
-	AM = Object.AM;
 }
 
 Class::~Class()
@@ -345,33 +180,6 @@ void Class::operator delete(void* ptr)
 	::operator delete(ptr);
 }
 */
-
-void Class::InitAssetManager(AssetManager* AM)
-{
-	this->AM = AM;
-}
-
-void Class::InitAssetManager(const Class* Object)
-{
-	AM = Object->AM;
-}
-
-AssetManager* Class::GetAssetManager() const
-{
-	return AM;
-}
-
-FileManager* Class::GetFileManager() const
-{
-	if (AM != NULL)
-	{
-		return AM->GetFileManager();
-	}
-	else
-	{
-		return NULL;
-	}
-}
 
 Asset::Asset()
 {

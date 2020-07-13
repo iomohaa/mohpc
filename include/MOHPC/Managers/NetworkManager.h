@@ -19,7 +19,7 @@ namespace MOHPC
 		Container<class ITickableNetwork*> tickables;
 
 	public:
-		NetworkManager();
+		MOHPC_EXPORTS NetworkManager();
 		~NetworkManager();
 
 		NetworkManager(const NetworkManager&) = delete;
@@ -33,14 +33,15 @@ namespace MOHPC
 		MOHPC_EXPORTS void addTickable(ITickableNetwork* tickable);
 		MOHPC_EXPORTS void removeTickable(ITickableNetwork* tickable);
 	};
+	using NetworkManagerPtr = SharedPtr<NetworkManager>;
 
-	class MOHPC_EXPORTS ITickableNetwork
+	class ITickableNetwork
 	{
 	private:
-		NetworkManager* owner;
+		WeakPtr<NetworkManager> owner;
 
 	public:
-		ITickableNetwork(NetworkManager* networkManager);
+		ITickableNetwork(const NetworkManagerPtr& networkManager);
 		virtual ~ITickableNetwork();
 
 		ITickableNetwork(const ITickableNetwork&) = delete;
@@ -51,7 +52,7 @@ namespace MOHPC
 		/** Tick function. */
 		virtual void tick(uint64_t deltaTime, uint64_t currentTime) = 0;
 
-		NetworkManager* getManager() const;
+		NetworkManagerPtr getManager() const;
 	};
 
 	namespace Network

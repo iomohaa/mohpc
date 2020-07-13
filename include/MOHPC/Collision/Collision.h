@@ -40,7 +40,7 @@ namespace MOHPC
 		}
 	};
 
-	struct collisionNode_t
+	struct MOHPC_EXPORTS collisionNode_t
 	{
 		const collisionPlane_t* plane;
 		// negative numbers are leafs
@@ -70,7 +70,7 @@ namespace MOHPC
 		}
 	};
 
-	struct collisionLeaf_t
+	struct MOHPC_EXPORTS collisionLeaf_t
 	{
 		int32_t cluster;
 		int32_t area;
@@ -98,7 +98,7 @@ namespace MOHPC
 		}
 	};
 
-	struct collisionFencemask_t
+	struct MOHPC_EXPORTS collisionFencemask_t
 	{
 		str name;
 		uint32_t iWidth;
@@ -127,7 +127,7 @@ namespace MOHPC
 		}
 	};
 
-	struct collisionShader_t
+	struct MOHPC_EXPORTS collisionShader_t
 	{
 		str shader;
 		uint32_t surfaceFlags;
@@ -171,7 +171,7 @@ namespace MOHPC
 		}
 	};
 
-	struct terrainCollideSquare_t
+	struct MOHPC_EXPORTS terrainCollideSquare_t
 	{
 		vec4_t plane[2];
 		int32_t eMode;
@@ -194,7 +194,7 @@ namespace MOHPC
 		}
 	};
 
-	struct terrainCollide_t
+	struct MOHPC_EXPORTS terrainCollide_t
 	{
 		Vector vBounds[2];
 		terrainCollideSquare_t squares[8][8];
@@ -221,7 +221,7 @@ namespace MOHPC
 		}
 	};
 
-	struct collisionTerrain_t
+	struct MOHPC_EXPORTS collisionTerrain_t
 	{
 		size_t checkcount;
 		int32_t surfaceFlags;
@@ -242,7 +242,7 @@ namespace MOHPC
 		}
 	};
 
-	struct collisionArea_t
+	struct MOHPC_EXPORTS collisionArea_t
 	{
 		int32_t floodnum;
 		int32_t floodvalid;
@@ -258,7 +258,7 @@ namespace MOHPC
 		}
 	};
 
-	struct collisionModel_t
+	struct MOHPC_EXPORTS collisionModel_t
 	{
 		Vector mins, maxs;
 		// submodels don't reference the main tree
@@ -280,7 +280,7 @@ namespace MOHPC
 		}
 	};
 
-	struct collisionSideEq_t
+	struct MOHPC_EXPORTS collisionSideEq_t
 	{
 		float fSeq[4];
 		float fTeq[4];
@@ -300,7 +300,7 @@ namespace MOHPC
 		}
 	};
 
-	struct collisionBrushSide_t
+	struct MOHPC_EXPORTS collisionBrushSide_t
 	{
 		collisionPlane_t* plane;
 		int32_t surfaceFlags;
@@ -339,7 +339,7 @@ namespace MOHPC
 		}
 	};
 
-	struct collisionBrush_t
+	struct MOHPC_EXPORTS collisionBrush_t
 	{
 		// the shader that determined the contents
 		uintptr_t shaderNum;
@@ -388,7 +388,7 @@ namespace MOHPC
 		}
 	};
 
-	struct patchPlane_t
+	struct MOHPC_EXPORTS patchPlane_t
 	{
 		vec4_t plane;
 		// signx + (signy<<1) + (signz<<2), used as lookup during collision
@@ -408,7 +408,7 @@ namespace MOHPC
 		}
 	};
 
-	struct facet_t
+	struct MOHPC_EXPORTS facet_t
 	{
 		int32_t surfacePlane;
 		// 3 or four + 6 axial bevels + 4 or 3 * 4 edge bevels
@@ -440,7 +440,7 @@ namespace MOHPC
 		}
 	};
 
-	struct patchCollide_t
+	struct MOHPC_EXPORTS patchCollide_t
 	{
 		Vector bounds[2];
 		// surface planes plus edge planes
@@ -508,7 +508,7 @@ namespace MOHPC
 		}
 	};
 
-	struct collisionPatch_t
+	struct MOHPC_EXPORTS collisionPatch_t
 	{
 		// to avoid repeated testings
 		size_t checkcount;
@@ -1063,173 +1063,4 @@ namespace MOHPC
 		return ar;
 	}
 	*/
-
-	inline MOHPC::sphere_t::sphere_t()
-		: use(false)
-		, radius(0.f)
-	{
-	}
-
-	inline MOHPC::trace_t::trace_t()
-		: allsolid(0)
-		, startsolid(0)
-		, fraction(0)
-		, endpos()
-		, surfaceFlags(0)
-		, shaderNum(0)
-		, contents(0)
-		, entityNum(0)
-		, location(0)
-	{
-	}
-
-	inline MOHPC::pointtrace_t::pointtrace_t()
-		: tw(nullptr)
-		, tc(nullptr)
-		, i(0)
-		, j(0)
-		, fSurfaceClipEpsilon(0.f)
-	{
-	}
-
-	inline MOHPC::collisionPlane_t::collisionPlane_t()
-		: dist(0.f)
-		, type(0)
-		, signbits(0)
-	{
-	}
-
-	inline MOHPC::collisionNode_t::collisionNode_t()
-		: plane(nullptr)
-		, children{ 0 }
-	{
-	}
-
-	inline MOHPC::collisionLeaf_t::collisionLeaf_t()
-		: cluster(0)
-		, area(0)
-		, firstLeafBrush(0)
-		, numLeafBrushes(0)
-		, firstLeafSurface(0)
-		, numLeafSurfaces(0)
-		, firstLeafTerrain(0)
-		, numLeafTerrains(0)
-	{
-	}
-
-	inline MOHPC::collisionFencemask_t::collisionFencemask_t()
-		: iWidth(0)
-		, iHeight(0)
-		, pData(nullptr)
-		, pNext(nullptr)
-	{
-	}
-
-	inline MOHPC::collisionShader_t::collisionShader_t()
-		: surfaceFlags(0)
-		, contentFlags(0)
-		, mask(nullptr)
-	{
-	}
-
-	inline MOHPC::terrainCollideSquare_t::terrainCollideSquare_t()
-		: eMode(0)
-	{
-	}
-
-	inline MOHPC::terrainCollide_t::terrainCollide_t()
-	{
-	}
-
-	inline MOHPC::collisionTerrain_t::collisionTerrain_t()
-		: checkcount(0)
-		, surfaceFlags(0)
-		, contents(0)
-		, shaderNum(0)
-	{
-	}
-
-	inline MOHPC::collisionArea_t::collisionArea_t()
-		: floodnum(0)
-		, floodvalid(0)
-	{
-	}
-
-	inline MOHPC::collisionModel_t::collisionModel_t()
-	{
-	}
-
-	inline MOHPC::collisionSideEq_t::collisionSideEq_t()
-		: fSeq{ 0 }
-		, fTeq{ 0 }
-	{
-	}
-
-	inline MOHPC::collisionBrushSide_t::collisionBrushSide_t()
-		: plane(nullptr)
-		, surfaceFlags(0)
-		, shaderNum(0)
-		, pEq(nullptr)
-	{
-	}
-
-	inline MOHPC::collisionBrush_t::collisionBrush_t()
-		: shaderNum(0)
-		, contents(0)
-		, numsides(0)
-		, sides(nullptr)
-		, checkcount(0)
-	{
-	}
-
-	inline MOHPC::patchPlane_t::patchPlane_t()
-		: plane{ 0 }
-		, signbits(0)
-	{
-	}
-
-	inline MOHPC::facet_t::facet_t()
-		: surfacePlane(0)
-		, numBorders(0)
-		, borderPlanes{ 0 }
-		, borderInward{ false }
-		, borderNoAdjust{ false }
-	{
-	}
-
-	inline MOHPC::patchCollide_t::patchCollide_t()
-		: numPlanes(0)
-		, planes(nullptr)
-		, numFacets(0)
-		, facets(nullptr)
-	{
-	}
-
-	inline MOHPC::collisionPatch_t::collisionPatch_t()
-		: checkcount(0)
-		, surfaceFlags(0)
-		, contents(0)
-		, shaderNum(0)
-		, subdivisions(0)
-	{
-	}
-
-	inline MOHPC::traceWork_t::traceWork_t()
-		: maxOffset(0.f)
-		, height(0.f)
-		, radius(0.f)
-		, contents(0)
-		, isPoint(false)
-	{
-	}
-
-	inline MOHPC::leafList_t::leafList_t()
-		: count(0)
-		, maxcount(0)
-		, overflowed(false)
-		, list(nullptr)
-		, lastLeaf(0)
-		, storeLeafs(nullptr)
-	{
-	}
 }
