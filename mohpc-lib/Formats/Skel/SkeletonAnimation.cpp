@@ -60,7 +60,7 @@ bool SkeletonAnimation::Load()
 		{
 			pHeader = (File_AnimDataHeader*)buf;
 
-			if (pHeader->ident != TIKI_SKC_HEADER_IDENT || (pHeader->version != TIKI_SKC_HEADER_OLD_VERSION && pHeader->version != TIKI_SKC_HEADER_VERSION))
+			if (pHeader->ident != *(int*)TIKI_SKC_HEADER_IDENT || (pHeader->version != TIKI_SKC_HEADER_OLD_VERSION && pHeader->version != TIKI_SKC_HEADER_VERSION))
 			{
 				return false;
 			}

@@ -31,7 +31,7 @@ namespace MOHPC
 		template<class T>
 		SharedPtr<T> GetManager()
 		{
-			static_assert(std::is_base_of<Manager, T>::value);
+			static_assert(std::is_base_of<Manager, T>::value, "T must be a subclass of Manager");
 
 			const std::type_index ti = typeid(T);
 			SharedPtr<T> manager = staticPointerCast<T>(GetManager(ti));

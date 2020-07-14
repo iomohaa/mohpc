@@ -5,8 +5,11 @@
 #include <MOHPC/Managers/FileManager.h>
 #include <MOHPC/Formats/Image.h>
 #include <MOHPC/Utilities/SharedPtr.h>
+#include <MOHPC/Log.h>
 
 using namespace MOHPC;
+
+#define MOHPC_LOG_NAMESPACE "shaderManager"
 
 static unsigned NameToAFunc(const char *funcname)
 {
@@ -2045,7 +2048,9 @@ void ShaderManager::Init()
 
 	end = clock();
 
-	seconds = ( float )( end - start ) / CLOCKS_PER_SEC;
+	seconds = (float)(end - start) / CLOCKS_PER_SEC;
+
+	MOHPC_LOG(Log, "%d shaders, loaded in %lf", m_nametoshader.size(), seconds);
 
 	//bi.Printf( "%d shaders loaded in %.2f seconds\n", m_shaderlist.size(), seconds );
 }

@@ -22,6 +22,7 @@ namespace MOHPC
 		class MOHPC_EXPORTS ILog
 		{
 		public:
+			virtual ~ILog() = default;
 			virtual void log(logType_e type, const char* serviceName, const char* fmt, ...) = 0;
 
 			void* operator new(size_t sz);

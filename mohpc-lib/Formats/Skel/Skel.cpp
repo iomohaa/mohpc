@@ -4,6 +4,9 @@
 #include "../TIKI/TIKI_Private.h"
 #include <MOHPC/Utilities/SharedPtr.h>
 #include <MOHPC/Managers/FileManager.h>
+#include <MOHPC/Log.h>
+
+#define MOHPC_LOG_NAMESPACE "skeleton"
 
 MOHPC_EXPORTS void MOHPC::AddToBounds(SkelVec3 *bounds, const SkelVec3 *newBounds)
 {
@@ -140,26 +143,29 @@ bool Skeleton::LoadModel(const char *path)
 {
 	File_SkelHeader *pHeader;
 
+	// Load file
 	FilePtr file = GetFileManager()->OpenFile(path);
 	if (!file)
 	{
-		//TIKI_DPrintf("Tiki:LoadAnim Couldn't load %s\n", path);
+		MOHPC_LOG(Error, "Couldn't load '%s'", path);
 		return false;
 	}
 
 	std::streamoff length = file->ReadBuffer((void**)&pHeader);
 
-	int32_t header = pHeader->ident;
-	if (header != TIKI_SKB_HEADER_IDENT && header != TIKI_SKD_HEADER_IDENT)
+	// Check if the header matches
+	const uint32_t header = pHeader->ident;
+	if (header != *(int*)TIKI_SKB_HEADER_IDENT && header != *(int*)TIKI_SKD_HEADER_IDENT)
 	{
-		//TIKI_Error("TIKI_LoadSKB: Tried to load '%s' as a skeletal base frame (File has invalid header)\n", path);
+		MOHPC_LOG(Error, "Tried to load '%s' as a skeletal base frame (File has invalid header)", path);
 		return false;
 	}
 
-	int32_t version = pHeader->version;
+	// Check if the version matches
+	const uint32_t version = pHeader->version;
 	if (version < TIKI_SKB_HEADER_VER_3 || version > TIKI_SKD_HEADER_VERSION)
 	{
-		//TIKI_Error("TIKI_LoadSKB: %s has wrong version (%i should be %i or %i)\n", path, version, TIKI_SKB_HEADER_VER_3, TIKI_SKB_HEADER_VERSION);
+		MOHPC_LOG(Error, "%s has wrong version (%i should be %i or %i)\n", path, version, TIKI_SKB_HEADER_VER_3, TIKI_SKB_HEADER_VERSION);
 		return false;
 	}
 
@@ -185,18 +191,21 @@ bool Skeleton::LoadModel(const char *path)
 	}
 
 	// Create bones
-	if (pHeader->version <= TIKI_SKB_HEADER_VERSION) {
-		LoadSKBBones(pHeader, length);
+	if (pHeader->version > TIKI_SKB_HEADER_VERSION) {
+		LoadSKDBones(pHeader, length);
 	}
 	else {
-		LoadSKDBones(pHeader, length);
+		LoadSKBBones(pHeader, length);
 	}
 
 	if (pHeader->version > TIKI_SKB_HEADER_VER_3)
 	{
+		// Import box data for SKB version 4
 		LoadBoxes(pHeader, length);
 
-		if (pHeader->version > TIKI_SKB_HEADER_VERSION) {
+		if (pHeader->version > TIKI_SKB_HEADER_VERSION)
+		{
+			// Import morph data for SKD
 			LoadMorphs(pHeader, length);
 		}
 	}
@@ -217,7 +226,9 @@ bool Skeleton::Load()
 		if (!stricmp(ext, ".skb") || !stricmp(ext, ".skd")) {
 			return LoadModel(Fname);
 		}
-		else {
+		else
+		{
+			MOHPC_LOG(Error, "Invalid extension '%s'", ext);
 			return false;
 		}
 	}
@@ -410,6 +421,8 @@ void MOHPC::Skeleton::LoadSKBBones(File_SkelHeader* pHeader, size_t length)
 {
 	Bones.resize(pHeader->numBones);
 
+	MOHPC_LOG(Verbose, "Old skeleton (SKB), creating bone data");
+
 	File_SkelBoneName* TIKI_bones = (File_SkelBoneName*)((uint8_t*)pHeader + pHeader->ofsBones);
 	for (uint32_t i = 0; i < pHeader->numBones; i++)
 	{
@@ -454,6 +467,9 @@ void MOHPC::Skeleton::LoadBoxes(File_SkelHeader* pHeader, size_t length)
 				Boxes[i] = pBoxes[i];
 			}
 		}
+		else {
+			MOHPC_LOG(Warning, "Box data is corrupted for '%s'", GetFilename().c_str());
+		}
 	}
 }
 
@@ -491,6 +507,9 @@ void MOHPC::Skeleton::LoadMorphs(File_SkelHeader* pHeader, size_t length)
 				MorphTargets[i] = pMorphTargets;
 				pMorphTargets += nLen;
 			}
+		}
+		else {
+			MOHPC_LOG(Warning, "Morph targets data is corrupted for '%s'", GetFilename().c_str());
 		}
 	}
 }

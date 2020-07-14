@@ -41,6 +41,5 @@ void MOHPC::Log::ILog::reset()
 
 ILog& MOHPC::Log::ILog::get()
 {
-
 	return !logger.expired() ? *logger.lock().get() : *nullLogger.get();
 }

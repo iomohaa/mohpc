@@ -3,6 +3,7 @@
 #include <MOHPC/Vector.h>
 #include <MOHPC/Script.h>
 #include <MOHPC/LevelEntity.h>
+#include <MOHPC/Log.h>
 #include <MOHPC/Managers/FileManager.h>
 #include <MOHPC/Managers/AssetManager.h>
 #include <MOHPC/Managers/ShaderManager.h>
@@ -28,6 +29,8 @@
 #endif
 */
 
+#define MOHPC_LOG_NAMESPACE "bsp_asset"
+
 static constexpr unsigned int MIN_MAP_SUBDIVISIONS = 16;
 
 static void ProfilableCode(const char *profileName, std::function<void()> Lambda)
@@ -39,7 +42,7 @@ static void ProfilableCode(const char *profileName, std::function<void()> Lambda
 	}
 	auto end = std::chrono::system_clock().now();
 
-	printf("%lf time (%s)\n", std::chrono::duration<double>(end - start).count(), profileName);
+	MOHPC_LOG(Verbose, "%lf time (%s)\n", std::chrono::duration<double>(end - start).count(), profileName);
 #else
 	Lambda();
 #endif
@@ -48,52 +51,45 @@ static void ProfilableCode(const char *profileName, std::function<void()> Lambda
 namespace MOHPC
 {
 	// little-endian "2015"
-#define BSP_IDENT	(('5'<<24)+('1'<<16)+('0'<<8)+'2')
+static constexpr unsigned int BSP_IDENT = (('5'<<24)+('1'<<16)+('0'<<8)+'2');
 	// little-endian "EALA"
-#define BSP_EXPANSIONS_IDENT (('A'<<24)+('L'<<16)+('A'<<8)+'E')
+static constexpr unsigned int BSP_EXPANSIONS_IDENT = (('A'<<24)+('L'<<16)+('A'<<8)+'E');
 
-#define BSP_BETA_VERSION	18	// Beta Allied Assault
-#define BSP_BASE_VERSION	19	// vanilla Allied Assault
-#define BSP_VERSION			19	// current Allied Assault
-#define BSP_MAX_VERSION		21	// MOH:BT
+static constexpr unsigned int BSP_BETA_VERSION		= 18;	// Beta Allied Assault
+static constexpr unsigned int BSP_BASE_VERSION		= 19;	// vanilla Allied Assault
+static constexpr unsigned int BSP_VERSION			= 19;	// current Allied Assault
+static constexpr unsigned int BSP_MAX_VERSION		= 21;	// MOH:BT
 
-#define LUMP_FOGS				0
-#define	LUMP_LIGHTGRID			0
-	// new lump defines. lump numbers are different in mohaa
-#define LUMP_SHADERS			0
-#define LUMP_PLANES				1
-#define LUMP_LIGHTMAPS			2
-#define LUMP_SURFACES			3
-#define LUMP_DRAWVERTS			4
-#define LUMP_DRAWINDEXES		5
-#define LUMP_LEAFBRUSHES		6
-#define LUMP_LEAFSURFACES		7
-#define LUMP_LEAFS				8
-#define LUMP_NODES				9
-#define LUMP_SIDEEQUATIONS		10
-#define LUMP_BRUSHSIDES			11
-#define LUMP_BRUSHES			12
-/*
-// FOG seems to be handled differently in MOHAA - no fog lump found yet
-#define LUMP_FOGS				0
-*/
-#define LUMP_MODELS				13
-#define LUMP_ENTITIES			14
-#define LUMP_VISIBILITY			15
-#define LUMP_LIGHTGRIDPALETTE	16
-#define LUMP_LIGHTGRIDOFFSETS	17
-#define LUMP_LIGHTGRIDDATA		18
-#define LUMP_SPHERELIGHTS		19
-#define LUMP_SPHERELIGHTVIS		20
-#define LUMP_LIGHTDEFS			21
-#define LUMP_TERRAIN			22
-#define LUMP_TERRAININDEXES		23
-#define LUMP_STATICMODELDATA	24
-#define LUMP_STATICMODELDEF		25
-#define LUMP_STATICMODELINDEXES	26
-#define LUMP_DUMMY10			27
+static constexpr unsigned int LUMP_SHADERS				= 0;
+static constexpr unsigned int LUMP_PLANES				= 1;
+static constexpr unsigned int LUMP_LIGHTMAPS			= 2;
+static constexpr unsigned int LUMP_SURFACES				= 3;
+static constexpr unsigned int LUMP_DRAWVERTS			= 4;
+static constexpr unsigned int LUMP_DRAWINDEXES			= 5;
+static constexpr unsigned int LUMP_LEAFBRUSHES			= 6;
+static constexpr unsigned int LUMP_LEAFSURFACES			= 7;
+static constexpr unsigned int LUMP_LEAFS				= 8;
+static constexpr unsigned int LUMP_NODES				= 9;
+static constexpr unsigned int LUMP_SIDEEQUATIONS		= 10;
+static constexpr unsigned int LUMP_BRUSHSIDES			= 11;
+static constexpr unsigned int LUMP_BRUSHES				= 12;
+static constexpr unsigned int LUMP_MODELS				= 13;
+static constexpr unsigned int LUMP_ENTITIES				= 14;
+static constexpr unsigned int LUMP_VISIBILITY			= 15;
+static constexpr unsigned int LUMP_LIGHTGRIDPALETTE		= 16;
+static constexpr unsigned int LUMP_LIGHTGRIDOFFSETS		= 17;
+static constexpr unsigned int LUMP_LIGHTGRIDDATA		= 18;
+static constexpr unsigned int LUMP_SPHERELIGHTS			= 19;
+static constexpr unsigned int LUMP_SPHERELIGHTVIS		= 20;
+static constexpr unsigned int LUMP_LIGHTDEFS			= 21;
+static constexpr unsigned int LUMP_TERRAIN				= 22;
+static constexpr unsigned int LUMP_TERRAININDEXES		= 23;
+static constexpr unsigned int LUMP_STATICMODELDATA		= 24;
+static constexpr unsigned int LUMP_STATICMODELDEF		= 25;
+static constexpr unsigned int LUMP_STATICMODELINDEXES	= 26;
+static constexpr unsigned int LUMP_DUMMY10				= 27;
 
-#define	HEADER_LUMPS		28
+static constexpr unsigned int HEADER_LUMPS				= 28;
 
 	struct BSP::GameLump
 	{
@@ -691,11 +687,13 @@ bool BSP::Load()
 
 	if (Header.ident != BSP_IDENT && Header.ident != BSP_EXPANSIONS_IDENT)
 	{
+		MOHPC_LOG(Error, "'%s' has wrong header", GetFilename().c_str());
 		return false;
 	}
 
 	if (Header.version < BSP_BETA_VERSION || Header.version > BSP_MAX_VERSION)
 	{
+		MOHPC_LOG(Error, "'%s' has wrong version number (%i should be between %i and %i)", Header.version, BSP_BETA_VERSION, BSP_MAX_VERSION);
 		return false;
 	}
 

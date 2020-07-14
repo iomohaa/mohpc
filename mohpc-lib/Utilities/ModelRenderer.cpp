@@ -196,7 +196,7 @@ void ModelRenderer::ClearPoses()
 	}
 }
 
-void ModelRenderer::SetMovementPose(const SkeletonAnimationPtr& Animation, uint32_t PoseIndex, uintptr_t FrameNumber, float Weight)
+void ModelRenderer::SetMovementPose(const ConstSkeletonAnimationPtr& Animation, uint32_t PoseIndex, uintptr_t FrameNumber, float Weight)
 {
 	if (PoseIndex < 0 || PoseIndex > MAX_ANIM_MOVEMENTS_POSES)
 	{
@@ -209,7 +209,7 @@ void ModelRenderer::SetMovementPose(const SkeletonAnimationPtr& Animation, uint3
 	pose->weight = Weight;
 }
 
-void ModelRenderer::SetActionPose(const SkeletonAnimationPtr& Animation, uint32_t PoseIndex, uintptr_t FrameNumber, float Weight)
+void ModelRenderer::SetActionPose(const ConstSkeletonAnimationPtr& Animation, uint32_t PoseIndex, uintptr_t FrameNumber, float Weight)
 {
 	if (PoseIndex < 0 || PoseIndex > MAX_ANIM_ACTIONS_POSES)
 	{

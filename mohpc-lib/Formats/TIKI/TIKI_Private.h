@@ -7,26 +7,26 @@
 #include "TIKI_Script.h"
 
 // skb skeletor
-#define TIKI_SKB_HEADER_IDENT		( *( int * )"SKL " )
-#define TIKI_SKB_HEADER_VER_3		3
-#define TIKI_SKB_HEADER_VERSION		4
+static constexpr unsigned char	TIKI_SKB_HEADER_IDENT[]			= "SKL ";
+static constexpr unsigned int	TIKI_SKB_HEADER_VER_3			= 3;
+static constexpr unsigned int	TIKI_SKB_HEADER_VERSION			= 4;
 
 // skd skeletor
-#define TIKI_SKD_HEADER_IDENT		( *( int * )"SKMD" )
-#define TIKI_SKD_HEADER_OLD_VERSION	5
-#define TIKI_SKD_HEADER_VERSION		6
+static constexpr unsigned char	TIKI_SKD_HEADER_IDENT[]			= "SKMD";
+static constexpr unsigned int	TIKI_SKD_HEADER_OLD_VERSION		= 5;
+static constexpr unsigned int	TIKI_SKD_HEADER_VERSION			= 6;
 
 // skc skeletor animations
-#define TIKI_SKC_HEADER_IDENT		( *( int * )"SKAN" )
-#define TIKI_SKC_HEADER_OLD_VERSION	13
-#define TIKI_SKC_HEADER_VERSION		14
+static constexpr unsigned char	TIKI_SKC_HEADER_IDENT[]			= "SKAN";
+static constexpr unsigned int	TIKI_SKC_HEADER_OLD_VERSION		= 13;
+static constexpr unsigned int	TIKI_SKC_HEADER_VERSION			= 14;
 
 // tiki limitations
-#define TIKI_MAX_BONES				100
-#define TIKI_MAX_VERTEXES			1000
-#define TIKI_MAX_TRIANGLES			2000
-#define TIKI_MAX_SKELCACHE			1024
-#define TIKI_MAX_COMMANDS			128
+static constexpr unsigned int TIKI_MAX_BONES		= 100;
+static constexpr unsigned int TIKI_MAX_VERTEXES		= 1000;
+static constexpr unsigned int TIKI_MAX_TRIANGLES	= 2000;
+static constexpr unsigned int TIKI_MAX_SKELCACHE	= 1024;
+static constexpr unsigned int TIKI_MAX_COMMANDS		= 128;
 
 namespace MOHPC
 {

@@ -117,7 +117,7 @@ namespace MOHPC
 		 * @param FrameNumber : The frame number from the animation
 		 * @param Weight : The animation weight
 		 */
-		MOHPC_EXPORTS void SetMovementPose(const SkeletonAnimationPtr& Animation, uint32_t PoseIndex, uintptr_t FrameNumber = 0, float Weight = 1.f);
+		MOHPC_EXPORTS void SetMovementPose(const ConstSkeletonAnimationPtr& Animation, uint32_t PoseIndex, uintptr_t FrameNumber = 0, float Weight = 1.f);
 
 		/**
 		 * Sets the model's action pose to a corresponding animation.
@@ -126,7 +126,7 @@ namespace MOHPC
 		 * @param FrameNumber : The frame number from the animation
 		 * @param Weight : The animation weight
 		 */
-		MOHPC_EXPORTS void SetActionPose(const SkeletonAnimationPtr& Animation, uint32_t PoseIndex, uintptr_t FrameNumber = 0, float Weight = 1.f);
+		MOHPC_EXPORTS void SetActionPose(const ConstSkeletonAnimationPtr& Animation, uint32_t PoseIndex, uintptr_t FrameNumber = 0, float Weight = 1.f);
 
 		/** Increments the frame number of all poses. */
 		MOHPC_EXPORTS void AdvancePosesFrame();

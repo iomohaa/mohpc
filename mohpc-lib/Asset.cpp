@@ -123,6 +123,7 @@ bool AssetManager::CacheLoadAsset(const char *Filename, const SharedPtr<Asset>& 
 	if (!A->Load())
 	{
 		// Can't continue
+		MOHPC_LOG(Error, "Can't load asset '%s'", Filename);
 		return false;
 	}
 
@@ -130,6 +131,8 @@ bool AssetManager::CacheLoadAsset(const char *Filename, const SharedPtr<Asset>& 
 
 	//m_assetCache[Filename] = A;
 	m_assetCache.addKeyValue(Filename) = A;
+
+	MOHPC_LOG(Log, "Asset '%s' loaded", Filename);
 	return true;
 }
 
