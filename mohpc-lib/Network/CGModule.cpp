@@ -150,6 +150,12 @@ CGameModuleBase::CGameModuleBase(const CGameImports& inImports)
 	boxHull.CM_InitBoxHull();
 }
 
+void CGameModuleBase::init(uintptr_t serverMessageSequence, uintptr_t serverCommandSequence)
+{
+	processedSnapshotNum = serverMessageSequence;
+	latestCommandSequence = serverCommandSequence;
+}
+
 const CGameModuleBase::HandlerListCGame& CGameModuleBase::handlers() const
 {
 	return handlerList;
@@ -200,7 +206,6 @@ void CGameModuleBase::tick(uint64_t deltaTime, uint64_t currentTime, uint64_t se
 		addPacketEntities();
 	}
 }
-
 
 float CGameModuleBase::getFrameInterpolation() const
 {
@@ -884,6 +889,8 @@ void CGameModuleBase::processServerCommand(TokenParser& tokenized)
 		{ "stopwatch", &CGameModuleBase::SCmd_Stopwatch },
 		{ "svlag", &CGameModuleBase::SCmd_ServerLag },
 		{ "stufftext", &CGameModuleBase::SCmd_Stufftext },
+		// Since SH
+		{ "printdeathmsg", &CGameModuleBase::SCmd_PrintDeathMsg }
 	};
 	static constexpr size_t numCmds = sizeof(cmds)/sizeof(cmds[0]);
 
@@ -1384,14 +1391,13 @@ void CGameModuleBase::SCmd_Print(TokenParser& args)
 {
 	const char* text = args.GetString(true, false);
 	const hudMessage_e type = (hudMessage_e )*(text++);
-	handlers().notify<CGameHandlers::ServerCommand_Print>(type, text);
+	handlers().notify<CGameHandlers::Print>(type, text);
 }
 
 void CGameModuleBase::SCmd_HudPrint(TokenParser& args)
 {
 	const char* text = args.GetString(true, false);
-	const hudMessage_e type = (hudMessage_e)*(text++);
-	handlers().notify<CGameHandlers::ServerCommand_HudPrint>(type, text);
+	handlers().notify<CGameHandlers::ServerCommand_HudPrint>(text);
 }
 
 void CGameModuleBase::SCmd_Scores(TokenParser& args)
@@ -1452,6 +1458,60 @@ void CGameModuleBase::SCmd_Stufftext(TokenParser& args)
 CGameModuleBase::HandlerListCGame& CGameModuleBase::getHandlerList()
 {
 	return handlerList;
+}
+
+void CGameModuleBase::SCmd_PrintDeathMsg(TokenParser& args)
+{
+	const str deathMessage1 = args.GetToken(true);
+	const str deathMessage2 = args.GetToken(true);
+	const str victimName = args.GetToken(true);
+	const str attackerName = args.GetToken(true);
+	const str killType = args.GetToken(true);
+
+	hudMessage_e hudMessage;
+	if (*killType == tolower(*killType))
+	{
+		// enemy kill
+		hudMessage = hudMessage_e::ChatRed;
+	}
+	else
+	{
+		// allied kill
+		hudMessage = hudMessage_e::ChatGreen;
+	}
+
+	switch (tolower(*killType))
+	{
+	// suicide
+	case 's':
+	case 'w':
+		handlers().notify<CGameHandlers::Print>(
+			hudMessage,
+			str::printf("%s %s", attackerName.c_str(), deathMessage1.c_str()).c_str()
+			);
+		break;
+	// killed by a player
+	case 'p':
+		if (*deathMessage2 != 'x')
+		{
+			handlers().notify<CGameHandlers::Print>(
+				hudMessage,
+				str::printf("%s %s %s %s", attackerName.c_str(), deathMessage1.c_str(), victimName.c_str(), deathMessage2.c_str()).c_str()
+			);
+		}
+		else
+		{
+			handlers().notify<CGameHandlers::Print>(
+				hudMessage,
+				str::printf("%s %s %s", attackerName.c_str(), deathMessage1.c_str(), victimName.c_str()).c_str()
+			);
+		}
+		break;
+	// raw message
+	default:
+		handlers().notify<CGameHandlers::Print>(hudMessage, deathMessage1.c_str());
+		break;
+	}
 }
 
 CGameModule6::CGameModule6(const CGameImports& inImports)

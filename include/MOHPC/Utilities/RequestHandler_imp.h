@@ -36,17 +36,8 @@ namespace MOHPC
 
 		param = std::move(inParam);
 
-		using namespace std::chrono;
-		startTime = steady_clock::now();
-
 		// Override the timeout if necessary
-		bool overriden = false;
-		size_t time = newRequest->overrideTimeoutTime(overriden);
-		if (!overriden) {
-			time = timeout + newRequest->timeOutDelay();
-		}
-
-		timeoutTime = startTime + milliseconds(time);
+		setRequestTimeout(newRequest, timeout);
 
 		sendData(newRequest);
 
@@ -57,6 +48,22 @@ namespace MOHPC
 			return dequeRequest();
 		}
 	}
+
+	template<class T, class Param>
+	void MOHPC::RequestHandler<T, Param>::setRequestTimeout(const IRequestPtr& newRequest, size_t timeout)
+	{
+		using namespace std::chrono;
+		startTime = steady_clock::now();
+
+		bool overriden = false;
+		size_t time = newRequest->overrideTimeoutTime(overriden);
+		if (!overriden) {
+			time = timeout + newRequest->timeOutDelay();
+		}
+
+		timeoutTime = startTime + milliseconds(time);
+	}
+
 
 	template<class T, class Param>
 	void MOHPC::RequestHandler<T, Param>::sendData(const IRequestPtr& newRequest)
@@ -162,6 +169,13 @@ namespace MOHPC
 			}
 			else if(shouldResend)
 			{
+				using namespace std::chrono;
+				milliseconds tm = duration_cast<milliseconds>(timeoutTime - startTime);
+
+				// refresh the timeout time
+				const size_t timeout = tm.count();
+				setRequestTimeout(newRequest, timeout);
+
 				// Resend data
 				sendData(newRequest);
 			}

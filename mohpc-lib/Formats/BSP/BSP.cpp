@@ -42,7 +42,7 @@ static void ProfilableCode(const char *profileName, std::function<void()> Lambda
 	}
 	auto end = std::chrono::system_clock().now();
 
-	MOHPC_LOG(Verbose, "%lf time (%s)\n", std::chrono::duration<double>(end - start).count(), profileName);
+	MOHPC_LOG(Verbose, "%lf time (%s)", std::chrono::duration<double>(end - start).count(), profileName);
 #else
 	Lambda();
 #endif

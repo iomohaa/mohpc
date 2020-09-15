@@ -181,7 +181,9 @@ namespace MOHPC
 			Yellow = 1,
 			ChatWhite,
 			White,
-			ChatRed
+			ChatRed,
+			// Since SH
+			ChatGreen,
 		};
 
 		struct EntityInfo;
@@ -385,15 +387,14 @@ namespace MOHPC
 			 * @param	type	Type of the message (see hudMessage_e).
 			 * @param	text	Text to print.
 			 */
-			struct ServerCommand_Print : public HandlerNotifyBase<void(hudMessage_e type, const char* text)> {};
+			struct Print : public HandlerNotifyBase<void(hudMessage_e type, const char* text)> {};
 
 			/**
-			 * Called to print a message that is displayed on HUD.
+			 * Called to print a message that is displayed on HUD, yellow color.
 			 *
-			 * @param	type	Type of the message (see hudMessage_e).
 			 * @param	text	Text to print.
 			 */
-			struct ServerCommand_HudPrint : public HandlerNotifyBase<void(hudMessage_e type, const char* text)> {};
+			struct ServerCommand_HudPrint : public HandlerNotifyBase<void(const char* text)> {};
 
 			/**
 			 * Called from server after score has been parsed.
@@ -902,8 +903,8 @@ namespace MOHPC
 				MOHPC_HANDLERLIST_HANDLER1_NODEF(CGameHandlers::EntityRemoved, entityRemovedHandler, const EntityInfo&);
 				MOHPC_HANDLERLIST_HANDLER1_NODEF(CGameHandlers::EntityModified, entityModifiedHandler, const EntityInfo&);
 				MOHPC_HANDLERLIST_HANDLER3(CGameHandlers::ReplayMove, replayCmdHandler, const usercmd_t&, playerState_t&, uint32_t);
-				MOHPC_HANDLERLIST_HANDLER2_NODEF(CGameHandlers::ServerCommand_Print, serverCommandPrintHandler, hudMessage_e, const char*);
-				MOHPC_HANDLERLIST_HANDLER2_NODEF(CGameHandlers::ServerCommand_HudPrint, scmdHudPrintHandler, hudMessage_e, const char*);
+				MOHPC_HANDLERLIST_HANDLER2_NODEF(CGameHandlers::Print, serverCommandPrintHandler, hudMessage_e, const char*);
+				MOHPC_HANDLERLIST_HANDLER1_NODEF(CGameHandlers::ServerCommand_HudPrint, scmdHudPrintHandler, const char*);
 				MOHPC_HANDLERLIST_HANDLER1(CGameHandlers::ServerCommand_Scores, scmdScoresHandler, const Scoreboard&);
 				MOHPC_HANDLERLIST_HANDLER1_NODEF(CGameHandlers::ServerCommand_Stats, scmdStatsHandler, const stats_t&);
 				MOHPC_HANDLERLIST_HANDLER2(CGameHandlers::ServerCommand_Stopwatch, scmdStopwatchHandler, uint64_t, uint64_t);
@@ -953,6 +954,8 @@ namespace MOHPC
 		public:
 			CGameModuleBase(const CGameImports& inImports);
 			virtual ~CGameModuleBase() = default;
+
+			virtual void init(uintptr_t serverMessageSequence, uintptr_t serverCommandSequence);
 
 			/** Tick function for CGame module. */
 			virtual void tick(uint64_t deltaTime, uint64_t currentTime, uint64_t serverTime);
@@ -1159,6 +1162,7 @@ namespace MOHPC
 			void SCmd_Stopwatch(TokenParser& args);
 			void SCmd_ServerLag(TokenParser& args);
 			void SCmd_Stufftext(TokenParser& args);
+			void SCmd_PrintDeathMsg(TokenParser& args);
 		};
 
 		/**

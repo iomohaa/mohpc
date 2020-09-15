@@ -269,7 +269,7 @@ void ClientGameConnection::tick(uint64_t deltaTime, uint64_t currentTime)
 
 	setCGameTime(currentTime);
 
-	if (serverId) {
+	if (isActive && cgameModule) {
 		getCGModule().tick(deltaTime, currentTime, serverTime);
 	}
 }
@@ -382,9 +382,7 @@ void Network::ClientGameConnection::parseServerMessage(MSG& msg, uint32_t server
 
 	while(cgameModule)
 	{
-		uint8_t cmdNum = msg.ReadByte();
-
-		svc_ops_e cmd = (svc_ops_e)cmdNum;
+		const svc_ops_e cmd = (svc_ops_e)msg.ReadByte();
 		if (cmd == svc_ops_e::Eof) {
 			break;
 		}
@@ -415,7 +413,7 @@ void Network::ClientGameConnection::parseServerMessage(MSG& msg, uint32_t server
 			parseCGMessage(msg);
 			break;
 		default:
-			throw IllegibleServerMessageException(cmdNum);
+			throw IllegibleServerMessageException((uint8_t)cmd);
 		}
 	}
 }
@@ -1593,6 +1591,8 @@ void MOHPC::Network::ClientGameConnection::firstSnapshot(uint64_t currentTime)
 
 	// Notify about the snapshot
 	getHandlerList().notify<ClientHandlers::FirstSnapshot>(currentSnap);
+
+	cgameModule->init(serverMessageSequence, serverMessageSequence);
 }
 
 bool MOHPC::Network::ClientGameConnection::readyToSendPacket(uint64_t currentTime) const

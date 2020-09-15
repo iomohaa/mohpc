@@ -198,7 +198,7 @@ public:
 		});
 		RCon->send("echo test");
 
-		Network::EngineServerPtr clientBase = Network::EngineServer::create(manager, adr); //makeShared<Network::EngineServer>(manager, adr);
+		Network::EngineServerPtr clientBase = Network::EngineServer::create(manager, adr);
 
 #if 0
 		// Query server list
@@ -238,7 +238,7 @@ public:
 		Asset->FillCollisionWorld(*cm);
 
 		Network::ClientInfoPtr clientInfo = Network::ClientInfo::create();
-		clientInfo->setName("mohpc_test");
+		clientInfo->setName("mohpc");
 		clientInfo->setRate(25000);
 		clientBase->connect(clientInfo, [&](const Network::ClientGameConnectionPtr& cg, const char* errorMessage)
 			{
@@ -270,72 +270,82 @@ public:
 				fnHandle_t cb = cgame.setCallback<CGameHandlers::EntityAdded>([&connection](const EntityInfo& entity)
 					{
 						const char* modelName = connection->getGameState().getConfigString(CS_MODELS + entity.currentState.modelindex);
-						MOHPC_LOG(VeryVerbose, "new entity %d, model \"%s\"", entity.currentState.number, modelName);
+						//MOHPC_LOG(VeryVerbose, "new entity %d, model \"%s\"", entity.currentState.number, modelName);
 					});
 
 				cgame.setCallback<CGameHandlers::EntityRemoved>([&connection](const EntityInfo& entity)
 					{
 						const char* modelName = connection->getGameState().getConfigString(CS_MODELS + entity.currentState.modelindex);
-						MOHPC_LOG(VeryVerbose, "entity %d deleted (was model \"%s\")", entity.currentState.number, modelName);
+						//MOHPC_LOG(VeryVerbose, "entity %d deleted (was model \"%s\")", entity.currentState.number, modelName);
 					});
 
 				cgame.setCallback<CGameHandlers::MakeBulletTracer>([&logPtr](const Vector& barrel, const Vector& start, const Vector& end, uint32_t numBullets, uint32_t iLarge, uint32_t numTracersVisible, float bulletSize)
 					{
 						static size_t num = 0;
-						MOHPC_LOG(VeryVerbose, "bullet %zu", num++);
+						//MOHPC_LOG(VeryVerbose, "bullet %zu", num++);
 					});
 
 				cgame.setCallback<CGameHandlers::Impact>([&logPtr](const Vector& origin, const Vector& normal, uint32_t large)
 					{
 						static size_t num = 0;
-						MOHPC_LOG(VeryVerbose, "impact %zu", num++);
+						//MOHPC_LOG(VeryVerbose, "impact %zu", num++);
 					});
 
 				cgame.setCallback<CGameHandlers::MakeExplosionEffect>([&logPtr](const Vector& origin, effects_e type)
 					{
 						static size_t num = 0;
-						MOHPC_LOG(VeryVerbose, "explosionfx %zu: type \"%s\"", num++, getEffectName(type));
+						//MOHPC_LOG(VeryVerbose, "explosionfx %zu: type \"%s\"", num++, getEffectName(type));
 					});
 
 				cgame.setCallback<CGameHandlers::MakeEffect>([&logPtr](const Vector& origin, const Vector& normal, effects_e type)
 					{
 						static size_t num = 0;
-						MOHPC_LOG(VeryVerbose, "effect %zu: type \"%s\"", num++, getEffectName(type));
+						//MOHPC_LOG(VeryVerbose, "effect %zu: type \"%s\"", num++, getEffectName(type));
 					});
 
 				cgame.setCallback<CGameHandlers::SpawnDebris>([&logPtr](CGameHandlers::debrisType_e debrisType, const Vector& origin, uint32_t numDebris)
 					{
 						static size_t num = 0;
-						MOHPC_LOG(VeryVerbose, "debris %zu: type %d", num++, debrisType);
+						//MOHPC_LOG(VeryVerbose, "debris %zu: type %d", num++, debrisType);
 					});
 
 				cgame.setCallback<CGameHandlers::HitNotify>([&logPtr]()
 					{
 						static size_t num = 0;
-						MOHPC_LOG(VeryVerbose, "hit %zu", num++);
+						//MOHPC_LOG(VeryVerbose, "hit %zu", num++);
 					});
 
 				cgame.setCallback<CGameHandlers::KillNotify>([&logPtr]()
 					{
 						static size_t num = 0;
-						MOHPC_LOG(VeryVerbose, "kill %zu", num++);
+						//MOHPC_LOG(VeryVerbose, "kill %zu", num++);
 					});
 
 				cgame.setCallback<CGameHandlers::VoiceMessage>([&logPtr](const Vector& origin, bool local, uint8_t clientNum, const char* soundName)
 					{
 						static size_t num = 0;
-						MOHPC_LOG(VeryVerbose, "voice %d: sound \"%s\"", num++, soundName);
+						//MOHPC_LOG(VeryVerbose, "voice %d: sound \"%s\"", num++, soundName);
+					});
+
+				cgame.setCallback<CGameHandlers::Print>([&logPtr](hudMessage_e hudMessage, const char* text)
+					{
+						//MOHPC_LOG(VeryVerbose, "server print: \"%s\"", text);
+					});
+
+				cgame.setCallback<CGameHandlers::HudDraw_Shader>([&logPtr](uint8_t index, const char* shaderName)
+					{
+						MOHPC_LOG(Verbose, "huddraw_shader : %d \"%s\"", index, shaderName);
 					});
 
 				connection->setCallback<ClientHandlers::Disconnect>([&wantsDisconnect](const char* reason)
 					{
-						MOHPC_LOG(VeryVerbose, "Requested disconnect. Reason -> \"%s\"", reason ? reason : "");
+						//MOHPC_LOG(VeryVerbose, "Requested disconnect. Reason -> \"%s\"", reason ? reason : "");
 						wantsDisconnect = true;
 					});
 
 				connection->setCallback<ClientHandlers::Timeout>([]()
 					{
-						MOHPC_LOG(VeryVerbose, "Server connection timed out");
+						//MOHPC_LOG(VeryVerbose, "Server connection timed out");
 					});
 
 				connection->setCallback<ClientHandlers::UserInput>([&forwardValue, &rightValue, &angle, &cgame, &cm](usercmd_t& ucmd, usereyes_t& eyeinfo)

@@ -108,6 +108,7 @@ namespace MOHPC
 
 	private:
 		void handleNewRequest(IRequestPtr&& newRequest, bool shouldResend);
+		void setRequestTimeout(const IRequestPtr& newRequest, size_t timeout);
 		void sendData(const IRequestPtr& newRequest);
 		void dequeRequest();
 		void clearRequest();

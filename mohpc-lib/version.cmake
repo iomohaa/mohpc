@@ -35,7 +35,7 @@ string(REGEX REPLACE
 	NEW_VERSION_CONTENT "${NEW_VERSION_CONTENT}"
 	)
 
-string(TIMESTAMP NOW "%a %d %Y")
+string(TIMESTAMP NOW "%b %d %Y")
 
 # Set the build date and time
 string(REGEX REPLACE
