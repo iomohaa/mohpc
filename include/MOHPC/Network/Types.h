@@ -21,7 +21,7 @@ namespace MOHPC
 		public:
 			virtual ~NetworkException() = default;
 
-			virtual str what() { return str(); };
+			virtual str what() const { return str(); };
 		};
 
 		class RuntPacketNetException : public NetworkException
@@ -64,6 +64,8 @@ namespace MOHPC
 		// Breakthrough adds a "clientType breakthrough" when connecting
 
 		// Changes of protocol 17 since version 8
+		// - Each time a client connects to a server, the server sends a GameSpy authorization challenge
+		//   So the client have to send back a response with his key that will be checked by GameSpy auth server
 		// - Server sends the frametime with the game state
 		// - New field type for entity for reading medium coords
 		// - Coords are packed into a small integer

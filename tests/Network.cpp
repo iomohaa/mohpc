@@ -253,7 +253,7 @@ public:
 
 				connection->setCallback<ClientHandlers::Error>([](const Network::NetworkException& exception)
 					{
-
+						MOHPC_LOG(Log, "Exception of type \"%s\": \"%s\"", typeid(exception).name(), exception.what().c_str());
 					});
 
 				connection->setCallback<ClientHandlers::GameStateParsed>([&cgame, &mapfilename](const Network::gameState_t& gameState, bool differentMap)
@@ -345,7 +345,7 @@ public:
 
 				connection->setCallback<ClientHandlers::Timeout>([]()
 					{
-						//MOHPC_LOG(VeryVerbose, "Server connection timed out");
+						MOHPC_LOG(VeryVerbose, "Server connection timed out");
 					});
 
 				connection->setCallback<ClientHandlers::UserInput>([&forwardValue, &rightValue, &angle, &cgame, &cm](usercmd_t& ucmd, usereyes_t& eyeinfo)

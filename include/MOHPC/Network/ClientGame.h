@@ -213,7 +213,7 @@ namespace MOHPC
 			{}
 
 			uint8_t getLength() const { return cmdNum; }
-			virtual str what() { return str((int)getLength()); }
+			str what() const override { return str((int)getLength()); }
 		};
 
 		/**
@@ -230,7 +230,7 @@ namespace MOHPC
 			{}
 
 			uint32_t getProtocolVersion() const { return protocolVersion; }
-			virtual str what() { return str((int)getProtocolVersion()); }
+			str what() const override { return str((int)getProtocolVersion()); }
 		};
 
 		/**
@@ -247,7 +247,7 @@ namespace MOHPC
 			{}
 
 			uint8_t getLength() const { return cmdNum; }
-			virtual str what() { return str((int)getLength()); }
+			str what() const override { return str((int)getLength()); }
 		};
 
 		/**
@@ -264,7 +264,7 @@ namespace MOHPC
 			{}
 
 			uint16_t getBaselineNum() const { return baselineNum; }
-			virtual str what() { return str((int)getBaselineNum()); }
+			str what() const override { return str((int)getBaselineNum()); }
 		};
 
 		/**
@@ -281,7 +281,7 @@ namespace MOHPC
 			{}
 
 			uint16_t GetConfigstringNum() const { return configStringNum; }
-			virtual str what() { return str((int)GetConfigstringNum()); }
+			str what() const override { return str((int)GetConfigstringNum()); }
 		};
 
 		/**
@@ -298,7 +298,7 @@ namespace MOHPC
 			{}
 
 			size_t GetStringLength() const { return stringLen; }
-			virtual str what() { return str((int)GetStringLength()); }
+			str what() const override { return str((int)GetStringLength()); }
 		};
 
 		/**
@@ -315,7 +315,7 @@ namespace MOHPC
 			{}
 
 			uint8_t getSize() const { return size; }
-			virtual str what() { return str((int)getSize()); }
+			str what() const override { return str((int)getSize()); }
 		};
 
 		/**
@@ -330,7 +330,7 @@ namespace MOHPC
 			DownloadException(StringMessage&& inError);
 
 			const char* getError() const { return error; }
-			virtual str what() { return str(getError()); }
+			str what() const override { return str(getError()); }
 		};
 
 		struct gameState_t

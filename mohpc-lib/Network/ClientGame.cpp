@@ -311,8 +311,6 @@ void Network::ClientGameConnection::receive(const netadr_t& from, MSG& msg, uint
 		}
 		catch (NetworkException& e)
 		{
-			MOHPC_LOG(Error, "got exception of type %s: \"%s\"", typeid(e).name(), e.what().c_str());
-
 			// call the handler
 			handlerList.notify<ClientHandlers::Error>(e);
 		}
@@ -518,6 +516,7 @@ void Network::ClientGameConnection::parseSnapshot(MSG& msg, uint32_t serverMessa
 
 	// Insert the sequence num
 	newSnap.messageNum = serverMessageSequence;
+	assert(newSnap.messageNum != -1);
 
 	const uint8_t deltaNum = msg.ReadByte();
 	if (!deltaNum) {
@@ -1041,7 +1040,6 @@ void Network::ClientGameConnection::writePacket(uint32_t serverMessageSequence, 
 	msg.WriteUInteger(serverMessageSequence);
 	msg.WriteUInteger(serverCommandSequence);
 
-	// FIXME: write any unacknowledged clientCommands
 	for (int32_t i = reliableAcknowledge + 1; i <= reliableSequence; ++i)
 	{
 		msg.WriteByte(clc_ops_e::ClientCommand);

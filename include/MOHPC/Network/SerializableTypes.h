@@ -102,7 +102,7 @@ namespace MOHPC
 		{}
 
 		size_t getNumber() const { return badNumber; }
-		virtual str what() { return str(badNumber); }
+		str what() const override { return str(badNumber); }
 	};
 
 	class BadEntityFieldException : public EntityException
@@ -119,7 +119,7 @@ namespace MOHPC
 
 		uint8_t getFieldType() const { return fieldType; }
 		const char* getFieldName() const { return fieldName; }
-		virtual str what() { return str::printf("%s: %d", getFieldName(), getFieldType()); }
+		str what() const override { return str::printf("%s: %d", getFieldName(), getFieldType()); }
 	};
 
 	class BadEntityFieldCountException : public EntityException
@@ -133,7 +133,7 @@ namespace MOHPC
 		{}
 
 		uint8_t getCount() const { return count; }
-		virtual str what() { return str((int)getCount()); }
+		str what() const override { return str((int)getCount()); }
 	};
 
 	class MOHPC_EXPORTS SerializableUsercmd : public ISerializableMessage
