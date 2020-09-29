@@ -23,6 +23,35 @@ namespace MOHPC
 			using ServerTimeout = std::function<void()>;
 		}
 
+		struct ConnectSettings
+		{
+			MOHPC_OBJECT_DECLARATION(ConnectSettings);
+
+		public:
+			MOHPC_EXPORTS ConnectSettings();
+
+		public:
+			/**
+			 * Deferred values time should be higher enough, but not too high,
+			 * to not make the server drop too soon packets
+			 * and to not make the server think the client has an high ping.
+			 * 100 is frequently a great deal.
+			 */
+
+			/** The time to wait before sending a challenge. */
+			MOHPC_EXPORTS void setDeferredChallengeTime(size_t newTime);
+			MOHPC_EXPORTS size_t getDeferredChallengeTime() const;
+
+			/** The time to wait before sending connect message (after challenging). */
+			MOHPC_EXPORTS void setDeferredConnectTime(size_t newTime);
+			MOHPC_EXPORTS size_t getDeferredConnectTime() const;
+
+		private:
+			size_t deferredConnectTime;
+			size_t deferredChallengeTime;
+		};
+		using ConnectSettingsPtr = SharedPtr<ConnectSettings>;
+
 		class IServer : public ITickableNetwork
 		{
 		private:
@@ -31,7 +60,7 @@ namespace MOHPC
 		public:
 			IServer(const NetworkManagerPtr& inManager, const netadr_t& adr);
 
-			virtual void query(Callbacks::Query&& response, Callbacks::ServerTimeout&& timeoutResult = Callbacks::ServerTimeout()) = 0;
+			virtual void query(Callbacks::Query&& response, Callbacks::ServerTimeout&& timeoutResult = Callbacks::ServerTimeout(), size_t timeoutTime = 10000) = 0;
 			MOHPC_EXPORTS const netadr_t& getAddress() const;
 		};
 
@@ -66,7 +95,7 @@ namespace MOHPC
 
 			virtual void tick(uint64_t deltaTime, uint64_t currentTime) override;
 
-			virtual void query(Callbacks::Query&& response, Callbacks::ServerTimeout&& timeoutResult = Callbacks::ServerTimeout()) override;
+			void query(Callbacks::Query&& response, Callbacks::ServerTimeout&& timeoutResult, size_t timeoutTime) override;
 		};
 
 		class LANServer : public IServer
@@ -81,7 +110,7 @@ namespace MOHPC
 
 			virtual void tick(uint64_t deltaTime, uint64_t currentTime) override;
 
-			virtual void query(Callbacks::Query&& response, Callbacks::ServerTimeout&& timeoutResult = Callbacks::ServerTimeout());
+			void query(Callbacks::Query&& response, Callbacks::ServerTimeout&& timeoutResult, size_t timeoutTime) override;
 		};
 
 		class EngineServer : public ITickableNetwork, public std::enable_shared_from_this<EngineServer>
@@ -95,6 +124,7 @@ namespace MOHPC
 			{
 				ConnectResponse response;
 				ClientInfoPtr info;
+				ConnectSettingsPtr settings;
 
 				ConnectionParams() {}
 				// Remove copy constructor
@@ -142,17 +172,21 @@ namespace MOHPC
 				virtual bool supportsEvent(const char* name) override;
 				virtual IRequestPtr handleResponse(const char* name, TokenParser& parser) override;
 			};
-			class ChallengeRequest : public IEngineRequest
+			class ChallengeRequest : public IEngineRequest, public std::enable_shared_from_this<ChallengeRequest>
 			{
 			private:
 				ConnectionParams data;
 				protocolType_c protocol;
+				uint8_t numRetries;
 
 			public:
 				ChallengeRequest(const protocolType_c& proto, ConnectionParams&& inData);
 				virtual str generateRequest();
 				virtual bool supportsEvent(const char* name) override;
 				virtual IRequestPtr handleResponse(const char* name, TokenParser& parser) override;
+				virtual size_t overrideTimeoutTime(bool& overriden) override;
+				virtual IRequestPtr timedOut() override;
+				virtual size_t deferredTime() override;
 			};
 
 			class AuthorizeRequest : public IEngineRequest, public std::enable_shared_from_this<AuthorizeRequest>
@@ -172,13 +206,14 @@ namespace MOHPC
 				virtual IRequestPtr timedOut() override;
 			};
 
-			class ConnectRequest : public IEngineRequest
+			class ConnectRequest : public IEngineRequest, public std::enable_shared_from_this<ConnectRequest>
 			{
 			private:
 				ConnectionParams data;
 				protocolType_c protocol;
 				uint32_t challenge;
 				uint16_t qport;
+				uint8_t numRetries;
 
 			public:
 				ConnectRequest(const protocolType_c& proto, ConnectionParams&& inData, uint32_t challenge);
@@ -186,6 +221,9 @@ namespace MOHPC
 				virtual bool shouldCompressRequest(size_t& offset);
 				virtual bool supportsEvent(const char* name) override;
 				virtual IRequestPtr handleResponse(const char* name, TokenParser& parser) override;
+				virtual size_t overrideTimeoutTime(bool& overriden) override;
+				virtual IRequestPtr timedOut() override;
+				virtual size_t deferredTime() override;
 			};
 
 			class StatusRequest : public IEngineRequest
@@ -241,11 +279,12 @@ namespace MOHPC
 			/**
 			 * Callbacks::Connect to the specified server.
 			 *
-			 * @param	to			Server address to connect to
-			 * @param	clientInfo	Settings containing some important information (to avoid useless allocations this parameter will be moved out)
-			 * @param	result		Callback that will be called when finished connecting or when an error occured
+			 * @param	clientInfo		Settings containing some important information (to avoid useless allocations this parameter will be moved out).
+			 * @param	connectSettings	Settings to use before connecting.
+			 * @param	result			Callback that will be called when finished connecting or when an error has occurred.
+			 * @param	timeoutResult	Callback is called on connect timeout.
 			 */
-			MOHPC_EXPORTS void connect(const ClientInfoPtr& clientInfo, Callbacks::Connect&& result, Callbacks::ServerTimeout&& timeoutResult = Callbacks::ServerTimeout());
+			MOHPC_EXPORTS void connect(const ClientInfoPtr& clientInfo, const ConnectSettingsPtr& connectSettings, Callbacks::Connect&& result, Callbacks::ServerTimeout&& timeoutResult = Callbacks::ServerTimeout());
 
 			/**
 			 * Retrieve various settings from the specified server.
@@ -253,7 +292,7 @@ namespace MOHPC
 			 * @param	to		Server to get status from
 			 * @param	result	Callback that will be called after receiving response
 			 */
-			MOHPC_EXPORTS void getStatus(Callbacks::Response&& result, Callbacks::ServerTimeout&& timeoutResult = Callbacks::ServerTimeout());
+			MOHPC_EXPORTS void getStatus(Callbacks::Response&& result, Callbacks::ServerTimeout&& timeoutResult = Callbacks::ServerTimeout(), size_t timeoutTime = 10000);
 
 			/**
 			 * Retrieve various engine info from the specified server.
@@ -261,7 +300,7 @@ namespace MOHPC
 			 * @param	to		Server to get status from
 			 * @param	result	Callback that will be called after receiving response
 			 */
-			MOHPC_EXPORTS void getInfo(Callbacks::Response&& result, Callbacks::ServerTimeout&& timeoutResult = Callbacks::ServerTimeout());
+			MOHPC_EXPORTS void getInfo(Callbacks::Response&& result, Callbacks::ServerTimeout&& timeoutResult = Callbacks::ServerTimeout(), size_t timeoutTime = 10000);
 
 			/**
 			 * Set the timeout value in ms.
@@ -272,7 +311,7 @@ namespace MOHPC
 
 		private:
 			const IRequestPtr& currentRequest() const;
-			void sendRequest(IEngineRequestPtr&& req, Callbacks::ServerTimeout&& timeoutResult = Callbacks::ServerTimeout());
+			void sendRequest(IEngineRequestPtr&& req, Callbacks::ServerTimeout&& timeoutResult = Callbacks::ServerTimeout(), size_t timeoutTime = 10000);
 
 		private:
 			void onConnect(const Callbacks::Connect result, uint16_t qport, uint32_t challengeResponse, const protocolType_c& protoType, const ClientInfoPtr& cInfo, const char* errorMessage);

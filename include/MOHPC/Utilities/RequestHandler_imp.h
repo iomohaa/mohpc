@@ -37,9 +37,7 @@ namespace MOHPC
 		param = std::move(inParam);
 
 		// Override the timeout if necessary
-		setRequestTimeout(newRequest, timeout);
-
-		sendData(newRequest);
+		startRequest(newRequest, timeout);
 
 		if (newRequest->mustProcess()) {
 			request = newRequest;
@@ -50,10 +48,35 @@ namespace MOHPC
 	}
 
 	template<class T, class Param>
+	void MOHPC::RequestHandler<T, Param>::startRequest(const IRequestPtr& newRequest, size_t timeout)
+	{
+		startTime = std::chrono::steady_clock::now();
+
+		setDeferredStart(newRequest);
+		setRequestTimeout(newRequest, timeout);
+	}
+
+	template<class T, class Param>
+	void MOHPC::RequestHandler<T, Param>::setDeferredStart(const IRequestPtr& newRequest)
+	{
+		using namespace std::chrono;
+
+		const size_t time = newRequest->deferredTime();
+		if (time > 0) {
+			deferTime = startTime + milliseconds(time);
+		}
+		else
+		{
+			deferTime = time_point<steady_clock>(milliseconds(0));
+			// send data right now
+			sendData(newRequest);
+		}
+	}
+
+	template<class T, class Param>
 	void MOHPC::RequestHandler<T, Param>::setRequestTimeout(const IRequestPtr& newRequest, size_t timeout)
 	{
 		using namespace std::chrono;
-		startTime = steady_clock::now();
 
 		bool overriden = false;
 		size_t time = newRequest->overrideTimeoutTime(overriden);
@@ -61,9 +84,15 @@ namespace MOHPC
 			time = timeout + newRequest->timeOutDelay();
 		}
 
-		timeoutTime = startTime + milliseconds(time);
+		if (deferTime == time_point<steady_clock>(milliseconds(0))) {
+			timeoutTime = startTime + milliseconds(time);
+		}
+		else
+		{
+			// timeout after the request has started
+			timeoutTime = deferTime + milliseconds(time);
+		}
 	}
-
 
 	template<class T, class Param>
 	void MOHPC::RequestHandler<T, Param>::sendData(const IRequestPtr& newRequest)
@@ -105,22 +134,9 @@ namespace MOHPC
 			return;
 		}
 
-		if (!param.hasData())
+		if (processDeferred())
 		{
-			using namespace std::chrono;
-
-			if (timeoutTime != startTime)
-			{
-				time_point<steady_clock> currentTime = steady_clock::now();
-				if (currentTime >= timeoutTime)
-				{
-					IRequestPtr newRequest = staticPointerCast<T>(currentRequest()->timedOut());
-					handleNewRequest(std::move(newRequest), true);
-					return;
-				}
-			}
-
-			// don't get stuck in receive due to the absence of data
+			// something was delayed
 			return;
 		}
 
@@ -151,6 +167,44 @@ namespace MOHPC
 	}
 
 	template<class T, class Param>
+	bool MOHPC::RequestHandler<T, Param>::processDeferred()
+	{
+		using namespace std::chrono;
+		time_point<steady_clock> currentTime = steady_clock::now();
+
+		if (deferTime != time_point<steady_clock>(milliseconds(0)))
+		{
+			if (currentTime < deferTime)
+			{
+				// start request at a later time
+				return true;
+			}
+
+			// nullify time
+			deferTime = time_point<steady_clock>(milliseconds(0));
+			sendData(request);
+		}
+
+		if (!param.hasData())
+		{
+			if (timeoutTime != startTime)
+			{
+				if (currentTime >= timeoutTime)
+				{
+					IRequestPtr newRequest = staticPointerCast<T>(currentRequest()->timedOut());
+					handleNewRequest(std::move(newRequest), true);
+					return true;
+				}
+			}
+
+			// don't get stuck in receive due to the absence of data
+			return true;
+		}
+
+		return false;
+	}
+
+	template<class T, class Param>
 	void MOHPC::RequestHandler<T, Param>::handleNewRequest(IRequestPtr&& newRequest, bool shouldResend)
 	{
 		if (newRequest)
@@ -174,10 +228,7 @@ namespace MOHPC
 
 				// refresh the timeout time
 				const size_t timeout = tm.count();
-				setRequestTimeout(newRequest, timeout);
-
-				// Resend data
-				sendData(newRequest);
+				startRequest(newRequest, timeout);
 			}
 		}
 		else

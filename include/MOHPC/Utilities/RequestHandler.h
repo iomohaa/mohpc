@@ -44,6 +44,9 @@ namespace MOHPC
 		/** Delay added to the base timeout time. */
 		virtual size_t timeOutDelay() { return 0; }
 
+		/** Delay the time at which to start the request. */
+		virtual size_t deferredTime() { return 0; }
+
 		/** Override the timeout time. */
 		virtual size_t overrideTimeoutTime(bool& overriden) { return 0; }
 
@@ -77,11 +80,16 @@ namespace MOHPC
 			PendingRequest(IRequestPtr&& inRequest, Param&& inParam, size_t timeout);
 		};
 
+		template<typename T>
+		using time_point = std::chrono::time_point<T>;
+		using steady_clock = std::chrono::steady_clock;
+
 	private:
 		IRequestPtr request;
 		Param param;
-		std::chrono::time_point<std::chrono::steady_clock> startTime;
-		std::chrono::time_point<std::chrono::steady_clock> timeoutTime;
+		time_point<steady_clock> startTime;
+		time_point<steady_clock> timeoutTime;
+		time_point<steady_clock> deferTime;
 		std::queue<PendingRequest> pendingRequests;
 
 	public:
@@ -107,7 +115,10 @@ namespace MOHPC
 		bool isRequesting() const;
 
 	private:
+		bool processDeferred();
 		void handleNewRequest(IRequestPtr&& newRequest, bool shouldResend);
+		void startRequest(const IRequestPtr& newRequest, size_t timeout);
+		void setDeferredStart(const IRequestPtr& newRequest);
 		void setRequestTimeout(const IRequestPtr& newRequest, size_t timeout);
 		void sendData(const IRequestPtr& newRequest);
 		void dequeRequest();

@@ -880,7 +880,7 @@ void Network::ClientGameConnection::parseDownload(MSG& msg)
 
 		if (fileSize < 0)
 		{
-			StringMessage errorString = readStringMessage_scrambled(msg);
+			StringMessage errorString = readStringMessage(msg);
 			throw DownloadException(std::move(errorString));
 		}
 

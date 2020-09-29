@@ -57,6 +57,7 @@ IRequestPtr MOHPC::Network::EngineServer::VerBeforeChallengeRequest::handleRespo
 Network::EngineServer::ChallengeRequest::ChallengeRequest(const protocolType_c& proto, ConnectionParams&& inData)
 	: data(std::move(inData))
 	, protocol(proto)
+	, numRetries(0)
 {
 
 }
@@ -83,6 +84,28 @@ IRequestPtr MOHPC::Network::EngineServer::ChallengeRequest::handleResponse(const
 	int32_t challengeResponse = parser.GetInteger(false);
 	MOHPC_LOG(Verbose, "challenge %d", challengeResponse);
 	return makeShared<ConnectRequest>(protocol, std::move(data), challengeResponse);
+}
+
+size_t MOHPC::Network::EngineServer::ChallengeRequest::overrideTimeoutTime(bool& overriden)
+{
+	overriden = true;
+	return 3000;
+}
+
+MOHPC::IRequestPtr EngineServer::ChallengeRequest::timedOut()
+{
+	if (numRetries > 5)
+	{
+		return IRequestBase::timedOut();
+	}
+
+	numRetries++;
+	return shared_from_this();
+}
+
+size_t EngineServer::ChallengeRequest::deferredTime()
+{
+	return data.settings->getDeferredChallengeTime();
 }
 
 //== Authorize
@@ -126,6 +149,7 @@ IRequestPtr MOHPC::Network::EngineServer::AuthorizeRequest::handleResponse(const
 size_t MOHPC::Network::EngineServer::AuthorizeRequest::overrideTimeoutTime(bool& overriden)
 {
 	overriden = true;
+	// 5000 is the timeout time for the server to authorize
 	return 5000;
 }
 
@@ -144,14 +168,15 @@ Network::EngineServer::ConnectRequest::ConnectRequest(const protocolType_c& prot
 	: data(std::move(inData))
 	, protocol(proto)
 	, challenge(inChallenge)
+	, numRetries(0)
 {
+	// a port between 20000 and 65535
+	qport = (rand() % 45536) + 20000;
 }
 
 str Network::EngineServer::ConnectRequest::generateRequest()
 {
 	str connectArgs = "connect";
-
-	qport = (rand() % 45536) + 20000;
 
 	Info info;
 
@@ -190,7 +215,7 @@ bool Network::EngineServer::ConnectRequest::shouldCompressRequest(size_t& offset
 
 bool Network::EngineServer::ConnectRequest::supportsEvent(const char* name)
 {
-	return !str::icmp(name, "connectResponse") || !str::icmp(name, "droperror");
+	return !str::icmp(name, "connectResponse") || !str::icmp(name, "droperror") || !str::icmp(name, "print");
 }
 
 IRequestPtr MOHPC::Network::EngineServer::ConnectRequest::handleResponse(const char* name, TokenParser& parser)
@@ -201,10 +226,49 @@ IRequestPtr MOHPC::Network::EngineServer::ConnectRequest::handleResponse(const c
 		data.response(0, 0, protocolType_c(), data.info, error);
 		return nullptr;
 	}
+	else if(str::icmp(name, "connectResponse"))
+	{
+		const char* args = parser.GetLine(true);
+
+		if(numRetries < 5)
+		{
+			MOHPC_LOG(Error, "not a connect response, received %s: \"%s\"", name, args);
+
+			numRetries++;
+			return shared_from_this();
+		}
+		else
+		{
+			// Received other than connect response after multiple time, so don't connect again
+			MOHPC_LOG(Error, "assuming connection failed: %s: \"%s\"", name, args);
+			return nullptr;
+		}
+	}
 
 	MOHPC_LOG(Verbose, "connection succeeded");
 	data.response(qport, challenge, protocol, std::move(data.info), nullptr);
 	return nullptr;
+}
+
+size_t MOHPC::Network::EngineServer::ConnectRequest::overrideTimeoutTime(bool& overriden)
+{
+	overriden = true;
+	return 3000;
+}
+
+MOHPC::IRequestPtr MOHPC::Network::EngineServer::ConnectRequest::timedOut()
+{
+	if (numRetries > 5) {
+		return IEngineRequest::timedOut();
+	}
+
+	numRetries++;
+	return shared_from_this();
+}
+
+size_t EngineServer::ConnectRequest::deferredTime()
+{
+	return data.settings->getDeferredConnectTime();
 }
 
 //== GetStatus

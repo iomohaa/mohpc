@@ -191,13 +191,15 @@ public:
 		adr.port = 12203;
 
 		// Send remote command
+		/*
 		RemoteConsolePtr RCon = RemoteConsole::create(manager, adr, "12345");
 		RCon->getHandlerList().set<RConHandlers::Print>([](const char* text)
 		{
 			MOHPC_LOG(Log, "Remote console \"%s\"", text);
 		});
 		RCon->send("echo test");
-
+		*/
+		
 		Network::EngineServerPtr clientBase = Network::EngineServer::create(manager, adr);
 
 #if 0
@@ -238,9 +240,11 @@ public:
 		Asset->FillCollisionWorld(*cm);
 
 		Network::ClientInfoPtr clientInfo = Network::ClientInfo::create();
-		clientInfo->setName("mohpc");
+		clientInfo->setName("mohpc_test");
 		clientInfo->setRate(25000);
-		clientBase->connect(clientInfo, [&](const Network::ClientGameConnectionPtr& cg, const char* errorMessage)
+
+		Network::ConnectSettingsPtr connectSettings = Network::ConnectSettings::create();
+		clientBase->connect(clientInfo, connectSettings, [&](const Network::ClientGameConnectionPtr& cg, const char* errorMessage)
 			{
 				connection = cg;
 				CGameModuleBase& cgame = connection->getCGModule();

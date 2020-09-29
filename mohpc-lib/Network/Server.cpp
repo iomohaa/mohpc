@@ -17,10 +17,10 @@ MOHPC::Network::GSServer::GSServer(const NetworkManagerPtr& inManager, const net
 	socket = ISocketFactory::get()->createUdp(addressType_e::IPv4);
 }
 
-void MOHPC::Network::GSServer::query(Callbacks::Query&& response, Callbacks::ServerTimeout&& timeoutResult)
+void MOHPC::Network::GSServer::query(Callbacks::Query&& response, Callbacks::ServerTimeout&& timeoutResult, size_t timeoutTime)
 {
 	GamespyUDPRequestParam param(socket, getAddress());
-	handler.sendRequest(makeShared<Request_Query>(std::move(response), std::move(timeoutResult)), std::move(param), 10000);
+	handler.sendRequest(makeShared<Request_Query>(std::move(response), std::move(timeoutResult)), std::move(param), timeoutTime);
 }
 
 void MOHPC::Network::GSServer::tick(uint64_t deltaTime, uint64_t currentTime)
@@ -113,7 +113,7 @@ void MOHPC::Network::LANServer::tick(uint64_t deltaTime, uint64_t currentTime)
 {
 }
 
-void MOHPC::Network::LANServer::query(Callbacks::Query&& response, Callbacks::ServerTimeout&& timeoutResult)
+void MOHPC::Network::LANServer::query(Callbacks::Query&& response, Callbacks::ServerTimeout&& timeoutResult, size_t timeoutTime)
 {
 	// No need to sent any request with the info
 	response(info);
@@ -144,13 +144,15 @@ void EngineServer::tick(uint64_t deltaTime, uint64_t currentTime)
 	handler.handle();
 }
 
-void EngineServer::connect(const ClientInfoPtr& clientInfo, Callbacks::Connect&& result, Callbacks::ServerTimeout&& timeoutResult)
+void EngineServer::connect(const ClientInfoPtr& clientInfo, const ConnectSettingsPtr& connectSettings, Callbacks::Connect&& result, Callbacks::ServerTimeout&& timeoutResult)
 {
 	using namespace std::placeholders;
 
 	ConnectionParams connData;
 	connData.response = std::bind(&EngineServer::onConnect, this, std::move(result), _1, _2, _3, _4, _5);
 	connData.info = std::move(clientInfo);
+	connData.settings = std::move(connectSettings);
+	if (!connData.settings) connData.settings = ConnectSettings::create();
 
 	sendRequest(makeShared<VerBeforeChallengeRequest>(std::move(connData)), std::move(timeoutResult));
 
@@ -159,22 +161,22 @@ void EngineServer::connect(const ClientInfoPtr& clientInfo, Callbacks::Connect&&
 	//sendRequest(to, makeShared<ChallengeRequest>(proto, std::move(connData)));
 }
 
-void EngineServer::getStatus(Callbacks::Response&& result, Callbacks::ServerTimeout&& timeoutResult)
+void EngineServer::getStatus(Callbacks::Response&& result, Callbacks::ServerTimeout&& timeoutResult, size_t timeoutTime)
 {
-	sendRequest(makeShared<StatusRequest>(std::move(result)), std::move(timeoutResult));
+	sendRequest(makeShared<StatusRequest>(std::move(result)), std::move(timeoutResult), timeoutTime);
 }
 
-void EngineServer::getInfo(Callbacks::Response&& result, Callbacks::ServerTimeout&& timeoutResult)
+void EngineServer::getInfo(Callbacks::Response&& result, Callbacks::ServerTimeout&& timeoutResult, size_t timeoutTime)
 {
-	sendRequest(makeShared<InfoRequest>(std::move(result)), std::move(timeoutResult));
+	sendRequest(makeShared<InfoRequest>(std::move(result)), std::move(timeoutResult), timeoutTime);
 }
 
-void EngineServer::sendRequest(IEngineRequestPtr&& req, Callbacks::ServerTimeout&& timeoutResult)
+void EngineServer::sendRequest(IEngineRequestPtr&& req, Callbacks::ServerTimeout&& timeoutResult, size_t timeoutTime)
 {
 	req->timeoutCallback = std::move(timeoutResult);
 
 	GamespyUDPRequestParam param(socket, address);
-	handler.sendRequest(std::move(req), std::move(param), 10000);
+	handler.sendRequest(std::move(req), std::move(param), timeoutTime);
 }
 
 void EngineServer::onConnect(const Callbacks::Connect result, uint16_t qport, uint32_t challengeResponse, const protocolType_c& protoType, const ClientInfoPtr& cInfo, const char* errorMessage)
@@ -289,9 +291,9 @@ IRequestPtr MOHPC::Network::EngineServer::IEngineRequest::process(RequestData& d
 		TokenParser parser;
 		parser.Parse(arg, strlen(arg) + 1);
 
-		const char* command = parser.GetToken(false);
+		str command = parser.GetToken(false);
 		if (supportsEvent(command)) {
-			newRequest = handleResponse(command, parser);
+			newRequest = handleResponse(command.c_str(), parser);
 		}
 		else
 		{
@@ -312,4 +314,32 @@ IRequestPtr MOHPC::Network::EngineServer::IEngineRequest::process(RequestData& d
 	}
 
 	return newRequest;
+}
+
+MOHPC_OBJECT_DEFINITION(ConnectSettings);
+
+ConnectSettings::ConnectSettings()
+	: deferredChallengeTime(100)
+	, deferredConnectTime(100)
+{
+}
+
+void MOHPC::Network::ConnectSettings::setDeferredChallengeTime(size_t newTime)
+{
+	deferredChallengeTime = newTime;
+}
+
+size_t ConnectSettings::getDeferredChallengeTime() const
+{
+	return deferredChallengeTime;
+}
+
+void ConnectSettings::setDeferredConnectTime(size_t newTime)
+{
+	deferredConnectTime = newTime;
+}
+
+size_t ConnectSettings::getDeferredConnectTime() const
+{
+	return deferredConnectTime;
 }
