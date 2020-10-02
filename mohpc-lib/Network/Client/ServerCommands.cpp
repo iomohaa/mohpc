@@ -1,6 +1,6 @@
 #include <MOHPC/Network/Event.h>
-#include <MOHPC/Network/ClientGame.h>
-#include <MOHPC/Network/Server.h>
+#include <MOHPC/Network/Client/ClientGame.h>
+#include <MOHPC/Network/Client/Server.h>
 #include <MOHPC/Utilities/Info.h>
 #include <MOHPC/Utilities/TokenParser.h>
 #include <MOHPC/Log.h>

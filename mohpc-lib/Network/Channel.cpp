@@ -14,6 +14,8 @@ INetchan::INetchan(const IUdpSocketPtr& inSocket)
 {
 }
 
+MOHPC_OBJECT_DEFINITION(Netchan);
+
 Netchan::Netchan(const IUdpSocketPtr& existingSocket, const netadr_t& inFrom, uint16_t inQport)
 	: INetchan(existingSocket)
 	, qport(inQport)
@@ -48,7 +50,7 @@ uint16_t Network::INetchan::getOutgoingSequence() const
 	return 0;
 }
 
-bool Network::Netchan::receive(IMessageStream& stream)
+bool Network::Netchan::receive(IMessageStream& stream, size_t& outSeqNum)
 {
 	stream.Seek(0);
 
@@ -57,8 +59,7 @@ bool Network::Netchan::receive(IMessageStream& stream)
 	msgRead.SetCodec(MessageCodecs::OOB);
 
 	// Read the sequence num
-	uint32_t sequenceNum;
-	sequenceNum = msgRead.ReadUInteger();
+	uint32_t sequenceNum = msgRead.ReadUInteger();
 
 	bool fragmented;
 	// check for fragment information
@@ -70,6 +71,8 @@ bool Network::Netchan::receive(IMessageStream& stream)
 	else {
 		fragmented = false;
 	}
+
+	outSeqNum = sequenceNum;
 
 	uint32_t fragmentStart = 0;
 	uint16_t fragmentLength = 0;
@@ -122,7 +125,12 @@ bool Network::Netchan::receive(IMessageStream& stream)
 		msgW.SerializeUInteger(sequenceNum);
 		msgW.Flush();
 
+		const size_t savedPos = stream.GetPosition();
 		stream.Write(fragmentBuffer, this->fragmentLength);
+		stream.Seek(savedPos);
+	}
+	else {
+		stream.Seek(msgRead.GetPosition());
 	}
 
 	incomingSequence = sequenceNum;
@@ -134,7 +142,7 @@ bool Network::Netchan::transmit(const netadr_t& to, IMessageStream& stream)
 {
 	unsentFragmentStart = 0;
 
-	size_t bufLen = stream.GetPosition();
+	size_t bufLen = stream.GetLength();
 	if (bufLen > FRAGMENT_SIZE)
 	{
 		unsentFragments = true;
@@ -217,36 +225,49 @@ void Netchan::transmitNextFragment(const netadr_t& to)
 	}
 }
 
+MOHPC_OBJECT_DEFINITION(ConnectionlessChan);
+
 Network::ConnectionlessChan::ConnectionlessChan()
 	: INetchan(ISocketFactory::get()->createUdp(addressType_e::IPv4))
 {
 
 }
 
-bool Network::ConnectionlessChan::receive(IMessageStream& stream)
+Network::ConnectionlessChan::ConnectionlessChan(const IUdpSocketPtr& existingSocket)
+	: INetchan(existingSocket)
+{
+
+}
+
+bool Network::ConnectionlessChan::receive(IMessageStream& stream, size_t& sequenceNum)
 {
 	MSG msg(stream, msgMode_e::Reading);
 
 	// Set in OOB mode to read one single byte each call
 	msg.SetCodec(MessageCodecs::OOB);
 
-	int32_t marker = msg.ReadInteger();
+	const int32_t marker = msg.ReadInteger();
 
 	// Should be -1 for connectionless packets
-	assert(marker == -1);
+	//assert(marker == -1);
 
-	uint8_t dirByte = msg.ReadByte();
+	sequenceNum = marker;
+
+	const uint8_t dirByte = msg.ReadByte();
+
+	// Seek after header
+	stream.Seek(5);
 	return true;
 }
 
 bool Network::ConnectionlessChan::transmit(const netadr_t& to, IMessageStream& stream)
 {
-	uint8_t msgBuf[32768];
+	uint8_t msgBuf[MAX_UDP_DATA_SIZE];
 
-	const size_t len = stream.GetPosition();
+	const size_t len = stream.GetLength();
 	stream.Seek(0);
 	stream.Read(msgBuf, len);
 
-	getSocket()->send(to, msgBuf, len - 1);
+	getSocket()->send(to, msgBuf, len);
 	return true;
 }

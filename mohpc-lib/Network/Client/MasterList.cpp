@@ -1,6 +1,6 @@
-#include <MOHPC/Network/MasterList.h>
+#include <MOHPC/Network/Client/MasterList.h>
+#include <MOHPC/Network/Client/Server.h>
 #include <MOHPC/Network/Types.h>
-#include <MOHPC/Network/Server.h>
 #include <MOHPC/Network/GameSpy/Encryption.h>
 #include <MOHPC/Misc/MSG/Stream.h>
 #include <MOHPC/Misc/MSG/MSG.h>

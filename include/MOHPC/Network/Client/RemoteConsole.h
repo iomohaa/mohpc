@@ -1,11 +1,11 @@
 #pragma once
 
-#include "Types.h"
-#include "../Managers/NetworkManager.h"
-#include "../Object.h"
-#include "../Utilities/SharedPtr.h"
-#include "../Utilities/HandlerList.h"
-#include "../Utilities/RequestHandler.h"
+#include "../Types.h"
+#include "../../Managers/NetworkManager.h"
+#include "../../Object.h"
+#include "../../Utilities/SharedPtr.h"
+#include "../../Utilities/HandlerList.h"
+#include "../../Utilities/RequestHandler.h"
 
 namespace MOHPC
 {

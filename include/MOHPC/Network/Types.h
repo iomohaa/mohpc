@@ -42,7 +42,6 @@ namespace MOHPC
 
 		struct netadr_t
 		{
-		public:
 			netadrtype_t type;
 			uint8_t ipx[10];
 			uint8_t ip[4];
@@ -54,7 +53,16 @@ namespace MOHPC
 			MOHPC_EXPORTS bool operator==(const netadr_t& other) const;
 			MOHPC_EXPORTS bool operator!=(const netadr_t& other) const;
 		};
-		
+
+		struct bindv4_t
+		{
+			uint8_t ip[4];
+			uint16_t port;
+
+		public:
+			MOHPC_EXPORTS bindv4_t();
+		};
+
 		//==
 		// Protocol versions
 		// 6	=> MOHAA 1.0
@@ -121,6 +129,49 @@ namespace MOHPC
 
 			uint8_t getServerType() const;
 			protocolVersion_e getProtocolVersion() const;
+		};
+
+		enum class svc_ops_e : uint8_t
+		{
+			/** Bad operation. */
+			Bad,
+			/** Operation that should be ignored. */
+			Nop,
+			/** Gamestate parsing. */
+			Gamestate,
+			/** [short] [string] only in gamestate messages. */
+			Configstring,
+			/** [short] [entity] Baseline entity parsing (only in gamestate messages). */
+			Baseline,
+			/** [string] server command to execute on client. */
+			ServerCommand,
+			/** [short] size [size bytes] */
+			Download,
+			/** Snapshot parsing. */
+			Snapshot,
+			/** [string] Centerprint command. */
+			Centerprint,
+			/** [short] [short] [string] Locationprint command. */
+			Locprint,
+			/** [byte6] Message for cgame. */
+			CGameMessage,
+			/** Indicate the end of message. */
+			Eof
+		};
+
+		enum clc_ops_e : uint8_t
+		{
+			/** Bad operation. */
+			Bad,
+			Nop,
+			/** [usercmd_t] Movement. */
+			Move,
+			/** [usercmd_t] Movement without delta. */
+			MoveNoDelta,
+			/** [string] Command to execute on server. */
+			ClientCommand,
+			/** Indicate the end of client message. */
+			eof
 		};
 	}
 }

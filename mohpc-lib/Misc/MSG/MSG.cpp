@@ -106,7 +106,7 @@ void MOHPC::MSG::Reset()
 {
 	bit = 0;
 	memset(bitData, 0, sizeof(bitData));
-	stream().Read(bitData, std::min(stream().GetLength(), sizeof(bitData)));
+	stream().Read(bitData, std::min(stream().GetLength() - stream().GetPosition(), sizeof(bitData)));
 }
 
 void MOHPC::MSG::SerializeBits(void* value, intptr_t bits)
@@ -825,8 +825,8 @@ void MOHPC::CompressedMessage::Decompress(size_t offset, size_t len) noexcept
 
 	cch = bitData[0] * 256 + bitData[1];
 	// don't overflow with bad messages
-	if (cch > this->input().GetLength() - offset) {
-		cch = this->input().GetLength() - offset;
+	if (cch > len) {
+		cch = len;
 	}
 	size_t bloc = 16;
 
@@ -841,7 +841,7 @@ void MOHPC::CompressedMessage::Decompress(size_t offset, size_t len) noexcept
 
 		// don't overflow reading from the messages
 		// FIXME: would it be better to have a overflow check in get_bit ?
-		if (((size_t)bloc >> 3) > size)
+		if (((size_t)bloc >> 3) > len)
 		{
 			// write the NUL character
 			output().Write("", 1);

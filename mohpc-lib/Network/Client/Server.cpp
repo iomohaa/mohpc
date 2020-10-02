@@ -1,5 +1,5 @@
-#include <MOHPC/Network/Server.h>
-#include <MOHPC/Network/ClientGame.h>
+#include <MOHPC/Network/Client/Server.h>
+#include <MOHPC/Network/Client/ClientGame.h>
 #include <MOHPC/Misc/MSG/Codec.h>
 #include <MOHPC/Misc/MSG/MSG.h>
 #include <MOHPC/Utilities/Info.h>

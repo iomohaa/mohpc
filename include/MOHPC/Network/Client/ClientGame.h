@@ -1,19 +1,19 @@
 #pragma once
 
+#include "../Types.h"
+#include "../InfoTypes.h"
+#include "../Channel.h"
+#include "../Encoding.h"
+#include "../Event.h"
+#include "../Configstring.h"
+#include "../../Utilities/HandlerList.h"
+#include "../../Utilities/Info.h"
+#include "../../Utilities/PropertyMap.h"
+#include "../../Utilities/TokenParser.h"
+#include "../../Object.h"
+#include "../../Misc/MSG/MSG.h"
+#include "../../Managers/NetworkManager.h"
 #include <stdint.h>
-#include "Types.h"
-#include "InfoTypes.h"
-#include "Channel.h"
-#include "Encoding.h"
-#include "Event.h"
-#include "../Utilities/HandlerList.h"
-#include "../Utilities/Info.h"
-#include "../Utilities/PropertyMap.h"
-#include "../Utilities/TokenParser.h"
-#include "../Object.h"
-#include "Configstring.h"
-#include "../Misc/MSG/MSG.h"
-#include "../Managers/NetworkManager.h"
 #include <functional>
 #include <type_traits>
 #include <bitset>
@@ -140,49 +140,6 @@ namespace MOHPC
 			 */
 			struct GameStateParsed : public HandlerNotifyBase<void(const gameState_t& gameState, bool differentMap)> {};
 		}
-
-		enum class svc_ops_e : uint8_t
-		{
-			/** Bad operation. */
-			Bad,
-			/** Operation that should be ignored. */
-			Nop,
-			/** Gamestate parsing. */
-			Gamestate,
-			/** [short] [string] only in gamestate messages. */
-			Configstring,
-			/** [short] [entity] Baseline entity parsing (only in gamestate messages). */
-			Baseline,
-			/** [string] server command to execute on client. */
-			ServerCommand,
-			/** [short] size [size bytes] */
-			Download,
-			/** Snapshot parsing. */
-			Snapshot,
-			/** [string] Centerprint command. */
-			Centerprint,
-			/** [short] [short] [string] Locationprint command. */
-			Locprint,
-			/** [byte6] Message for cgame. */
-			CGameMessage,
-			/** Indicate the end of message. */
-			Eof
-		};
-
-		enum clc_ops_e : uint8_t
-		{
-			/** Bad operation. */
-			Bad,
-			Nop,
-			/** [usercmd_t] Movement. */
-			Move,
-			/** [usercmd_t] Movement without delta. */
-			MoveNoDelta,
-			/** [string] Command to execute on server. */
-			ClientCommand,
-			/** Indicate the end of client message. */
-			eof
-		};
 
 		struct outPacket_t
 		{
@@ -500,7 +457,7 @@ namespace MOHPC
 			readDeltaEntity_f readDeltaEntity_pf;
 			getNormalizedConfigstring_f getNormalizedConfigstring_pf;
 			CGameModuleBase* cgameModule;
-			IEncodingPtr encoder;
+			EncodingPtr encoder;
 			INetchanPtr netchan;
 			ClientInfoPtr userInfo;
 			uint64_t realTimeStart;

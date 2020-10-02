@@ -21,6 +21,12 @@ bool netadr_t::operator!=(const netadr_t& other) const
 	return *(uint32_t*)ip != *(uint32_t*)other.ip;
 }
 
+bindv4_t::bindv4_t()
+	: ip{0}
+	, port(0)
+{
+}
+
 usercmd_t::usercmd_t(uint32_t inServerTime)
 	: usercmd_t()
 {

@@ -1,5 +1,5 @@
-#include <MOHPC/Network/CGModule.h>
-#include <MOHPC/Network/ClientGame.h>
+#include <MOHPC/Network/Client/CGModule.h>
+#include <MOHPC/Network/Client/ClientGame.h>
 #include <MOHPC/Managers/ShaderManager.h>
 #include <MOHPC/Misc/MSG/MSG.h>
 #include <MOHPC/Vector.h>

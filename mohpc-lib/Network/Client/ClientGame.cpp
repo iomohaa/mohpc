@@ -1,10 +1,10 @@
-#include <MOHPC/Network/ClientGame.h>
+#include <MOHPC/Network/Client/ClientGame.h>
+#include <MOHPC/Network/Client/CGModule.h>
 #include <MOHPC/Misc/MSG/MSG.h>
 #include <MOHPC/Misc/MSG/Stream.h>
 #include <MOHPC/Misc/MSG/Codec.h>
 #include <MOHPC/Network/Channel.h>
 #include <MOHPC/Network/SerializableTypes.h>
-#include <MOHPC/Network/CGModule.h>
 #include <MOHPC/Utilities/Info.h>
 #include <MOHPC/Utilities/TokenParser.h>
 #include <MOHPC/Log.h>
@@ -18,6 +18,9 @@ using namespace Network;
 
 static constexpr size_t MAX_MSGLEN = 49152;
 static constexpr char* MOHPC_LOG_NAMESPACE = "network_cgame";
+
+static constexpr size_t CL_ENCODE_START = 12;
+static constexpr size_t CL_DECODE_START = 8;
 
 constexpr uint8_t charByteMapping[256] =
 {
@@ -289,17 +292,35 @@ void Network::ClientGameConnection::receive(const netadr_t& from, MSG& msg, uint
 {
 	IMessageStream& stream = msg.stream();
 
-	stream.Seek(0);
-	msg.SetCodec(MessageCodecs::OOB);
-	serverMessageSequence = msg.ReadUInteger();
+	//stream.Seek(0);
+	//msg.SetCodec(MessageCodecs::OOB);
+	//serverMessageSequence = msg.ReadUInteger();
 
-	if (getNetchan()->receive(stream))
+	size_t sequenceNum;
+	if (getNetchan()->receive(stream, sequenceNum))
 	{
-		// Decode the stream itself
-		encoder->decode(stream, stream);
+		serverMessageSequence = (uint32_t)sequenceNum;
 
-		// Needs to be resetted as the stream has been decoded
+		msg.SetCodec(MessageCodecs::Bit);
 		msg.Reset();
+
+		// Read the ack
+		reliableAcknowledge = msg.ReadInteger();
+		if (reliableAcknowledge < reliableSequence - (int32_t)MAX_RELIABLE_COMMANDS) {
+			reliableAcknowledge = reliableSequence;
+		}
+
+		// Decode the stream itself
+		stream.Seek(CL_DECODE_START, IMessageStream::SeekPos::Begin);
+		encoder->setReliableAcknowledge(reliableAcknowledge);
+		encoder->setSecretKey(serverMessageSequence);
+		encoder->decode(stream, stream);
+		stream.Seek(sizeof(uint32_t));
+
+		// Needs to be reset as the stream has been decoded
+		msg.Reset();
+		// Serialize again to read the proper number of bits
+		msg.ReadInteger();
 
 		using namespace std::chrono;
 		lastTimeoutTime = steady_clock::now();
@@ -370,14 +391,6 @@ void Network::ClientGameConnection::addReliableCommand(const char* cmd)
 
 void Network::ClientGameConnection::parseServerMessage(MSG& msg, uint32_t serverMessageSequence, uint64_t currentTime)
 {
-	msg.SetCodec(MessageCodecs::Bit);
-
-	// Read the ack
-	reliableAcknowledge = msg.ReadInteger();
-	if (reliableAcknowledge < reliableSequence - (int32_t)MAX_RELIABLE_COMMANDS) {
-		reliableAcknowledge = reliableSequence;
-	}
-
 	while(cgameModule)
 	{
 		const svc_ops_e cmd = (svc_ops_e)msg.ReadByte();
@@ -516,7 +529,6 @@ void Network::ClientGameConnection::parseSnapshot(MSG& msg, uint32_t serverMessa
 
 	// Insert the sequence num
 	newSnap.messageNum = serverMessageSequence;
-	assert(newSnap.messageNum != -1);
 
 	const uint8_t deltaNum = msg.ReadByte();
 	if (!deltaNum) {
@@ -1108,10 +1120,16 @@ void Network::ClientGameConnection::writePacket(uint32_t serverMessageSequence, 
 	// Flush out pending data
 	msg.Flush();
 
-	encoder->encode(msg.stream(), msg.stream());
+	stream = FixedDataMessageStream(data.data(), stream.GetPosition());
+	stream.Seek(CL_ENCODE_START, IMessageStream::SeekPos::Begin);
+	encoder->setSecretKey(serverId);
+	encoder->setMessageAcknowledge(serverMessageSequence);
+	encoder->setReliableAcknowledge(serverCommandSequence);
+	encoder->encode(stream, stream);
+	stream.Seek(0, IMessageStream::SeekPos::Begin);
 	
 	// Transmit the encoded message
-	getNetchan()->transmit(adr, msg.stream());
+	getNetchan()->transmit(adr, stream);
 
 	lastPacketSendTime = currentTime;
 }

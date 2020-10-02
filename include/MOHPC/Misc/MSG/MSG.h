@@ -97,6 +97,7 @@ namespace MOHPC
 		/** Change the codec of the message. See msg_codec.h for codecs. */
 		void SetCodec(IMessageCodec& codec) noexcept;
 
+		/** Change the message mode. */
 		void SetMode(msgMode_e mode);
 
 		/** Reset the message and start with the stream's current position. */

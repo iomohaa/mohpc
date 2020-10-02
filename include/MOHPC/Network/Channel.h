@@ -1,9 +1,10 @@
 #pragma once
 
 #include "../Global.h"
+#include "../Object.h"
+#include "../Utilities/SharedPtr.h"
 #include "Types.h"
 #include <stdint.h>
-#include "../Utilities/SharedPtr.h"
 
 namespace MOHPC
 {
@@ -36,7 +37,7 @@ namespace MOHPC
 			virtual ~INetchan() = default;
 
 			/** Read data from the socket to the stream. */
-			virtual bool receive(IMessageStream& stream) = 0;
+			virtual bool receive(IMessageStream& stream, size_t& sequenceNum) = 0;
 
 			/** Transmit data from stream to the socket. */
 			virtual bool transmit(const netadr_t& to, IMessageStream& stream) = 0;
@@ -55,6 +56,8 @@ namespace MOHPC
 
 		class Netchan : public INetchan
 		{
+			MOHPC_OBJECT_DECLARATION(Netchan);
+
 		public:
 			// max size of a network packet
 			static constexpr size_t	MAX_PACKETLEN = 1400;
@@ -81,11 +84,11 @@ namespace MOHPC
 			netadr_t from;
 
 		public:
-			Netchan(const IUdpSocketPtr& existingSocket, const netadr_t& from, uint16_t inQport);
+			MOHPC_EXPORTS Netchan(const IUdpSocketPtr& existingSocket, const netadr_t& from, uint16_t inQport);
 			~Netchan();
 
-			virtual bool receive(IMessageStream& stream);
-			virtual bool transmit(const netadr_t& to, IMessageStream& stream);
+			virtual bool receive(IMessageStream& stream, size_t& sequenceNum) override;
+			virtual bool transmit(const netadr_t& to, IMessageStream& stream) override;
 			virtual uint16_t getOutgoingSequence() const override;
 
 		private:
@@ -94,10 +97,14 @@ namespace MOHPC
 
 		class ConnectionlessChan : public INetchan
 		{
+			MOHPC_OBJECT_DECLARATION(ConnectionlessChan);
+
 		public:
-			ConnectionlessChan();
-			virtual bool receive(IMessageStream& stream);
-			virtual bool transmit(const netadr_t& to, IMessageStream& stream);
+			MOHPC_EXPORTS ConnectionlessChan();
+			MOHPC_EXPORTS ConnectionlessChan(const IUdpSocketPtr& existingSocket);
+
+			virtual bool receive(IMessageStream& stream, size_t& sequenceNum) override;
+			virtual bool transmit(const netadr_t& to, IMessageStream& stream) override;
 		};
 	}
 }

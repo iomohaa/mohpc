@@ -6,8 +6,7 @@
 using namespace MOHPC;
 using namespace Network;
 
-static constexpr size_t CL_ENCODE_START = 12;
-static constexpr size_t CL_DECODE_START = 4;
+MOHPC_OBJECT_DEFINITION(Encoding);
 
 Encoding::Encoding(uint32_t inChallenge, const char** inReliableCommands, const char** inServerCommands)
 	: challenge(inChallenge)
@@ -23,26 +22,26 @@ void Encoding::encode(IMessageStream& in, IMessageStream& out)
 
 	const size_t savedPos = in.GetPosition();
 
-	if (savedPos <= CL_ENCODE_START) {
-		return;
-	}
+	//if (savedPos <= CL_ENCODE_START) {
+	//	return;
+	//}
 
-	in.Seek(0);
+	//in.Seek(0);
 
-	MSG tmpMsg(in, msgMode_e::Reading);
+	//MSG tmpMsg(in, msgMode_e::Reading);
 
 	// Read values to be able to encode
-	const uint32_t serverId = tmpMsg.ReadUInteger();
-	const uint32_t messageAcknowledge = tmpMsg.ReadUInteger();
-	const uint32_t reliableAcknowledge = tmpMsg.ReadUInteger();
+	//const uint32_t serverId = tmpMsg.ReadUInteger();
+	//const uint32_t messageAcknowledge = tmpMsg.ReadUInteger();
+	//const uint32_t reliableAcknowledge = tmpMsg.ReadUInteger();
 
-	in.Seek(CL_ENCODE_START);
-	const size_t len = savedPos;
+	//in.Seek(savedPos);
+	const size_t len = in.GetLength();
 
 	// Ack index
 	const uint8_t* string = (const uint8_t*)serverCommands[reliableAcknowledge & (MAX_RELIABLE_COMMANDS - 1)];
 	// xor the client challenge with the netchan sequence number
-	uint8_t key = challenge ^ serverId ^ messageAcknowledge;
+	uint8_t key = challenge ^ secretKey ^ messageAcknowledge;
 	// encode the message
 	if (&in != &out)
 	{
@@ -59,11 +58,12 @@ void Encoding::encode(IMessageStream& in, IMessageStream& out)
 
 void Encoding::decode(IMessageStream& in, IMessageStream& out)
 {
-	uint32_t sequenceNum = 0;
-	uint32_t reliableAcknowledge = 0;
-	size_t savedPos = 0;
+	//uint32_t sequenceNum = 0;
+	//uint32_t reliableAcknowledge = 0;
+	//size_t savedPos = 0;
+	/*
 	{
-		in.Seek(0);
+		//in.Seek(0);
 
 		MSG msgRead(in, msgMode_e::Reading);
 
@@ -79,15 +79,17 @@ void Encoding::decode(IMessageStream& in, IMessageStream& out)
 
 		in.Seek(msgRead.GetPosition());
 	}
+	*/
 
-	in.Seek(4 + CL_DECODE_START);
+	//in.Seek(4 + CL_DECODE_START);
 
+	const size_t savedPos = in.GetPosition();
 	const size_t len = in.GetLength();
 
 	// Ack index
 	const uint8_t* string = (const uint8_t*)reliableCommands[reliableAcknowledge & (MAX_RELIABLE_COMMANDS - 1)];
 	// xor the client challenge with the netchan sequence number
-	uint8_t key = challenge ^ sequenceNum;
+	uint8_t key = challenge ^ secretKey;
 	// decode the message
 	if (&in != &out)
 	{
@@ -147,4 +149,34 @@ void Encoding::XORValues(uint32_t key, const uint8_t* string, size_t len, IMessa
 		stream.Seek(i);
 		stream.Write(&byteValue, sizeof(byteValue));
 	}
+}
+
+void Encoding::setMessageAcknowledge(uint32_t num)
+{
+	messageAcknowledge = num;
+}
+
+uint32_t Encoding::getMessageAcknowledge() const
+{
+	return messageAcknowledge;
+}
+
+void Encoding::setReliableAcknowledge(uint32_t num)
+{
+	reliableAcknowledge = num;
+}
+
+uint32_t Encoding::getReliableAcknowledge() const
+{
+	return reliableAcknowledge;
+}
+
+void Encoding::setSecretKey(uint32_t num)
+{
+	secretKey = num;
+}
+
+uint32_t Encoding::getSecretKey() const
+{
+	return secretKey;
 }

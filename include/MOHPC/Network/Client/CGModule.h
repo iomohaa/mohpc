@@ -1,13 +1,13 @@
 #pragma once
 
 #include <stdint.h>
-#include "../Utilities/HandlerList.h"
-#include "../Utilities/PropertyMap.h"
-#include "../Utilities/Function.h"
-#include "../Vector.h"
-#include "Configstring.h"
-#include "InfoTypes.h"
-#include "pm/bg_public.h"
+#include "../Configstring.h"
+#include "../InfoTypes.h"
+#include "../pm/bg_public.h"
+#include "../../Utilities/HandlerList.h"
+#include "../../Utilities/PropertyMap.h"
+#include "../../Utilities/Function.h"
+#include "../../Vector.h"
 #include <type_traits>
 
 namespace MOHPC

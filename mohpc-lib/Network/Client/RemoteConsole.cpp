@@ -1,4 +1,4 @@
-#include <MOHPC/Network/RemoteConsole.h>
+#include <MOHPC/Network/Client/RemoteConsole.h>
 #include <MOHPC/Misc/MSG/MSG.h>
 #include <MOHPC/Misc/MSG/Stream.h>
 #include <MOHPC/Misc/MSG/Codec.h>

@@ -1,12 +1,12 @@
 #pragma once
 
-#include "../Global.h"
-#include "Socket.h"
 #include "Server.h"
 #include "GamespyRequest.h"
-#include "../Utilities/RequestHandler.h"
-#include "../Managers/NetworkManager.h"
-#include "../Object.h"
+#include "../../Utilities/RequestHandler.h"
+#include "../../Managers/NetworkManager.h"
+#include "../../Global.h"
+#include "../../Object.h"
+#include "../Socket.h"
 #include <stdint.h>
 #include  <queue>
 

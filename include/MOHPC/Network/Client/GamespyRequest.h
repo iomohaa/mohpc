@@ -1,8 +1,8 @@
 #pragma once
 
-#include "../Utilities/SharedPtr.h"
-#include "../Utilities/RequestHandler.h"
-#include "Types.h"
+#include "../../Utilities/SharedPtr.h"
+#include "../../Utilities/RequestHandler.h"
+#include "../Types.h"
 
 namespace MOHPC
 {

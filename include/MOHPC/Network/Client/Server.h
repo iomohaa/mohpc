@@ -1,13 +1,13 @@
 #pragma once
 
-#include "Types.h"
-#include "../Utilities/Info.h"
-#include "../Utilities/LazyPtr.h"
-#include "../Utilities/RequestHandler.h"
-#include "../Managers/NetworkManager.h"
 #include "ClientGame.h"
 #include "GamespyRequest.h"
-#include "../Object.h"
+#include "../Types.h"
+#include "../../Utilities/Info.h"
+#include "../../Utilities/LazyPtr.h"
+#include "../../Utilities/RequestHandler.h"
+#include "../../Managers/NetworkManager.h"
+#include "../../Object.h"
 #include <functional>
 
 namespace MOHPC

@@ -1,12 +1,12 @@
 #include <MOHPC/Managers/AssetManager.h>
 #include <MOHPC/Managers/NetworkManager.h>
 //#include <MOHPC/Network/Client.h>
-#include <MOHPC/Network/ClientGame.h>
-#include <MOHPC/Network/CGModule.h>
+#include <MOHPC/Network/Client/ClientGame.h>
+#include <MOHPC/Network/Client/CGModule.h>
+#include <MOHPC/Network/Client/MasterList.h>
+#include <MOHPC/Network/Client/RemoteConsole.h>
 #include <MOHPC/Network/Event.h>
 #include <MOHPC/Network/Types.h>
-#include <MOHPC/Network/MasterList.h>
-#include <MOHPC/Network/RemoteConsole.h>
 #include <MOHPC/Misc/MSG/Stream.h>
 #include <MOHPC/Script/str.h>
 #include <MOHPC/Utilities/Info.h>
@@ -23,78 +23,11 @@
 #include <ctime>
 #include <locale>
 
-#pragma comment(lib, "Ws2_32.lib")
-
 #define MOHPC_LOG_NAMESPACE "testnet"
 
 class CNetworkUnitTest : public IUnitTest, public TAutoInst<CNetworkUnitTest>
 {
 private:
-	class WinSocket : public MOHPC::Network::IUdpSocket
-	{
-	private:
-		SOCKET conn;
-		sockaddr_in srvAddr;
-
-	public:
-		WinSocket(SOCKET inConn, const sockaddr_in& inSrvAddr)
-			: conn(inConn)
-			, srvAddr(inSrvAddr)
-		{}
-
-		virtual size_t send(const MOHPC::Network::netadr_t& to, const void* buf, size_t bufsize)
-		{
-			sockaddr_in srvAddr;
-			srvAddr.sin_family = AF_INET;
-			srvAddr.sin_port = htons(to.port);
-			memcpy(&srvAddr.sin_addr, to.ip, sizeof(srvAddr.sin_addr));
-			int srvAddrSz = sizeof(srvAddr);
-
-			return sendto(
-				conn,
-				(const char*)buf,
-				(int)bufsize,
-				0,
-				(sockaddr*)&srvAddr,
-				sizeof(srvAddr)
-			);
-		}
-
-		virtual size_t receive(void* buf, size_t maxsize, MOHPC::Network::netadr_t& from) override
-		{
-			sockaddr_in fromAddr;
-			int addrSz = sizeof(fromAddr);
-
-			const size_t bytesWritten = recvfrom(
-				conn,
-				(char*)buf,
-				(int)maxsize,
-				0,
-				(sockaddr*)&fromAddr,
-				&addrSz
-			);
-
-			memcpy(from.ip, &fromAddr.sin_addr, sizeof(fromAddr));
-			from.type = MOHPC::Network::netadrtype_t::IP;
-			from.port = htons(fromAddr.sin_port);
-
-			return bytesWritten;
-		}
-
-		virtual bool wait(size_t timeout) override
-		{
-			timeval t;
-			t.tv_sec = (long)timeout;
-
-			fd_set readfds;
-			readfds.fd_count = 1;
-			readfds.fd_array[0] = conn;
-
-			int result = select(0, &readfds, NULL, NULL, timeout != -1 ? &t : NULL);
-			return result != SOCKET_ERROR && result == 1;
-		}
-	};
-
 	class Logger : public MOHPC::Log::ILog
 	{
 	public:
@@ -343,7 +276,7 @@ public:
 
 				connection->setCallback<ClientHandlers::Disconnect>([&wantsDisconnect](const char* reason)
 					{
-						//MOHPC_LOG(VeryVerbose, "Requested disconnect. Reason -> \"%s\"", reason ? reason : "");
+						MOHPC_LOG(VeryVerbose, "Requested disconnect. Reason -> \"%s\"", reason ? reason : "");
 						wantsDisconnect = true;
 					});
 

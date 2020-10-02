@@ -1,4 +1,4 @@
-#include <MOHPC/Network/GamespyRequest.h>
+#include <MOHPC/Network/Client/GamespyRequest.h>
 #include <MOHPC/Utilities/Info.h>
 
 using namespace MOHPC;

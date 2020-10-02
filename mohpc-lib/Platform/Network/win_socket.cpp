@@ -15,15 +15,19 @@ private:
 	SOCKET conn;
 
 public:
-	WindowsUDPSocket(addressType_e type)
+	WindowsUDPSocket(addressType_e type, const bindv4_t* bindAddress)
 	{
+		sockaddr_in local;
+
 		switch (type)
 		{
 		case addressType_e::IPv4:
 			conn = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+			local.sin_family = AF_INET;
 			break;
 		case addressType_e::IPv6:
 			conn = socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+			local.sin_family = AF_INET6;
 			break;
 		default:
 			conn = NULL;
@@ -37,11 +41,17 @@ public:
 		//int val = 1;
 		//setsockopt(conn, SOL_SOCKET, SO_REUSEADDR, (const char*)val, sizeof(val));
 
-		sockaddr_in local;
-		local.sin_family = AF_INET;
-		//local.sin_port = htons(12205);
-		local.sin_port = 0;
-		inet_pton(AF_INET, "0.0.0.0", &local.sin_addr);
+		if(!bindAddress)
+		{
+			// Bind a default port
+			local.sin_port = 0;
+			inet_pton(AF_INET, "0.0.0.0", &local.sin_addr);
+		}
+		else
+		{
+			local.sin_port = htons(bindAddress->port);
+			memcpy(&local.sin_addr.s_addr, bindAddress->ip, sizeof(uint8_t[4]));
+		}
 
 		bind(conn, (sockaddr*)&local, sizeof(local));
 	}
@@ -237,9 +247,9 @@ public:
 		WSACleanup();
 	}
 
-	virtual IUdpSocketPtr createUdp(addressType_e addressType) override
+	virtual IUdpSocketPtr createUdp(addressType_e addressType, const bindv4_t* bindAddress) override
 	{
-		return makeShared<WindowsUDPSocket>(addressType);
+		return makeShared<WindowsUDPSocket>(addressType, bindAddress);
 	}
 
 	virtual ITcpSocketPtr createTcp(addressType_e socketType, const netadr_t& address) override

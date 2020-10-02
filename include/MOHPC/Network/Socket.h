@@ -3,12 +3,15 @@
 #include <stdint.h>
 #include "../Utilities/SharedPtr.h"
 #include "../Utilities/WeakPtr.h"
+#include "../Global.h"
 
 namespace MOHPC
 {
 	namespace Network
 	{
 		struct netadr_t;
+		struct bindv4_t;
+		struct bindv6_t;
 
 		enum class addressType_e : unsigned char {
 			IPv4,
@@ -130,10 +133,9 @@ namespace MOHPC
 			 * This function must create an UDP socket that is ready to send/receive.
 			 *
 			 * @param	addressType		Socket domain type
-			 * @param	address			IP/hostname/domain to connect to
 			 * @return	UDP socket on success
 			 */
-			virtual IUdpSocketPtr createUdp(addressType_e addressType) = 0;
+			virtual IUdpSocketPtr createUdp(addressType_e addressType, const bindv4_t* bindAddress = nullptr) = 0;
 
 			/**
 			 * Create a TCP socket that is ready to send/receive.
@@ -160,10 +162,10 @@ namespace MOHPC
 			virtual netadr_t getHost(const char* domain) = 0;
 
 			/** Get the factory used to create sockets. */
-			static ISocketFactory* get();
+			MOHPC_EXPORTS static ISocketFactory* get();
 
 			/** Set the factory used to create sockets. */
-			static void set(const ISocketFactoryWeakPtr& newFactory);
+			MOHPC_EXPORTS static void set(const ISocketFactoryWeakPtr& newFactory);
 		};
 	}
 }
