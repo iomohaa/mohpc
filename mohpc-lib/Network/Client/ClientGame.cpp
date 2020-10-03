@@ -253,14 +253,24 @@ void ClientGameConnection::tick(uint64_t deltaTime, uint64_t currentTime)
 	{
 		// No need to be more
 		uint8_t data[MAX_UDP_DATA_SIZE];
-		FixedDataMessageStream stream(data, MAX_UDP_DATA_SIZE);
+		FixedDataMessageStream stream(data, MAX_UDP_DATA_SIZE, 0);
+
+		size_t sequenceNum;
 
 		netadr_t from;
-		socket->receive(data, MAX_UDP_DATA_SIZE, from);
-
-		// Prepare for reading
-		MSG msg(stream, msgMode_e::Reading);
-		receive(from, msg, currentTime);
+		if(getNetchan()->receive(from, stream, sequenceNum))
+		{
+			// Prepare for reading
+			MSG msg(stream, msgMode_e::Reading);
+			if(sequenceNum != -1)
+			{
+				// received connection packet
+				receive(from, msg, sequenceNum, currentTime);
+			}
+			else {
+				receiveConnectionLess(from, msg);
+			}
+		}
 	}
 
 	// Build and send client commands
@@ -288,90 +298,83 @@ const INetchanPtr& ClientGameConnection::getNetchan() const
 	return netchan;
 }
 
-void Network::ClientGameConnection::receive(const netadr_t& from, MSG& msg, uint64_t currentTime)
+void Network::ClientGameConnection::receive(const netadr_t& from, MSG& msg, size_t sequenceNum, uint64_t currentTime)
 {
-	IMessageStream& stream = msg.stream();
+	serverMessageSequence = (uint32_t)sequenceNum;
 
-	//stream.Seek(0);
-	//msg.SetCodec(MessageCodecs::OOB);
-	//serverMessageSequence = msg.ReadUInteger();
+	msg.SetCodec(MessageCodecs::Bit);
 
-	size_t sequenceNum;
-	if (getNetchan()->receive(stream, sequenceNum))
-	{
-		serverMessageSequence = (uint32_t)sequenceNum;
-
-		msg.SetCodec(MessageCodecs::Bit);
-		msg.Reset();
-
-		// Read the ack
-		reliableAcknowledge = msg.ReadInteger();
-		if (reliableAcknowledge < reliableSequence - (int32_t)MAX_RELIABLE_COMMANDS) {
-			reliableAcknowledge = reliableSequence;
-		}
-
-		// Decode the stream itself
-		stream.Seek(CL_DECODE_START, IMessageStream::SeekPos::Begin);
-		encoder->setReliableAcknowledge(reliableAcknowledge);
-		encoder->setSecretKey(serverMessageSequence);
-		encoder->decode(stream, stream);
-		stream.Seek(sizeof(uint32_t));
-
-		// Needs to be reset as the stream has been decoded
-		msg.Reset();
-		// Serialize again to read the proper number of bits
-		msg.ReadInteger();
-
-		using namespace std::chrono;
-		lastTimeoutTime = steady_clock::now();
-
-		try
-		{
-			// All messages will be parsed from there
-			parseServerMessage(msg, serverMessageSequence, currentTime);
-		}
-		catch (NetworkException& e)
-		{
-			// call the handler
-			handlerList.notify<ClientHandlers::Error>(e);
-		}
+	// Read the ack
+	reliableAcknowledge = msg.ReadInteger();
+	if (reliableAcknowledge < reliableSequence - (int32_t)MAX_RELIABLE_COMMANDS) {
+		reliableAcknowledge = reliableSequence;
 	}
-	else if (serverMessageSequence == -1)
+
+	// Decode the stream itself
+	IMessageStream& stream = msg.stream();
+	stream.Seek(CL_DECODE_START, IMessageStream::SeekPos::Begin);
+	encoder->setReliableAcknowledge(reliableAcknowledge);
+	encoder->setSecretKey(serverMessageSequence);
+	encoder->decode(stream, stream);
+	stream.Seek(sizeof(uint32_t));
+
+	// Needs to be reset as the stream has been decoded
+	msg.Reset();
+	// Serialize again to read the proper number of bits
+	msg.ReadInteger();
+
+	using namespace std::chrono;
+	lastTimeoutTime = steady_clock::now();
+
+	try
 	{
-		// a message without sequence number indicates a connectionless packet
-		// the only possible connectionless packet should be the disconnect command
-		// it is received when the client gets kicked out during map loading
+		// All messages will be parsed from there
+		parseServerMessage(msg, serverMessageSequence, currentTime);
+	}
+	catch (NetworkException& e)
+	{
+		// call the handler
+		handlerList.notify<ClientHandlers::Error>(e);
+	}
+}
 
-		// read the direction
-		uint8_t direction = msg.ReadByte();
+void MOHPC::Network::ClientGameConnection::receiveConnectionLess(const netadr_t& from, MSG& msg)
+{
+	msg.SetCodec(MessageCodecs::OOB);
 
-		// read the command
-		StringMessage data = msg.ReadString();
+	// a message without sequence number indicates a connectionless packet
+	// the only possible connectionless packet should be the disconnect command
+	// it is received when the client gets kicked out during map loading
 
-		// parse command arguments
-		TokenParser parser;
-		parser.Parse(data, strlen(data));
+	// read the direction
+	uint8_t direction = msg.ReadByte();
 
-		// get the connectionless command
-		const char* cmd = parser.GetToken(true);
+	// read the command
+	StringMessage data = msg.ReadString();
 
-		if (!str::icmp(cmd, "disconnect"))
-		{
-			// disconnect message, may happen during map loading
-			serverDisconnected(nullptr);
-		}
-		else if (!str::icmp(cmd, "droperror"))
-		{
-			// server is kicking the client due to an error
+	// parse command arguments
+	TokenParser parser;
+	parser.Parse(data, strlen(data));
 
-			// trim leading spaces/crlf
-			parser.SkipWhiteSpace(true);
-			// get the reason of the kick
-			const char* reason = parser.GetCurrentScript();
+	// get the connectionless command
+	const char* cmd = parser.GetToken(true);
 
-			// Supply the reason when disconnecting
-			serverDisconnected(reason);
-		}
+	if (!str::icmp(cmd, "disconnect"))
+	{
+		// disconnect message, may happen during map loading
+		serverDisconnected(nullptr);
+	}
+	else if (!str::icmp(cmd, "droperror"))
+	{
+		// server is kicking the client due to an error
+
+		// trim leading spaces/crlf
+		parser.SkipWhiteSpace(true);
+		// get the reason of the kick
+		const char* reason = parser.GetCurrentScript();
+
+		// Supply the reason when disconnecting
+		serverDisconnected(reason);
 	}
 }
 
@@ -1038,8 +1041,8 @@ bool Network::ClientGameConnection::sendCmd(uint64_t currentTime)
 
 void Network::ClientGameConnection::writePacket(uint32_t serverMessageSequence, uint64_t currentTime)
 {
-	std::vector<uint8_t> data(MAX_MSGLEN);
-	FixedDataMessageStream stream(data.data(), data.size());
+	//std::vector<uint8_t> data(MAX_MSGLEN);
+	DynamicDataMessageStream stream;
 	MSG msg(stream, msgMode_e::Writing);
 
 	usercmd_t nullcmd;
@@ -1120,7 +1123,6 @@ void Network::ClientGameConnection::writePacket(uint32_t serverMessageSequence, 
 	// Flush out pending data
 	msg.Flush();
 
-	stream = FixedDataMessageStream(data.data(), stream.GetPosition());
 	stream.Seek(CL_ENCODE_START, IMessageStream::SeekPos::Begin);
 	encoder->setSecretKey(serverId);
 	encoder->setMessageAcknowledge(serverMessageSequence);

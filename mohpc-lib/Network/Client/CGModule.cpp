@@ -1390,8 +1390,16 @@ void CGameModuleBase::buildSolidList()
 void CGameModuleBase::SCmd_Print(TokenParser& args)
 {
 	const char* text = args.GetString(true, false);
-	const hudMessage_e type = (hudMessage_e )*(text++);
-	handlers().notify<CGameHandlers::Print>(type, text);
+	if(*text < (uint8_t)hudMessage_e::Max)
+	{
+		const hudMessage_e type = (hudMessage_e) * (text++);
+		handlers().notify<CGameHandlers::Print>(type, text);
+	}
+	else
+	{
+		// should print in console if unspecified
+		handlers().notify<CGameHandlers::Print>(hudMessage_e::Console, text);
+	}
 }
 
 void CGameModuleBase::SCmd_HudPrint(TokenParser& args)

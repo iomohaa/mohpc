@@ -62,10 +62,11 @@ namespace MOHPC
 	private:
 		uint8_t* storage;
 		size_t length;
+		size_t maxLength;
 		size_t curPos;
 
 	public:
-		FixedDataMessageStream(void* data, size_t size) noexcept;
+		FixedDataMessageStream(void* data, size_t size, size_t readableLength = -1) noexcept;
 
 		virtual void Read(void* data, size_t length) override;
 		virtual void Write(const void* data, size_t length) override;
@@ -79,6 +80,7 @@ namespace MOHPC
 	private:
 		uint8_t* storage;
 		size_t length;
+		size_t maxLength;
 		size_t curPos;
 
 	public:
@@ -92,5 +94,8 @@ namespace MOHPC
 		virtual size_t GetLength() const noexcept override;
 
 		const uint8_t* getStorage() const;
+
+	private:
+		void allocate(size_t writeLength);
 	};
 }

@@ -37,7 +37,7 @@ namespace MOHPC
 			virtual ~INetchan() = default;
 
 			/** Read data from the socket to the stream. */
-			virtual bool receive(IMessageStream& stream, size_t& sequenceNum) = 0;
+			virtual bool receive(netadr_t& from, IMessageStream& stream, size_t& sequenceNum) = 0;
 
 			/** Transmit data from stream to the socket. */
 			virtual bool transmit(const netadr_t& to, IMessageStream& stream) = 0;
@@ -77,22 +77,19 @@ namespace MOHPC
 			uint16_t fragmentSequence;
 			uint16_t fragmentLength;
 			uint8_t* fragmentBuffer;
-			bool unsentFragments;
-			size_t unsentFragmentStart;
-			size_t unsentLength;
-			uint8_t* unsentBuffer;
 			netadr_t from;
 
 		public:
 			MOHPC_EXPORTS Netchan(const IUdpSocketPtr& existingSocket, const netadr_t& from, uint16_t inQport);
 			~Netchan();
 
-			virtual bool receive(IMessageStream& stream, size_t& sequenceNum) override;
+			virtual bool receive(netadr_t& from, IMessageStream& stream, size_t& sequenceNum) override;
 			virtual bool transmit(const netadr_t& to, IMessageStream& stream) override;
 			virtual uint16_t getOutgoingSequence() const override;
 
 		private:
-			void transmitNextFragment(const netadr_t& to);
+			void transmitNextFragment(const netadr_t& to, IMessageStream& stream, size_t& unsentFragmentStart, size_t& unsentLength, bool& unsentFragments);
+			void writePacketHeader(IMessageStream& stream);
 		};
 
 		class ConnectionlessChan : public INetchan
@@ -103,7 +100,7 @@ namespace MOHPC
 			MOHPC_EXPORTS ConnectionlessChan();
 			MOHPC_EXPORTS ConnectionlessChan(const IUdpSocketPtr& existingSocket);
 
-			virtual bool receive(IMessageStream& stream, size_t& sequenceNum) override;
+			virtual bool receive(netadr_t& from, IMessageStream& stream, size_t& sequenceNum) override;
 			virtual bool transmit(const netadr_t& to, IMessageStream& stream) override;
 		};
 	}

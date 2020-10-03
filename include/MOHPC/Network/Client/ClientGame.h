@@ -636,7 +636,8 @@ namespace MOHPC
 
 		private:
 			const INetchanPtr& getNetchan() const;
-			void receive(const netadr_t& from, MSG& msg, uint64_t currentTime);
+			void receive(const netadr_t& from, MSG& msg, size_t sequenceNum, uint64_t currentTime);
+			void receiveConnectionLess(const netadr_t& from, MSG& msg);
 			void wipeChannel();
 			bool isChannelValid() const;
 			void serverDisconnected(const char* reason);

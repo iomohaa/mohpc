@@ -184,6 +184,9 @@ namespace MOHPC
 			ChatRed,
 			// Since SH
 			ChatGreen,
+			Max,
+			// not in HUD
+			Console,
 		};
 
 		struct EntityInfo;

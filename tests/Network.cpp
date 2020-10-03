@@ -165,6 +165,7 @@ public:
 		float forwardValue = 0.f;
 		float rightValue = 0.f;
 		float angle = 0.f;
+		bool shouldJump = false;
 
 		str mapfilename;
 
@@ -193,7 +194,7 @@ public:
 						MOHPC_LOG(Log, "Exception of type \"%s\": \"%s\"", typeid(exception).name(), exception.what().c_str());
 					});
 
-				connection->setCallback<ClientHandlers::GameStateParsed>([&cgame, &mapfilename](const Network::gameState_t& gameState, bool differentMap)
+				connection->setCallback<ClientHandlers::GameStateParsed>([&connection, &cgame, &mapfilename](const Network::gameState_t& gameState, bool differentMap)
 					{
 						const cgsInfo& cgs = cgame.getServerInfo();
 						const str& loadedMap = cgs.getMapFilenameStr();
@@ -266,7 +267,7 @@ public:
 
 				cgame.setCallback<CGameHandlers::Print>([&logPtr](hudMessage_e hudMessage, const char* text)
 					{
-						//MOHPC_LOG(VeryVerbose, "server print: \"%s\"", text);
+						MOHPC_LOG(VeryVerbose, "server print (%d): \"%s\"", hudMessage, text);
 					});
 
 				cgame.setCallback<CGameHandlers::HudDraw_Shader>([&logPtr](uint8_t index, const char* shaderName)
@@ -285,13 +286,18 @@ public:
 						MOHPC_LOG(VeryVerbose, "Server connection timed out");
 					});
 
-				connection->setCallback<ClientHandlers::UserInput>([&forwardValue, &rightValue, &angle, &cgame, &cm](usercmd_t& ucmd, usereyes_t& eyeinfo)
+				connection->setCallback<ClientHandlers::UserInput>([&forwardValue, &rightValue, &angle, &shouldJump, &cgame, &cm](usercmd_t& ucmd, usereyes_t& eyeinfo)
 				{
 					eyeinfo.setAngles(30.f, angle);
 					ucmd.buttons.fields.button.run = true;
 					ucmd.moveForward((int8_t)(forwardValue * 127.f));
 					ucmd.moveRight((int8_t)(rightValue * 127.f));
 					ucmd.setAngles(30.f, angle, 0.f);
+					if (shouldJump)
+					{
+						ucmd.jump();
+						shouldJump = false;
+					}
 
 					//Vector start(684.04f, -332.63f, -145.f);
 					//Vector end(241.34f, -328.43f, -145.f);
@@ -325,6 +331,7 @@ public:
 				const char c = _getch();
 				if (c == '\n' || c == '\r')
 				{
+					printf("\n");
 					count = 0;
 
 					TokenParser parser;
@@ -354,6 +361,9 @@ public:
 					}
 					else if (!strcmp(cmd, "turnright")) {
 						angle -= 20.f;
+					}
+					else if (!strcmp(cmd, "jump")) {
+						shouldJump = true;
 					}
 					else if (!strcmp(cmd, "testuinfo"))
 					{

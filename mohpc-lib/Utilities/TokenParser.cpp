@@ -854,7 +854,7 @@ const char* TokenParser::GetString(bool crossline, bool escape)
 			{
 				//glbs.Error( ERR_DROP, "End of token file reached prematurely while reading string on\n"
 				//	"line %d in file %s\n", startline, filename.c_str() );
-				return "";
+				return token.c_str();
 			}
 		}
 	}
@@ -868,7 +868,7 @@ const char* TokenParser::GetString(bool crossline, bool escape)
 			{
 				//glbs.Error( ERR_DROP, "End of token file reached prematurely while reading string on\n"
 				//	"line %d in file %s\n", startline, filename.c_str() );
-				return "";
+				return token.c_str();
 			}
 		}
 	}

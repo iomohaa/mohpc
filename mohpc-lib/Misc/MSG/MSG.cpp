@@ -75,6 +75,11 @@ MOHPC::MSG::MSG(IMessageStream& stream, msgMode_e inMode) noexcept
 	, bit(0)
 	, bitData{ 0 }
 {
+	if(mode == msgMode_e::Reading)
+	{
+		// Make sure it's readable
+		Reset();
+	}
 }
 
 MOHPC::MSG::~MSG()
