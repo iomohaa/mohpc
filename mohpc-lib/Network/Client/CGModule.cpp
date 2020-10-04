@@ -95,7 +95,6 @@ EntityInfo::EntityInfo()
 	: currentValid(false)
 	, interpolate(false)
 	, teleported(false)
-	, notified(false)
 	, snapshotTime(0)
 {
 }
@@ -138,6 +137,7 @@ CGameModuleBase::CGameModuleBase(const CGameImports& inImports)
 	, thisFrameTeleport(false)
 	, validPPS(false)
 	, forceDisablePrediction(false)
+	, snapNotified(false)
 	, processedSnapshotNum(0)
 	, latestSnapshotNum(0)
 	, latestCommandSequence(0)
@@ -355,7 +355,6 @@ void CGameModuleBase::setNextSnap(SnapshotInfo* newSnap)
 			)
 		{
 			entInfo.interpolate = false;
-			entInfo.notified = false;
 			if (entInfo.currentValid) {
 				entInfo.teleported = true;
 			}
@@ -413,8 +412,10 @@ void CGameModuleBase::setInitialSnapshot(SnapshotInfo* newSnap)
 		entInfo.currentState = state;
 		entInfo.interpolate = false;
 		entInfo.currentValid = true;
-		entInfo.notified = false;
 	}
+
+	// new snapshot
+	snapNotified = false;
 }
 
 void CGameModuleBase::transitionSnapshot(bool differentServer)
@@ -430,7 +431,6 @@ void CGameModuleBase::transitionSnapshot(bool differentServer)
 	{
 		EntityInfo& entInfo = clientEnts[snap->entities[i].number];
 		entInfo.currentValid = false;
-		entInfo.notified = false;
 	}
 
 	this->oldSnap = *this->snap;
@@ -452,6 +452,8 @@ void CGameModuleBase::transitionSnapshot(bool differentServer)
 	if (ps->pm_flags & PMF_RESPAWNED) {
 		thisFrameTeleport = true;
 	}
+
+	snapNotified = false;
 }
 
 void CGameModuleBase::transitionEntity(EntityInfo& entInfo)
@@ -464,50 +466,58 @@ void CGameModuleBase::transitionEntity(EntityInfo& entInfo)
 
 void CGameModuleBase::addPacketEntities()
 {
-	if(!(oldSnap.snapFlags & SNAPFLAG_NOT_ACTIVE))
+	const SnapshotInfo* from;
+	const SnapshotInfo* target;
+
+	/*
+	if (nextSnap)
 	{
-		// Check for new entities
-		for (size_t i = 0; i < snap->numEntities; ++i)
+		from = snap;
+		target = nextSnap;
+	}
+	else
+	{
+		from = &oldSnap;
+		target = snap;
+	}
+	*/
+
+	from = &oldSnap;
+	target = snap;
+
+	if(!snapNotified)
+	{
+		if(!(from->snapFlags & SNAPFLAG_NOT_ACTIVE))
 		{
-			const entityState_t& es1 = snap->entities[i];
-			EntityInfo& entInfo = clientEnts[es1.number];
-			bool bFound = false;
-
-			if (entInfo.notified) continue;
-
-			for (size_t j = 0; j < oldSnap.numEntities; ++j)
+			// Check for new entities
+			for (size_t i = 0; i < target->numEntities; ++i)
 			{
-				const entityState_t& es2 = oldSnap.entities[j];
-				if (es2.number == es1.number)
-				{
-					bFound = true;
-					break;
+				const entityState_t& es = target->entities[i];
+				EntityInfo& entInfo = clientEnts[es.number];
+
+				const entityState_t* foundEnt = from->getEntityStateByNumber(es.number);
+				if (!foundEnt) {
+					handlers().notify<CGameHandlers::EntityAdded>(entInfo);
 				}
 			}
+		}
+		else
+		{
+			// Check for new entities
+			for (size_t i = 0; i < target->numEntities; ++i)
+			{
+				EntityInfo& entInfo = clientEnts[target->entities[i].number];
 
-			if (!bFound) {
 				handlers().notify<CGameHandlers::EntityAdded>(entInfo);
 			}
 		}
 	}
-	else
+
+	bool processed[MAX_GENTITIES]{ false };
+
+	for (size_t i = 0; i < target->numEntities; ++i)
 	{
-		// Check for new entities
-		for (size_t i = 0; i < snap->numEntities; ++i)
-		{
-			EntityInfo& entInfo = clientEnts[snap->entities[i].number];
-
-			if (entInfo.notified) continue;
-
-			handlers().notify<CGameHandlers::EntityAdded>(entInfo);
-		}
-	}
-
-	bool processed[1024]{ false };
-
-	for (size_t i = 0; i < snap->numEntities; ++i)
-	{
-		uint32_t number = snap->entities[i].number;
+		uint32_t number = target->entities[i].number;
 		EntityInfo& entInfo = clientEnts[number];
 
 		uint32_t parentNum = entInfo.currentState.parent;
@@ -524,48 +534,26 @@ void CGameModuleBase::addPacketEntities()
 		}
 	}
 
-	if (!(oldSnap.snapFlags & SNAPFLAG_NOT_ACTIVE))
+	if (!snapNotified)
 	{
-		// Check for entities that are removed
-		for (size_t i = 0; i < oldSnap.numEntities; ++i)
+		if (!(from->snapFlags & SNAPFLAG_NOT_ACTIVE))
 		{
-			const entityState_t& es1 = oldSnap.entities[i];
-			EntityInfo& entInfo = clientEnts[es1.number];
-			bool bFound = false;
-
-			if (entInfo.notified) continue;
-
-			for (size_t j = 0; j < snap->numEntities; ++j)
+			// Check for entities that are removed
+			for (size_t i = 0; i < from->numEntities; ++i)
 			{
-				const entityState_t& es2 = snap->entities[j];
-				if (es2.number == es1.number)
-				{
-					bFound = true;
-					break;
-				}
-			}
+				const entityState_t& es = from->entities[i];
+				EntityInfo& entInfo = clientEnts[es.number];
 
-			if (!bFound) {
-				handlers().notify<CGameHandlers::EntityRemoved>(entInfo);
+				const entityState_t* foundEnt = target->getEntityStateByNumber(es.number);
+				if (!foundEnt) {
+					handlers().notify<CGameHandlers::EntityRemoved>(entInfo);
+				}
 			}
 		}
 	}
 
 	// Set notify to true to avoid sending the same notifications for each entity more than once
-	for (size_t i = 0; i < snap->numEntities; ++i)
-	{
-		EntityInfo& entInfo = clientEnts[snap->entities[i].number];
-		entInfo.notified = true;
-	}
-
-	if (!(oldSnap.snapFlags & SNAPFLAG_NOT_ACTIVE))
-	{
-		for (size_t i = 0; i < oldSnap.numEntities; ++i)
-		{
-			EntityInfo& entInfo = clientEnts[oldSnap.entities[i].number];
-			entInfo.notified = true;
-		}
-	}
+	snapNotified = true;
 }
 
 void CGameModuleBase::addEntity(EntityInfo& entInfo)

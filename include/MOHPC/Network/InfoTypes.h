@@ -946,7 +946,9 @@ static constexpr unsigned int RF_ALWAYSDRAW			= (1<<30);
 			/** Number of entities in this snap. */
 			MOHPC_EXPORTS size_t getNumEntities() const;
 			/** Entity at the specified index. */
-			MOHPC_EXPORTS const entityState_t& getEntityState(entityNum_t number) const;
+			MOHPC_EXPORTS const entityState_t& getEntityState(entityNum_t index) const;
+			/** Search for an entity by a global entity number. */
+			MOHPC_EXPORTS const entityState_t* getEntityStateByNumber(entityNum_t entityNum) const;
 
 			/** Number of server commands that was received in this snap. */
 			MOHPC_EXPORTS size_t getNumServerCommands();

@@ -194,7 +194,7 @@ public:
 						MOHPC_LOG(Log, "Exception of type \"%s\": \"%s\"", typeid(exception).name(), exception.what().c_str());
 					});
 
-				connection->setCallback<ClientHandlers::GameStateParsed>([&connection, &cgame, &mapfilename](const Network::gameState_t& gameState, bool differentMap)
+				connection->setCallback<ClientHandlers::GameStateParsed>([&connection, cgame, &mapfilename](const Network::gameState_t& gameState, bool differentMap)
 					{
 						const cgsInfo& cgs = cgame->getServerInfo();
 						const str& loadedMap = cgs.getMapFilenameStr();
@@ -208,13 +208,13 @@ public:
 				fnHandle_t cb = cgame->setCallback<CGameHandlers::EntityAdded>([&connection](const EntityInfo& entity)
 					{
 						const char* modelName = connection->getGameState().getConfigString(CS_MODELS + entity.currentState.modelindex);
-						//MOHPC_LOG(VeryVerbose, "new entity %d, model \"%s\"", entity.currentState.number, modelName);
+						MOHPC_LOG(VeryVerbose, "new entity %d, model \"%s\"", entity.currentState.number, modelName);
 					});
 
 				cgame->setCallback<CGameHandlers::EntityRemoved>([&connection](const EntityInfo& entity)
 					{
 						const char* modelName = connection->getGameState().getConfigString(CS_MODELS + entity.currentState.modelindex);
-						//MOHPC_LOG(VeryVerbose, "entity %d deleted (was model \"%s\")", entity.currentState.number, modelName);
+						MOHPC_LOG(VeryVerbose, "entity %d deleted (was model \"%s\")", entity.currentState.number, modelName);
 					});
 
 				cgame->setCallback<CGameHandlers::MakeBulletTracer>([&logPtr](const Vector& barrel, const Vector& start, const Vector& end, uint32_t numBullets, uint32_t iLarge, uint32_t numTracersVisible, float bulletSize)
@@ -286,7 +286,7 @@ public:
 						MOHPC_LOG(VeryVerbose, "Server connection timed out");
 					});
 
-				connection->setCallback<ClientHandlers::UserInput>([&forwardValue, &rightValue, &angle, &shouldJump, &cgame, &cm](usercmd_t& ucmd, usereyes_t& eyeinfo)
+				connection->setCallback<ClientHandlers::UserInput>([&forwardValue, &rightValue, &angle, &shouldJump, cgame, &cm](usercmd_t& ucmd, usereyes_t& eyeinfo)
 				{
 					eyeinfo.setAngles(30.f, angle);
 					ucmd.buttons.fields.button.run = true;

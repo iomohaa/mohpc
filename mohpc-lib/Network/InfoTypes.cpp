@@ -823,9 +823,24 @@ uint8_t SnapshotInfo::getAreaMask(uint8_t index) const
 	return areamask[index];
 }
 
-const entityState_t& SnapshotInfo::getEntityState(entityNum_t number) const
+const entityState_t& SnapshotInfo::getEntityState(entityNum_t index) const
 {
-	return entities[number];
+	return entities[index];
+}
+
+const entityState_t* MOHPC::Network::SnapshotInfo::getEntityStateByNumber(entityNum_t entityNum) const
+{
+	for (size_t i = 0; i < numEntities; ++i)
+	{
+		const entityState_t& es = entities[i];
+		if (es.number == entityNum)
+		{
+			// found the entity
+			return &es;
+		}
+	}
+
+	return nullptr;
 }
 
 const sound_t& SnapshotInfo::getSound(uint8_t index) const

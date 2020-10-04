@@ -444,7 +444,6 @@ namespace MOHPC
 			bool currentValid : 1;
 			bool interpolate : 1;
 			bool teleported : 1;
-			bool notified : 1;
 
 		public:
 			EntityInfo();
@@ -721,29 +720,6 @@ namespace MOHPC
 		class cgsInfo
 		{
 		public:
-			uint64_t matchStartTime;
-			uint64_t matchEndTme;
-			uint64_t levelStartTime;
-			uint64_t serverLagTime;
-			uint64_t voteTime;
-			gameType_e gameType;
-			uint32_t dmFlags;
-			uint32_t teamFlags;
-			uint32_t maxClients;
-			int32_t fragLimit;
-			int32_t timeLimit;
-			uint32_t numVotesYes;
-			uint32_t numVotesNo;
-			uint32_t numUndecidedVotes;
-			str mapName;
-			str mapFilename;
-			str alliedText[3];
-			str axisText[3];
-			str scoreboardPic;
-			str scoreboardPicOver;
-			str voteString;
-
-		public:
 			cgsInfo();
 
 			/** Return the server time at which the match has started. */
@@ -848,6 +824,29 @@ namespace MOHPC
 
 			/** Return the vote name/text. */
 			MOHPC_EXPORTS const char* getVoteString() const;
+
+		public:
+			uint64_t matchStartTime;
+			uint64_t matchEndTme;
+			uint64_t levelStartTime;
+			uint64_t serverLagTime;
+			uint64_t voteTime;
+			gameType_e gameType;
+			uint32_t dmFlags;
+			uint32_t teamFlags;
+			uint32_t maxClients;
+			int32_t fragLimit;
+			int32_t timeLimit;
+			uint32_t numVotesYes;
+			uint32_t numVotesNo;
+			uint32_t numUndecidedVotes;
+			str mapName;
+			str mapFilename;
+			str alliedText[3];
+			str axisText[3];
+			str scoreboardPic;
+			str scoreboardPicOver;
+			str voteString;
 		};
 
 		/**
@@ -914,45 +913,6 @@ namespace MOHPC
 				MOHPC_HANDLERLIST_HANDLER0_NODEF(CGameHandlers::ServerCommand_ServerLag, scmdServerLagHandler);
 				MOHPC_HANDLERLIST_HANDLER1(CGameHandlers::ServerCommand_Stufftext, scmdStufftextHandler, TokenParser&);
 			};
-
-		protected:
-			CGameImports imports;
-
-		private:
-			uint64_t svTime;
-			TraceFunction traceFunction;
-			PointContentsFunction pointContentsFunction;
-			uintptr_t processedSnapshotNum;
-			uintptr_t latestSnapshotNum;
-			uintptr_t latestCommandSequence;
-			size_t numSolidEntities;
-			size_t numTriggerEntities;
-			uint32_t physicsTime;
-			float frameInterpolation;
-			float cameraFov;
-			Vector predictedError;
-			Vector cameraAngles;
-			Vector cameraOrigin;
-			playerState_t predictedPlayerState;
-			HandlerListCGame handlerList;
-			CollisionWorld boxHull;
-			cgsInfo cgs;
-			environment_t environment;
-			rain_t rain;
-			objective_t objectives[MAX_OBJECTIVES];
-			clientInfo_t clientInfo[MAX_CLIENTS];
-			SnapshotInfo oldSnap;
-			SnapshotInfo* nextSnap;
-			SnapshotInfo* snap;
-			SnapshotInfo activeSnapshots[MAX_ACTIVE_SNAPSHOTS];
-			EntityInfo clientEnts[MAX_GENTITIES];
-			EntityInfo* solidEntities[MAX_ENTITIES_IN_SNAPSHOT];
-			EntityInfo* triggerEntities[MAX_ENTITIES_IN_SNAPSHOT];
-			bool nextFrameTeleport : 1;
-			bool thisFrameTeleport : 1;
-			bool validPPS : 1;
-			bool nextFrameCameraCut : 1;
-			bool forceDisablePrediction : 1;
 
 		public:
 			CGameModuleBase(const CGameImports& inImports);
@@ -1166,6 +1126,46 @@ namespace MOHPC
 			void SCmd_ServerLag(TokenParser& args);
 			void SCmd_Stufftext(TokenParser& args);
 			void SCmd_PrintDeathMsg(TokenParser& args);
+
+		protected:
+			CGameImports imports;
+
+		private:
+			uint64_t svTime;
+			TraceFunction traceFunction;
+			PointContentsFunction pointContentsFunction;
+			uintptr_t processedSnapshotNum;
+			uintptr_t latestSnapshotNum;
+			uintptr_t latestCommandSequence;
+			size_t numSolidEntities;
+			size_t numTriggerEntities;
+			uint32_t physicsTime;
+			float frameInterpolation;
+			float cameraFov;
+			Vector predictedError;
+			Vector cameraAngles;
+			Vector cameraOrigin;
+			playerState_t predictedPlayerState;
+			HandlerListCGame handlerList;
+			CollisionWorld boxHull;
+			cgsInfo cgs;
+			environment_t environment;
+			rain_t rain;
+			objective_t objectives[MAX_OBJECTIVES];
+			clientInfo_t clientInfo[MAX_CLIENTS];
+			SnapshotInfo oldSnap;
+			SnapshotInfo* nextSnap;
+			SnapshotInfo* snap;
+			SnapshotInfo activeSnapshots[MAX_ACTIVE_SNAPSHOTS];
+			EntityInfo clientEnts[MAX_GENTITIES];
+			EntityInfo* solidEntities[MAX_ENTITIES_IN_SNAPSHOT];
+			EntityInfo* triggerEntities[MAX_ENTITIES_IN_SNAPSHOT];
+			bool nextFrameTeleport : 1;
+			bool thisFrameTeleport : 1;
+			bool validPPS : 1;
+			bool nextFrameCameraCut : 1;
+			bool forceDisablePrediction : 1;
+			bool snapNotified : 1;
 		};
 
 		/**
