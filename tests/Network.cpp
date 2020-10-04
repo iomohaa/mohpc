@@ -181,7 +181,7 @@ public:
 		clientBase->connect(clientInfo, connectSettings, [&](const Network::ClientGameConnectionPtr& cg, const char* errorMessage)
 			{
 				connection = cg;
-				CGameModuleBase& cgame = connection->getCGModule();
+				CGameModuleBase* cgame = connection->getCGModule();
 
 				if (errorMessage)
 				{
@@ -196,7 +196,7 @@ public:
 
 				connection->setCallback<ClientHandlers::GameStateParsed>([&connection, &cgame, &mapfilename](const Network::gameState_t& gameState, bool differentMap)
 					{
-						const cgsInfo& cgs = cgame.getServerInfo();
+						const cgsInfo& cgs = cgame->getServerInfo();
 						const str& loadedMap = cgs.getMapFilenameStr();
 						if (differentMap)
 						{
@@ -205,72 +205,72 @@ public:
 						}
 					});
 
-				fnHandle_t cb = cgame.setCallback<CGameHandlers::EntityAdded>([&connection](const EntityInfo& entity)
+				fnHandle_t cb = cgame->setCallback<CGameHandlers::EntityAdded>([&connection](const EntityInfo& entity)
 					{
 						const char* modelName = connection->getGameState().getConfigString(CS_MODELS + entity.currentState.modelindex);
 						//MOHPC_LOG(VeryVerbose, "new entity %d, model \"%s\"", entity.currentState.number, modelName);
 					});
 
-				cgame.setCallback<CGameHandlers::EntityRemoved>([&connection](const EntityInfo& entity)
+				cgame->setCallback<CGameHandlers::EntityRemoved>([&connection](const EntityInfo& entity)
 					{
 						const char* modelName = connection->getGameState().getConfigString(CS_MODELS + entity.currentState.modelindex);
 						//MOHPC_LOG(VeryVerbose, "entity %d deleted (was model \"%s\")", entity.currentState.number, modelName);
 					});
 
-				cgame.setCallback<CGameHandlers::MakeBulletTracer>([&logPtr](const Vector& barrel, const Vector& start, const Vector& end, uint32_t numBullets, uint32_t iLarge, uint32_t numTracersVisible, float bulletSize)
+				cgame->setCallback<CGameHandlers::MakeBulletTracer>([&logPtr](const Vector& barrel, const Vector& start, const Vector& end, uint32_t numBullets, uint32_t iLarge, uint32_t numTracersVisible, float bulletSize)
 					{
 						static size_t num = 0;
 						//MOHPC_LOG(VeryVerbose, "bullet %zu", num++);
 					});
 
-				cgame.setCallback<CGameHandlers::Impact>([&logPtr](const Vector& origin, const Vector& normal, uint32_t large)
+				cgame->setCallback<CGameHandlers::Impact>([&logPtr](const Vector& origin, const Vector& normal, uint32_t large)
 					{
 						static size_t num = 0;
 						//MOHPC_LOG(VeryVerbose, "impact %zu", num++);
 					});
 
-				cgame.setCallback<CGameHandlers::MakeExplosionEffect>([&logPtr](const Vector& origin, effects_e type)
+				cgame->setCallback<CGameHandlers::MakeExplosionEffect>([&logPtr](const Vector& origin, effects_e type)
 					{
 						static size_t num = 0;
 						//MOHPC_LOG(VeryVerbose, "explosionfx %zu: type \"%s\"", num++, getEffectName(type));
 					});
 
-				cgame.setCallback<CGameHandlers::MakeEffect>([&logPtr](const Vector& origin, const Vector& normal, effects_e type)
+				cgame->setCallback<CGameHandlers::MakeEffect>([&logPtr](const Vector& origin, const Vector& normal, effects_e type)
 					{
 						static size_t num = 0;
 						//MOHPC_LOG(VeryVerbose, "effect %zu: type \"%s\"", num++, getEffectName(type));
 					});
 
-				cgame.setCallback<CGameHandlers::SpawnDebris>([&logPtr](CGameHandlers::debrisType_e debrisType, const Vector& origin, uint32_t numDebris)
+				cgame->setCallback<CGameHandlers::SpawnDebris>([&logPtr](CGameHandlers::debrisType_e debrisType, const Vector& origin, uint32_t numDebris)
 					{
 						static size_t num = 0;
 						//MOHPC_LOG(VeryVerbose, "debris %zu: type %d", num++, debrisType);
 					});
 
-				cgame.setCallback<CGameHandlers::HitNotify>([&logPtr]()
+				cgame->setCallback<CGameHandlers::HitNotify>([&logPtr]()
 					{
 						static size_t num = 0;
 						//MOHPC_LOG(VeryVerbose, "hit %zu", num++);
 					});
 
-				cgame.setCallback<CGameHandlers::KillNotify>([&logPtr]()
+				cgame->setCallback<CGameHandlers::KillNotify>([&logPtr]()
 					{
 						static size_t num = 0;
 						//MOHPC_LOG(VeryVerbose, "kill %zu", num++);
 					});
 
-				cgame.setCallback<CGameHandlers::VoiceMessage>([&logPtr](const Vector& origin, bool local, uint8_t clientNum, const char* soundName)
+				cgame->setCallback<CGameHandlers::VoiceMessage>([&logPtr](const Vector& origin, bool local, uint8_t clientNum, const char* soundName)
 					{
 						static size_t num = 0;
 						//MOHPC_LOG(VeryVerbose, "voice %d: sound \"%s\"", num++, soundName);
 					});
 
-				cgame.setCallback<CGameHandlers::Print>([&logPtr](hudMessage_e hudMessage, const char* text)
+				cgame->setCallback<CGameHandlers::Print>([&logPtr](hudMessage_e hudMessage, const char* text)
 					{
 						MOHPC_LOG(VeryVerbose, "server print (%d): \"%s\"", hudMessage, text);
 					});
 
-				cgame.setCallback<CGameHandlers::HudDraw_Shader>([&logPtr](uint8_t index, const char* shaderName)
+				cgame->setCallback<CGameHandlers::HudDraw_Shader>([&logPtr](uint8_t index, const char* shaderName)
 					{
 						MOHPC_LOG(Verbose, "huddraw_shader : %d \"%s\"", index, shaderName);
 					});
@@ -307,14 +307,14 @@ public:
 						Vector start(499.125000f + 16.f, -427.312500f, -151.875000f);
 						Vector end(499.125824f, -426.720612f, -151.875000f);
 
-						cgame.trace(*cm, tr, start, Vector(-15, -15, 0), Vector(15, 15, 96), end, 0, ContentFlags::MASK_PLAYERSOLID, true, true);
+						cgame->trace(*cm, tr, start, Vector(-15, -15, 0), Vector(15, 15, 96), end, 0, ContentFlags::MASK_PLAYERSOLID, true, true);
 					}
 
 					{
 						Vector start(499.133942f, -427.044525f, -151.875000f);
 						Vector end(499.125824f, -426.720612f, -151.875000f);
 
-						cgame.trace(*cm, tr, start, Vector(-15, -15, 0), Vector(15, 15, 96), end, 0, ContentFlags::MASK_PLAYERSOLID, true, true);
+						cgame->trace(*cm, tr, start, Vector(-15, -15, 0), Vector(15, 15, 96), end, 0, ContentFlags::MASK_PLAYERSOLID, true, true);
 					}
 				});
 

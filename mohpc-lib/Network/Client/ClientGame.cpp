@@ -283,7 +283,7 @@ void ClientGameConnection::tick(uint64_t deltaTime, uint64_t currentTime)
 	setCGameTime(currentTime);
 
 	if (isActive && cgameModule) {
-		getCGModule().tick(deltaTime, currentTime, serverTime);
+		cgameModule->tick(deltaTime, currentTime, serverTime);
 	}
 }
 
@@ -1641,9 +1641,9 @@ cs_t MOHPC::Network::ClientGameConnection::getNormalizedConfigstring(cs_t num)
 	return (this->*getNormalizedConfigstring_pf)(num);
 }
 
-MOHPC::Network::CGameModuleBase& Network::ClientGameConnection::getCGModule()
+MOHPC::Network::CGameModuleBase* Network::ClientGameConnection::getCGModule()
 {
-	return *cgameModule;
+	return cgameModule;
 }
 
 cs_t ClientGameConnection::getNormalizedConfigstring_ver6(cs_t num)

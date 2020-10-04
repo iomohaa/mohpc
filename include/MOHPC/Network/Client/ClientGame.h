@@ -558,7 +558,7 @@ namespace MOHPC
 			MOHPC_EXPORTS const gameState_t& getGameState() const;
 
 			/** Retrieve the CGame module. */
-			MOHPC_EXPORTS CGameModuleBase& getCGModule();
+			MOHPC_EXPORTS CGameModuleBase* getCGModule();
 
 			/** Retrieve the server system info such as the serverid, the timescale, cheats allowed, ... */
 			MOHPC_EXPORTS ReadOnlyInfo getServerSystemInfo() const;
