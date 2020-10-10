@@ -1250,6 +1250,11 @@ void ClientGameConnection::readDeltaEntity_ver15(MSG& msg, const entityState_t* 
 	msg.ReadDeltaClass(from ? &SerializableEntityState_ver15(*const_cast<entityState_t*>(from), newNum) : nullptr, &SerializableEntityState_ver15(*to, newNum));
 }
 
+const MOHPC::Network::netadr_t& ClientGameConnection::getRemoteAddress() const
+{
+	return adr;
+}
+
 const gameState_t& MOHPC::Network::ClientGameConnection::getGameState() const
 {
 	return gameState;

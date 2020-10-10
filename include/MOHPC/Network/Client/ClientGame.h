@@ -554,6 +554,9 @@ namespace MOHPC
 				handlerList.unset<T>(handle);
 			}
 
+			/** Return the IP address of the remote server. */
+			const netadr_t& getRemoteAddress() const;
+
 			/** Retrieve the current game state. */
 			MOHPC_EXPORTS const gameState_t& getGameState() const;
 
