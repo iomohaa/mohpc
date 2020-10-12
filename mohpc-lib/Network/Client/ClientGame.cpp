@@ -1609,7 +1609,8 @@ void MOHPC::Network::ClientGameConnection::firstSnapshot(uint64_t currentTime)
 	}
 
 	serverStartTime = currentSnap.serverTime;
-	serverTime = (uint32_t)(currentSnap.serverTime - currentTime);
+	//serverTime = (uint32_t)(currentSnap.serverTime - currentTime);
+	serverTime = serverStartTime + (currentTime - realTimeStart);
 	isActive = true;
 
 	// Notify about the snapshot

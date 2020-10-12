@@ -1017,7 +1017,7 @@ namespace MOHPC
 			 * @param	point			Location to get contents from.
 			 * @param	passEntityNum	Entity number to skip.
 			 */
-			MOHPC_EXPORTS uint32_t pointContents(CollisionWorld& cm, const Vector& point, uintptr_t passEntityNum);
+			MOHPC_EXPORTS uint32_t pointContents(CollisionWorld& cm, const Vector& point, uintptr_t passEntityNum) const;
 
 			/** Return server rain settings. */
 			MOHPC_EXPORTS const rain_t& getRain() const;
@@ -1165,7 +1165,6 @@ namespace MOHPC
 			bool validPPS : 1;
 			bool nextFrameCameraCut : 1;
 			bool forceDisablePrediction : 1;
-			bool snapNotified : 1;
 		};
 
 		/**

@@ -137,7 +137,6 @@ CGameModuleBase::CGameModuleBase(const CGameImports& inImports)
 	, thisFrameTeleport(false)
 	, validPPS(false)
 	, forceDisablePrediction(false)
-	, snapNotified(false)
 	, processedSnapshotNum(0)
 	, latestSnapshotNum(0)
 	, latestCommandSequence(0)
@@ -203,7 +202,8 @@ void CGameModuleBase::tick(uint64_t deltaTime, uint64_t currentTime, uint64_t se
 
 		predictPlayerState(deltaTime);
 		// Process entities
-		addPacketEntities();
+		// FIXME: Useless now as some code was moved to transitionSnapshot
+		//addPacketEntities();
 	}
 }
 
@@ -413,9 +413,6 @@ void CGameModuleBase::setInitialSnapshot(SnapshotInfo* newSnap)
 		entInfo.interpolate = false;
 		entInfo.currentValid = true;
 	}
-
-	// new snapshot
-	snapNotified = false;
 }
 
 void CGameModuleBase::transitionSnapshot(bool differentServer)
@@ -426,11 +423,61 @@ void CGameModuleBase::transitionSnapshot(bool differentServer)
 	// execute any server string commands before transitioning entities
 	executeNewServerCommands(nextSnap->serverCommandSequence, differentServer);
 
+	const SnapshotInfo* const from = snap;
+	const SnapshotInfo* const target = nextSnap;
+
+	if (!(from->snapFlags & SNAPFLAG_NOT_ACTIVE))
+	{
+		// Check for new entities
+		for (size_t i = 0; i < target->numEntities; ++i)
+		{
+			const entityState_t& es = target->entities[i];
+			EntityInfo& entInfo = clientEnts[es.number];
+
+			const entityState_t* foundEnt = from->getEntityStateByNumber(es.number);
+			if (!foundEnt) {
+				handlers().notify<CGameHandlers::EntityAdded>(entInfo);
+			}
+		}
+	}
+	else
+	{
+		// Check for new entities
+		for (size_t i = 0; i < target->numEntities; ++i)
+		{
+			EntityInfo& entInfo = clientEnts[target->entities[i].number];
+
+			handlers().notify<CGameHandlers::EntityAdded>(entInfo);
+		}
+	}
+
 	// clear the currentValid flag for all entities in the existing snapshot
 	for (uintptr_t i = 0; i < snap->numEntities; i++)
 	{
 		EntityInfo& entInfo = clientEnts[snap->entities[i].number];
+
+		if (memcmp(&entInfo.currentState, &entInfo.nextState, sizeof(entityState_t)))
+		{
+			// notify about modification
+			handlers().notify<CGameHandlers::EntityModified>(entInfo);
+		}
+
 		entInfo.currentValid = false;
+	}
+
+	if (!(from->snapFlags & SNAPFLAG_NOT_ACTIVE))
+	{
+		// Check for entities that are removed
+		for (size_t i = 0; i < from->numEntities; ++i)
+		{
+			const entityState_t& es = from->entities[i];
+			EntityInfo& entInfo = clientEnts[es.number];
+
+			const entityState_t* foundEnt = target->getEntityStateByNumber(es.number);
+			if (!foundEnt) {
+				handlers().notify<CGameHandlers::EntityRemoved>(entInfo);
+			}
+		}
 	}
 
 	this->oldSnap = *this->snap;
@@ -452,8 +499,6 @@ void CGameModuleBase::transitionSnapshot(bool differentServer)
 	if (ps->pm_flags & PMF_RESPAWNED) {
 		thisFrameTeleport = true;
 	}
-
-	snapNotified = false;
 }
 
 void CGameModuleBase::transitionEntity(EntityInfo& entInfo)
@@ -466,58 +511,11 @@ void CGameModuleBase::transitionEntity(EntityInfo& entInfo)
 
 void CGameModuleBase::addPacketEntities()
 {
-	const SnapshotInfo* from;
-	const SnapshotInfo* target;
-
-	/*
-	if (nextSnap)
-	{
-		from = snap;
-		target = nextSnap;
-	}
-	else
-	{
-		from = &oldSnap;
-		target = snap;
-	}
-	*/
-
-	from = &oldSnap;
-	target = snap;
-
-	if(!snapNotified)
-	{
-		if(!(from->snapFlags & SNAPFLAG_NOT_ACTIVE))
-		{
-			// Check for new entities
-			for (size_t i = 0; i < target->numEntities; ++i)
-			{
-				const entityState_t& es = target->entities[i];
-				EntityInfo& entInfo = clientEnts[es.number];
-
-				const entityState_t* foundEnt = from->getEntityStateByNumber(es.number);
-				if (!foundEnt) {
-					handlers().notify<CGameHandlers::EntityAdded>(entInfo);
-				}
-			}
-		}
-		else
-		{
-			// Check for new entities
-			for (size_t i = 0; i < target->numEntities; ++i)
-			{
-				EntityInfo& entInfo = clientEnts[target->entities[i].number];
-
-				handlers().notify<CGameHandlers::EntityAdded>(entInfo);
-			}
-		}
-	}
-
 	bool processed[MAX_GENTITIES]{ false };
 
-	for (size_t i = 0; i < target->numEntities; ++i)
+	for (size_t i = 0; i < snap->numEntities; ++i)
 	{
-		uint32_t number = target->entities[i].number;
+		uint32_t number = snap->entities[i].number;
 		EntityInfo& entInfo = clientEnts[number];
 
 		uint32_t parentNum = entInfo.currentState.parent;
@@ -533,36 +531,11 @@ void CGameModuleBase::addPacketEntities()
 			addEntity(entInfo);
 		}
 	}
-
-	if (!snapNotified)
-	{
-		if (!(from->snapFlags & SNAPFLAG_NOT_ACTIVE))
-		{
-			// Check for entities that are removed
-			for (size_t i = 0; i < from->numEntities; ++i)
-			{
-				const entityState_t& es = from->entities[i];
-				EntityInfo& entInfo = clientEnts[es.number];
-
-				const entityState_t* foundEnt = target->getEntityStateByNumber(es.number);
-				if (!foundEnt) {
-					handlers().notify<CGameHandlers::EntityRemoved>(entInfo);
-				}
-			}
-		}
-	}
-
-	// Set notify to true to avoid sending the same notifications for each entity more than once
-	snapNotified = true;
 }
 
 void CGameModuleBase::addEntity(EntityInfo& entInfo)
 {
-	if (memcmp(&entInfo.currentState, &entInfo.nextState, sizeof(entityState_t)))
-	{
-		handlers().notify<CGameHandlers::EntityModified>(entInfo);
-		return;
-	}
+	// FIXME: Useless?
 }
 
 void CGameModuleBase::predictPlayerState(uint64_t deltaTime)
@@ -914,7 +887,7 @@ void CGameModuleBase::trace(CollisionWorld& cm, trace_t& tr, const Vector& start
 	}
 }
 
-uint32_t Network::CGameModuleBase::pointContents(CollisionWorld& cm, const Vector& point, uintptr_t passEntityNum)
+uint32_t Network::CGameModuleBase::pointContents(CollisionWorld& cm, const Vector& point, uintptr_t passEntityNum) const
 {
 	// get the contents in world
 	uint32_t contents = cm.CM_PointContents(point, 0);
