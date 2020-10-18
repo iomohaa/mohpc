@@ -55,8 +55,8 @@ namespace MOHPC
 		friend Vector			operator/(const float a, const Vector &b);
 		friend float			operator/(const Vector &a, const Vector &b);
 		const Vector &			operator/=(const float a);
-		friend int				operator==(const Vector &a, const Vector &b);
-		friend int				operator!=(const Vector &a, const Vector &b);
+		friend bool				operator==(const Vector &a, const Vector &b);
+		friend bool				operator!=(const Vector &a, const Vector &b);
 		int						FuzzyEqual(const Vector &b, const float epsilon) const;
 		const Vector &			CrossProduct(const Vector &a, const Vector &b);
 		float					length(void) const;
@@ -270,13 +270,13 @@ namespace MOHPC
 	}
 
 
-	inline int operator==(const Vector &a, const Vector &b)
+	inline bool operator==(const Vector &a, const Vector &b)
 
 	{
 		return ((a.x == b.x) && (a.y == b.y) && (a.z == b.z));
 	}
 
-	inline int operator!=(const Vector &a, const Vector &b)
+	inline bool operator!=(const Vector &a, const Vector &b)
 	{
 		return ((a.x != b.x) || (a.y != b.y) || (a.z != b.z));
 	}
@@ -866,8 +866,8 @@ namespace MOHPC
 		friend Quat		operator*(const Quat &a, const float b);
 		friend Quat		operator*(const float a, const Quat &b);
 		const Quat &	operator*=(const float a);
-		friend int		operator==(const Quat &a, const Quat &b);
-		friend int		operator!=(const Quat &a, const Quat &b);
+		friend bool		operator==(const Quat &a, const Quat &b);
+		friend bool		operator!=(const Quat &a, const Quat &b);
 		float			length(void) const;
 		float			lengthSquared(void) const;
 		const Quat &	normalize(void);
@@ -970,12 +970,12 @@ namespace MOHPC
 		return *this;
 	}
 
-	inline int operator==(const Quat &a, const Quat &b)
+	inline bool operator==(const Quat &a, const Quat &b)
 	{
 		return ((a.x == b.x) && (a.y == b.y) && (a.z == b.z) && (a.w == b.w));
 	}
 
-	inline int operator!=(const Quat &a, const Quat &b)
+	inline bool operator!=(const Quat &a, const Quat &b)
 	{
 		return ((a.x != b.x) || (a.y != b.y) || (a.z != b.z) && (a.w != b.w));
 	}
