@@ -1,0 +1,124 @@
+<?xml version = "1.0" encoding = "utf-8"?>
+<AutoVisualizer xmlns = "http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+  <Type Name="MOHPC::Container&lt;*&gt;">
+    <DisplayString>{{ size = {numobjects} }}</DisplayString>
+    <Expand>
+      <Item Name="[size]">numobjects</Item>
+      <Item Name="[capacity]">maxobjects</Item>
+      <ArrayItems>
+        <Size>numobjects</Size>
+        <ValuePointer>objlist</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+
+  <Type Name="MOHPC::con_set&lt;*&gt;">
+    <DisplayString>{{ count = {count} }}</DisplayString>
+    <Expand>
+      <Item Name="[count]">count</Item>
+      <Item Name="[tableLength]">tableLength</Item>
+      <Item Name="[threshold]">threshold</Item>
+      <Synthetic Name="[table]">
+        <Expand>
+          <ArrayItems>
+            <Size>tableLength</Size>
+            <ValuePointer>table</ValuePointer>
+          </ArrayItems>
+        </Expand>
+      </Synthetic>
+    </Expand>
+  </Type>
+
+  <Type Name="MOHPC::Entry&lt;*&gt;">
+    <DisplayString>{{ key = {key}, value = {value} }}</DisplayString>
+    <Expand>
+      <Item Name="[key]">key</Item>
+      <Item Name="[value]">value</Item>
+      <Item Name="[next]">next</Item>
+      <Item Name="[index]">index</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="MOHPC::str">
+    <DisplayString Condition="m_data == 0">empty</DisplayString>
+    <DisplayString Condition="m_data != 0">{{ {m_data->data} }}</DisplayString>
+    <StringView Condition="m_data != 0">m_data->data</StringView>
+    <Expand>
+      <Item Name="[size]" Condition="m_data != 0">m_data->alloced</Item>
+      <Item Name="[size]" Condition="m_data == 0">0</Item>
+      <Item Name="[len]" Condition="m_data != 0">m_data->len</Item>
+      <Item Name="[len]" Condition="m_data == 0">0</Item>
+      <Item Name="[ref]" Condition="m_data != 0">m_data->refcount</Item>
+      <Item Name="[ref]" Condition="m_data == 0">0</Item>
+      <Item Name="[string]" Condition="m_data != 0">m_data->data</Item>
+      <Item Name="[string]" Condition="m_data == 0">0</Item>
+      <Synthetic Name="[data]" Condition="m_data != 0">
+        <Expand>
+          <ArrayItems>
+            <Size>m_data->alloced</Size>
+            <ValuePointer>m_data->data</ValuePointer>
+          </ArrayItems>
+        </Expand>
+      </Synthetic>
+    </Expand>
+  </Type>
+
+  <Type Name="MOHPC::FixedDataMessageStream">
+    <DisplayString>{{ position = {curPos} }}</DisplayString>
+    <Expand>
+      <Item Name="[length]">length</Item>
+      <Item Name="[capacity]">maxLength</Item>
+      <Item Name="[position]">curPos</Item>
+      <Synthetic Name="[storage]">
+        <Expand>
+          <ArrayItems>
+            <Size>length</Size>
+            <ValuePointer>storage</ValuePointer>
+          </ArrayItems>
+        </Expand>
+      </Synthetic>
+    </Expand>
+  </Type>
+
+  <Type Name="MOHPC::DynamicDataMessageStream">
+    <DisplayString>{{ position = {curPos} }}</DisplayString>
+    <Expand>
+      <Item Name="[length]">length</Item>
+      <Item Name="[capacity]">maxLength</Item>
+      <Item Name="[position]">curPos</Item>
+      <Synthetic Name="[storage]">
+        <Expand>
+          <ArrayItems>
+            <Size>length</Size>
+            <ValuePointer>storage</ValuePointer>
+          </ArrayItems>
+        </Expand>
+      </Synthetic>
+    </Expand>
+  </Type>
+
+  <Type Name="MOHPC::Network::gameState_t">
+    <DisplayString>{{ size = {dataCount} }}</DisplayString>
+    <Expand>
+      <Item Name="[size]">dataCount</Item>
+      <Item Name="[offsets]">stringOffsets</Item>
+      <Synthetic Name="[cs]">
+        <Expand>
+          <CustomListItems MaxItemsPerView="256">
+            <Variable Name="index" InitialValue="0"/>
+            <Variable Name="offset" InitialValue="0"/>
+
+            <Size>2736</Size>
+            <Loop>
+              <Exec>offset = stringOffsets[index++]</Exec>
+              <Item>
+                &amp;stringData[offset],s
+            </Item>
+            </Loop>
+          </CustomListItems>
+        </Expand>
+      </Synthetic>
+      <Item Name="[data]">stringData</Item>
+    </Expand>
+  </Type>
+</AutoVisualizer>

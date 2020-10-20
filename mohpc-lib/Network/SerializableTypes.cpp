@@ -4,6 +4,52 @@
 
 using namespace MOHPC;
 
+BadEntityNumberException::BadEntityNumberException(size_t inBadNumber)
+	: badNumber(inBadNumber)
+{}
+
+size_t BadEntityNumberException::getNumber() const
+{
+	return badNumber;
+}
+str BadEntityNumberException::what() const
+{
+	return str(badNumber);
+}
+
+BadEntityFieldException::BadEntityFieldException(uint8_t inFieldType, const char* inFieldName)
+	: fieldType(inFieldType)
+	, fieldName(inFieldName)
+{}
+
+uint8_t BadEntityFieldException::getFieldType() const
+{
+	return fieldType;
+}
+
+const char* BadEntityFieldException::getFieldName() const
+{
+	return fieldName;
+}
+
+str BadEntityFieldException::what() const
+{
+	return str::printf("%s: %d", getFieldName(), getFieldType());
+}
+
+BadEntityFieldCountException::BadEntityFieldCountException(uint8_t inCount)
+	: count(inCount)
+{}
+
+uint8_t BadEntityFieldCountException::getCount() const
+{
+	return count;
+}
+str BadEntityFieldCountException::what() const
+{
+	return str((int)getCount());
+}
+
 void MOHPC::SerializableUsercmd::LoadDelta(MSG& msg, const ISerializableMessage* from, intptr_t key)
 {
 	const usercmd_t* fromCmd = &((SerializableUsercmd*)from)->ucmd;
@@ -69,25 +115,40 @@ void MOHPC::SerializableUsercmd::SaveDelta(MSG& msg, const ISerializableMessage*
 	}
 }
 
-void MOHPC::SerializableUserEyes::SerializeDelta(MSG& msg, const ISerializableMessage* from)
+void SerializableUserEyes::LoadDelta(MSG& msg, const ISerializableMessage* from)
 {
-	const usereyes_t* fromEye = &((SerializableUserEyes*)from)->eyesInfo;
+	const usereyes_t& fromEye = ((SerializableUserEyes*)from)->eyesInfo;
 
-	bool hasChanges =
-		fromEye->angles[0] != eyesInfo.angles[0]
-		|| fromEye->angles[1] != eyesInfo.angles[1]
-		|| fromEye->ofs[0] != eyesInfo.ofs[0]
-		|| fromEye->ofs[1] != eyesInfo.ofs[1]
-		|| fromEye->ofs[2] != eyesInfo.ofs[2];
-
-	msg.SerializeBool(hasChanges);
+	const bool hasChanges = msg.ReadBool();
 	if (hasChanges)
 	{
-		msg.SerializeDeltaType(fromEye->ofs[0], eyesInfo.ofs[0]);
-		msg.SerializeDeltaType(fromEye->ofs[1], eyesInfo.ofs[1]);
-		msg.SerializeDeltaType(fromEye->ofs[2], eyesInfo.ofs[2]);
-		msg.SerializeDeltaType(fromEye->angles[0], eyesInfo.angles[0]);
-		msg.SerializeDeltaType(fromEye->angles[1], eyesInfo.angles[1]);
+		eyesInfo.ofs[0] = msg.ReadDeltaType(fromEye.ofs[0]);
+		eyesInfo.ofs[1] = msg.ReadDeltaType(fromEye.ofs[1]);
+		eyesInfo.ofs[2] = msg.ReadDeltaType(fromEye.ofs[2]);
+		eyesInfo.angles[0] = msg.ReadDeltaType(fromEye.angles[0]);
+		eyesInfo.angles[1] = msg.ReadDeltaType(fromEye.angles[1]);
+	}
+}
+
+void SerializableUserEyes::SaveDelta(MSG& msg, const ISerializableMessage* from)
+{
+	const usereyes_t& fromEye = ((SerializableUserEyes*)from)->eyesInfo;
+
+	const bool hasChanges =
+		fromEye.angles[0] != eyesInfo.angles[0]
+		|| fromEye.angles[1] != eyesInfo.angles[1]
+		|| fromEye.ofs[0] != eyesInfo.ofs[0]
+		|| fromEye.ofs[1] != eyesInfo.ofs[1]
+		|| fromEye.ofs[2] != eyesInfo.ofs[2];
+
+	msg.WriteBool(hasChanges);
+	if (hasChanges)
+	{
+		msg.WriteDeltaType(fromEye.ofs[0], eyesInfo.ofs[0]);
+		msg.WriteDeltaType(fromEye.ofs[1], eyesInfo.ofs[1]);
+		msg.WriteDeltaType(fromEye.ofs[2], eyesInfo.ofs[2]);
+		msg.WriteDeltaType(fromEye.angles[0], eyesInfo.angles[0]);
+		msg.WriteDeltaType(fromEye.angles[1], eyesInfo.angles[1]);
 	}
 }
 
@@ -95,438 +156,438 @@ void MOHPC::SerializableUserEyes::SerializeDelta(MSG& msg, const ISerializableMe
 static constexpr intptr_t FLOAT_INT_BITS = 13;
 static constexpr size_t FLOAT_INT_BIAS = (1 << (FLOAT_INT_BITS - 1));
 
-const netField_t playerStateFields[] =
+const netField_template_t<fieldType_ver6_e> playerStateFields[] =
 {
-{ PSF(commandTime), 32, 0 },
-{ PSF(origin[0]), 0, 6 },
-{ PSF(origin[1]), 0, 6 },
-{ PSF(viewangles[1]), 0, 0 },
-{ PSF(velocity[1]), 0, 7 },
-{ PSF(velocity[0]), 0, 7 },
-{ PSF(viewangles[0]), 0, 0 },
-{ PSF(pm_time), -16, 0 },
-{ PSF(origin[2]), 0, 6 },
-{ PSF(velocity[2]), 0, 7 },
-{ PSF(iViewModelAnimChanged), 2, 0 },
-{ PSF(damage_angles[0]), -13, 1 },
-{ PSF(damage_angles[1]), -13, 1 },
-{ PSF(damage_angles[2]), -13, 1 },
-{ PSF(speed), 16, 0 },
-{ PSF(delta_angles[1]), 16, 0 },
-{ PSF(viewheight), -8, 0 },
-{ PSF(groundEntityNum), GENTITYNUM_BITS, 0 },
-{ PSF(delta_angles[0]), 16, 0 },
-{ PSF(iViewModelAnim), 4, 0 },
-{ PSF(fov), 0, 0 },
-{ PSF(current_music_mood), 8, 0 },
-{ PSF(gravity), 16, 0 },
-{ PSF(fallback_music_mood), 8, 0 },
-{ PSF(music_volume), 0, 0 },
-{ PSF(pm_flags), 16, 0 },
-{ PSF(clientNum), 8, 0 },
-{ PSF(fLeanAngle), 0, 0 },
-{ PSF(blend[3]), 0, 0 },
-{ PSF(blend[0]), 0, 0 },
-{ PSF(pm_type), 8, 0 },
-{ PSF(feetfalling), 8, 0 },
-{ PSF(camera_angles[0]), 16, 1 },
-{ PSF(camera_angles[1]), 16, 1 },
-{ PSF(camera_angles[2]), 16, 1 },
-{ PSF(camera_origin[0]), 0, 6 },
-{ PSF(camera_origin[1]), 0, 6 },
-{ PSF(camera_origin[2]), 0, 6 },
-{ PSF(camera_posofs[0]), 0, 6 },
-{ PSF(camera_posofs[2]), 0, 6 },
-{ PSF(camera_time), 0, 0 },
-{ PSF(bobCycle), 8, 0 },
-{ PSF(delta_angles[2]), 16, 0 },
-{ PSF(viewangles[2]), 0, 0 },
-{ PSF(music_volume_fade_time), 0, 0 },
-{ PSF(reverb_type), 6, 0 },
-{ PSF(reverb_level), 0, 0 },
-{ PSF(blend[1]), 0, 0 },
-{ PSF(blend[2]), 0, 0 },
-{ PSF(camera_offset[0]), 0, 0 },
-{ PSF(camera_offset[1]), 0, 0 },
-{ PSF(camera_offset[2]), 0, 0 },
-{ PSF(camera_posofs[1]), 0, 6 },
-{ PSF(camera_flags), 16, 0 }
+{ PSF(commandTime), 32, fieldType_ver6_e::number },
+{ PSF(origin[0]), 0, fieldType_ver6_e::largeCoord },
+{ PSF(origin[1]), 0, fieldType_ver6_e::largeCoord },
+{ PSF(viewangles[1]), 0, fieldType_ver6_e::number },
+{ PSF(velocity[1]), 0, fieldType_ver6_e::smallCoord },
+{ PSF(velocity[0]), 0, fieldType_ver6_e::smallCoord },
+{ PSF(viewangles[0]), 0, fieldType_ver6_e::number },
+{ PSF(pm_time), -16, fieldType_ver6_e::number },
+{ PSF(origin[2]), 0, fieldType_ver6_e::largeCoord },
+{ PSF(velocity[2]), 0, fieldType_ver6_e::smallCoord },
+{ PSF(iViewModelAnimChanged), 2, fieldType_ver6_e::number },
+{ PSF(damage_angles[0]), -13, fieldType_ver6_e::angle },
+{ PSF(damage_angles[1]), -13, fieldType_ver6_e::angle },
+{ PSF(damage_angles[2]), -13, fieldType_ver6_e::angle },
+{ PSF(speed), 16, fieldType_ver6_e::number },
+{ PSF(delta_angles[1]), 16, fieldType_ver6_e::number },
+{ PSF(viewheight), -8, fieldType_ver6_e::number },
+{ PSF(groundEntityNum), GENTITYNUM_BITS, fieldType_ver6_e::number },
+{ PSF(delta_angles[0]), 16, fieldType_ver6_e::number },
+{ PSF(iViewModelAnim), 4, fieldType_ver6_e::number },
+{ PSF(fov), 0, fieldType_ver6_e::number },
+{ PSF(current_music_mood), 8, fieldType_ver6_e::number },
+{ PSF(gravity), 16, fieldType_ver6_e::number },
+{ PSF(fallback_music_mood), 8, fieldType_ver6_e::number },
+{ PSF(music_volume), 0, fieldType_ver6_e::number },
+{ PSF(pm_flags), 16, fieldType_ver6_e::number },
+{ PSF(clientNum), 8, fieldType_ver6_e::number },
+{ PSF(fLeanAngle), 0, fieldType_ver6_e::number },
+{ PSF(blend[3]), 0, fieldType_ver6_e::number },
+{ PSF(blend[0]), 0, fieldType_ver6_e::number },
+{ PSF(pm_type), 8, fieldType_ver6_e::number },
+{ PSF(feetfalling), 8, fieldType_ver6_e::number },
+{ PSF(camera_angles[0]), 16, fieldType_ver6_e::angle },
+{ PSF(camera_angles[1]), 16, fieldType_ver6_e::angle },
+{ PSF(camera_angles[2]), 16, fieldType_ver6_e::angle },
+{ PSF(camera_origin[0]), 0, fieldType_ver6_e::largeCoord },
+{ PSF(camera_origin[1]), 0, fieldType_ver6_e::largeCoord },
+{ PSF(camera_origin[2]), 0, fieldType_ver6_e::largeCoord },
+{ PSF(camera_posofs[0]), 0, fieldType_ver6_e::largeCoord },
+{ PSF(camera_posofs[2]), 0, fieldType_ver6_e::largeCoord },
+{ PSF(camera_time), 0, fieldType_ver6_e::number },
+{ PSF(bobCycle), 8, fieldType_ver6_e::number },
+{ PSF(delta_angles[2]), 16, fieldType_ver6_e::number },
+{ PSF(viewangles[2]), 0, fieldType_ver6_e::number },
+{ PSF(music_volume_fade_time), 0, fieldType_ver6_e::number },
+{ PSF(reverb_type), 6, fieldType_ver6_e::number },
+{ PSF(reverb_level), 0, fieldType_ver6_e::number },
+{ PSF(blend[1]), 0, fieldType_ver6_e::number },
+{ PSF(blend[2]), 0, fieldType_ver6_e::number },
+{ PSF(camera_offset[0]), 0, fieldType_ver6_e::number },
+{ PSF(camera_offset[1]), 0, fieldType_ver6_e::number },
+{ PSF(camera_offset[2]), 0, fieldType_ver6_e::number },
+{ PSF(camera_posofs[1]), 0, fieldType_ver6_e::largeCoord },
+{ PSF(camera_flags), 16, fieldType_ver6_e::number }
 };
 
-static_assert(sizeof(playerStateFields) == sizeof(netField_t) * 54);
+static_assert(sizeof(playerStateFields) == sizeof(netField_template_t<fieldType_ver6_e>) * 54);
 
-const netField_t playerStateFields_ver17[] =
+const netField_template_t<fieldType_ver15_e> playerStateFields_ver15[] =
 {
-{ PSF(commandTime), 32, 0 },
-{ PSF(origin[0]), 0, 7 },
-{ PSF(origin[1]), 0, 7 },
-{ PSF(viewangles[1]), 0, 0 },
-{ PSF(velocity[1]), 0, 8 },
-{ PSF(velocity[0]), 0, 8 },
-{ PSF(viewangles[0]), 0, 0 },
-{ PSF(origin[2]), 0, 7 },
-{ PSF(velocity[2]), 0, 8 },
-{ PSF(iViewModelAnimChanged), 2, 0 },
-{ PSF(damage_angles[0]), -13, 1 },
-{ PSF(damage_angles[1]), -13, 1 },
-{ PSF(damage_angles[2]), -13, 1 },
-{ PSF(speed), 16, 0 },
-{ PSF(delta_angles[1]), 16, 0 },
-{ PSF(viewheight), -8, 0 },
-{ PSF(groundEntityNum), GENTITYNUM_BITS, 0 },
-{ PSF(delta_angles[0]), 16, 0 },
-{ PSF(iViewModelAnim), 4, 0 },
-{ PSF(fov), 0, 0 },
-{ PSF(current_music_mood), 8, 0 },
-{ PSF(gravity), 16, 0 },
-{ PSF(fallback_music_mood), 8, 0 },
-{ PSF(music_volume), 0, 0 },
-{ PSF(pm_flags), 16, 0 },
-{ PSF(clientNum), 8, 0 },
-{ PSF(fLeanAngle), 0, 0 },
-{ PSF(blend[3]), 0, 0 },
-{ PSF(blend[0]), 0, 0 },
-{ PSF(pm_type), 8, 0 },
-{ PSF(feetfalling), 8, 0 },
-{ PSF(radarInfo), 26, 0 },
-{ PSF(camera_angles[0]), 16, 1 },
-{ PSF(camera_angles[1]), 16, 1 },
-{ PSF(camera_angles[2]), 16, 1 },
-{ PSF(camera_origin[0]), 0, 7 },
-{ PSF(camera_origin[1]), 0, 7 },
-{ PSF(camera_origin[2]), 0, 7 },
-{ PSF(camera_posofs[0]), 0, 7 },
-{ PSF(camera_posofs[2]), 0, 7 },
-{ PSF(camera_time), 0, 0 },
-{ PSF(bVoted), 1, 0 },
-{ PSF(bobCycle), 8, 0 },
-{ PSF(delta_angles[2]), 16, 0 },
-{ PSF(viewangles[2]), 0, 0 },
-{ PSF(music_volume_fade_time), 0, 0 },
-{ PSF(reverb_type), 6, 0 },
-{ PSF(reverb_level), 0, 0 },
-{ PSF(blend[1]), 0, 0 },
-{ PSF(blend[2]), 0, 0 },
-{ PSF(camera_offset[0]), 0, 0 },
-{ PSF(camera_offset[1]), 0, 0 },
-{ PSF(camera_offset[2]), 0, 0 },
-{ PSF(camera_posofs[1]), 0, 7 },
-{ PSF(camera_flags), 16, 0 }
+{ PSF(commandTime), 32, fieldType_ver15_e::number },
+{ PSF(origin[0]), 0, fieldType_ver15_e::largeCoord },
+{ PSF(origin[1]), 0, fieldType_ver15_e::largeCoord },
+{ PSF(viewangles[1]), 0, fieldType_ver15_e::number },
+{ PSF(velocity[1]), 0, fieldType_ver15_e::smallCoord },
+{ PSF(velocity[0]), 0, fieldType_ver15_e::smallCoord },
+{ PSF(viewangles[0]), 0, fieldType_ver15_e::number },
+{ PSF(origin[2]), 0, fieldType_ver15_e::largeCoord },
+{ PSF(velocity[2]), 0, fieldType_ver15_e::smallCoord },
+{ PSF(iViewModelAnimChanged), 2, fieldType_ver15_e::number },
+{ PSF(damage_angles[0]), -13, fieldType_ver15_e::angle },
+{ PSF(damage_angles[1]), -13, fieldType_ver15_e::angle },
+{ PSF(damage_angles[2]), -13, fieldType_ver15_e::angle },
+{ PSF(speed), 16, fieldType_ver15_e::number },
+{ PSF(delta_angles[1]), 16, fieldType_ver15_e::number },
+{ PSF(viewheight), -8, fieldType_ver15_e::number },
+{ PSF(groundEntityNum), GENTITYNUM_BITS, fieldType_ver15_e::number },
+{ PSF(delta_angles[0]), 16, fieldType_ver15_e::number },
+{ PSF(iViewModelAnim), 4, fieldType_ver15_e::number },
+{ PSF(fov), 0, fieldType_ver15_e::number },
+{ PSF(current_music_mood), 8, fieldType_ver15_e::number },
+{ PSF(gravity), 16, fieldType_ver15_e::number },
+{ PSF(fallback_music_mood), 8, fieldType_ver15_e::number },
+{ PSF(music_volume), 0, fieldType_ver15_e::number },
+{ PSF(pm_flags), 16, fieldType_ver15_e::number },
+{ PSF(clientNum), 8, fieldType_ver15_e::number },
+{ PSF(fLeanAngle), 0, fieldType_ver15_e::number },
+{ PSF(blend[3]), 0, fieldType_ver15_e::number },
+{ PSF(blend[0]), 0, fieldType_ver15_e::number },
+{ PSF(pm_type), 8, fieldType_ver15_e::number },
+{ PSF(feetfalling), 8, fieldType_ver15_e::number },
+{ PSF(radarInfo), 26, fieldType_ver15_e::number },
+{ PSF(camera_angles[0]), 16, fieldType_ver15_e::angle },
+{ PSF(camera_angles[1]), 16, fieldType_ver15_e::angle },
+{ PSF(camera_angles[2]), 16, fieldType_ver15_e::angle },
+{ PSF(camera_origin[0]), 0, fieldType_ver15_e::largeCoord },
+{ PSF(camera_origin[1]), 0, fieldType_ver15_e::largeCoord },
+{ PSF(camera_origin[2]), 0, fieldType_ver15_e::largeCoord },
+{ PSF(camera_posofs[0]), 0, fieldType_ver15_e::largeCoord },
+{ PSF(camera_posofs[2]), 0, fieldType_ver15_e::largeCoord },
+{ PSF(camera_time), 0, fieldType_ver15_e::number },
+{ PSF(bVoted), 1, fieldType_ver15_e::number },
+{ PSF(bobCycle), 8, fieldType_ver15_e::number },
+{ PSF(delta_angles[2]), 16, fieldType_ver15_e::number },
+{ PSF(viewangles[2]), 0, fieldType_ver15_e::number },
+{ PSF(music_volume_fade_time), 0, fieldType_ver15_e::number },
+{ PSF(reverb_type), 6, fieldType_ver15_e::number },
+{ PSF(reverb_level), 0, fieldType_ver15_e::number },
+{ PSF(blend[1]), 0, fieldType_ver15_e::number },
+{ PSF(blend[2]), 0, fieldType_ver15_e::number },
+{ PSF(camera_offset[0]), 0, fieldType_ver15_e::number },
+{ PSF(camera_offset[1]), 0, fieldType_ver15_e::number },
+{ PSF(camera_offset[2]), 0, fieldType_ver15_e::number },
+{ PSF(camera_posofs[1]), 0, fieldType_ver15_e::largeCoord },
+{ PSF(camera_flags), 16, fieldType_ver15_e::number }
 };
 
-static_assert(sizeof(playerStateFields_ver17) == sizeof(netField_t) * 55);
+static_assert(sizeof(playerStateFields_ver15) == sizeof(netField_template_t<fieldType_ver15_e>) * 55);
 
 #define	NETF(x) #x,(uint16_t)(size_t)&((entityState_t*)0)->x,sizeof(entityState_t::x)
 
-const netField_t entityStateFields[] =
+const netField_template_t<fieldType_ver6_e> entityStateFields[] =
 {
-{ NETF(netorigin[0]), 0, 6 },
-{ NETF(netorigin[1]), 0, 6 },
-{ NETF(netangles[1]), 12, 1 },
-{ NETF(frameInfo[0].time), 0, 2 },
-{ NETF(frameInfo[1].time), 0, 2 },
-{ NETF(bone_angles[0][0]), -13, 1 },
-{ NETF(bone_angles[3][0]), -13, 1 },
-{ NETF(bone_angles[1][0]), -13, 1 },
-{ NETF(bone_angles[2][0]), -13, 1 },
-{ NETF(netorigin[2]), 0, 6 },
-{ NETF(frameInfo[0].weight), 0, 3 },
-{ NETF(frameInfo[1].weight), 0, 3},
-{ NETF(frameInfo[2].time), 0, 2 },
-{ NETF(frameInfo[3].time), 0, 2 },
-{ NETF(frameInfo[0].index), 12, 0 },
-{ NETF(frameInfo[1].index), 12, 0 },
-{ NETF(actionWeight), 0, 3 },
-{ NETF(frameInfo[2].weight), 0, 3 },
-{ NETF(frameInfo[3].weight), 0, 3 },
-{ NETF(frameInfo[2].index), 12, 0 },
-{ NETF(frameInfo[3].index), 12, 0 },
-{ NETF(eType), 8, 0 },
-{ NETF(modelindex), 16, 0 },
-{ NETF(parent), 16, 0 },
-{ NETF(constantLight), 32, 0 },
-{ NETF(renderfx), 32, 0 },
-{ NETF(bone_tag[0]), -8, 0 },
-{ NETF(bone_tag[1]), -8, 0 },
-{ NETF(bone_tag[2]), -8, 0 },
-{ NETF(bone_tag[3]), -8, 0 },
-{ NETF(bone_tag[4]), -8, 0 },
-{ NETF(scale), 0, 4 },
-{ NETF(alpha), 0, 5 },
-{ NETF(usageIndex), 16, 0 },
-{ NETF(eFlags), 16, 0 },
-{ NETF(solid), 32, 0 },
-{ NETF(netangles[2]), 12, 1 },
-{ NETF(netangles[0]), 12, 1 },
-{ NETF(tag_num), 10, 0 },
-{ NETF(bone_angles[1][2]), -13, 1 },
-{ NETF(attach_use_angles), 1, 0 },
-{ NETF(origin2[1]), 0, 6 },
-{ NETF(origin2[0]), 0, 6 },
-{ NETF(origin2[2]), 0, 6 },
-{ NETF(bone_angles[0][2]), -13, 1 },
-{ NETF(bone_angles[2][2]), -13, 1 },
-{ NETF(bone_angles[3][2]), -13, 1 },
-{ NETF(surfaces[0]), 8, 0 },
-{ NETF(surfaces[1]), 8, 0 },
-{ NETF(surfaces[2]), 8, 0 },
-{ NETF(surfaces[3]), 8, 0 },
-{ NETF(bone_angles[0][1]), -13, 1 },
-{ NETF(surfaces[4]), 8, 0 },
-{ NETF(surfaces[5]), 8, 0 },
-{ NETF(pos.trTime), 32, 0 },
-//{ NETF(pos.trBase[0]), 0, 0 },
-//{ NETF(pos.trBase[1]), 0, 0 },
-{ NETF(pos.trDelta[0]), 0, 7 },
-{ NETF(pos.trDelta[1]), 0, 7 },
-//{ NETF(pos.trBase[2]), 0, 0 },
-//{ NETF(apos.trBase[1]), 0, 0 },
-{ NETF(pos.trDelta[2]), 0, 7 },
-//{ NETF(apos.trBase[0]), 0, 0 },
-{ NETF(loopSound), 16, 0 },
-{ NETF(loopSoundVolume), 0, 0 },
-{ NETF(loopSoundMinDist), 0, 0 },
-{ NETF(loopSoundMaxDist), 0, 0 },
-{ NETF(loopSoundPitch), 0, 0 },
-{ NETF(loopSoundFlags), 8, 0 },
-{ NETF(attach_offset[0]), 0, 0 },
-{ NETF(attach_offset[1]), 0, 0 },
-{ NETF(attach_offset[2]), 0, 0 },
-{ NETF(beam_entnum), 16, 0 },
-{ NETF(skinNum), 16, 0 },
-{ NETF(wasframe), 10, 0 },
-{ NETF(frameInfo[4].index), 12, 0 },
-{ NETF(frameInfo[5].index), 12, 0 },
-{ NETF(frameInfo[6].index), 12, 0 },
-{ NETF(frameInfo[7].index), 12, 0 },
-{ NETF(frameInfo[8].index), 12, 0 },
-{ NETF(frameInfo[9].index), 12, 0 },
-{ NETF(frameInfo[10].index), 12, 0 },
-{ NETF(frameInfo[11].index), 12, 0 },
-{ NETF(frameInfo[12].index), 12, 0 },
-{ NETF(frameInfo[13].index), 12, 0 },
-{ NETF(frameInfo[14].index), 12, 0 },
-{ NETF(frameInfo[15].index), 12, 0 },
-{ NETF(frameInfo[4].time), 0, 2 },
-{ NETF(frameInfo[5].time), 0, 2 },
-{ NETF(frameInfo[6].time), 0, 2 },
-{ NETF(frameInfo[7].time), 0, 2 },
-{ NETF(frameInfo[8].time), 0, 2 },
-{ NETF(frameInfo[9].time), 0, 2 },
-{ NETF(frameInfo[10].time), 0, 2 },
-{ NETF(frameInfo[11].time), 0, 2 },
-{ NETF(frameInfo[12].time), 0, 2 },
-{ NETF(frameInfo[13].time), 0, 2 },
-{ NETF(frameInfo[14].time), 0, 2 },
-{ NETF(frameInfo[15].time), 0, 2 },
-{ NETF(frameInfo[4].weight), 0, 3 },
-{ NETF(frameInfo[5].weight), 0, 3 },
-{ NETF(frameInfo[6].weight), 0, 3 },
-{ NETF(frameInfo[7].weight), 0, 3 },
-{ NETF(frameInfo[8].weight), 0, 3 },
-{ NETF(frameInfo[9].weight), 0, 3 },
-{ NETF(frameInfo[10].weight), 0, 3 },
-{ NETF(frameInfo[11].weight), 0, 3 },
-{ NETF(frameInfo[12].weight), 0, 3 },
-{ NETF(frameInfo[13].weight), 0, 3 },
-{ NETF(frameInfo[14].weight), 0, 3 },
-{ NETF(frameInfo[15].weight), 0, 3 },
-{ NETF(bone_angles[1][1]), -13, 1 },
-{ NETF(bone_angles[2][1]), -13, 1 },
-{ NETF(bone_angles[3][1]), -13, 1 },
-{ NETF(bone_angles[4][0]), -13, 1 },
-{ NETF(bone_angles[4][1]), -13, 1 },
-{ NETF(bone_angles[4][2]), -13, 1 },
-{ NETF(clientNum), 8, 0 },
-{ NETF(groundEntityNum), GENTITYNUM_BITS, 0 },
-{ NETF(shader_data[0]), 0, 0 },
-{ NETF(shader_data[1]), 0, 0 },
-{ NETF(shader_time), 0, 0 },
-{ NETF(eyeVector[0]), 0, 0 },
-{ NETF(eyeVector[1]), 0, 0 },
-{ NETF(eyeVector[2]), 0, 0 },
-{ NETF(surfaces[6]), 8, 0 },
-{ NETF(surfaces[7]), 8, 0 },
-{ NETF(surfaces[8]), 8, 0 },
-{ NETF(surfaces[9]), 8, 0 },
-{ NETF(surfaces[10]), 8, 0 },
-{ NETF(surfaces[11]), 8, 0 },
-{ NETF(surfaces[12]), 8, 0 },
-{ NETF(surfaces[13]), 8, 0 },
-{ NETF(surfaces[14]), 8, 0 },
-{ NETF(surfaces[15]), 8, 0 },
-{ NETF(surfaces[16]), 8, 0 },
-{ NETF(surfaces[17]), 8, 0 },
-{ NETF(surfaces[18]), 8, 0 },
-{ NETF(surfaces[19]), 8, 0 },
-{ NETF(surfaces[20]), 8, 0 },
-{ NETF(surfaces[21]), 8, 0 },
-{ NETF(surfaces[22]), 8, 0 },
-{ NETF(surfaces[23]), 8, 0 },
-{ NETF(surfaces[24]), 8, 0 },
-{ NETF(surfaces[25]), 8, 0 },
-{ NETF(surfaces[26]), 8, 0 },
-{ NETF(surfaces[27]), 8, 0 },
-{ NETF(surfaces[28]), 8, 0 },
-{ NETF(surfaces[29]), 8, 0 },
-{ NETF(surfaces[30]), 8, 0 },
-{ NETF(surfaces[31]), 8, 0 }
+{ NETF(netorigin[0]), 0, fieldType_ver6_e::largeCoord },
+{ NETF(netorigin[1]), 0, fieldType_ver6_e::largeCoord },
+{ NETF(netangles[1]), 12, fieldType_ver6_e::angle },
+{ NETF(frameInfo[0].time), 0, fieldType_ver6_e::animTime },
+{ NETF(frameInfo[1].time), 0, fieldType_ver6_e::animTime },
+{ NETF(bone_angles[0][0]), -13, fieldType_ver6_e::angle },
+{ NETF(bone_angles[3][0]), -13, fieldType_ver6_e::angle },
+{ NETF(bone_angles[1][0]), -13, fieldType_ver6_e::angle },
+{ NETF(bone_angles[2][0]), -13, fieldType_ver6_e::angle },
+{ NETF(netorigin[2]), 0, fieldType_ver6_e::largeCoord },
+{ NETF(frameInfo[0].weight), 0, fieldType_ver6_e::animWeight },
+{ NETF(frameInfo[1].weight), 0, fieldType_ver6_e::animWeight },
+{ NETF(frameInfo[2].time), 0, fieldType_ver6_e::animTime },
+{ NETF(frameInfo[3].time), 0, fieldType_ver6_e::animTime },
+{ NETF(frameInfo[0].index), 12, fieldType_ver6_e::number },
+{ NETF(frameInfo[1].index), 12, fieldType_ver6_e::number },
+{ NETF(actionWeight), 0, fieldType_ver6_e::animWeight },
+{ NETF(frameInfo[2].weight), 0, fieldType_ver6_e::animWeight },
+{ NETF(frameInfo[3].weight), 0, fieldType_ver6_e::animWeight },
+{ NETF(frameInfo[2].index), 12, fieldType_ver6_e::number },
+{ NETF(frameInfo[3].index), 12, fieldType_ver6_e::number },
+{ NETF(eType), 8, fieldType_ver6_e::number },
+{ NETF(modelindex), 16, fieldType_ver6_e::number },
+{ NETF(parent), 16, fieldType_ver6_e::number },
+{ NETF(constantLight), 32, fieldType_ver6_e::number },
+{ NETF(renderfx), 32, fieldType_ver6_e::number },
+{ NETF(bone_tag[0]), -8, fieldType_ver6_e::number },
+{ NETF(bone_tag[1]), -8, fieldType_ver6_e::number },
+{ NETF(bone_tag[2]), -8, fieldType_ver6_e::number },
+{ NETF(bone_tag[3]), -8, fieldType_ver6_e::number },
+{ NETF(bone_tag[4]), -8, fieldType_ver6_e::number },
+{ NETF(scale), 0, fieldType_ver6_e::scale },
+{ NETF(alpha), 0, fieldType_ver6_e::alpha },
+{ NETF(usageIndex), 16, fieldType_ver6_e::number },
+{ NETF(eFlags), 16, fieldType_ver6_e::number },
+{ NETF(solid), 32, fieldType_ver6_e::number },
+{ NETF(netangles[2]), 12, fieldType_ver6_e::angle },
+{ NETF(netangles[0]), 12, fieldType_ver6_e::angle },
+{ NETF(tag_num), 10, fieldType_ver6_e::number },
+{ NETF(bone_angles[1][2]), -13, fieldType_ver6_e::angle },
+{ NETF(attach_use_angles), 1, fieldType_ver6_e::number },
+{ NETF(origin2[1]), 0, fieldType_ver6_e::largeCoord },
+{ NETF(origin2[0]), 0, fieldType_ver6_e::largeCoord },
+{ NETF(origin2[2]), 0, fieldType_ver6_e::largeCoord },
+{ NETF(bone_angles[0][2]), -13, fieldType_ver6_e::angle },
+{ NETF(bone_angles[2][2]), -13, fieldType_ver6_e::angle },
+{ NETF(bone_angles[3][2]), -13, fieldType_ver6_e::angle },
+{ NETF(surfaces[0]), 8, fieldType_ver6_e::number },
+{ NETF(surfaces[1]), 8, fieldType_ver6_e::number },
+{ NETF(surfaces[2]), 8, fieldType_ver6_e::number },
+{ NETF(surfaces[3]), 8, fieldType_ver6_e::number },
+{ NETF(bone_angles[0][1]), -13, fieldType_ver6_e::angle },
+{ NETF(surfaces[4]), 8, fieldType_ver6_e::number },
+{ NETF(surfaces[5]), 8, fieldType_ver6_e::number },
+{ NETF(pos.trTime), 32, fieldType_ver6_e::number },
+//{ NETF(pos.trBase[0]), 0, fieldType_ver6_e::number },
+//{ NETF(pos.trBase[1]), 0, fieldType_ver6_e::number },
+{ NETF(pos.trDelta[0]), 0, fieldType_ver6_e::smallCoord },
+{ NETF(pos.trDelta[1]), 0, fieldType_ver6_e::smallCoord },
+//{ NETF(pos.trBase[2]), 0, fieldType_ver6_e::number },
+//{ NETF(apos.trBase[1]), 0, fieldType_ver6_e::number },
+{ NETF(pos.trDelta[2]), 0, fieldType_ver6_e::smallCoord },
+//{ NETF(apos.trBase[0]), 0, fieldType_ver6_e::number },
+{ NETF(loopSound), 16, fieldType_ver6_e::number },
+{ NETF(loopSoundVolume), 0, fieldType_ver6_e::number },
+{ NETF(loopSoundMinDist), 0, fieldType_ver6_e::number },
+{ NETF(loopSoundMaxDist), 0, fieldType_ver6_e::number },
+{ NETF(loopSoundPitch), 0, fieldType_ver6_e::number },
+{ NETF(loopSoundFlags), 8, fieldType_ver6_e::number },
+{ NETF(attach_offset[0]), 0, fieldType_ver6_e::number },
+{ NETF(attach_offset[1]), 0, fieldType_ver6_e::number },
+{ NETF(attach_offset[2]), 0, fieldType_ver6_e::number },
+{ NETF(beam_entnum), 16, fieldType_ver6_e::number },
+{ NETF(skinNum), 16, fieldType_ver6_e::number },
+{ NETF(wasframe), 10, fieldType_ver6_e::number },
+{ NETF(frameInfo[4].index), 12, fieldType_ver6_e::number },
+{ NETF(frameInfo[5].index), 12, fieldType_ver6_e::number },
+{ NETF(frameInfo[6].index), 12, fieldType_ver6_e::number },
+{ NETF(frameInfo[7].index), 12, fieldType_ver6_e::number },
+{ NETF(frameInfo[8].index), 12, fieldType_ver6_e::number },
+{ NETF(frameInfo[9].index), 12, fieldType_ver6_e::number },
+{ NETF(frameInfo[10].index), 12, fieldType_ver6_e::number },
+{ NETF(frameInfo[11].index), 12, fieldType_ver6_e::number },
+{ NETF(frameInfo[12].index), 12, fieldType_ver6_e::number },
+{ NETF(frameInfo[13].index), 12, fieldType_ver6_e::number },
+{ NETF(frameInfo[14].index), 12, fieldType_ver6_e::number },
+{ NETF(frameInfo[15].index), 12, fieldType_ver6_e::number },
+{ NETF(frameInfo[4].time), 0, fieldType_ver6_e::animTime },
+{ NETF(frameInfo[5].time), 0, fieldType_ver6_e::animTime },
+{ NETF(frameInfo[6].time), 0, fieldType_ver6_e::animTime },
+{ NETF(frameInfo[7].time), 0, fieldType_ver6_e::animTime },
+{ NETF(frameInfo[8].time), 0, fieldType_ver6_e::animTime },
+{ NETF(frameInfo[9].time), 0, fieldType_ver6_e::animTime },
+{ NETF(frameInfo[10].time), 0, fieldType_ver6_e::animTime },
+{ NETF(frameInfo[11].time), 0, fieldType_ver6_e::animTime },
+{ NETF(frameInfo[12].time), 0, fieldType_ver6_e::animTime },
+{ NETF(frameInfo[13].time), 0, fieldType_ver6_e::animTime },
+{ NETF(frameInfo[14].time), 0, fieldType_ver6_e::animTime },
+{ NETF(frameInfo[15].time), 0, fieldType_ver6_e::animTime },
+{ NETF(frameInfo[4].weight), 0, fieldType_ver6_e::animWeight },
+{ NETF(frameInfo[5].weight), 0, fieldType_ver6_e::animWeight },
+{ NETF(frameInfo[6].weight), 0, fieldType_ver6_e::animWeight },
+{ NETF(frameInfo[7].weight), 0, fieldType_ver6_e::animWeight },
+{ NETF(frameInfo[8].weight), 0, fieldType_ver6_e::animWeight },
+{ NETF(frameInfo[9].weight), 0, fieldType_ver6_e::animWeight },
+{ NETF(frameInfo[10].weight), 0, fieldType_ver6_e::animWeight },
+{ NETF(frameInfo[11].weight), 0, fieldType_ver6_e::animWeight },
+{ NETF(frameInfo[12].weight), 0, fieldType_ver6_e::animWeight },
+{ NETF(frameInfo[13].weight), 0, fieldType_ver6_e::animWeight },
+{ NETF(frameInfo[14].weight), 0, fieldType_ver6_e::animWeight },
+{ NETF(frameInfo[15].weight), 0, fieldType_ver6_e::animWeight },
+{ NETF(bone_angles[1][1]), -13, fieldType_ver6_e::angle },
+{ NETF(bone_angles[2][1]), -13, fieldType_ver6_e::angle },
+{ NETF(bone_angles[3][1]), -13, fieldType_ver6_e::angle },
+{ NETF(bone_angles[4][0]), -13, fieldType_ver6_e::angle },
+{ NETF(bone_angles[4][1]), -13, fieldType_ver6_e::angle },
+{ NETF(bone_angles[4][2]), -13, fieldType_ver6_e::angle },
+{ NETF(clientNum), 8, fieldType_ver6_e::number },
+{ NETF(groundEntityNum), GENTITYNUM_BITS, fieldType_ver6_e::number },
+{ NETF(shader_data[0]), 0, fieldType_ver6_e::number },
+{ NETF(shader_data[1]), 0, fieldType_ver6_e::number },
+{ NETF(shader_time), 0, fieldType_ver6_e::number },
+{ NETF(eyeVector[0]), 0, fieldType_ver6_e::number },
+{ NETF(eyeVector[1]), 0, fieldType_ver6_e::number },
+{ NETF(eyeVector[2]), 0, fieldType_ver6_e::number },
+{ NETF(surfaces[6]), 8, fieldType_ver6_e::number },
+{ NETF(surfaces[7]), 8, fieldType_ver6_e::number },
+{ NETF(surfaces[8]), 8, fieldType_ver6_e::number },
+{ NETF(surfaces[9]), 8, fieldType_ver6_e::number },
+{ NETF(surfaces[10]), 8, fieldType_ver6_e::number },
+{ NETF(surfaces[11]), 8, fieldType_ver6_e::number },
+{ NETF(surfaces[12]), 8, fieldType_ver6_e::number },
+{ NETF(surfaces[13]), 8, fieldType_ver6_e::number },
+{ NETF(surfaces[14]), 8, fieldType_ver6_e::number },
+{ NETF(surfaces[15]), 8, fieldType_ver6_e::number },
+{ NETF(surfaces[16]), 8, fieldType_ver6_e::number },
+{ NETF(surfaces[17]), 8, fieldType_ver6_e::number },
+{ NETF(surfaces[18]), 8, fieldType_ver6_e::number },
+{ NETF(surfaces[19]), 8, fieldType_ver6_e::number },
+{ NETF(surfaces[20]), 8, fieldType_ver6_e::number },
+{ NETF(surfaces[21]), 8, fieldType_ver6_e::number },
+{ NETF(surfaces[22]), 8, fieldType_ver6_e::number },
+{ NETF(surfaces[23]), 8, fieldType_ver6_e::number },
+{ NETF(surfaces[24]), 8, fieldType_ver6_e::number },
+{ NETF(surfaces[25]), 8, fieldType_ver6_e::number },
+{ NETF(surfaces[26]), 8, fieldType_ver6_e::number },
+{ NETF(surfaces[27]), 8, fieldType_ver6_e::number },
+{ NETF(surfaces[28]), 8, fieldType_ver6_e::number },
+{ NETF(surfaces[29]), 8, fieldType_ver6_e::number },
+{ NETF(surfaces[30]), 8, fieldType_ver6_e::number },
+{ NETF(surfaces[31]), 8, fieldType_ver6_e::number }
 };
 
 static_assert(sizeof(entityStateFields) == sizeof(netField_t) * 146);
 
 // Fields for SH & BT
-const netField_t entityStateFields_ver17[] =
+const netField_template_t<fieldType_ver15_e> entityStateFields_ver15[] =
 {
-{ NETF(netorigin[0]), 0, 6 },
-{ NETF(netorigin[1]), 0, 6 },
-{ NETF(netangles[1]), 12, 1 },
-{ NETF(frameInfo[0].time), 15, 2 },
-{ NETF(frameInfo[1].time), 15, 2 },
-{ NETF(bone_angles[0][0]), -13, 1 },
-{ NETF(bone_angles[3][0]), -13, 1 },
-{ NETF(bone_angles[1][0]), -13, 1 },
-{ NETF(bone_angles[2][0]), -13, 1 },
-{ NETF(netorigin[2]), 0, 6 },
-{ NETF(frameInfo[0].weight), 8, 3 },
-{ NETF(frameInfo[1].weight), 8, 3 },
-{ NETF(frameInfo[2].time), 15, 2 },
-{ NETF(frameInfo[3].time), 15, 2 },
-{ NETF(frameInfo[0].index), 12, 0 },
-{ NETF(frameInfo[1].index), 12, 0 },
-{ NETF(actionWeight), 8, 3 },
-{ NETF(frameInfo[2].weight), 8, 3 },
-{ NETF(frameInfo[3].weight), 8, 3 },
-{ NETF(frameInfo[2].index), 12, 0 },
-{ NETF(frameInfo[3].index), 12, 0 },
-{ NETF(eType), 8, 0 },
-{ NETF(modelindex), 16, 0 },
-{ NETF(parent), 16, 0 },
-{ NETF(constantLight), 32, 0 },
-{ NETF(renderfx), 32, 0 },
-{ NETF(bone_tag[0]), -8, 0 },
-{ NETF(bone_tag[1]), -8, 0 },
-{ NETF(bone_tag[2]), -8, 0 },
-{ NETF(bone_tag[3]), -8, 0 },
-{ NETF(bone_tag[4]), -8, 0 },
-{ NETF(scale), 10, 4 },
-{ NETF(alpha), 8, 5 },
-{ NETF(usageIndex), 16, 0 },
-{ NETF(eFlags), 16, 0 },
-{ NETF(solid), 32, 0 },
-{ NETF(netangles[2]), 12, 1 },
-{ NETF(netangles[0]), 12, 1 },
-{ NETF(tag_num), 10, 0 },
-{ NETF(bone_angles[1][2]), -13, 1 },
-{ NETF(attach_use_angles), 1, 0 },
-{ NETF(origin2[1]), 0, 6 },
-{ NETF(origin2[0]), 0, 6 },
-{ NETF(origin2[2]), 0, 6 },
-{ NETF(bone_angles[0][2]), -13, 1 },
-{ NETF(bone_angles[2][2]), -13, 1 },
-{ NETF(bone_angles[3][2]), -13, 1 },
-{ NETF(surfaces[0]), 8, 0 },
-{ NETF(surfaces[1]), 8, 0 },
-{ NETF(surfaces[2]), 8, 0 },
-{ NETF(surfaces[3]), 8, 0 },
-{ NETF(bone_angles[0][1]), -13, 1 },
-{ NETF(surfaces[4]), 8, 0 },
-{ NETF(surfaces[5]), 8, 0 },
-{ NETF(pos.trTime), 32, 0 },
-{ NETF(pos.trDelta[0]), 0, 8 },
-{ NETF(pos.trDelta[1]), 0, 8 },
-{ NETF(pos.trDelta[2]), 0, 8 },
-{ NETF(loopSound), 16, 0 },
-{ NETF(loopSoundVolume), 0, 0 },
-{ NETF(loopSoundMinDist), 0, 0 },
-{ NETF(loopSoundMaxDist), 0, 0 },
-{ NETF(loopSoundPitch), 0, 0 },
-{ NETF(loopSoundFlags), 8, 0 },
-{ NETF(attach_offset[0]), 0, 0 },
-{ NETF(attach_offset[1]), 0, 0 },
-{ NETF(attach_offset[2]), 0, 0 },
-{ NETF(beam_entnum), 16, 0 },
-{ NETF(skinNum), 16, 0 },
-{ NETF(wasframe), 10, 0 },
-{ NETF(frameInfo[4].index), 12, 0 },
-{ NETF(frameInfo[5].index), 12, 0 },
-{ NETF(frameInfo[6].index), 12, 0 },
-{ NETF(frameInfo[7].index), 12, 0 },
-{ NETF(frameInfo[8].index), 12, 0 },
-{ NETF(frameInfo[9].index), 12, 0 },
-{ NETF(frameInfo[10].index), 12, 0 },
-{ NETF(frameInfo[11].index), 12, 0 },
-{ NETF(frameInfo[12].index), 12, 0 },
-{ NETF(frameInfo[13].index), 12, 0 },
-{ NETF(frameInfo[14].index), 12, 0 },
-{ NETF(frameInfo[15].index), 12, 0 },
-{ NETF(frameInfo[4].time), 15, 2 },
-{ NETF(frameInfo[5].time), 15, 2 },
-{ NETF(frameInfo[6].time), 15, 2 },
-{ NETF(frameInfo[7].time), 15, 2 },
-{ NETF(frameInfo[8].time), 15, 2 },
-{ NETF(frameInfo[9].time), 15, 2 },
-{ NETF(frameInfo[10].time), 15, 2 },
-{ NETF(frameInfo[11].time), 15, 2 },
-{ NETF(frameInfo[12].time), 15, 2 },
-{ NETF(frameInfo[13].time), 15, 2 },
-{ NETF(frameInfo[14].time), 15, 2 },
-{ NETF(frameInfo[15].time), 15, 2 },
-{ NETF(frameInfo[4].weight), 8, 3 },
-{ NETF(frameInfo[5].weight), 8, 3 },
-{ NETF(frameInfo[6].weight), 8, 3 },
-{ NETF(frameInfo[7].weight), 8, 3 },
-{ NETF(frameInfo[8].weight), 8, 3 },
-{ NETF(frameInfo[9].weight), 8, 3 },
-{ NETF(frameInfo[10].weight), 8, 3 },
-{ NETF(frameInfo[11].weight), 8, 3 },
-{ NETF(frameInfo[12].weight), 8, 3 },
-{ NETF(frameInfo[13].weight), 8, 3 },
-{ NETF(frameInfo[14].weight), 8, 3 },
-{ NETF(frameInfo[15].weight), 8, 3 },
-{ NETF(bone_angles[1][1]), -13, 1 },
-{ NETF(bone_angles[2][1]), -13, 1 },
-{ NETF(bone_angles[3][1]), -13, 1 },
-{ NETF(bone_angles[4][0]), -13, 1 },
-{ NETF(bone_angles[4][1]), -13, 1 },
-{ NETF(bone_angles[4][2]), -13, 1 },
-{ NETF(clientNum), 8, 0 },
-{ NETF(groundEntityNum), GENTITYNUM_BITS, 0 },
-{ NETF(shader_data[0]), 0, 0 },
-{ NETF(shader_data[1]), 0, 0 },
-{ NETF(shader_time), 0, 0 },
-{ NETF(eyeVector[0]), 0, 0 },
-{ NETF(eyeVector[1]), 0, 0 },
-{ NETF(eyeVector[2]), 0, 0 },
-{ NETF(surfaces[6]), 8, 0 },
-{ NETF(surfaces[7]), 8, 0 },
-{ NETF(surfaces[8]), 8, 0 },
-{ NETF(surfaces[9]), 8, 0 },
-{ NETF(surfaces[10]), 8, 0 },
-{ NETF(surfaces[11]), 8, 0 },
-{ NETF(surfaces[12]), 8, 0 },
-{ NETF(surfaces[13]), 8, 0 },
-{ NETF(surfaces[14]), 8, 0 },
-{ NETF(surfaces[15]), 8, 0 },
-{ NETF(surfaces[16]), 8, 0 },
-{ NETF(surfaces[17]), 8, 0 },
-{ NETF(surfaces[18]), 8, 0 },
-{ NETF(surfaces[19]), 8, 0 },
-{ NETF(surfaces[20]), 8, 0 },
-{ NETF(surfaces[21]), 8, 0 },
-{ NETF(surfaces[22]), 8, 0 },
-{ NETF(surfaces[23]), 8, 0 },
-{ NETF(surfaces[24]), 8, 0 },
-{ NETF(surfaces[25]), 8, 0 },
-{ NETF(surfaces[26]), 8, 0 },
-{ NETF(surfaces[27]), 8, 0 },
-{ NETF(surfaces[28]), 8, 0 },
-{ NETF(surfaces[29]), 8, 0 },
-{ NETF(surfaces[30]), 8, 0 },
-{ NETF(surfaces[31]), 8, 0 }
+{ NETF(netorigin[0]), 0, fieldType_ver15_e::mediumCoord },
+{ NETF(netorigin[1]), 0, fieldType_ver15_e::mediumCoord },
+{ NETF(netangles[1]), 12, fieldType_ver15_e::angle },
+{ NETF(frameInfo[0].time), 15, fieldType_ver15_e::animTime },
+{ NETF(frameInfo[1].time), 15, fieldType_ver15_e::animTime },
+{ NETF(bone_angles[0][0]), -13, fieldType_ver15_e::angle },
+{ NETF(bone_angles[3][0]), -13, fieldType_ver15_e::angle },
+{ NETF(bone_angles[1][0]), -13, fieldType_ver15_e::angle },
+{ NETF(bone_angles[2][0]), -13, fieldType_ver15_e::angle },
+{ NETF(netorigin[2]), 0, fieldType_ver15_e::mediumCoord },
+{ NETF(frameInfo[0].weight), 8, fieldType_ver15_e::animWeight },
+{ NETF(frameInfo[1].weight), 8, fieldType_ver15_e::animWeight },
+{ NETF(frameInfo[2].time), 15, fieldType_ver15_e::animTime },
+{ NETF(frameInfo[3].time), 15, fieldType_ver15_e::animTime },
+{ NETF(frameInfo[0].index), 12, fieldType_ver15_e::number },
+{ NETF(frameInfo[1].index), 12, fieldType_ver15_e::number },
+{ NETF(actionWeight), 8, fieldType_ver15_e::animWeight },
+{ NETF(frameInfo[2].weight), 8, fieldType_ver15_e::animWeight },
+{ NETF(frameInfo[3].weight), 8, fieldType_ver15_e::animWeight },
+{ NETF(frameInfo[2].index), 12, fieldType_ver15_e::number },
+{ NETF(frameInfo[3].index), 12, fieldType_ver15_e::number },
+{ NETF(eType), 8, fieldType_ver15_e::number },
+{ NETF(modelindex), 16, fieldType_ver15_e::number },
+{ NETF(parent), 16, fieldType_ver15_e::number },
+{ NETF(constantLight), 32, fieldType_ver15_e::number },
+{ NETF(renderfx), 32, fieldType_ver15_e::number },
+{ NETF(bone_tag[0]), -8, fieldType_ver15_e::number },
+{ NETF(bone_tag[1]), -8, fieldType_ver15_e::number },
+{ NETF(bone_tag[2]), -8, fieldType_ver15_e::number },
+{ NETF(bone_tag[3]), -8, fieldType_ver15_e::number },
+{ NETF(bone_tag[4]), -8, fieldType_ver15_e::number },
+{ NETF(scale), 10, fieldType_ver15_e::scale },
+{ NETF(alpha), 8, fieldType_ver15_e::alpha },
+{ NETF(usageIndex), 16, fieldType_ver15_e::number },
+{ NETF(eFlags), 16, fieldType_ver15_e::number },
+{ NETF(solid), 32, fieldType_ver15_e::number },
+{ NETF(netangles[2]), 12, fieldType_ver15_e::angle },
+{ NETF(netangles[0]), 12, fieldType_ver15_e::angle },
+{ NETF(tag_num), 10, fieldType_ver15_e::number },
+{ NETF(bone_angles[1][2]), -13, fieldType_ver15_e::angle },
+{ NETF(attach_use_angles), 1, fieldType_ver15_e::number },
+{ NETF(origin2[1]), 0, fieldType_ver15_e::mediumCoord },
+{ NETF(origin2[0]), 0, fieldType_ver15_e::mediumCoord },
+{ NETF(origin2[2]), 0, fieldType_ver15_e::mediumCoord },
+{ NETF(bone_angles[0][2]), -13, fieldType_ver15_e::angle },
+{ NETF(bone_angles[2][2]), -13, fieldType_ver15_e::angle },
+{ NETF(bone_angles[3][2]), -13, fieldType_ver15_e::angle },
+{ NETF(surfaces[0]), 8, fieldType_ver15_e::number },
+{ NETF(surfaces[1]), 8, fieldType_ver15_e::number },
+{ NETF(surfaces[2]), 8, fieldType_ver15_e::number },
+{ NETF(surfaces[3]), 8, fieldType_ver15_e::number },
+{ NETF(bone_angles[0][1]), -13, fieldType_ver15_e::angle },
+{ NETF(surfaces[4]), 8, fieldType_ver15_e::number },
+{ NETF(surfaces[5]), 8, fieldType_ver15_e::number },
+{ NETF(pos.trTime), 32, fieldType_ver15_e::number },
+{ NETF(pos.trDelta[0]), 0, fieldType_ver15_e::smallCoord },
+{ NETF(pos.trDelta[1]), 0, fieldType_ver15_e::smallCoord },
+{ NETF(pos.trDelta[2]), 0, fieldType_ver15_e::smallCoord },
+{ NETF(loopSound), 16, fieldType_ver15_e::number },
+{ NETF(loopSoundVolume), 0, fieldType_ver15_e::number },
+{ NETF(loopSoundMinDist), 0, fieldType_ver15_e::number },
+{ NETF(loopSoundMaxDist), 0, fieldType_ver15_e::number },
+{ NETF(loopSoundPitch), 0, fieldType_ver15_e::number },
+{ NETF(loopSoundFlags), 8, fieldType_ver15_e::number },
+{ NETF(attach_offset[0]), 0, fieldType_ver15_e::number },
+{ NETF(attach_offset[1]), 0, fieldType_ver15_e::number },
+{ NETF(attach_offset[2]), 0, fieldType_ver15_e::number },
+{ NETF(beam_entnum), 16, fieldType_ver15_e::number },
+{ NETF(skinNum), 16, fieldType_ver15_e::number },
+{ NETF(wasframe), 10, fieldType_ver15_e::number },
+{ NETF(frameInfo[4].index), 12, fieldType_ver15_e::number },
+{ NETF(frameInfo[5].index), 12, fieldType_ver15_e::number },
+{ NETF(frameInfo[6].index), 12, fieldType_ver15_e::number },
+{ NETF(frameInfo[7].index), 12, fieldType_ver15_e::number },
+{ NETF(frameInfo[8].index), 12, fieldType_ver15_e::number },
+{ NETF(frameInfo[9].index), 12, fieldType_ver15_e::number },
+{ NETF(frameInfo[10].index), 12, fieldType_ver15_e::number },
+{ NETF(frameInfo[11].index), 12, fieldType_ver15_e::number },
+{ NETF(frameInfo[12].index), 12, fieldType_ver15_e::number },
+{ NETF(frameInfo[13].index), 12, fieldType_ver15_e::number },
+{ NETF(frameInfo[14].index), 12, fieldType_ver15_e::number },
+{ NETF(frameInfo[15].index), 12, fieldType_ver15_e::number },
+{ NETF(frameInfo[4].time), 15, fieldType_ver15_e::animTime },
+{ NETF(frameInfo[5].time), 15, fieldType_ver15_e::animTime },
+{ NETF(frameInfo[6].time), 15, fieldType_ver15_e::animTime },
+{ NETF(frameInfo[7].time), 15, fieldType_ver15_e::animTime },
+{ NETF(frameInfo[8].time), 15, fieldType_ver15_e::animTime },
+{ NETF(frameInfo[9].time), 15, fieldType_ver15_e::animTime },
+{ NETF(frameInfo[10].time), 15, fieldType_ver15_e::animTime },
+{ NETF(frameInfo[11].time), 15, fieldType_ver15_e::animTime },
+{ NETF(frameInfo[12].time), 15, fieldType_ver15_e::animTime },
+{ NETF(frameInfo[13].time), 15, fieldType_ver15_e::animTime },
+{ NETF(frameInfo[14].time), 15, fieldType_ver15_e::animTime },
+{ NETF(frameInfo[15].time), 15, fieldType_ver15_e::animTime },
+{ NETF(frameInfo[4].weight), 8, fieldType_ver15_e::animWeight },
+{ NETF(frameInfo[5].weight), 8, fieldType_ver15_e::animWeight },
+{ NETF(frameInfo[6].weight), 8, fieldType_ver15_e::animWeight },
+{ NETF(frameInfo[7].weight), 8, fieldType_ver15_e::animWeight },
+{ NETF(frameInfo[8].weight), 8, fieldType_ver15_e::animWeight },
+{ NETF(frameInfo[9].weight), 8, fieldType_ver15_e::animWeight },
+{ NETF(frameInfo[10].weight), 8, fieldType_ver15_e::animWeight },
+{ NETF(frameInfo[11].weight), 8, fieldType_ver15_e::animWeight },
+{ NETF(frameInfo[12].weight), 8, fieldType_ver15_e::animWeight },
+{ NETF(frameInfo[13].weight), 8, fieldType_ver15_e::animWeight },
+{ NETF(frameInfo[14].weight), 8, fieldType_ver15_e::animWeight },
+{ NETF(frameInfo[15].weight), 8, fieldType_ver15_e::animWeight },
+{ NETF(bone_angles[1][1]), -13, fieldType_ver15_e::angle },
+{ NETF(bone_angles[2][1]), -13, fieldType_ver15_e::angle },
+{ NETF(bone_angles[3][1]), -13, fieldType_ver15_e::angle },
+{ NETF(bone_angles[4][0]), -13, fieldType_ver15_e::angle },
+{ NETF(bone_angles[4][1]), -13, fieldType_ver15_e::angle },
+{ NETF(bone_angles[4][2]), -13, fieldType_ver15_e::angle },
+{ NETF(clientNum), 8, fieldType_ver15_e::number },
+{ NETF(groundEntityNum), GENTITYNUM_BITS, fieldType_ver15_e::number },
+{ NETF(shader_data[0]), 0, fieldType_ver15_e::number },
+{ NETF(shader_data[1]), 0, fieldType_ver15_e::number },
+{ NETF(shader_time), 0, fieldType_ver15_e::number },
+{ NETF(eyeVector[0]), 0, fieldType_ver15_e::number },
+{ NETF(eyeVector[1]), 0, fieldType_ver15_e::number },
+{ NETF(eyeVector[2]), 0, fieldType_ver15_e::number },
+{ NETF(surfaces[6]), 8, fieldType_ver15_e::number },
+{ NETF(surfaces[7]), 8, fieldType_ver15_e::number },
+{ NETF(surfaces[8]), 8, fieldType_ver15_e::number },
+{ NETF(surfaces[9]), 8, fieldType_ver15_e::number },
+{ NETF(surfaces[10]), 8, fieldType_ver15_e::number },
+{ NETF(surfaces[11]), 8, fieldType_ver15_e::number },
+{ NETF(surfaces[12]), 8, fieldType_ver15_e::number },
+{ NETF(surfaces[13]), 8, fieldType_ver15_e::number },
+{ NETF(surfaces[14]), 8, fieldType_ver15_e::number },
+{ NETF(surfaces[15]), 8, fieldType_ver15_e::number },
+{ NETF(surfaces[16]), 8, fieldType_ver15_e::number },
+{ NETF(surfaces[17]), 8, fieldType_ver15_e::number },
+{ NETF(surfaces[18]), 8, fieldType_ver15_e::number },
+{ NETF(surfaces[19]), 8, fieldType_ver15_e::number },
+{ NETF(surfaces[20]), 8, fieldType_ver15_e::number },
+{ NETF(surfaces[21]), 8, fieldType_ver15_e::number },
+{ NETF(surfaces[22]), 8, fieldType_ver15_e::number },
+{ NETF(surfaces[23]), 8, fieldType_ver15_e::number },
+{ NETF(surfaces[24]), 8, fieldType_ver15_e::number },
+{ NETF(surfaces[25]), 8, fieldType_ver15_e::number },
+{ NETF(surfaces[26]), 8, fieldType_ver15_e::number },
+{ NETF(surfaces[27]), 8, fieldType_ver15_e::number },
+{ NETF(surfaces[28]), 8, fieldType_ver15_e::number },
+{ NETF(surfaces[29]), 8, fieldType_ver15_e::number },
+{ NETF(surfaces[30]), 8, fieldType_ver15_e::number },
+{ NETF(surfaces[31]), 8, fieldType_ver15_e::number }
 };
 
-static_assert(sizeof(entityStateFields_ver17) == sizeof(netField_t) * 146);
+static_assert(sizeof(entityStateFields_ver15) == sizeof(netField_t) * 146);
 
 void MOHPC::SerializablePlayerState::SaveDelta(MSG& msg, const ISerializableMessage* from)
 {
@@ -567,16 +628,16 @@ void MOHPC::SerializablePlayerState::SaveDelta(MSG& msg, const ISerializableMess
 
 		switch (field->type)
 		{
-		case fieldType_e::number:
+		case fieldType_ver6_e::number:
 			EntityField::WriteNumberPlayerStateField(msg, field->bits, toF);
 			break;
-		case fieldType_e::angle:
+		case fieldType_ver6_e::angle:
 			EntityField::WriteAngleField(msg, field->bits, *(float*)toF);
 			break;
-		case fieldType_e::largeCoord:
+		case fieldType_ver6_e::largeCoord:
 			msgHelper.WriteCoord(*(float*)toF);
 			break;
-		case fieldType_e::smallCoord:
+		case fieldType_ver6_e::smallCoord:
 			msgHelper.WriteCoordSmall(*(float*)toF);
 			break;
 		default:
@@ -640,11 +701,11 @@ void MOHPC::SerializablePlayerState::SaveDelta(MSG& msg, const ISerializableMess
 	msg.WriteBool(hasStatsChanged);
 	if (hasStatsChanged)
 	{
-		msg.SerializeBits(&statsBits, playerState_t::MAX_STATS);
+		msg.WriteUInteger(statsBits);
 		for (i = 0; i < playerState_t::MAX_STATS; ++i)
 		{
 			if (statsBits & (1 << i)) {
-				msg.SerializeUShort(state.stats[i]);
+				msg.WriteUShort(state.stats[i]);
 			}
 		}
 	}
@@ -654,11 +715,11 @@ void MOHPC::SerializablePlayerState::SaveDelta(MSG& msg, const ISerializableMess
 	msg.WriteBool(hasActiveItemsChanged);
 	if (hasActiveItemsChanged)
 	{
-		msg.SerializeBits(&activeItemsBits, playerState_t::MAX_ACTIVEITEMS);
+		msg.WriteByte(activeItemsBits);
 		for (i = 0; i < playerState_t::MAX_ACTIVEITEMS; ++i)
 		{
 			if (activeItemsBits & (1 << i)) {
-				msg.SerializeUShort(state.activeItems[i]);
+				msg.WriteUShort(state.activeItems[i]);
 			}
 		}
 	}
@@ -668,11 +729,11 @@ void MOHPC::SerializablePlayerState::SaveDelta(MSG& msg, const ISerializableMess
 	msg.WriteBool(hasAmmoAmountChanges);
 	if (hasAmmoAmountChanges)
 	{
-		msg.SerializeBits(&ammoAmountBits, playerState_t::MAX_AMMO_AMOUNT);
+		msg.WriteUShort(ammoAmountBits);
 		for (i = 0; i < playerState_t::MAX_AMMO_AMOUNT; ++i)
 		{
 			if (ammoAmountBits & (1 << i)) {
-				msg.SerializeUShort(state.ammo_amount[i]);
+				msg.WriteUShort(state.ammo_amount[i]);
 			}
 		}
 	}
@@ -682,11 +743,11 @@ void MOHPC::SerializablePlayerState::SaveDelta(MSG& msg, const ISerializableMess
 	msg.WriteBool(hasAmmoBitsChanges);
 	if (hasAmmoBitsChanges)
 	{
-		msg.SerializeBits(&ammoBits, playerState_t::MAX_AMMO);
+		msg.WriteUShort(ammoBits);
 		for (i = 0; i < playerState_t::MAX_AMMO; ++i)
 		{
 			if (ammoBits & (1 << i)) {
-				msg.SerializeUShort(state.ammo_name_index[i]);
+				msg.WriteUShort(state.ammo_name_index[i]);
 			}
 		}
 	}
@@ -696,11 +757,11 @@ void MOHPC::SerializablePlayerState::SaveDelta(MSG& msg, const ISerializableMess
 	msg.WriteBool(hasMaxAmmoAmountChanges);
 	if (hasMaxAmmoAmountChanges)
 	{
-		msg.SerializeBits(&maxAmmoAmountBits, playerState_t::MAX_MAX_AMMO_AMOUNT);
+		msg.WriteUShort(maxAmmoAmountBits);
 		for (i = 0; i < playerState_t::MAX_MAX_AMMO_AMOUNT; ++i)
 		{
 			if (maxAmmoAmountBits & (1 << i)) {
-				msg.SerializeUShort(state.max_ammo_amount[i]);
+				msg.WriteUShort(state.max_ammo_amount[i]);
 			}
 		}
 	}
@@ -712,10 +773,15 @@ void MOHPC::SerializablePlayerState::LoadDelta(MSG& msg, const ISerializableMess
 
 	constexpr size_t numFields = sizeof(playerStateFields) / sizeof(playerStateFields[0]);
 
-	SerializablePlayerState* srFrom = (SerializablePlayerState*)from;
-
 	static const playerState_t nullstate;
+
+	const SerializablePlayerState* srFrom = (const SerializablePlayerState*)from;
 	const playerState_t* fromPS = srFrom ? srFrom->GetState() : &nullstate;
+	if (fromPS)
+	{
+		// copy initial values
+		state = *fromPS;
+	}
 
 	// Serialize the number of changes
 	const uint8_t lc = msg.ReadByte();
@@ -724,27 +790,30 @@ void MOHPC::SerializablePlayerState::LoadDelta(MSG& msg, const ISerializableMess
 	const netField_t* field;
 	for (i = 0, field = playerStateFields; i < lc; ++i, ++field)
 	{
-		const uint8_t* fromF = (uint8_t*)((uint8_t*)fromPS + field->offset);
-		uint8_t* toF = (uint8_t*)((uint8_t*)&state + field->offset);
+		const uint8_t* fromF = (const uint8_t*)((const uint8_t*)fromPS + field->offset);
+		uint8_t* toF = (uint8_t*)((uint8_t*)GetState() + field->offset);
 		bool hasChange;
 
-		msg.SerializeBool(hasChange);
-		if (!hasChange) {
+		hasChange = msg.ReadBool();
+		if (!hasChange)
+		{
+			// no change
+			std::memcpy(toF, fromF, field->size);
 			continue;
 		}
 
 		switch (field->type)
 		{
-		case fieldType_e::number:
+		case fieldType_ver6_e::number:
 			EntityField::ReadNumberPlayerStateField(msg, field->bits, toF, field->size);
 			break;
-		case fieldType_e::angle:
+		case fieldType_ver6_e::angle:
 			*(float*)toF = EntityField::ReadAngleField(msg, field->bits);
 			break;
-		case fieldType_e::largeCoord:
+		case fieldType_ver6_e::largeCoord:
 			*(float*)toF = msgHelper.ReadCoord();
 			break;
-		case fieldType_e::smallCoord:
+		case fieldType_ver6_e::smallCoord:
 			*(float*)toF = msgHelper.ReadCoordSmall();
 			break;
 		default:
@@ -757,7 +826,7 @@ void MOHPC::SerializablePlayerState::LoadDelta(MSG& msg, const ISerializableMess
 		// assign unchanged fields accordingly
 		for (i = lc, field = &playerStateFields[lc]; i < numFields; i++, field++)
 		{
-			const uint8_t* fromF = (uint8_t*)((uint8_t*)fromPS + field->offset);
+			const uint8_t* fromF = (const uint8_t*)((const uint8_t*)fromPS + field->offset);
 			uint8_t* toF = (uint8_t*)((uint8_t*)GetState() + field->offset);
 
 			// no change
@@ -780,11 +849,11 @@ void MOHPC::SerializablePlayerState::LoadDelta(MSG& msg, const ISerializableMess
 	const bool hasStatsChanged = msg.ReadBool();
 	if (hasStatsChanged)
 	{
-		msg.SerializeBits(&statsBits, playerState_t::MAX_STATS);
+		statsBits = msg.ReadUInteger();
 		for (i = 0; i < playerState_t::MAX_STATS; ++i)
 		{
 			if (statsBits & (1 << i)) {
-				msg.SerializeUShort(state.stats[i]);
+				state.stats[i] = msg.ReadUShort();
 			}
 		}
 	}
@@ -793,11 +862,11 @@ void MOHPC::SerializablePlayerState::LoadDelta(MSG& msg, const ISerializableMess
 	const bool hasActiveItemsChanged = msg.ReadBool();
 	if (hasActiveItemsChanged)
 	{
-		msg.SerializeBits(&activeItemsBits, playerState_t::MAX_ACTIVEITEMS);
+		activeItemsBits = msg.ReadByte();
 		for (i = 0; i < playerState_t::MAX_ACTIVEITEMS; ++i)
 		{
 			if (activeItemsBits & (1 << i)) {
-				msg.SerializeUShort(state.activeItems[i]);
+				state.activeItems[i] = msg.ReadUShort();
 			}
 		}
 	}
@@ -806,11 +875,11 @@ void MOHPC::SerializablePlayerState::LoadDelta(MSG& msg, const ISerializableMess
 	const bool hasAmmoAmountChanges = msg.ReadBool();
 	if (hasAmmoAmountChanges)
 	{
-		msg.SerializeBits(&ammoAmountBits, playerState_t::MAX_AMMO_AMOUNT);
+		ammoAmountBits = msg.ReadUShort();
 		for (i = 0; i < playerState_t::MAX_AMMO_AMOUNT; ++i)
 		{
 			if (ammoAmountBits & (1 << i)) {
-				msg.SerializeUShort(state.ammo_amount[i]);
+				state.ammo_amount[i] = msg.ReadUShort();
 			}
 		}
 	}
@@ -819,11 +888,11 @@ void MOHPC::SerializablePlayerState::LoadDelta(MSG& msg, const ISerializableMess
 	const bool hasAmmoBitsChanges = msg.ReadBool();
 	if (hasAmmoBitsChanges)
 	{
-		msg.SerializeBits(&ammoBits, playerState_t::MAX_AMMO);
+		ammoBits = msg.ReadUShort();
 		for (i = 0; i < playerState_t::MAX_AMMO; ++i)
 		{
 			if (ammoBits & (1 << i)) {
-				msg.SerializeUShort(state.ammo_name_index[i]);
+				state.ammo_name_index[i] = msg.ReadUShort();
 			}
 		}
 	}
@@ -832,30 +901,36 @@ void MOHPC::SerializablePlayerState::LoadDelta(MSG& msg, const ISerializableMess
 	const bool hasMaxAmmoAmountChanges = msg.ReadBool();
 	if (hasMaxAmmoAmountChanges)
 	{
-		msg.SerializeBits(&maxAmmoAmountBits, playerState_t::MAX_MAX_AMMO_AMOUNT);
+		maxAmmoAmountBits = msg.ReadUShort();
 		for (i = 0; i < playerState_t::MAX_MAX_AMMO_AMOUNT; ++i)
 		{
 			if (maxAmmoAmountBits & (1 << i)) {
-				msg.SerializeUShort(state.max_ammo_amount[i]);
+				state.max_ammo_amount[i] = msg.ReadUShort();
 			}
 		}
 	}
 }
 
-void MOHPC::SerializablePlayerState_ver17::SaveDelta(MSG& msg, const ISerializableMessage* from)
+void MOHPC::SerializablePlayerState_ver15::SaveDelta(MSG& msg, const ISerializableMessage* from)
 {
 
 }
 
-void MOHPC::SerializablePlayerState_ver17::LoadDelta(MSG& msg, const ISerializableMessage* from)
+void MOHPC::SerializablePlayerState_ver15::LoadDelta(MSG& msg, const ISerializableMessage* from)
 {
 	MsgTypesHelper msgHelper(msg);
 
-	constexpr size_t numFields = sizeof(playerStateFields_ver17) / sizeof(playerStateFields_ver17[0]);
+	constexpr size_t numFields = sizeof(playerStateFields_ver15) / sizeof(playerStateFields_ver15[0]);
 
 	static playerState_t nullstate;
 
-	playerState_t* fromPS = from ? ((SerializablePlayerState*)from)->GetState() : &nullstate;
+	const SerializablePlayerState* srFrom = (const SerializablePlayerState*)from;
+	const playerState_t* fromPS = srFrom ? srFrom->GetState() : &nullstate;
+	if (fromPS)
+	{
+		// copy initial values
+		state = *fromPS;
+	}
 
 	// Serialize the number of changes
 	const uint8_t lc = msg.ReadByte();
@@ -865,10 +940,11 @@ void MOHPC::SerializablePlayerState_ver17::LoadDelta(MSG& msg, const ISerializab
 	
 	size_t i;
 	const netField_t* field;
-	for (i = 0, field = playerStateFields_ver17; i < lc; ++i, ++field)
+	for (i = 0, field = playerStateFields_ver15; i < lc; ++i, ++field)
 	{
-		uint8_t* fromF = (uint8_t*)((uint8_t*)fromPS + field->offset);
+		const uint8_t* fromF = (const uint8_t*)((const uint8_t*)fromPS + field->offset);
 		uint8_t* toF = (uint8_t*)((uint8_t*)GetState() + field->offset);
+
 		const bool hasChange = msg.ReadBool();
 		if (!hasChange)
 		{
@@ -883,25 +959,25 @@ void MOHPC::SerializablePlayerState_ver17::LoadDelta(MSG& msg, const ISerializab
 
 		switch (field->type)
 		{
-		case fieldType_ver17_e::number:
+		case fieldType_ver15_e::number:
 			EntityField::ReadRegular2(msg, field->bits, toF, field->size);
 			break;
-		case fieldType_ver17_e::angle: // anglestmp = 1.0f;
+		case fieldType_ver15_e::angle: // anglestmp = 1.0f;
 			result = 0;
 			msg.ReadBits(&result, field->bits < 0 ? -field->bits : field->bits);
 			*(float*)toF = EntityField::UnpackAngle(result, field->bits, field->bits < 0);
 			break;
-		case fieldType_ver17_e::mediumCoord: // changed in SH/BT
+		case fieldType_ver15_e::mediumCoord: // changed in SH/BT
 			coordOffset = EntityField::PackCoord(*(float*)fromF);
 			coordVal = msgHelper.ReadDeltaCoord(coordOffset);
 			*(float*)toF = EntityField::UnpackCoord(coordVal);
 			break;
-		case fieldType_ver17_e::largeCoord: // changed in SH/BT
+		case fieldType_ver15_e::largeCoord: // changed in SH/BT
 			coordOffset = EntityField::PackCoordExtra(*(float*)fromF);
 			coordVal = msgHelper.ReadDeltaCoordExtra(coordOffset);
 			*(float*)toF = EntityField::UnpackCoordExtra(coordVal);
 			break;
-		case fieldType_ver17_e::smallCoord: // New in SH/BT
+		case fieldType_ver15_e::smallCoord: // New in SH/BT
 			*(float*)toF = msgHelper.ReadCoordSmall();
 			break;
 		default:
@@ -912,9 +988,9 @@ void MOHPC::SerializablePlayerState_ver17::LoadDelta(MSG& msg, const ISerializab
 	if (fromPS)
 	{
 		// assign unchanged fields accordingly
-		for (i = lc, field = &playerStateFields_ver17[lc]; i < numFields; i++, field++)
+		for (i = lc, field = &playerStateFields_ver15[lc]; i < numFields; i++, field++)
 		{
-			const uint8_t* fromF = (uint8_t*)((uint8_t*)fromPS + field->offset);
+			const uint8_t* fromF = (const uint8_t*)((const uint8_t*)fromPS + field->offset);
 			uint8_t* toF = (uint8_t*)((uint8_t*)GetState() + field->offset);
 
 			// no change
@@ -937,7 +1013,7 @@ void MOHPC::SerializablePlayerState_ver17::LoadDelta(MSG& msg, const ISerializab
 	const bool hasStatsChanged = msg.ReadBool();
 	if (hasStatsChanged)
 	{
-		msg.ReadBits(&statsBits, playerState_t::MAX_STATS);
+		statsBits = msg.ReadUInteger();
 		for (i = 0; i < playerState_t::MAX_STATS; ++i)
 		{
 			if (statsBits & (1 << i)) {
@@ -950,7 +1026,7 @@ void MOHPC::SerializablePlayerState_ver17::LoadDelta(MSG& msg, const ISerializab
 	const bool hasActiveItemsChanged = msg.ReadBool();
 	if (hasActiveItemsChanged)
 	{
-		msg.ReadBits(&activeItemsBits, playerState_t::MAX_ACTIVEITEMS);
+		activeItemsBits = msg.ReadByte();
 		for (i = 0; i < playerState_t::MAX_ACTIVEITEMS; ++i)
 		{
 			if (activeItemsBits & (1 << i)) {
@@ -963,7 +1039,7 @@ void MOHPC::SerializablePlayerState_ver17::LoadDelta(MSG& msg, const ISerializab
 	const bool hasAmmoAmountChanges = msg.ReadBool();
 	if (hasAmmoAmountChanges)
 	{
-		msg.ReadBits(&ammoAmountBits, playerState_t::MAX_AMMO_AMOUNT);
+		ammoAmountBits = msg.ReadUShort();
 		for (i = 0; i < playerState_t::MAX_AMMO_AMOUNT; ++i)
 		{
 			if (ammoAmountBits & (1 << i)) {
@@ -976,7 +1052,7 @@ void MOHPC::SerializablePlayerState_ver17::LoadDelta(MSG& msg, const ISerializab
 	const bool hasAmmoBitsChanges = msg.ReadBool();
 	if (hasAmmoBitsChanges)
 	{
-		msg.ReadBits(&ammoBits, playerState_t::MAX_AMMO);
+		ammoBits = msg.ReadUShort();
 		for (i = 0; i < playerState_t::MAX_AMMO; ++i)
 		{
 			if (ammoBits & (1 << i)) {
@@ -989,7 +1065,7 @@ void MOHPC::SerializablePlayerState_ver17::LoadDelta(MSG& msg, const ISerializab
 	const bool hasMaxAmmoAmountChanges = msg.ReadBool();
 	if (hasMaxAmmoAmountChanges)
 	{
-		msg.ReadBits(&maxAmmoAmountBits, playerState_t::MAX_MAX_AMMO_AMOUNT);
+		maxAmmoAmountBits = msg.ReadUShort();
 		for (i = 0; i < playerState_t::MAX_MAX_AMMO_AMOUNT; ++i)
 		{
 			if (maxAmmoAmountBits & (1 << i)) {
@@ -1020,7 +1096,6 @@ void MOHPC::SerializableEntityState::SaveDelta(MSG& msg, const ISerializableMess
 			lc = i + 1;
 		}
 	}
-
 
 	const bool removed = false;
 	msg.WriteBool(removed);
@@ -1062,16 +1137,16 @@ void MOHPC::SerializableEntityState::SaveDelta(MSG& msg, const ISerializableMess
 
 		switch (field->type)
 		{
-		case fieldType_e::number:
+		case fieldType_ver6_e::number:
 			EntityField::WriteNumberEntityField(msg, field->bits, toF, field->size);
 			break;
-		case fieldType_e::angle:
+		case fieldType_ver6_e::angle:
 			EntityField::WriteAngleField(msg, field->bits, *(float*)toF);
 			break;
-		case fieldType_e::time:
+		case fieldType_ver6_e::animTime:
 			EntityField::WriteTimeField(msg, *(float*)toF);
 			break;
-		case fieldType_e::animWeight: // nasty!
+		case fieldType_ver6_e::animWeight: // nasty!
 			tmp = *(float*)toF;
 
 			bits = intptr_t((tmp * 255.0f) + 0.5f);
@@ -1079,10 +1154,10 @@ void MOHPC::SerializableEntityState::SaveDelta(MSG& msg, const ISerializableMess
 			else if (bits > 255) bits = 255;
 			msg.WriteBits(&bits, 8);
 			break;
-		case fieldType_e::time2:
+		case fieldType_ver6_e::scale:
 			EntityField::WriteSmallTimeField(msg, *(float*)toF);
 			break;
-		case fieldType_e::animWeight2:
+		case fieldType_ver6_e::alpha:
 			tmp = *(float*)toF;
 
 			bits = intptr_t((tmp * 255.0f) + 0.5f);
@@ -1090,10 +1165,10 @@ void MOHPC::SerializableEntityState::SaveDelta(MSG& msg, const ISerializableMess
 			else if (bits > 255) bits = 255;
 			msg.WriteBits(&bits, 8);
 			break;
-		case fieldType_e::largeCoord:
+		case fieldType_ver6_e::largeCoord:
 			msgHelper.WriteCoord(*(float*)toF);
 			break;
-		case fieldType_e::smallCoord:
+		case fieldType_ver6_e::smallCoord:
 			msgHelper.WriteCoordSmall(*(float*)toF);
 			break;
 		default:
@@ -1155,32 +1230,32 @@ void MOHPC::SerializableEntityState::LoadDelta(MSG& msg, const ISerializableMess
 
 		switch (field->type)
 		{
-		case fieldType_e::number:
+		case fieldType_ver6_e::number:
 			EntityField::ReadRegular(msg, field->bits, toF, field->size);
 			break;
-		case fieldType_e::angle:
+		case fieldType_ver6_e::angle:
 			*(float*)toF = EntityField::ReadAngleField(msg, field->bits);
 			break;
-		case fieldType_e::time:
+		case fieldType_ver6_e::animTime:
 			*(float*)toF = EntityField::ReadTimeField(msg, field->bits);
 			break;
-		case fieldType_e::animWeight:
+		case fieldType_ver6_e::animWeight:
 			result = 0;
 			msg.ReadBits(&result, 8);
 			*(float*)toF = EntityField::UnpackAnimWeight(result, 8);
 			break;
-		case fieldType_e::time2:
+		case fieldType_ver6_e::scale:
 			*(float*)toF = EntityField::ReadSmallTimeField(msg, field->bits);
 			break;
-		case fieldType_e::animWeight2:
+		case fieldType_ver6_e::alpha:
 			result = 0;
 			msg.ReadBits(&result, 8);
 			*(float*)toF = EntityField::UnpackAnimWeight(result, 8);
 			break;
-		case fieldType_e::largeCoord:
+		case fieldType_ver6_e::largeCoord:
 			*(float*)toF = msgHelper.ReadCoord();
 			break;
-		case fieldType_e::smallCoord:
+		case fieldType_ver6_e::smallCoord:
 			*(float*)toF = msgHelper.ReadCoordSmall();
 			break;
 		default:
@@ -1225,7 +1300,7 @@ void MOHPC::SerializableEntityState_ver15::LoadDelta(MSG& msg, const ISerializab
 	// Set the new number
 	state.number = entNum;
 
-	constexpr size_t numFields = sizeof(entityStateFields_ver17) / sizeof(entityStateFields_ver17[0]);
+	constexpr size_t numFields = sizeof(entityStateFields_ver15) / sizeof(entityStateFields_ver15[0]);
 
 	// # of changes
 	const uint8_t lc = msg.ReadByte();
@@ -1236,7 +1311,7 @@ void MOHPC::SerializableEntityState_ver15::LoadDelta(MSG& msg, const ISerializab
 	size_t i;
 	const netField_t* field;
 
-	for (i = 0, field = entityStateFields_ver17; i < lc; i++, field++)
+	for (i = 0, field = entityStateFields_ver15; i < lc; i++, field++)
 	{
 		uint8_t* fromF = (uint8_t*)((uint8_t*)fromEnt + field->offset);
 		uint8_t* toF = (uint8_t*)((uint8_t*)&state + field->offset);
@@ -1254,15 +1329,15 @@ void MOHPC::SerializableEntityState_ver15::LoadDelta(MSG& msg, const ISerializab
 
 		switch (field->type)
 		{
-		case fieldType_ver17_e::number:
+		case fieldType_ver15_e::number:
 			EntityField::ReadRegular2(msg, field->bits, toF, field->size);
 			break;
-		case fieldType_ver17_e::angle:
+		case fieldType_ver15_e::angle:
 			result = 0;
 			msg.ReadBits(&result, field->bits < 0 ? -field->bits : field->bits);
 			*(float*)toF = EntityField::UnpackAngle(result, field->bits, field->bits < 0);
 			break;
-		case fieldType_ver17_e::animTime: // time
+		case fieldType_ver15_e::animTime: // time
 			result = 0;
 			if (msg.ReadBool())
 			{
@@ -1274,32 +1349,32 @@ void MOHPC::SerializableEntityState_ver15::LoadDelta(MSG& msg, const ISerializab
 				//*(float*)toF += timeInc
 			}
 			break;
-		case fieldType_ver17_e::animWeight:
+		case fieldType_ver15_e::animWeight:
 			result = 0;
 			msg.ReadBits(&result, field->bits);
 			*(float*)toF = EntityField::UnpackAnimWeight(result, field->bits);
 			break;
-		case fieldType_ver17_e::scale:
+		case fieldType_ver15_e::scale:
 			result = 0;
 			msg.ReadBits(&result, field->bits);
 			*(float*)toF = EntityField::UnpackScale(result);
 			break;
-		case fieldType_ver17_e::alpha:
+		case fieldType_ver15_e::alpha:
 			result = 0;
 			msg.ReadBits(&result, field->bits);
 			*(float*)toF = EntityField::UnpackAlpha(result, field->bits);
 			break;
-		case fieldType_ver17_e::mediumCoord: // changed in SH/BT
+		case fieldType_ver15_e::mediumCoord: // changed in SH/BT
 			coordOffset = EntityField::PackCoord(*(float*)fromF);
 			coordVal = msgHelper.ReadDeltaCoord(coordOffset);
 			*(float*)toF = EntityField::UnpackCoord(coordVal);
 			break;
-		case fieldType_ver17_e::largeCoord: // changed in SH/BT
+		case fieldType_ver15_e::largeCoord: // changed in SH/BT
 			coordOffset = EntityField::PackCoordExtra(*(float*)fromF);
 			coordVal = msgHelper.ReadDeltaCoordExtra(coordOffset);
 			*(float*)toF = EntityField::UnpackCoordExtra(coordVal);
 			break;
-		case fieldType_ver17_e::smallCoord: // New in SH/BT
+		case fieldType_ver15_e::smallCoord: // New in SH/BT
 			*(float*)toF = msgHelper.ReadCoordSmall();
 			break;
 		default:
@@ -1308,7 +1383,7 @@ void MOHPC::SerializableEntityState_ver15::LoadDelta(MSG& msg, const ISerializab
 	}
 
 	// assign unchanged fields accordingly
-	EntityField::CopyFields(fromEnt, GetState(), lc, numFields, entityStateFields_ver17);
+	EntityField::CopyFields(fromEnt, GetState(), lc, numFields, entityStateFields_ver15);
 }
 
 void MOHPC::EntityField::ReadNumberPlayerStateField(MSG& msg, size_t bits, void* toF, size_t size)

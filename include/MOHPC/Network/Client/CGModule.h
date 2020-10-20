@@ -1,6 +1,6 @@
 #pragma once
 
-#include <stdint.h>
+#include <cstdint>
 #include "../Configstring.h"
 #include "../InfoTypes.h"
 #include "../pm/bg_public.h"
@@ -8,6 +8,7 @@
 #include "../../Utilities/PropertyMap.h"
 #include "../../Utilities/Function.h"
 #include "../../Vector.h"
+#include "Imports.h"
 #include <type_traits>
 
 namespace MOHPC
@@ -850,23 +851,6 @@ namespace MOHPC
 		};
 
 		/**
-		 * Various imports for CGame.
-		 */
-		class CGameImports
-		{
-		public:
-			std::function<uintptr_t()> getCurrentSnapshotNumber;
-			std::function<bool(uintptr_t snapshotNum, SnapshotInfo& outSnapshot)> getSnapshot;
-			std::function<uint64_t()> getServerStartTime;
-			std::function<uint64_t()> getServerTime;
-			std::function<uint64_t()> getServerFrameFrequency;
-			std::function<uintptr_t()> getCurrentCmdNumber;
-			std::function<bool(uintptr_t cmdNum, usercmd_t& outCmd)> getUserCmd;
-			std::function<bool(uintptr_t serverCommandNumber, TokenParser& tokenized)> getServerCommand;
-			std::function<const gameState_t&()> getGameState;
-		};
-
-		/**
 		 * Base CG module, contains most implementations.
 		 */
 		class CGameModuleBase
@@ -915,7 +899,7 @@ namespace MOHPC
 			};
 
 		public:
-			CGameModuleBase(const CGameImports& inImports);
+			CGameModuleBase(const ClientImports& inImports);
 			virtual ~CGameModuleBase() = default;
 
 			virtual void init(uintptr_t serverMessageSequence, uintptr_t serverCommandSequence);
@@ -1051,7 +1035,7 @@ namespace MOHPC
 			const HandlerListCGame& handlers() const;
 
 			/** Get imports list. */
-			const CGameImports& getImports() const;
+			const ClientImports& getImports() const;
 
 			/** Used to parse CG messages between different versions. */
 			virtual void handleCGMessage(MSG& msg, uint8_t msgType) = 0;
@@ -1128,7 +1112,7 @@ namespace MOHPC
 			void SCmd_PrintDeathMsg(TokenParser& args);
 
 		protected:
-			CGameImports imports;
+			ClientImports imports;
 
 		private:
 			uint64_t svTime;
@@ -1174,7 +1158,7 @@ namespace MOHPC
 		class CGameModule6 : public CGameModuleBase
 		{
 		public:
-			CGameModule6(const CGameImports& inImports);
+			CGameModule6(const ClientImports& inImports);
 
 		protected:
 			virtual void handleCGMessage(MSG& msg, uint8_t msgType) override;
@@ -1192,7 +1176,7 @@ namespace MOHPC
 		class CGameModule15 : public CGameModuleBase
 		{
 		public:
-			CGameModule15(const CGameImports& inImports);
+			CGameModule15(const ClientImports& inImports);
 
 		protected:
 			virtual void handleCGMessage(MSG& msg, uint8_t msgType) override;

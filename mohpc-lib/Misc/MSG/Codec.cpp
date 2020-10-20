@@ -229,15 +229,9 @@ namespace MOHPC
 
 				const size_t dataSize = bitDataSize;
 				const size_t lastNum = dataSize - n;
-				//for (size_t i = 0; i < lastNum; ++i) {
-				//	bitData[i] = bitData[i + n];
-				//}
 
 				std::memmove(bitData, bitData + n, lastNum);
 				std::memset(bitData + lastNum, 0, bitDataSize - lastNum);
-				//for (size_t i = lastNum; i < bitDataSize; ++i) {
-				//	bitData[i] = 0;
-				//}
 
 				bit &= 7;
 			}
@@ -251,9 +245,6 @@ namespace MOHPC
 			{
 				const size_t dataSize = bitDataSize;
 				const size_t lastNum = dataSize - n;
-				//for (size_t i = 0; i < lastNum; ++i) {
-				//	bitData[i] = bitData[i + n];
-				//}
 
 				std::memmove(bitData, bitData + n, lastNum);
 
@@ -261,12 +252,17 @@ namespace MOHPC
 				if (remainingRead) {
 					stream.Read(&bitData[lastNum], remainingRead);
 				}
+				else
+				{
+					if (std::all_of(bitData, bitData + bitDataSize, [](uint8_t byte) { return !byte; }))
+					{
+						// the stream and the buffer has been fully read already, don't continue
+						throw StreamOverflowException(StreamOverflowException::Reading);
+					}
+				}
 
 				// clear out the remaining bytes if there is nothing to read
 				std::memset(bitData + lastNum + remainingRead, 0, bitDataSize - lastNum - remainingRead);
-				//for (size_t i = lastNum + remainingRead; i < dataSize; ++i) {
-				//	bitData[i] = 0;
-				//}
 
 				bit &= 7;
 			}

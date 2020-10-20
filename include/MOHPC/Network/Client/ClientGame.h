@@ -13,6 +13,7 @@
 #include "../../Object.h"
 #include "../../Misc/MSG/MSG.h"
 #include "../../Managers/NetworkManager.h"
+#include "Imports.h"
 #include <stdint.h>
 #include <functional>
 #include <type_traits>
@@ -34,8 +35,6 @@ namespace MOHPC
 		static constexpr unsigned long CMD_BACKUP = (1 << 8); // increased to 256
 		static constexpr unsigned long CMD_MASK = CMD_BACKUP - 1;
 		static constexpr unsigned long MAX_PACKET_USERCMDS = 32;
-
-		using cs_t = uint16_t;
 
 		class INetchan;
 		struct gameState_t;
@@ -80,7 +79,7 @@ namespace MOHPC
 			 * @param	csNum			The configstring num.
 			 * @param	configString	The string pointed at by the csNum.
 			 */
-			struct Configstring : public HandlerNotifyBase<void(size_t csNum, const char* configString)> {};
+			struct Configstring : public HandlerNotifyBase<void(csNum_t csNum, const char* configString)> {};
 
 			/**
 			 * Called when a sound started to play/stopped.
@@ -159,126 +158,112 @@ namespace MOHPC
 		/**
 		 * Invalid command while parsing game state.
 		 */
-		class BadCommandByteException : public NetworkException
+		class MOHPC_EXPORTS BadCommandByteException : public NetworkException
 		{
 		private:
 			uint8_t cmdNum;
 
 		public:
-			BadCommandByteException(uint8_t inCmdNum)
-				: cmdNum(inCmdNum)
-			{}
+			BadCommandByteException(uint8_t inCmdNum);
 
-			uint8_t getLength() const { return cmdNum; }
-			str what() const override { return str((int)getLength()); }
+			uint8_t getLength() const;
+			str what() const override;
 		};
 
 		/**
 		 * The protocol version does not exist.
 		 */
-		class BadProtocolVersionException : public NetworkException
+		class MOHPC_EXPORTS BadProtocolVersionException : public NetworkException
 		{
 		private:
 			uint32_t protocolVersion;
 
 		public:
-			BadProtocolVersionException(uint8_t inProtocolVersion)
-				: protocolVersion(inProtocolVersion)
-			{}
+			BadProtocolVersionException(uint8_t inProtocolVersion);
 
-			uint32_t getProtocolVersion() const { return protocolVersion; }
-			str what() const override { return str((int)getProtocolVersion()); }
+			uint32_t getProtocolVersion() const;
+			str what() const override;
 		};
 
 		/**
 		 * Invalid server operation.
 		 */
-		class IllegibleServerMessageException : public NetworkException
+		class MOHPC_EXPORTS IllegibleServerMessageException : public NetworkException
 		{
 		private:
 			uint8_t cmdNum;
 
 		public:
-			IllegibleServerMessageException(uint8_t inCmdNum)
-				: cmdNum(inCmdNum)
-			{}
+			IllegibleServerMessageException(uint8_t inCmdNum);
 
-			uint8_t getLength() const { return cmdNum; }
-			str what() const override { return str((int)getLength()); }
+			uint8_t getLength() const;
+			str what() const override;
 		};
 
 		/**
 		 * Invalid baseline entity number while parsing gamestate.
 		 */
-		class BaselineOutOfRangeException : public NetworkException
+		class MOHPC_EXPORTS BaselineOutOfRangeException : public NetworkException
 		{
 		private:
 			uint16_t baselineNum;
 
 		public:
-			BaselineOutOfRangeException(uint16_t inBaselineNum)
-				: baselineNum(inBaselineNum)
-			{}
+			BaselineOutOfRangeException(uint16_t inBaselineNum);
 
-			uint16_t getBaselineNum() const { return baselineNum; }
-			str what() const override { return str((int)getBaselineNum()); }
+			uint16_t getBaselineNum() const;
+			str what() const override;
 		};
 
 		/**
 		 * Bad configstring number.
 		 */
-		class MaxConfigStringException : public NetworkException
+		class MOHPC_EXPORTS MaxConfigStringException : public NetworkException
 		{
 		private:
-			uint16_t configStringNum;
+			csNum_t configStringNum;
 
 		public:
-			MaxConfigStringException(uint16_t inConfigStringNum)
-				: configStringNum(inConfigStringNum)
-			{}
+			MaxConfigStringException(csNum_t inConfigStringNum);
 
-			uint16_t GetConfigstringNum() const { return configStringNum; }
-			str what() const override { return str((int)GetConfigstringNum()); }
+			csNum_t GetConfigstringNum() const;
+			str what() const override;
 		};
 
 		/**
 		 * MAX_GAMESTATE_CHARS was reached while parsing a configstring.
 		 */
-		class MaxGameStateCharsException : public NetworkException
+		class MOHPC_EXPORTS MaxGameStateCharsException : public NetworkException
 		{
 		private:
 			size_t stringLen;
 
 		public:
-			MaxGameStateCharsException(size_t inStringLen)
-				: stringLen(inStringLen)
-			{}
+			MaxGameStateCharsException(size_t inStringLen);
 
-			size_t GetStringLength() const { return stringLen; }
-			str what() const override { return str((int)GetStringLength()); }
+			size_t GetStringLength() const;
+			str what() const override;
 		};
 
 		/**
 		 * Bad area mask size while parsing snapshot.
 		 */
-		class AreaMaskBadSize : public NetworkException
+		class MOHPC_EXPORTS AreaMaskBadSize : public NetworkException
 		{
 		private:
 			uint8_t size;
 
 		public:
-			AreaMaskBadSize(uint8_t inSize)
-				: size(inSize)
-			{}
+			AreaMaskBadSize(uint8_t inSize);
 
-			uint8_t getSize() const { return size; }
-			str what() const override { return str((int)getSize()); }
+			uint8_t getSize() const;
+			str what() const override;
 		};
 
 		/**
 		 * Server error while downloading.
 		 */
-		class DownloadException : public NetworkException
+		class MOHPC_EXPORTS DownloadException : public NetworkException
 		{
 		private:
 			StringMessage error;
@@ -290,15 +275,41 @@ namespace MOHPC
 			str what() const override { return str(getError()); }
 		};
 
+		class MOHPC_EXPORTS DownloadSizeException : public NetworkException
+		{
+		public:
+			DownloadSizeException(uint16_t inSize);
+
+			uint16_t getSize() const;
+
+		private:
+			uint16_t size;
+		};
+
+		class MOHPC_EXPORTS BadDownloadBlockException : public NetworkException
+		{
+		public:
+			BadDownloadBlockException(uint16_t block, uint16_t expectedBlock);
+
+			uint16_t getBlock() const noexcept;
+			uint16_t getExpectedBlock() const noexcept;
+
+		private:
+			uint16_t block;
+			uint16_t expectedBlock;
+
+		};
+
+		/**
+		 * When the server is sending a download but it hasn't been requested by the client
+		 */
+		class MOHPC_EXPORTS UnexpectedDownloadException : public NetworkException
+		{
+		};
+
 		struct gameState_t
 		{
 			static constexpr size_t MAX_GAMESTATE_CHARS = 40000;
-
-		public:
-			size_t dataCount;
-			size_t stringOffsets[MAX_CONFIGSTRINGS];
-			char stringData[MAX_GAMESTATE_CHARS];
-
 
 		public:
 			MOHPC_EXPORTS gameState_t();
@@ -309,7 +320,7 @@ namespace MOHPC
 			 * @param	num		Config string ID. Must be < MAX_CONFIGSTRINGS
 			 * @return	The configstring. NULL if num is greater than MAX_CONFIGSTRINGS
 			 */
-			MOHPC_EXPORTS const char* getConfigString(size_t num) const;
+			MOHPC_EXPORTS const char* getConfigString(csNum_t num) const;
 
 			/**
 			 * Return the configstring at the specified number.
@@ -318,7 +329,13 @@ namespace MOHPC
 			 * @param	configString	The value to put in.
 			 * @param	sz				Size of the config string
 			 */
-			MOHPC_EXPORTS void setConfigString(size_t num, const char* configString, size_t sz);
+			MOHPC_EXPORTS void setConfigString(csNum_t num, const char* configString, size_t sz);
+
+		public:
+			size_t dataCount;
+			size_t stringOffsets[MAX_CONFIGSTRINGS];
+			// could have made stringData a dynamic buffer
+			char stringData[MAX_GAMESTATE_CHARS];
 		};
 
 		class ClientSnapshot
@@ -402,8 +419,71 @@ namespace MOHPC
 		};
 		using ClientInfoPtr = SharedPtr<ClientInfo>;
 		using ConstClientInfoPtr = SharedPtr<const ClientInfo>;
+
+		class DownloadManager
+		{
+		public:
+			using startCallback_f = Function<bool(const char*)>;
+			using receiveCallback_f = Function<bool(const uint8_t*, size_t)>;
+
+		public:
+			DownloadManager();
+
+			/**
+			 * Set client imports API
+			 */
+			void setImports(ClientImports& inImports) noexcept;
+
+			/**
+			 * Called to process a download message
+			 */
+			void processDownload(MSG& msg);
+
+			/**
+			 * Start downloading from server.
+			 *
+			 * @param downloadName Name of the download.
+			 */
+			void startDownload(const char* downloadName);
+
+			/**
+			 * Cancel downloading.
+			 */
+			void cancelDownload();
+
+			/**
+			 * Set the callback to be used when starting downloads.
+			 */
+			void setDownloadStartedCallback(startCallback_f&& callback);
+
+			/**
+			 * Set the callback to be used when receiving data.
+			 */
+			void setReceiveCallback(receiveCallback_f&& callback);
+
+		private:
+			void clearDownload();
+			void nextDownload();
+			void downloadsComplete();
+			bool receive(const uint8_t* data, const size_t size);
+
+		private:
+			ClientImports imports;
+			startCallback_f startCallback;
+			Function<bool(const uint8_t*, size_t)> receiveCallback;
+			size_t downloadSize;
+			str downloadName;
+			uint32_t downloadBlock;
+			bool downloadRequested;
+		};
 		
-		// FIXME: Store server config/properties
+		/**
+		 * Client game connection class.
+		 *
+		 * Maintains a connection to a server.
+		 *
+		 * Call markReady() method to allow client to send user input to server, thus making it enter the game.
+		 */
 		class ClientGameConnection : public ITickableNetwork
 		{
 			MOHPC_OBJECT_DECLARATION(ClientGameConnection);
@@ -422,7 +502,7 @@ namespace MOHPC
 				MOHPC_HANDLERLIST_HANDLER1(ClientHandlers::Error, errorHandler, const NetworkException&);
 				MOHPC_HANDLERLIST_HANDLER2(ClientHandlers::EntityRead, entityReadHandler, const entityState_t*, const entityState_t*);
 				MOHPC_HANDLERLIST_HANDLER2(ClientHandlers::PlayerstateRead, playerStateReadHandler, const playerState_t*, const playerState_t*);
-				MOHPC_HANDLERLIST_HANDLER2(ClientHandlers::Configstring, configStringHandler, uint16_t, const char*);
+				MOHPC_HANDLERLIST_HANDLER2(ClientHandlers::Configstring, configStringHandler, csNum_t, const char*);
 				MOHPC_HANDLERLIST_HANDLER1(ClientHandlers::Sound, soundHandler, const sound_t&);
 				MOHPC_HANDLERLIST_HANDLER1_NODEF(ClientHandlers::CenterPrint, centerPrintHandler, const char*);
 				MOHPC_HANDLERLIST_HANDLER3(ClientHandlers::LocationPrint, locationPrintHandler, uint16_t, uint16_t, const char*);
@@ -443,7 +523,7 @@ namespace MOHPC
 			using readEntityNum_f = entityNum_t (ClientGameConnection::*)(MsgTypesHelper& msgHelper);
 			using readDeltaPlayerstate_f = void(ClientGameConnection::*)(MSG& msg, const playerState_t* from, playerState_t* to);
 			using readDeltaEntity_f = void(ClientGameConnection::*)(MSG& msg, const entityState_t* from, entityState_t* to, entityNum_t newNum);
-			using getNormalizedConfigstring_f = cs_t(ClientGameConnection::*)(cs_t num);
+			using getNormalizedConfigstring_f = csNum_t(ClientGameConnection::*)(csNum_t num);
 
 		private:
 			std::chrono::steady_clock::time_point lastTimeoutTime;
@@ -478,19 +558,20 @@ namespace MOHPC
 			uint32_t clientNum;
 			uint32_t checksumFeed;
 			uint32_t serverId;
-			uint32_t downloadedBlock;
 			int32_t reliableSequence;
 			int32_t reliableAcknowledge;
 			netadr_t adr;
 			bool newSnapshots : 1;
 			bool extrapolatedSnapshot : 1;
 			bool isActive : 1;
+			bool isReady : 1;
 			char* reliableCommands[MAX_RELIABLE_COMMANDS];
 			char* serverCommands[MAX_RELIABLE_COMMANDS];
 			char reliableCmdStrings[MAX_STRING_CHARS * MAX_RELIABLE_COMMANDS];
 			char serverCmdStrings[MAX_STRING_CHARS * MAX_RELIABLE_COMMANDS];
 			usereyes_t userEyes;
 			gameState_t gameState;
+			DownloadManager downloadState;
 			ClientSnapshot currentSnap;
 			ClientSnapshot snapshots[PACKET_BACKUP];
 			usercmd_t cmds[CMD_BACKUP];
@@ -518,13 +599,6 @@ namespace MOHPC
 
 			/** Called to set the current time on start. */
 			void initTime(uint64_t currentTime);
-
-			/**
-			 * Send a command to server.
-			 *
-			 * @param	cmd		Command to send.
-			 */
-			MOHPC_EXPORTS void addReliableCommand(const char* command);
 
 			/**
 			 * Set the timeout and the callback to be called when the client/server timeouts.
@@ -637,6 +711,28 @@ namespace MOHPC
 			 */
 			MOHPC_EXPORTS void disconnect();
 
+			/**
+			 * Return whether or not an user cmd can be created.
+			 */
+			MOHPC_EXPORTS bool canCreateCommand() const;
+
+			/**
+			 * Mark the client as ready (to send commands). Useful for loading maps.
+			 */
+			MOHPC_EXPORTS void markReady();
+
+			/**
+			 * Make the client not ready (won't send new commands anymore).
+			 */
+			MOHPC_EXPORTS void unmarkReady();
+
+			/**
+			 * Send a command to server.
+			 *
+			 * @param command Command to send.
+			 */
+			MOHPC_EXPORTS void sendCommand(const char* command);
+
 		private:
 			const INetchanPtr& getNetchan() const;
 			void receive(const netadr_t& from, MSG& msg, size_t sequenceNum, uint64_t currentTime);
@@ -645,6 +741,7 @@ namespace MOHPC
 			bool isChannelValid() const;
 			void serverDisconnected(const char* reason);
 			void terminateConnection(const char* reason);
+			void addReliableCommand(const char* command);
 
 			void parseServerMessage(MSG& msg, uint32_t serverMessageSequence, uint64_t currentTime);
 			void parseGameState(MSG& msg);
@@ -657,6 +754,7 @@ namespace MOHPC
 			void parseCenterprint(MSG& msg);
 			void parseLocprint(MSG& msg);
 			void parseCGMessage(MSG& msg);
+			void parseClientCommand(const char* arguments);
 
 			void clearState();
 			bool isDifferentServer(uint32_t id);
@@ -664,7 +762,7 @@ namespace MOHPC
 			void adjustTimeDelta(uint64_t realTime);
 			void firstSnapshot(uint64_t currentTime);
 
-			void configStringModified(uint16_t num, const char* newString);
+			void configStringModified(csNum_t num, const char* newString);
 
 			void systemInfoChanged();
 			bool readyToSendPacket(uint64_t currentTime) const;
@@ -673,13 +771,14 @@ namespace MOHPC
 			bool sendCmd(uint64_t currentTime);
 			void writePacket(uint32_t serverMessageSequence, uint64_t currentTime);
 
+			void fillClientImports(ClientImports& imports);
 			StringMessage readStringMessage(MSG& msg);
 			void writeStringMessage(MSG& msg, const char* s);
 			uint32_t hashKey(const char* string, size_t maxlen);
 			entityNum_t readEntityNum(MsgTypesHelper& msgHelper);
 			void readDeltaPlayerstate(MSG& msg, const playerState_t* from, playerState_t* to);
 			void readDeltaEntity(MSG& msg, const entityState_t* from, entityState_t* to, uint16_t newNum);
-			cs_t getNormalizedConfigstring(cs_t num);
+			csNum_t getNormalizedConfigstring(csNum_t num);
 
 		private:
 			static StringMessage readStringMessage_normal(MSG& msg);
@@ -696,8 +795,8 @@ namespace MOHPC
 			void readDeltaPlayerstate_ver15(MSG& msg, const playerState_t* from, playerState_t* to);
 			void readDeltaEntity_ver6(MSG& msg, const entityState_t* from, entityState_t* to, entityNum_t newNum);
 			void readDeltaEntity_ver15(MSG& msg, const entityState_t* from, entityState_t* to, entityNum_t newNum);
-			cs_t getNormalizedConfigstring_ver6(cs_t num);
-			cs_t getNormalizedConfigstring_ver15(cs_t num);
+			csNum_t getNormalizedConfigstring_ver6(csNum_t num);
+			csNum_t getNormalizedConfigstring_ver15(csNum_t num);
 		};
 
 		using ClientGameConnectionPtr = SharedPtr<ClientGameConnection>;

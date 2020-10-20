@@ -12,11 +12,11 @@ namespace MOHPC
 	namespace Network
 	{
 		static constexpr unsigned long MAX_RELIABLE_COMMANDS = 64;
-		static constexpr unsigned long MAX_STRING_CHARS = 2048;
+		static constexpr unsigned long MAX_STRING_CHARS = 1024;
 		static constexpr unsigned long MAX_UDP_DATA_SIZE = 65507;
 		static constexpr char CLIENT_VERSION[] = "3.00";
 
-		class NetworkException
+		class MOHPC_EXPORTS NetworkException
 		{
 		public:
 			virtual ~NetworkException() = default;
@@ -24,7 +24,7 @@ namespace MOHPC
 			virtual str what() const { return str(); };
 		};
 
-		class RuntPacketNetException : public NetworkException
+		class MOHPC_EXPORTS RuntPacketNetException : public NetworkException
 		{
 		};
 
@@ -40,6 +40,14 @@ namespace MOHPC
 			BroadcastIPX
 		};
 
+		class INetAddr
+		{
+		public:
+			virtual void getAddress(void* data);
+			virtual size_t getAddressSize() const = 0;
+		};
+
+		// FIXME: use an abstract interface for netadr_t instead (IPv4 and IPv6)
 		struct netadr_t
 		{
 			netadrtype_t type;

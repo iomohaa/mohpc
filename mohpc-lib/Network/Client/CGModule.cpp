@@ -129,7 +129,7 @@ bool EntityInfo::hasTeleported() const
 	return teleported;
 }
 
-CGameModuleBase::CGameModuleBase(const CGameImports& inImports)
+CGameModuleBase::CGameModuleBase(const ClientImports& inImports)
 	: imports(inImports)
 	, snap(nullptr)
 	, nextSnap(nullptr)
@@ -410,8 +410,12 @@ void CGameModuleBase::setInitialSnapshot(SnapshotInfo* newSnap)
 		EntityInfo& entInfo = clientEnts[state.number];
 
 		entInfo.currentState = state;
+		entInfo.nextState = state;
 		entInfo.interpolate = false;
 		entInfo.currentValid = true;
+
+		// This is the first snapshot, notify about each entities
+		handlers().notify<CGameHandlers::EntityAdded>(entInfo);
 	}
 }
 
@@ -938,7 +942,7 @@ const clientInfo_t& Network::CGameModuleBase::getClientInfo(uint32_t clientNum) 
 	return clientInfo[clientNum];
 }
 
-const Network::CGameImports& Network::CGameModuleBase::getImports() const
+const Network::ClientImports& Network::CGameModuleBase::getImports() const
 {
 	return imports;
 }
@@ -1483,7 +1487,7 @@ void CGameModuleBase::SCmd_PrintDeathMsg(TokenParser& args)
 	}
 }
 
-CGameModule6::CGameModule6(const CGameImports& inImports)
+CGameModule6::CGameModule6(const ClientImports& inImports)
 	: CGameModuleBase(inImports)
 {
 }
@@ -1976,7 +1980,7 @@ void Network::CGameModule6::parseFogInfo(const char* s, environment_t& env)
 	env.farplaneCull = tmp;
 }
 
-CGameModule15::CGameModule15(const CGameImports& inImports)
+CGameModule15::CGameModule15(const ClientImports& inImports)
 	: CGameModuleBase(inImports)
 {
 }

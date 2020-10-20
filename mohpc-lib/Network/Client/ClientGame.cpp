@@ -87,23 +87,191 @@ const char byteCharMapping[256] =
 };
 */
 
+BadCommandByteException::BadCommandByteException(uint8_t inCmdNum)
+	: cmdNum(inCmdNum)
+{}
+
+uint8_t BadCommandByteException::getLength() const
+{
+	return cmdNum;
+}
+
+str BadCommandByteException::what() const
+{
+	return str((int)getLength());
+}
+
+BadProtocolVersionException::BadProtocolVersionException(uint8_t inProtocolVersion)
+	: protocolVersion(inProtocolVersion)
+{}
+
+uint32_t BadProtocolVersionException::getProtocolVersion() const
+{
+	return protocolVersion;
+}
+
+str BadProtocolVersionException::what() const
+{
+	return str((int)getProtocolVersion());
+}
+
+IllegibleServerMessageException::IllegibleServerMessageException(uint8_t inCmdNum)
+	: cmdNum(inCmdNum)
+{}
+
+uint8_t IllegibleServerMessageException::getLength() const
+{
+	return cmdNum;
+}
+
+str IllegibleServerMessageException::what() const
+{
+	return str((int)getLength());
+}
+
+BaselineOutOfRangeException::BaselineOutOfRangeException(uint16_t inBaselineNum)
+	: baselineNum(inBaselineNum)
+{}
+
+uint16_t BaselineOutOfRangeException::getBaselineNum() const
+{
+	return baselineNum;
+}
+
+str BaselineOutOfRangeException::what() const
+{
+	return str((int)getBaselineNum());
+}
+
+MaxConfigStringException::MaxConfigStringException(csNum_t inConfigStringNum)
+	: configStringNum(inConfigStringNum)
+{}
+
+csNum_t MaxConfigStringException::GetConfigstringNum() const
+{
+	return configStringNum;
+}
+
+str MaxConfigStringException::what() const
+{
+	return str((int)GetConfigstringNum());
+}
+
+MaxGameStateCharsException::MaxGameStateCharsException(size_t inStringLen)
+	: stringLen(inStringLen)
+{}
+
+size_t MaxGameStateCharsException::GetStringLength() const
+{
+	return stringLen;
+}
+
+str MaxGameStateCharsException::what() const
+{
+	return str((int)GetStringLength());
+}
+
+AreaMaskBadSize::AreaMaskBadSize(uint8_t inSize)
+	: size(inSize)
+{}
+
+uint8_t AreaMaskBadSize::getSize() const
+{
+	return size;
+}
+
+str AreaMaskBadSize::what() const
+{
+	return str((int)getSize());
+}
+
 Network::DownloadException::DownloadException(StringMessage&& inError)
 	: error(std::move(inError))
 {}
 
-Network::gameState_t::gameState_t()
-	: stringOffsets{ 0 }
-	, stringData{ 0 }
-	, dataCount(0)
+DownloadSizeException::DownloadSizeException(uint16_t inSize)
+	: size(inSize)
 {}
 
-const char* Network::gameState_t::getConfigString(size_t num) const
+uint16_t Network::DownloadSizeException::getSize() const
+{
+	return size;
+}
+
+BadDownloadBlockException::BadDownloadBlockException(uint16_t inBlock, uint16_t inExpectedBlock)
+	: block(inBlock)
+	, expectedBlock(inExpectedBlock)
+{
+}
+
+uint16_t BadDownloadBlockException::getBlock() const noexcept
+{
+	return block;
+}
+
+uint16_t BadDownloadBlockException::getExpectedBlock() const noexcept
+{
+	return expectedBlock;
+}
+
+gameState_t::gameState_t()
+	: stringOffsets{ 0 }
+	, stringData{ 0 }
+	, dataCount(1)
+{}
+
+const char* Network::gameState_t::getConfigString(csNum_t num) const
 {
 	if (num > MAX_CONFIGSTRINGS) {
 		return nullptr;
 	}
 
 	return &stringData[stringOffsets[num]];
+}
+
+void gameState_t::setConfigString(csNum_t num, const char* configString, size_t len)
+{
+	const size_t newSz = dataCount + len;
+	if (num > MAX_CONFIGSTRINGS) {
+		throw MaxConfigStringException(num);
+	}
+
+	// going to  
+	// backup the game state
+	gameState_t oldGs = *this;
+
+	// leave the first 0 for empty/uninitialized strings
+	dataCount = 1;
+
+	// shrink the game state
+	for (size_t i = 0; i < MAX_CONFIGSTRINGS; i++)
+	{
+		const char* dup;
+
+		if (i == num) {
+			dup = configString;
+		}
+		else {
+			dup = oldGs.stringData + oldGs.stringOffsets[i];
+		}
+
+		if (!dup[0])
+		{
+			// leave with the default empty string
+			continue;
+		}
+
+		len = strlen(dup);
+
+		if (len + dataCount >= MAX_GAMESTATE_CHARS) {
+			throw MaxGameStateCharsException(newSz);
+		}
+
+		// the string is correct, append it to the gameState string buffer
+		stringOffsets[i] = dataCount;
+		std::memcpy(stringData + dataCount, dup, len + 1);
+		dataCount += len + 1;
+	}
 }
 
 ClientSnapshot::ClientSnapshot()
@@ -134,7 +302,7 @@ ClientGameConnection::ClientGameConnection(const NetworkManagerPtr& inNetworkMan
 	, oldServerTime(0)
 	, oldFrameServerTime(0)
 	, lastPacketSendTime(0)
-	, timeoutTime(30000)
+	, timeoutTime(60000)
 	, maxPackets(30)
 	, maxTickPackets(60)
 	, parseEntitiesNum(0)
@@ -143,30 +311,22 @@ ClientGameConnection::ClientGameConnection(const NetworkManagerPtr& inNetworkMan
 	, clientNum(0)
 	, checksumFeed(0)
 	, serverId(0)
-	, downloadedBlock(0)
 	, reliableSequence(0)
 	, reliableAcknowledge(0)
 	, newSnapshots(false)
 	, extrapolatedSnapshot(false)
 	, isActive(false)
+	, isReady(false)
 	, reliableCommands{ nullptr }
 	, serverCommands{ nullptr }
 	, reliableCmdStrings{ 0 }
 	, serverCmdStrings{ 0 }
 	, userInfo(cInfo)
 {
-	CGameImports imports;
+	ClientImports imports;
+	fillClientImports(imports);
 
-	using namespace std::placeholders;
-	imports.getCurrentSnapshotNumber	= std::bind(&ClientGameConnection::getCurrentSnapshotNumber, this);
-	imports.getSnapshot					= std::bind(&ClientGameConnection::getSnapshot, this, _1, _2);
-	imports.getServerStartTime			= std::bind(&ClientGameConnection::getServerStartTime, this);
-	imports.getServerTime				= std::bind(&ClientGameConnection::getServerTime, this);
-	imports.getServerFrameFrequency		= std::bind(&ClientGameConnection::getServerFrameFrequency, this);
-	imports.getUserCmd					= std::bind(&ClientGameConnection::getUserCmd, this, _1, _2);
-	imports.getCurrentCmdNumber			= std::bind(&ClientGameConnection::getCurrentCmdNumber, this);
-	imports.getServerCommand			= std::bind(&ClientGameConnection::getServerCommand, this, _1, _2);
-	imports.getGameState				= std::bind(&ClientGameConnection::getGameState, this);
+	downloadState.setImports(imports);
 
 	switch (protoType.getProtocolVersion())
 	{
@@ -215,7 +375,7 @@ ClientGameConnection::~ClientGameConnection()
 	disconnect();
 }
 
-MOHPC::Network::ClientGameConnection::HandlerListClient& Network::ClientGameConnection::getHandlerList()
+ClientGameConnection::HandlerListClient& Network::ClientGameConnection::getHandlerList()
 {
 	return handlerList;
 }
@@ -267,7 +427,9 @@ void ClientGameConnection::tick(uint64_t deltaTime, uint64_t currentTime)
 				// received connection packet
 				receive(from, msg, sequenceNum, currentTime);
 			}
-			else {
+			else
+			{
+				// can only happen when disconnected
 				receiveConnectionLess(from, msg);
 			}
 		}
@@ -282,8 +444,16 @@ void ClientGameConnection::tick(uint64_t deltaTime, uint64_t currentTime)
 
 	setCGameTime(currentTime);
 
-	if (isActive && cgameModule) {
-		cgameModule->tick(deltaTime, currentTime, serverTime);
+	try
+	{
+		if (isActive && cgameModule) {
+			cgameModule->tick(deltaTime, currentTime, serverTime);
+		}
+	}
+	catch (NetworkException& e)
+	{
+		// call the handler
+		handlerList.notify<ClientHandlers::Error>(e);
 	}
 }
 
@@ -310,12 +480,13 @@ void Network::ClientGameConnection::receive(const netadr_t& from, MSG& msg, size
 		reliableAcknowledge = reliableSequence;
 	}
 
-	// Decode the stream itself
+	// decode the stream itself
 	IMessageStream& stream = msg.stream();
 	stream.Seek(CL_DECODE_START, IMessageStream::SeekPos::Begin);
 	encoder->setReliableAcknowledge(reliableAcknowledge);
 	encoder->setSecretKey(serverMessageSequence);
 	encoder->decode(stream, stream);
+	// seek after sequence number
 	stream.Seek(sizeof(uint32_t));
 
 	// Needs to be reset as the stream has been decoded
@@ -336,9 +507,13 @@ void Network::ClientGameConnection::receive(const netadr_t& from, MSG& msg, size
 		// call the handler
 		handlerList.notify<ClientHandlers::Error>(e);
 	}
+	catch (StreamMessageException& e)
+	{
+		MOHPC_LOG(Error, "Tried to read past end of server message (length %d)", stream.GetLength());
+	}
 }
 
-void MOHPC::Network::ClientGameConnection::receiveConnectionLess(const netadr_t& from, MSG& msg)
+void ClientGameConnection::receiveConnectionLess(const netadr_t& from, MSG& msg)
 {
 	msg.SetCodec(MessageCodecs::OOB);
 
@@ -380,7 +555,8 @@ void MOHPC::Network::ClientGameConnection::receiveConnectionLess(const netadr_t&
 
 void Network::ClientGameConnection::addReliableCommand(const char* cmd)
 {
-	if (reliableSequence - reliableAcknowledge > MAX_RELIABLE_COMMANDS) {
+	if (reliableSequence - reliableAcknowledge > MAX_RELIABLE_COMMANDS)
+	{
 		// FIXME: throw
 		return;
 	}
@@ -388,8 +564,8 @@ void Network::ClientGameConnection::addReliableCommand(const char* cmd)
 	++reliableSequence;
 	const size_t index = reliableSequence & (MAX_RELIABLE_COMMANDS - 1);
 
-	reliableCommands[index] = &reliableCmdStrings[MAX_STRING_CHARS * index];
-	strncpy(reliableCommands[index], cmd, sizeof(reliableCmdStrings[0]) * MAX_STRING_CHARS);
+	//reliableCommands[index] = &reliableCmdStrings[MAX_STRING_CHARS * index];
+	strncpy(reliableCommands[index], cmd, sizeof(reliableCmdStrings[MAX_STRING_CHARS * index]) * MAX_STRING_CHARS);
 }
 
 void Network::ClientGameConnection::parseServerMessage(MSG& msg, uint32_t serverMessageSequence, uint64_t currentTime)
@@ -468,7 +644,7 @@ void Network::ClientGameConnection::parseGameState(MSG& msg)
 		{
 		case svc_ops_e::Configstring:
 		{
-			const uint16_t stringNum = msg.ReadUShort();
+			const csNum_t stringNum = msg.ReadUShort();
 
 			if (stringNum > MAX_CONFIGSTRINGS) {
 				throw MaxConfigStringException(stringNum);
@@ -553,15 +729,17 @@ void Network::ClientGameConnection::parseSnapshot(MSG& msg, uint32_t serverMessa
 		if (!old->valid) {
 			// should never happen
 			// FIXME: throw?
+			MOHPC_LOG(Warning, "Delta from invalid frame (not supposed to happen!).");
 		}
-
-		if (old->messageNum != newSnap.deltaNum) {
+		else if (old->messageNum != newSnap.deltaNum) {
 			// The frame that the server did the delta from
 			// is too old, so we can't reconstruct it properly.
 			// FIXME: throw?
+			MOHPC_LOG(Warning, "Delta frame too old.");
 		}
 		else if (parseEntitiesNum - old->parseEntitiesNum > MAX_PARSE_ENTITIES - 128) {
 			// FIXME: throw?
+			MOHPC_LOG(Warning, "Delta parseEntitiesNum too old.");
 		}
 		else {
 			newSnap.valid = true;	// valid delta parse
@@ -883,50 +1061,155 @@ void Network::ClientGameConnection::parseSounds(MSG& msg, ClientSnapshot* newFra
 	}
 }
 
-void Network::ClientGameConnection::parseDownload(MSG& msg)
+Network::DownloadManager::DownloadManager()
+	: downloadSize(0)
+	, downloadBlock(0)
+	, downloadRequested(false)
+{}
+
+void DownloadManager::setImports(ClientImports& inImports) noexcept
 {
+	imports = inImports;
+}
+
+void DownloadManager::processDownload(MSG& msg)
+{
+	if (!downloadRequested)
+	{
+		// not requested
+		imports.addReliableCommand("stopdl");
+		throw UnexpectedDownloadException();
+	}
+
 	uint8_t data[MAX_MSGLEN];
 
-	uint16_t block = msg.ReadUShort();
+	const uint16_t block = msg.ReadUShort();
 	if (!block)
 	{
 		// block zero = file size
-		int32_t fileSize = msg.ReadInteger();
+		uint32_t fileSize = msg.ReadInteger();
 
-		if (fileSize < 0)
+		if (!fileSize || fileSize == -1)
 		{
-			StringMessage errorString = readStringMessage(msg);
-			throw DownloadException(std::move(errorString));
+			// not a valid file size
+			throw DownloadException(imports.readStringMessage(msg));
 		}
 
-		downloadedBlock = 0;
-
-		std::filesystem::remove("dwnl.tmp");
+		downloadBlock = 0;
 
 		MOHPC_LOG(Verbose, "downloading file of size %d", fileSize);
 	}
 
-	uint16_t size = msg.ReadUShort();
+	const uint16_t size = msg.ReadUShort();
 
-	if (size < 0 || size > sizeof(data))
+	if (size > sizeof(data))
 	{
-		// FIXME: throw exception
-		return;
+		// invalid size
+		throw DownloadSizeException(size);
 	}
 
-	if (size > 0) {
+	if (downloadBlock != block)
+	{
+		// unexpected block
+		throw BadDownloadBlockException(block, downloadBlock);
+	}
+
+	if (size > 0)
+	{
 		msg.ReadData(data, size);
 
-		std::ofstream strm("dwnl.tmp", std::ofstream::binary | std::ofstream::app);
+		if (!receive(data, size))
+		{
+			clearDownload();
+			imports.addReliableCommand("stopdl");
+			return;
+		}
+
+		//std::ofstream strm("dwnl.tmp", std::ofstream::binary | std::ofstream::app);
 		// append data
-		strm.write((const char*)data, size);
+		//strm.write((const char*)data, size);
 
 		MOHPC_LOG(Verbose, "downloaded block %d size %d", block, size);
+
+		// tell the server to continue downloading
+		imports.addReliableCommand(str::printf("nextdl %d", downloadBlock));
+
+		downloadSize += size;
+	}
+	else
+	{
+		// a size of 0 means EOF
+		clearDownload();
+
+		downloadsComplete();
 	}
 
-	addReliableCommand(str::printf("nextdl %d", downloadedBlock++));
+	downloadBlock++;
+}
 
-	// FIXME: actually download the file
+bool DownloadManager::receive(const uint8_t* data, const size_t size)
+{
+	if (receiveCallback)
+	{
+		// let the callee do whatever with the data and possibly cancel
+		return receiveCallback(data, size);
+	}
+
+	return true;
+}
+
+void DownloadManager::startDownload(const char* inDownloadName)
+{
+	if (startCallback)
+	{
+		// notify about the new download
+		if (!startCallback(downloadName.c_str()))
+		{
+			// don't start the download if the callee didn't want it
+			return;
+		}
+	}
+
+	downloadName = inDownloadName;
+	downloadRequested = true;
+}
+
+void DownloadManager::cancelDownload()
+{
+	clearDownload();
+}
+
+
+void DownloadManager::clearDownload()
+{
+	downloadName.clear();
+	downloadRequested = false;
+}
+
+void Network::DownloadManager::downloadsComplete()
+{
+	// inform that download has stopped
+	imports.addReliableCommand("donedl");
+}
+
+void Network::DownloadManager::nextDownload()
+{
+	// FIXME: list of files to download
+}
+
+void DownloadManager::setDownloadStartedCallback(startCallback_f&& callback)
+{
+	startCallback = std::move(callback);
+}
+
+void DownloadManager::setReceiveCallback(receiveCallback_f&& callback)
+{
+	receiveCallback = std::move(callback);
+}
+
+void Network::ClientGameConnection::parseDownload(MSG& msg)
+{
+	downloadState.processDownload(msg);
 }
 
 void Network::ClientGameConnection::parseCommandString(MSG& msg)
@@ -944,7 +1227,7 @@ void Network::ClientGameConnection::parseCommandString(MSG& msg)
 
 	const uint32_t index = seq & (MAX_RELIABLE_COMMANDS - 1);
 
-	serverCommands[index] = &serverCmdStrings[MAX_STRING_CHARS * index];
+	//serverCommands[index] = &serverCmdStrings[MAX_STRING_CHARS * index];
 	strncpy(serverCommands[index], s, sizeof(serverCmdStrings[0]) * MAX_STRING_CHARS);
 
 	Event ev;
@@ -1020,7 +1303,8 @@ void Network::ClientGameConnection::createNewCommands()
 
 	userEyes = usereyes_t();
 
-	// Let the app set user input
+	// all movement will happen through the event notification
+	// the callee is responsible for making user input
 	handlerList.notify<ClientHandlers::UserInput>(cmd, userEyes);
 }
 
@@ -1035,7 +1319,12 @@ bool Network::ClientGameConnection::sendCmd(uint64_t currentTime)
 		return false;
 	}
 
-	createNewCommands();
+	if(canCreateCommand())
+	{
+		// only create commands if the client is completely ready
+		createNewCommands();
+	}
+
 	return true;
 }
 
@@ -1073,13 +1362,13 @@ void Network::ClientGameConnection::writePacket(uint32_t serverMessageSequence, 
 
 	if (count >= 1)
 	{
-		uint8_t cmdOp;
-		//if (currentSnap.valid && serverMessageSequence == currentSnap.messageNum) {
-		//	cmdNum = clc_ops_e::Move;
-		//}
-		//else {
-		cmdOp = clc_ops_e::MoveNoDelta;
-		//}
+		clc_ops_e cmdOp;
+		if (currentSnap.valid && serverMessageSequence == currentSnap.messageNum) {
+			cmdOp = clc_ops_e::Move;
+		}
+		else {
+			cmdOp = clc_ops_e::MoveNoDelta;
+		}
 
 		// Write the command number
 		msg.WriteByte(cmdOp);
@@ -1166,7 +1455,7 @@ void ClientGameConnection::readDeltaEntity(MSG& msg, const entityState_t* from, 
 	(this->*readDeltaEntity_pf)(msg, from, to, newNum);
 }
 
-MOHPC::StringMessage ClientGameConnection::readStringMessage_normal(MSG& msg)
+StringMessage ClientGameConnection::readStringMessage_normal(MSG& msg)
 {
 	return msg.ReadString();
 }
@@ -1176,7 +1465,7 @@ void ClientGameConnection::writeStringMessage_normal(MSG& msg, const char* s)
 	msg.WriteString(s);
 }
 
-MOHPC::StringMessage ClientGameConnection::readStringMessage_scrambled(MSG& msg)
+StringMessage ClientGameConnection::readStringMessage_scrambled(MSG& msg)
 {
 	return msg.ReadScrambledString(byteCharMapping);
 }
@@ -1237,7 +1526,7 @@ void ClientGameConnection::readDeltaPlayerstate_ver6(MSG& msg, const playerState
 
 void ClientGameConnection::readDeltaPlayerstate_ver15(MSG& msg, const playerState_t* from, playerState_t* to)
 {
-	msg.ReadDeltaClass(from ? &SerializablePlayerState_ver17(*const_cast<playerState_t*>(from)) : nullptr, &SerializablePlayerState_ver17(*to));
+	msg.ReadDeltaClass(from ? &SerializablePlayerState_ver15(*const_cast<playerState_t*>(from)) : nullptr, &SerializablePlayerState_ver15(*to));
 }
 
 void ClientGameConnection::readDeltaEntity_ver6(MSG& msg, const entityState_t* from, entityState_t* to, entityNum_t newNum)
@@ -1250,37 +1539,37 @@ void ClientGameConnection::readDeltaEntity_ver15(MSG& msg, const entityState_t* 
 	msg.ReadDeltaClass(from ? &SerializableEntityState_ver15(*const_cast<entityState_t*>(from), newNum) : nullptr, &SerializableEntityState_ver15(*to, newNum));
 }
 
-const MOHPC::Network::netadr_t& ClientGameConnection::getRemoteAddress() const
+const netadr_t& ClientGameConnection::getRemoteAddress() const
 {
 	return adr;
 }
 
-const gameState_t& MOHPC::Network::ClientGameConnection::getGameState() const
+const gameState_t& ClientGameConnection::getGameState() const
 {
 	return gameState;
 }
 
-ReadOnlyInfo MOHPC::Network::ClientGameConnection::getServerSystemInfo() const
+ReadOnlyInfo ClientGameConnection::getServerSystemInfo() const
 {
 	return gameState.getConfigString(CS_SYSTEMINFO);
 }
 
-ReadOnlyInfo MOHPC::Network::ClientGameConnection::getServerGameInfo() const
+ReadOnlyInfo ClientGameConnection::getServerGameInfo() const
 {
 	return gameState.getConfigString(CS_SERVERINFO);
 }
 
-ConstClientInfoPtr MOHPC::Network::ClientGameConnection::getUserInfo() const
+ConstClientInfoPtr ClientGameConnection::getUserInfo() const
 {
 	return userInfo;
 }
 
-const ClientInfoPtr& MOHPC::Network::ClientGameConnection::getUserInfo()
+const ClientInfoPtr& ClientGameConnection::getUserInfo()
 {
 	return userInfo;
 }
 
-void MOHPC::Network::ClientGameConnection::updateUserInfo()
+void ClientGameConnection::updateUserInfo()
 {
 	Info info;
 	userInfo->fillInfoString(info);
@@ -1288,12 +1577,12 @@ void MOHPC::Network::ClientGameConnection::updateUserInfo()
 	addReliableCommand(str::printf("userinfo \"%s\"", info.GetString()));
 }
 
-uint32_t MOHPC::Network::ClientGameConnection::getMaxPackets() const
+uint32_t ClientGameConnection::getMaxPackets() const
 {
 	return maxPackets;
 }
 
-void MOHPC::Network::ClientGameConnection::setMaxPackets(uint32_t inMaxPackets)
+void ClientGameConnection::setMaxPackets(uint32_t inMaxPackets)
 {
 	maxPackets = inMaxPackets;
 	if (maxPackets < 1) {
@@ -1304,12 +1593,12 @@ void MOHPC::Network::ClientGameConnection::setMaxPackets(uint32_t inMaxPackets)
 	}
 }
 
-uint32_t MOHPC::Network::ClientGameConnection::getMaxTickPackets() const
+uint32_t ClientGameConnection::getMaxTickPackets() const
 {
 	return maxTickPackets;
 }
 
-void MOHPC::Network::ClientGameConnection::setMaxTickPackets(uint32_t inMaxPackets)
+void ClientGameConnection::setMaxTickPackets(uint32_t inMaxPackets)
 {
 	maxTickPackets = inMaxPackets;
 	if (maxTickPackets < 1) {
@@ -1320,7 +1609,7 @@ void MOHPC::Network::ClientGameConnection::setMaxTickPackets(uint32_t inMaxPacke
 	}
 }
 
-void MOHPC::Network::ClientGameConnection::initTime(uint64_t currentTime)
+void ClientGameConnection::initTime(uint64_t currentTime)
 {
 	realTimeStart = currentTime;
 
@@ -1328,12 +1617,12 @@ void MOHPC::Network::ClientGameConnection::initTime(uint64_t currentTime)
 	lastTimeoutTime = steady_clock::time_point(milliseconds(currentTime));
 }
 
-uintptr_t MOHPC::Network::ClientGameConnection::getCurrentSnapshotNumber() const
+uintptr_t ClientGameConnection::getCurrentSnapshotNumber() const
 {
 	return currentSnap.messageNum;
 }
 
-bool MOHPC::Network::ClientGameConnection::getSnapshot(uintptr_t snapshotNum, SnapshotInfo& outSnapshot) const
+bool ClientGameConnection::getSnapshot(uintptr_t snapshotNum, SnapshotInfo& outSnapshot) const
 {
 	// if the frame has fallen out of the circular buffer, we can't return it
 	if (currentSnap.messageNum - snapshotNum >= PACKET_BACKUP) {
@@ -1380,27 +1669,27 @@ bool MOHPC::Network::ClientGameConnection::getSnapshot(uintptr_t snapshotNum, Sn
 	return true;
 }
 
-uint64_t MOHPC::Network::ClientGameConnection::getServerStartTime() const
+uint64_t ClientGameConnection::getServerStartTime() const
 {
 	return serverStartTime;
 }
 
-uint64_t MOHPC::Network::ClientGameConnection::getServerTime() const
+uint64_t ClientGameConnection::getServerTime() const
 {
 	return serverTime;
 }
 
-uint64_t MOHPC::Network::ClientGameConnection::getServerFrameFrequency() const
+uint64_t ClientGameConnection::getServerFrameFrequency() const
 {
 	return serverDeltaFrequency;
 }
 
-uintptr_t MOHPC::Network::ClientGameConnection::getCurrentCmdNumber()
+uintptr_t ClientGameConnection::getCurrentCmdNumber()
 {
 	return cmdNumber;
 }
 
-bool MOHPC::Network::ClientGameConnection::getUserCmd(uintptr_t cmdNum, usercmd_t& outCmd)
+bool ClientGameConnection::getUserCmd(uintptr_t cmdNum, usercmd_t& outCmd)
 {
 	// the usercmd has been overwritten in the wrapping
 	// buffer because it is too far out of date
@@ -1412,7 +1701,7 @@ bool MOHPC::Network::ClientGameConnection::getUserCmd(uintptr_t cmdNum, usercmd_
 	return true;
 }
 
-bool MOHPC::Network::ClientGameConnection::getServerCommand(uintptr_t serverCommandNumber, TokenParser& tokenized)
+bool ClientGameConnection::getServerCommand(uintptr_t serverCommandNumber, TokenParser& tokenized)
 {
 	const char* cmdString = serverCommands[serverCommandNumber % MAX_RELIABLE_COMMANDS];
 	if (!cmdString) {
@@ -1446,7 +1735,7 @@ bool MOHPC::Network::ClientGameConnection::getServerCommand(uintptr_t serverComm
 	return true;
 }
 
-void MOHPC::Network::ClientGameConnection::disconnect()
+void ClientGameConnection::disconnect()
 {
 	if(getNetchan())
 	{
@@ -1464,7 +1753,28 @@ void MOHPC::Network::ClientGameConnection::disconnect()
 	terminateConnection(nullptr);
 }
 
-void MOHPC::Network::ClientGameConnection::serverDisconnected(const char* reason)
+void ClientGameConnection::sendCommand(const char* command)
+{
+	addReliableCommand(command);
+	parseClientCommand(command);
+}
+
+void ClientGameConnection::markReady()
+{
+	isReady = true;
+}
+
+void ClientGameConnection::unmarkReady()
+{
+	isReady = false;
+}
+
+bool ClientGameConnection::canCreateCommand() const
+{
+	return isReady;
+}
+
+void ClientGameConnection::serverDisconnected(const char* reason)
 {
 	wipeChannel();
 
@@ -1472,7 +1782,7 @@ void MOHPC::Network::ClientGameConnection::serverDisconnected(const char* reason
 	terminateConnection(reason);
 }
 
-void MOHPC::Network::ClientGameConnection::terminateConnection(const char* reason)
+void ClientGameConnection::terminateConnection(const char* reason)
 {
 	// Clear out the server id
 	serverId = 0;
@@ -1487,7 +1797,7 @@ void MOHPC::Network::ClientGameConnection::terminateConnection(const char* reaso
 	}
 }
 
-void MOHPC::Network::ClientGameConnection::configStringModified(uint16_t num, const char* newString)
+void ClientGameConnection::configStringModified(csNum_t num, const char* newString)
 {
 	// Set the config string in gamestate
 	gameState.setConfigString(num, newString, strlen(newString));
@@ -1499,12 +1809,12 @@ void MOHPC::Network::ClientGameConnection::configStringModified(uint16_t num, co
 	handlerList.notify<ClientHandlers::Configstring>(num, newString);
 }
 
-void MOHPC::Network::ClientGameConnection::wipeChannel()
+void ClientGameConnection::wipeChannel()
 {
 	netchan = nullptr;
 }
 
-bool MOHPC::Network::ClientGameConnection::isChannelValid() const
+bool ClientGameConnection::isChannelValid() const
 {
 	return netchan != nullptr;
 }
@@ -1514,6 +1824,7 @@ void ClientGameConnection::clearState()
 	parseEntitiesNum = 0;
 	cmdNumber = 0;
 	isActive = false;
+	isReady = false;
 }
 
 bool ClientGameConnection::isDifferentServer(uint32_t id)
@@ -1521,7 +1832,26 @@ bool ClientGameConnection::isDifferentServer(uint32_t id)
 	return id != serverId;
 }
 
-void MOHPC::Network::ClientGameConnection::setCGameTime(uint64_t currentTime)
+void ClientGameConnection::parseClientCommand(const char* arguments)
+{
+	TokenParser parser;
+	parser.Parse(arguments, strlen(arguments) + 1);
+
+	const char* cmd = parser.GetToken(false);
+	if(!str::icmp(cmd, "download"))
+	{
+		// a download command was issued so start it
+		const char* downloadName = parser.GetToken(false);
+		downloadState.startDownload(downloadName);
+	}
+	else if (!str::icmp(cmd, "stopdl"))
+	{
+		// cancel downloading
+		downloadState.cancelDownload();
+	}
+}
+
+void ClientGameConnection::setCGameTime(uint64_t currentTime)
 {
 	if(!isActive)
 	{
@@ -1569,7 +1899,7 @@ void MOHPC::Network::ClientGameConnection::setCGameTime(uint64_t currentTime)
 	}
 }
 
-void MOHPC::Network::ClientGameConnection::adjustTimeDelta(uint64_t realTime)
+void ClientGameConnection::adjustTimeDelta(uint64_t realTime)
 {
 	newSnapshots = false;
 
@@ -1602,7 +1932,7 @@ void MOHPC::Network::ClientGameConnection::adjustTimeDelta(uint64_t realTime)
 	}
 }
 
-void MOHPC::Network::ClientGameConnection::firstSnapshot(uint64_t currentTime)
+void ClientGameConnection::firstSnapshot(uint64_t currentTime)
 {
 	if (currentSnap.snapFlags & SNAPFLAG_NOT_ACTIVE) {
 		return;
@@ -1619,7 +1949,7 @@ void MOHPC::Network::ClientGameConnection::firstSnapshot(uint64_t currentTime)
 	cgameModule->init(serverMessageSequence, serverMessageSequence);
 }
 
-bool MOHPC::Network::ClientGameConnection::readyToSendPacket(uint64_t currentTime) const
+bool ClientGameConnection::readyToSendPacket(uint64_t currentTime) const
 {
 	if (!cgameModule)
 	{
@@ -1627,9 +1957,9 @@ bool MOHPC::Network::ClientGameConnection::readyToSendPacket(uint64_t currentTim
 		return false;
 	}
 
-	if (!serverId)
+	if (!serverId || !canCreateCommand())
 	{
-		// Send one packet per second when loading
+		// allow one packet per second when not entered
 		return currentTime >= lastPacketSendTime + 1000;
 	}
 
@@ -1642,17 +1972,33 @@ bool MOHPC::Network::ClientGameConnection::readyToSendPacket(uint64_t currentTim
 	return true;
 }
 
-cs_t MOHPC::Network::ClientGameConnection::getNormalizedConfigstring(cs_t num)
+void ClientGameConnection::fillClientImports(ClientImports& imports)
+{
+	using namespace std::placeholders;
+	imports.getCurrentSnapshotNumber	= std::bind(&ClientGameConnection::getCurrentSnapshotNumber, this);
+	imports.getSnapshot					= std::bind(&ClientGameConnection::getSnapshot, this, _1, _2);
+	imports.getServerStartTime			= std::bind(&ClientGameConnection::getServerStartTime, this);
+	imports.getServerTime				= std::bind(&ClientGameConnection::getServerTime, this);
+	imports.getServerFrameFrequency		= std::bind(&ClientGameConnection::getServerFrameFrequency, this);
+	imports.getUserCmd					= std::bind(&ClientGameConnection::getUserCmd, this, _1, _2);
+	imports.getCurrentCmdNumber			= std::bind(&ClientGameConnection::getCurrentCmdNumber, this);
+	imports.getServerCommand			= std::bind(&ClientGameConnection::getServerCommand, this, _1, _2);
+	imports.getGameState				= std::bind(&ClientGameConnection::getGameState, this);
+	imports.readStringMessage			= std::bind(&ClientGameConnection::readStringMessage, this, _1);
+	imports.addReliableCommand			= std::bind(&ClientGameConnection::addReliableCommand, this, _1);
+}
+
+csNum_t ClientGameConnection::getNormalizedConfigstring(csNum_t num)
 {
 	return (this->*getNormalizedConfigstring_pf)(num);
 }
 
-MOHPC::Network::CGameModuleBase* Network::ClientGameConnection::getCGModule()
+CGameModuleBase* Network::ClientGameConnection::getCGModule()
 {
 	return cgameModule;
 }
 
-cs_t ClientGameConnection::getNormalizedConfigstring_ver6(cs_t num)
+csNum_t ClientGameConnection::getNormalizedConfigstring_ver6(csNum_t num)
 {
 	if (num <= CS_WARMUP || num >= 26) {
 		return num;
@@ -1661,21 +2007,9 @@ cs_t ClientGameConnection::getNormalizedConfigstring_ver6(cs_t num)
 	return num - 2;
 }
 
-cs_t ClientGameConnection::getNormalizedConfigstring_ver15(cs_t num)
+csNum_t ClientGameConnection::getNormalizedConfigstring_ver15(csNum_t num)
 {
 	return num;
-}
-
-void MOHPC::Network::gameState_t::setConfigString(size_t num, const char* configString, size_t len)
-{
-	const size_t newSz = dataCount + len;
-	if (newSz > MAX_GAMESTATE_CHARS) {
-		throw MaxGameStateCharsException(newSz);
-	}
-
-	stringOffsets[num] = dataCount;
-	memcpy(stringData + dataCount, configString, len + 1);
-	dataCount += len + 1;
 }
 
 MOHPC_OBJECT_DEFINITION(ClientInfo);
@@ -1686,22 +2020,22 @@ ClientInfo::ClientInfo()
 {
 }
 
-void MOHPC::Network::ClientInfo::setRate(uint32_t inRate)
+void ClientInfo::setRate(uint32_t inRate)
 {
 	rate = inRate;
 }
 
-uint32_t MOHPC::Network::ClientInfo::getRate() const
+uint32_t ClientInfo::getRate() const
 {
 	return rate;
 }
 
-void MOHPC::Network::ClientInfo::setSnaps(uint32_t inSnaps)
+void ClientInfo::setSnaps(uint32_t inSnaps)
 {
 	snaps = inSnaps;
 }
 
-uint32_t MOHPC::Network::ClientInfo::getSnaps() const
+uint32_t ClientInfo::getSnaps() const
 {
 	return snaps;
 }
@@ -1736,12 +2070,12 @@ const char* ClientInfo::getPlayerGermanModel() const
 	return properties.GetPropertyRawValue("dm_playergermanmodel");
 }
 
-void MOHPC::Network::ClientInfo::setUserKeyValue(const char* key, const char* value)
+void ClientInfo::setUserKeyValue(const char* key, const char* value)
 {
 	properties.SetPropertyValue(key, value);
 }
 
-const char* MOHPC::Network::ClientInfo::getUserKeyValue(const char* key) const
+const char* ClientInfo::getUserKeyValue(const char* key) const
 {
 	return properties.GetPropertyRawValue(key);
 }

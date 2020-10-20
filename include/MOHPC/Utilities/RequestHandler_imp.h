@@ -149,7 +149,7 @@ namespace MOHPC
 			const size_t len = param.receive((uint8_t*)data, maxSize);
 			if (len && len != -1)
 			{
-				FixedDataMessageStream stream(data, len);
+				FixedDataMessageStream stream(data, len, len);
 				RequestData data(stream, (void**)&param);
 
 				// Process the request using the data

@@ -60,8 +60,8 @@ namespace MOHPC
 		{
 		}
 
-		void Compress(size_t offset, size_t len) noexcept;
-		void Decompress(size_t offset, size_t len) noexcept;
+		void Compress(size_t offset, size_t len);
+		void Decompress(size_t offset, size_t len);
 
 	protected:
 		IMessageStream& input() const { return inputStream; };
@@ -110,7 +110,7 @@ namespace MOHPC
 		void SerializeBits(void* value, intptr_t bits);
 
 		/** Serialize an array of bytes. */
-		MSG& Serialize(void* data, size_t length) noexcept;
+		MSG& Serialize(void* data, size_t length);
 
 		/** Serialize b if b is different than a. */
 		MSG& SerializeDelta(const void* a, void* b, size_t bits);
@@ -125,7 +125,7 @@ namespace MOHPC
 		MSG& SerializeDeltaClass(const ISerializableMessage* a, ISerializableMessage* b, intptr_t key);
 
 		template<typename T>
-		MSG& SerializeDeltaType(const T& a, T& b) noexcept
+		MSG& SerializeDeltaType(const T& a, T& b)
 		{
 			static_assert(std::is_arithmetic<T>::value, "Type must be an arithmetic type");
 
@@ -136,7 +136,7 @@ namespace MOHPC
 		}
 
 		template<typename T>
-		MSG& SerializeDeltaType(const T& a, T& b, intptr_t key) noexcept
+		MSG& SerializeDeltaType(const T& a, T& b, intptr_t key)
 		{
 			static_assert(std::is_arithmetic<T>::value, "Type must be an arithmetic type");
 
@@ -169,35 +169,35 @@ namespace MOHPC
 		//MSG& SerializeDeltaType<bool>(const bool& a, bool& b, intptr_t key) noexcept;
 
 		/** Serialize a boolean value with 1 bit. */
-		MSG& SerializeBool(bool& value) noexcept;
+		MSG& SerializeBool(bool& value);
 
 		/** Serialize a boolean value, byte-sized. */
-		MSG& SerializeByteBool(bool& value) noexcept;
+		MSG& SerializeByteBool(bool& value);
 
 		/** Serialize a char value. */
-		MSG& SerializeChar(char& value) noexcept;
+		MSG& SerializeChar(char& value);
 
 		/** Serialize a byte value. */
-		MSG& SerializeByte(unsigned char& value) noexcept;
+		MSG& SerializeByte(unsigned char& value);
 
 		/** Serialize a short value. */
-		MSG& SerializeShort(short& value) noexcept;
+		MSG& SerializeShort(short& value);
 
 		/** Serialize an unsigned short value. */
-		MSG& SerializeUShort(unsigned short& value) noexcept;
+		MSG& SerializeUShort(unsigned short& value);
 
 		/** Serialize an integer value. */
-		MSG& SerializeInteger(int& value) noexcept;
+		MSG& SerializeInteger(int& value);
 
 		/** Serialize an unsigned integer value. */
-		MSG& SerializeUInteger(unsigned int& value) noexcept;
+		MSG& SerializeUInteger(unsigned int& value);
 
 		/** Serialize a float value. */
-		MSG& SerializeFloat(float& value) noexcept;
+		MSG& SerializeFloat(float& value);
 
 		/** Serialize a class that supports message serialization. */
-		MSG& SerializeClass(ISerializableMessage* value) noexcept;
-		MSG& SerializeClass(ISerializableMessage& value) noexcept;
+		MSG& SerializeClass(ISerializableMessage* value);
+		MSG& SerializeClass(ISerializableMessage& value);
 
 		/** Serialize a string value. */
 		void SerializeString(StringMessage& s);
@@ -221,37 +221,37 @@ namespace MOHPC
 		bool IsWriting() noexcept;
 		
 		/** Read data from message. */
-		void ReadData(void* data, size_t length) noexcept;
+		void ReadData(void* data, size_t length);
 
 		/** Read specified bits. */
 		void ReadBits(void* value, intptr_t bits);
 
 		/** Read a boolean value with 1 bit. */
-		bool ReadBool() noexcept;
+		bool ReadBool();
 
 		/** Read a boolean value, byte-sized. */
-		bool ReadByteBool() noexcept;
+		bool ReadByteBool();
 
 		/** Read a char value. */
-		char ReadChar() noexcept;
+		char ReadChar();
 
 		/** Read a byte value. */
-		unsigned char ReadByte() noexcept;
+		unsigned char ReadByte();
 
 		/** Read a short value. */
-		short ReadShort() noexcept;
+		short ReadShort();
 
 		/** Read an unsigned short value. */
-		unsigned short ReadUShort() noexcept;
+		unsigned short ReadUShort();
 
 		/** Read an integer value. */
-		int ReadInteger() noexcept;
+		int ReadInteger();
 
 		/** Read an unsigned integer value. */
-		unsigned int ReadUInteger() noexcept;
+		unsigned int ReadUInteger();
 
 		/** Read a float value. */
-		float ReadFloat() noexcept;
+		float ReadFloat();
 
 		/** Read a string value. */
 		StringMessage ReadString();
@@ -260,7 +260,7 @@ namespace MOHPC
 		StringMessage ReadScrambledString(const char* byteCharMapping);
 
 		template<typename T>
-		T ReadDeltaType(const T& a) noexcept
+		T ReadDeltaType(const T& a)
 		{
 			static_assert(std::is_arithmetic<T>::value, "Type must be an arithmetic type");
 
@@ -276,7 +276,7 @@ namespace MOHPC
 		}
 
 		template<typename T>
-		T ReadDeltaTypeKey(const T& a, intptr_t key) noexcept
+		T ReadDeltaTypeKey(const T& a, intptr_t key)
 		{
 			static_assert(std::is_arithmetic<T>::value, "Type must be an arithmetic type");
 
@@ -292,10 +292,10 @@ namespace MOHPC
 		}
 
 		/** Serialize b if b is different than a. */
-		MSG& ReadDeltaClass(const ISerializableMessage* a, ISerializableMessage* b) noexcept;
+		MSG& ReadDeltaClass(const ISerializableMessage* a, ISerializableMessage* b);
 
 		/** Serialize b if b is different than a, with a key so output will be XORed. */
-		MSG& ReadDeltaClass(const ISerializableMessage* a, ISerializableMessage* b, intptr_t key) noexcept;
+		MSG& ReadDeltaClass(const ISerializableMessage* a, ISerializableMessage* b, intptr_t key);
 
 		/** Write data to message. */
 		MSG& WriteData(const void* data, uintptr_t size);
@@ -304,31 +304,31 @@ namespace MOHPC
 		MSG& WriteBits(const void* value, intptr_t bits);
 
 		/** Write a boolean value with 1 bit. */
-		MSG& WriteBool(bool value) noexcept;
+		MSG& WriteBool(bool value);
 
 		/** Write a boolean value, byte-sized. */
-		MSG& WriteByteBool(bool value) noexcept;
+		MSG& WriteByteBool(bool value);
 
 		/** Write a char value. */
-		MSG& WriteChar(char value) noexcept;
+		MSG& WriteChar(char value);
 
 		/** Write a byte value. */
-		MSG& WriteByte(unsigned char value) noexcept;
+		MSG& WriteByte(unsigned char value);
 
 		/** Write a short value. */
-		MSG& WriteShort(short value) noexcept;
+		MSG& WriteShort(short value);
 
 		/** Write an unsigned short value. */
-		MSG& WriteUShort(unsigned short value) noexcept;
+		MSG& WriteUShort(unsigned short value);
 
 		/** Write an integer value. */
-		MSG& WriteInteger(int value) noexcept;
+		MSG& WriteInteger(int value);
 
 		/** Write an unsigned integer value. */
-		MSG& WriteUInteger(unsigned int value) noexcept;
+		MSG& WriteUInteger(unsigned int value);
 
 		/** Write a float value. */
-		MSG& WriteFloat(float value) noexcept;
+		MSG& WriteFloat(float value);
 
 		/** Write a string value. */
 		MSG& WriteString(const StringMessage& s);
@@ -337,7 +337,7 @@ namespace MOHPC
 		MSG& WriteScrambledString(const StringMessage& s, const uint8_t* charByteMapping);
 
 		template<typename T>
-		MSG& WriteDeltaType(const T& a, T& b) noexcept
+		MSG& WriteDeltaType(const T& a, T& b)
 		{
 			static_assert(std::is_arithmetic<T>::value, "Type must be an arithmetic type");
 
@@ -348,7 +348,7 @@ namespace MOHPC
 		}
 
 		template<typename T>
-		MSG& WriteDeltaTypeKey(const T& a, T& b, intptr_t key, size_t bits = sizeof(T) << 3) noexcept
+		MSG& WriteDeltaTypeKey(const T& a, T& b, intptr_t key, size_t bits = sizeof(T) << 3)
 		{
 			static_assert(std::is_arithmetic<T>::value, "Type must be an arithmetic type");
 
@@ -364,12 +364,11 @@ namespace MOHPC
 			return *this;
 		}
 
-
 		/** Serialize b if b is different than a. */
-		MSG& WriteDeltaClass(const ISerializableMessage* a, ISerializableMessage* b) noexcept;
+		MSG& WriteDeltaClass(const ISerializableMessage* a, ISerializableMessage* b);
 
 		/** Serialize b if b is different than a, with a key so output will be XORed. */
-		MSG& WriteDeltaClass(const ISerializableMessage* a, ISerializableMessage* b, intptr_t key) noexcept;
+		MSG& WriteDeltaClass(const ISerializableMessage* a, ISerializableMessage* b, intptr_t key);
 
 		/** Return the stream associated to this message. */
 		IMessageStream& stream() const noexcept
@@ -423,25 +422,25 @@ public:
 		{}
 
 		/** Read a coordinate value. */
-		float ReadCoord() noexcept;
+		float ReadCoord();
 
 		/** Read a coordinate value. */
-		float ReadCoordSmall() noexcept;
+		float ReadCoordSmall();
 
 		/** Read a coordinate value. */
-		int32_t ReadDeltaCoord(uint32_t offset) noexcept;
+		int32_t ReadDeltaCoord(uint32_t offset);
 
 		/** Read a coordinate value. */
-		int32_t ReadDeltaCoordExtra(uint32_t offset) noexcept;
+		int32_t ReadDeltaCoordExtra(uint32_t offset);
 
 		/** Read a coordinate value. */
-		Vector ReadVectorCoord() noexcept;
+		Vector ReadVectorCoord();
 
 		/** Read a coordinate value. */
-		Vector ReadVectorFloat() noexcept;
+		Vector ReadVectorFloat();
 
 		/** Read a coordinate value. */
-		Vector ReadDir() noexcept;
+		Vector ReadDir();
 
 		/** Read an entity number. */
 		uint16_t ReadEntityNum();
@@ -450,16 +449,16 @@ public:
 		uint16_t ReadEntityNum2();
 
 		/** Write a coordinate value. */
-		void WriteCoord(float& value) noexcept;
+		void WriteCoord(float& value);
 
 		/** Write a coordinate value. */
-		void WriteCoordSmall(float& value) noexcept;
+		void WriteCoordSmall(float& value);
 
 		/** Write a coordinate value. */
-		void WriteVectorCoord(Vector& value) noexcept;
+		void WriteVectorCoord(Vector& value);
 
 		/** Write a coordinate value. */
-		void WriteDir(Vector& dir) noexcept;
+		void WriteDir(Vector& dir);
 	};
 };
 

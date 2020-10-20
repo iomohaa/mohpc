@@ -169,9 +169,7 @@ public:
 
 		str mapfilename;
 
-		BSPPtr Asset = AM->LoadAsset<BSP>("/maps/dm/mohdm6.bsp");
-		CollisionWorldPtr cm = CollisionWorld::create();
-		Asset->FillCollisionWorld(*cm);
+		CollisionWorldPtr cm;
 
 		Network::ClientInfoPtr clientInfo = Network::ClientInfo::create();
 		clientInfo->setName("mohpc_test");
@@ -181,6 +179,7 @@ public:
 		clientBase->connect(clientInfo, connectSettings, [&](const Network::ClientGameConnectionPtr& cg, const char* errorMessage)
 			{
 				connection = cg;
+
 				CGameModuleBase* cgame = connection->getCGModule();
 
 				if (errorMessage)
@@ -194,7 +193,7 @@ public:
 						MOHPC_LOG(Log, "Exception of type \"%s\": \"%s\"", typeid(exception).name(), exception.what().c_str());
 					});
 
-				connection->setCallback<ClientHandlers::GameStateParsed>([&connection, cgame, &mapfilename](const Network::gameState_t& gameState, bool differentMap)
+				connection->setCallback<ClientHandlers::GameStateParsed>([&AM, &connection, cgame, &cm, &mapfilename](const Network::gameState_t& gameState, bool differentMap)
 					{
 						const cgsInfo& cgs = cgame->getServerInfo();
 						const str& loadedMap = cgs.getMapFilenameStr();
@@ -203,12 +202,21 @@ public:
 							MOHPC_LOG(Log, "New map: \"%s\"", loadedMap.c_str());
 							mapfilename = loadedMap;
 						}
+						
+						BSPPtr Asset = AM->LoadAsset<BSP>(mapfilename.c_str());
+						if(Asset)
+						{
+							cm = CollisionWorld::create();
+							Asset->FillCollisionWorld(*cm);
+						}
+						
+						connection->markReady();
 					});
 
 				fnHandle_t cb = cgame->setCallback<CGameHandlers::EntityAdded>([&connection](const EntityInfo& entity)
 					{
-						const char* modelName = connection->getGameState().getConfigString(CS_MODELS + entity.currentState.modelindex);
-						MOHPC_LOG(VeryVerbose, "new entity %d, model \"%s\"", entity.currentState.number, modelName);
+						const char* modelName = connection->getGameState().getConfigString(CS_MODELS + entity.nextState.modelindex);
+						MOHPC_LOG(VeryVerbose, "new entity %d, model \"%s\"", entity.nextState.number, modelName);
 					});
 
 				cgame->setCallback<CGameHandlers::EntityRemoved>([&connection](const EntityInfo& entity)
@@ -286,39 +294,19 @@ public:
 						MOHPC_LOG(VeryVerbose, "Server connection timed out");
 					});
 
-				connection->setCallback<ClientHandlers::UserInput>([&forwardValue, &rightValue, &angle, &shouldJump, cgame, &cm](usercmd_t& ucmd, usereyes_t& eyeinfo)
-				{
-					eyeinfo.setAngles(30.f, angle);
-					ucmd.buttons.fields.button.run = true;
-					ucmd.moveForward((int8_t)(forwardValue * 127.f));
-					ucmd.moveRight((int8_t)(rightValue * 127.f));
-					ucmd.setAngles(30.f, angle, 0.f);
-					if (shouldJump)
+				connection->setCallback<ClientHandlers::UserInput>([&forwardValue, &rightValue, &angle, &shouldJump, cgame, &connection, &cm](usercmd_t& ucmd, usereyes_t& eyeinfo)
 					{
-						ucmd.jump();
-						shouldJump = false;
-					}
-
-					//Vector start(684.04f, -332.63f, -145.f);
-					//Vector end(241.34f, -328.43f, -145.f);
-					trace_t tr;
-
-					{
-						Vector start(499.125000f + 16.f, -427.312500f, -151.875000f);
-						Vector end(499.125824f, -426.720612f, -151.875000f);
-
-						cgame->trace(*cm, tr, start, Vector(-15, -15, 0), Vector(15, 15, 96), end, 0, ContentFlags::MASK_PLAYERSOLID, true, true);
-					}
-
-					{
-						Vector start(499.133942f, -427.044525f, -151.875000f);
-						Vector end(499.125824f, -426.720612f, -151.875000f);
-
-						cgame->trace(*cm, tr, start, Vector(-15, -15, 0), Vector(15, 15, 96), end, 0, ContentFlags::MASK_PLAYERSOLID, true, true);
-					}
-				});
-
-
+						eyeinfo.setAngles(30.f, angle);
+						ucmd.buttons.fields.button.run = true;
+						ucmd.moveForward((int8_t)(forwardValue * 127.f));
+						ucmd.moveRight((int8_t)(rightValue * 127.f));
+						ucmd.setAngles(30.f, angle, 0.f);
+						if (shouldJump)
+						{
+							ucmd.jump();
+							shouldJump = false;
+						}
+					});
 			});
 
 		char buf[512];
@@ -331,6 +319,7 @@ public:
 				const char c = _getch();
 				if (c == '\n' || c == '\r')
 				{
+					if(!count) buf[0] = 0;
 					printf("\n");
 					count = 0;
 
@@ -416,7 +405,7 @@ public:
 					else
 					{
 						if (connection) {
-							connection->addReliableCommand(buf);
+							connection->sendCommand(buf);
 						}
 					}
 				}

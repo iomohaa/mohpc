@@ -124,7 +124,7 @@ void MOHPC::MSG::SerializeBits(void* value, intptr_t bits)
 	}
 }
 
-MSG& MOHPC::MSG::Serialize(void* data, size_t length) noexcept
+MSG& MOHPC::MSG::Serialize(void* data, size_t length)
 {
 	for (size_t i = 0; i < length; i++) {
 		SerializeByte(((uint8_t*)data)[i]);
@@ -200,7 +200,7 @@ MSG& MOHPC::MSG::SerializeDeltaClass(const ISerializableMessage* a, ISerializabl
 }
 
 template<>
-MSG& MOHPC::MSG::SerializeDeltaType<bool>(const bool& a, bool& b, intptr_t key) noexcept
+MSG& MOHPC::MSG::SerializeDeltaType<bool>(const bool& a, bool& b, intptr_t key)
 {
 	if (!IsReading())
 	{
@@ -227,13 +227,13 @@ MSG& MOHPC::MSG::SerializeDeltaType<bool>(const bool& a, bool& b, intptr_t key) 
 	return *this;
 }
 
-MSG& MOHPC::MSG::SerializeBool(bool& value) noexcept
+MSG& MOHPC::MSG::SerializeBool(bool& value)
 {
 	SerializeBits(&value, 1);
 	return *this;
 }
 
-MSG& MOHPC::MSG::SerializeByteBool(bool& value) noexcept
+MSG& MOHPC::MSG::SerializeByteBool(bool& value)
 {
 	uint8_t bval;
 	SerializeByte(bval);
@@ -241,49 +241,49 @@ MSG& MOHPC::MSG::SerializeByteBool(bool& value) noexcept
 	return *this;
 }
 
-MSG& MOHPC::MSG::SerializeChar(char& value) noexcept
+MSG& MOHPC::MSG::SerializeChar(char& value)
 {
 	SerializeBits(&value, 8);
 	return *this;
 }
 
-MSG& MOHPC::MSG::SerializeByte(unsigned char& value) noexcept
+MSG& MOHPC::MSG::SerializeByte(unsigned char& value)
 {
 	SerializeBits(&value, 8);
 	return *this;
 }
 
-MSG& MOHPC::MSG::SerializeShort(short& value) noexcept
+MSG& MOHPC::MSG::SerializeShort(short& value)
 {
 	SerializeBits(&value, 16);
 	return *this;
 }
 
-MSG& MOHPC::MSG::SerializeUShort(unsigned short& value) noexcept
+MSG& MOHPC::MSG::SerializeUShort(unsigned short& value)
 {
 	SerializeBits(&value, 16);
 	return *this;
 }
 
-MSG& MOHPC::MSG::SerializeInteger(int& value) noexcept
+MSG& MOHPC::MSG::SerializeInteger(int& value)
 {
 	SerializeBits(&value, 32);
 	return *this;
 }
 
-MSG& MOHPC::MSG::SerializeUInteger(unsigned int& value) noexcept
+MSG& MOHPC::MSG::SerializeUInteger(unsigned int& value)
 {
 	SerializeBits(&value, 32);
 	return *this;
 }
 
-MSG& MOHPC::MSG::SerializeFloat(float& value) noexcept
+MSG& MOHPC::MSG::SerializeFloat(float& value)
 {
 	SerializeBits(&value, 32);
 	return *this;
 }
 
-MSG& MOHPC::MSG::SerializeClass(ISerializableMessage* value) noexcept
+MSG& MOHPC::MSG::SerializeClass(ISerializableMessage* value)
 {
 	value->Serialize(*this);
 	if (!IsReading()) value->Save(*this);
@@ -336,7 +336,15 @@ size_t MOHPC::MSG::Size() const
 
 size_t MOHPC::MSG::GetPosition() const
 {
-	return stream().GetPosition() - sizeof(bitData) + (bit >> 3);
+	const size_t pos = stream().GetPosition();
+	if(pos >= sizeof(bitData)) {
+		return stream().GetPosition() - sizeof(bitData) + (bit >> 3);
+	}
+	else
+	{
+		// if the stream is in a position below the buffer size, return read bytes read instead
+		return (bit >> 3);
+	}
 }
 
 size_t MOHPC::MSG::GetBitPosition() const
@@ -354,14 +362,14 @@ bool MOHPC::MSG::IsWriting() noexcept
 	return mode == msgMode_e::Writing || mode == msgMode_e::Both;
 }
 
-void MOHPC::MSG::ReadData(void* data, size_t length) noexcept
+void MOHPC::MSG::ReadData(void* data, size_t length)
 {
 	for (size_t i = 0; i < length; i++) {
 		((uint8_t*)data)[i] = ReadByte();
 	}
 }
 
-MSG& MOHPC::MSG::SerializeClass(ISerializableMessage& value) noexcept
+MSG& MOHPC::MSG::SerializeClass(ISerializableMessage& value)
 {
 	SerializeClass(&value);
 	return *this;
@@ -379,7 +387,7 @@ void MOHPC::MSG::ReadBits(void* value, intptr_t bits)
 	codec().Decode(value, bits, bit, stream(), bitData, sizeof(bitData));
 }
 
-bool MOHPC::MSG::ReadBool() noexcept
+bool MOHPC::MSG::ReadBool()
 {
 	assert(IsReading());
 	bool val = false;
@@ -387,7 +395,7 @@ bool MOHPC::MSG::ReadBool() noexcept
 	return val;
 }
 
-bool MOHPC::MSG::ReadByteBool() noexcept
+bool MOHPC::MSG::ReadByteBool()
 {
 	assert(IsReading());
 	uint8_t val = 0;
@@ -395,7 +403,7 @@ bool MOHPC::MSG::ReadByteBool() noexcept
 	return (bool)val;
 }
 
-char MOHPC::MSG::ReadChar() noexcept
+char MOHPC::MSG::ReadChar()
 {
 	assert(IsReading());
 	char val = 0;
@@ -403,7 +411,7 @@ char MOHPC::MSG::ReadChar() noexcept
 	return val;
 }
 
-unsigned char MOHPC::MSG::ReadByte() noexcept
+unsigned char MOHPC::MSG::ReadByte()
 {
 	assert(IsReading());
 	unsigned char val = 0;
@@ -411,7 +419,7 @@ unsigned char MOHPC::MSG::ReadByte() noexcept
 	return val;
 }
 
-short MOHPC::MSG::ReadShort() noexcept
+short MOHPC::MSG::ReadShort()
 {
 	assert(IsReading());
 	short val = 0;
@@ -419,7 +427,7 @@ short MOHPC::MSG::ReadShort() noexcept
 	return val;
 }
 
-unsigned short MOHPC::MSG::ReadUShort() noexcept
+unsigned short MOHPC::MSG::ReadUShort()
 {
 	assert(IsReading());
 	unsigned short val = 0;
@@ -427,7 +435,7 @@ unsigned short MOHPC::MSG::ReadUShort() noexcept
 	return val;
 }
 
-int MOHPC::MSG::ReadInteger() noexcept
+int MOHPC::MSG::ReadInteger()
 {
 	assert(IsReading());
 	int val = 0;
@@ -435,7 +443,7 @@ int MOHPC::MSG::ReadInteger() noexcept
 	return val;
 }
 
-unsigned int MOHPC::MSG::ReadUInteger() noexcept
+unsigned int MOHPC::MSG::ReadUInteger()
 {
 	assert(IsReading());
 	unsigned int val = 0;
@@ -443,7 +451,7 @@ unsigned int MOHPC::MSG::ReadUInteger() noexcept
 	return val;
 }
 
-float MOHPC::MSG::ReadFloat() noexcept
+float MOHPC::MSG::ReadFloat()
 {
 	assert(IsReading());
 	float val = 0;
@@ -461,7 +469,7 @@ MOHPC::StringMessage MOHPC::MSG::ReadScrambledString(const char* byteCharMapping
 	return ReadStringInternal(byteCharMapping);
 }
 
-MSG& MOHPC::MSG::ReadDeltaClass(const ISerializableMessage* a, ISerializableMessage* b) noexcept
+MSG& MOHPC::MSG::ReadDeltaClass(const ISerializableMessage* a, ISerializableMessage* b)
 {
 	assert(IsReading());
 	b->SerializeDelta(*this, a);
@@ -477,7 +485,7 @@ MSG& MOHPC::MSG::WriteData(const void* data, uintptr_t size)
 	return *this;
 }
 
-MSG& MOHPC::MSG::ReadDeltaClass(const ISerializableMessage* a, ISerializableMessage* b, intptr_t key) noexcept
+MSG& MOHPC::MSG::ReadDeltaClass(const ISerializableMessage* a, ISerializableMessage* b, intptr_t key)
 {
 	assert(IsReading());
 	b->SerializeDelta(*this, a, key);
@@ -495,63 +503,63 @@ MSG& MOHPC::MSG::WriteBits(const void* value, intptr_t bits)
 	return *this;
 }
 
-MSG& MOHPC::MSG::WriteBool(bool value) noexcept
+MSG& MOHPC::MSG::WriteBool(bool value)
 {
 	assert(IsWriting());
 	WriteBits(&value, 1);
 	return *this;
 }
 
-MSG& MOHPC::MSG::WriteByteBool(bool value) noexcept
+MSG& MOHPC::MSG::WriteByteBool(bool value)
 {
 	assert(IsWriting());
 	WriteBits(&value, 8);
 	return *this;
 }
 
-MSG& MOHPC::MSG::WriteChar(char value) noexcept
+MSG& MOHPC::MSG::WriteChar(char value)
 {
 	assert(IsWriting());
 	WriteBits(&value, 8);
 	return *this;
 }
 
-MSG& MOHPC::MSG::WriteByte(unsigned char value) noexcept
+MSG& MOHPC::MSG::WriteByte(unsigned char value)
 {
 	assert(IsWriting());
 	WriteBits(&value, 8);
 	return *this;
 }
 
-MSG& MOHPC::MSG::WriteShort(short value) noexcept
+MSG& MOHPC::MSG::WriteShort(short value)
 {
 	assert(IsWriting());
 	WriteBits(&value, 16);
 	return *this;
 }
 
-MSG& MOHPC::MSG::WriteUShort(unsigned short value) noexcept
+MSG& MOHPC::MSG::WriteUShort(unsigned short value)
 {
 	assert(IsWriting());
 	WriteBits(&value, 16);
 	return *this;
 }
 
-MSG& MOHPC::MSG::WriteInteger(int value) noexcept
+MSG& MOHPC::MSG::WriteInteger(int value)
 {
 	assert(IsWriting());
 	WriteBits(&value, 32);
 	return *this;
 }
 
-MSG& MOHPC::MSG::WriteUInteger(unsigned int value) noexcept
+MSG& MOHPC::MSG::WriteUInteger(unsigned int value)
 {
 	assert(IsWriting());
 	WriteBits(&value, 32);
 	return *this;
 }
 
-MSG& MOHPC::MSG::WriteFloat(float value) noexcept
+MSG& MOHPC::MSG::WriteFloat(float value)
 {
 	assert(IsWriting());
 	WriteBits(&value, 32);
@@ -577,28 +585,25 @@ MSG& MOHPC::MSG::WriteString(const StringMessage& s)
 
 MSG& MOHPC::MSG::WriteScrambledString(const StringMessage& s, const uint8_t* charByteMapping)
 {
-	if (!s)
-	{
-		char emptyString = charByteMapping[0];
-		WriteData(&emptyString, 1);
-	}
-	else
-	{
-		const char* data = s.getData();
+	const char emptyString = charByteMapping[0];
 
-		const size_t len = strlen(data) + 1;
-		for (size_t i = 0; i < len; ++i)
+	if (s)
+	{
+		const char* p = s.getData();
+		while(*p)
 		{
-			const char c = data[i];
+			const uint8_t c = *p++;
 			const uint8_t val = charByteMapping[c];
 			WriteData(&val, 1);
 		}
 	}
 
+	WriteData(&emptyString, 1);
+
 	return *this;
 }
 
-MSG& MOHPC::MSG::WriteDeltaClass(const ISerializableMessage* a, ISerializableMessage* b) noexcept
+MSG& MOHPC::MSG::WriteDeltaClass(const ISerializableMessage* a, ISerializableMessage* b)
 {
 	assert(IsWriting());
 	b->SerializeDelta(*this, a);
@@ -606,7 +611,7 @@ MSG& MOHPC::MSG::WriteDeltaClass(const ISerializableMessage* a, ISerializableMes
 	return *this;
 }
 
-MSG& MOHPC::MSG::WriteDeltaClass(const ISerializableMessage* a, ISerializableMessage* b, intptr_t key) noexcept
+MSG& MOHPC::MSG::WriteDeltaClass(const ISerializableMessage* a, ISerializableMessage* b, intptr_t key)
 {
 	assert(IsWriting());
 	b->SerializeDelta(*this, a, key);
@@ -759,7 +764,7 @@ MOHPC::StringMessage::operator const char* () const noexcept
 	return strData;
 }
 
-void MOHPC::CompressedMessage::Compress(size_t offset, size_t len) noexcept
+void MOHPC::CompressedMessage::Compress(size_t offset, size_t len)
 {
 	size_t i;
 	int ch;
@@ -809,7 +814,7 @@ void MOHPC::CompressedMessage::Compress(size_t offset, size_t len) noexcept
 	}
 }
 
-void MOHPC::CompressedMessage::Decompress(size_t offset, size_t len) noexcept
+void MOHPC::CompressedMessage::Decompress(size_t offset, size_t len)
 {
 	size_t i, j;
 	size_t cch;
@@ -885,7 +890,7 @@ void MOHPC::CompressedMessage::Decompress(size_t offset, size_t len) noexcept
 	}
 }
 
-float MOHPC::MsgTypesHelper::ReadCoord() noexcept
+float MOHPC::MsgTypesHelper::ReadCoord()
 {
 	uint32_t read = 0;
 	msg.ReadBits(&read, 19);
@@ -901,7 +906,7 @@ float MOHPC::MsgTypesHelper::ReadCoord() noexcept
 	return sign * (read / 16.f);
 }
 
-float MOHPC::MsgTypesHelper::ReadCoordSmall() noexcept
+float MOHPC::MsgTypesHelper::ReadCoordSmall()
 {
 	uint32_t read = 0;
 	msg.ReadBits(&read, 17);
@@ -917,7 +922,7 @@ float MOHPC::MsgTypesHelper::ReadCoordSmall() noexcept
 	return sign * (read / 8.f);
 }
 
-int32_t MOHPC::MsgTypesHelper::ReadDeltaCoord(uint32_t offset) noexcept
+int32_t MOHPC::MsgTypesHelper::ReadDeltaCoord(uint32_t offset)
 {
 	int32_t result = 0;
 
@@ -939,7 +944,7 @@ int32_t MOHPC::MsgTypesHelper::ReadDeltaCoord(uint32_t offset) noexcept
 	return result;
 }
 
-int32_t MOHPC::MsgTypesHelper::ReadDeltaCoordExtra(uint32_t offset) noexcept
+int32_t MOHPC::MsgTypesHelper::ReadDeltaCoordExtra(uint32_t offset)
 {
 	int32_t result = 0;
 
@@ -960,7 +965,7 @@ int32_t MOHPC::MsgTypesHelper::ReadDeltaCoordExtra(uint32_t offset) noexcept
 	return result;
 }
 
-MOHPC::Vector MOHPC::MsgTypesHelper::ReadVectorCoord() noexcept
+MOHPC::Vector MOHPC::MsgTypesHelper::ReadVectorCoord()
 {
 	const Vector vec =
 	{
@@ -971,7 +976,7 @@ MOHPC::Vector MOHPC::MsgTypesHelper::ReadVectorCoord() noexcept
 	return vec;
 }
 
-MOHPC::Vector MOHPC::MsgTypesHelper::ReadVectorFloat() noexcept
+MOHPC::Vector MOHPC::MsgTypesHelper::ReadVectorFloat()
 {
 	const Vector vec =
 	{
@@ -982,7 +987,7 @@ MOHPC::Vector MOHPC::MsgTypesHelper::ReadVectorFloat() noexcept
 	return vec;
 }
 
-MOHPC::Vector MOHPC::MsgTypesHelper::ReadDir() noexcept
+MOHPC::Vector MOHPC::MsgTypesHelper::ReadDir()
 {
 	Vector dir;
 
@@ -1006,7 +1011,7 @@ uint16_t MOHPC::MsgTypesHelper::ReadEntityNum2()
 	return (entNum - 1) & (MAX_GENTITIES - 1);
 }
 
-void MOHPC::MsgTypesHelper::WriteCoord(float& value) noexcept
+void MOHPC::MsgTypesHelper::WriteCoord(float& value)
 {
 	int32_t bits = int32_t(value * 16.0f);
 	if (value < 0) {
@@ -1019,7 +1024,7 @@ void MOHPC::MsgTypesHelper::WriteCoord(float& value) noexcept
 	msg.SerializeBits(&bits, 19);
 }
 
-void MOHPC::MsgTypesHelper::WriteCoordSmall(float& value) noexcept
+void MOHPC::MsgTypesHelper::WriteCoordSmall(float& value)
 {
 	int32_t bits = (uint32_t)(value * 8.0f);
 	if (value < 0) {
@@ -1032,14 +1037,14 @@ void MOHPC::MsgTypesHelper::WriteCoordSmall(float& value) noexcept
 	msg.WriteBits(&bits, 17);
 }
 
-void MOHPC::MsgTypesHelper::WriteVectorCoord(Vector& value) noexcept
+void MOHPC::MsgTypesHelper::WriteVectorCoord(Vector& value)
 {
 	WriteCoord(value.x);
 	WriteCoord(value.y);
 	WriteCoord(value.z);
 }
 
-void MOHPC::MsgTypesHelper::WriteDir(Vector& dir) noexcept
+void MOHPC::MsgTypesHelper::WriteDir(Vector& dir)
 {
 	uint8_t byteValue = 0;
 	ByteToDir(byteValue, dir);

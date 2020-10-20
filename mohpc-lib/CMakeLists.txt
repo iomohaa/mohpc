@@ -5,7 +5,7 @@ project(mohpc-lib VERSION 1.0)
 file(GLOB_RECURSE SRC "*.cpp" "*.h")
 file(GLOB_RECURSE HEADERS "${CMAKE_SOURCE_DIR}/include/*.h")
 
-add_library(MOHPC SHARED ${SRC} "Object.cpp")
+add_library(MOHPC SHARED ${SRC} "${CMAKE_SOURCE_DIR}/include/MOHPC/mohpc.natvis")
 
 include_directories(${PROJECT_SOURCE_DIR})
 include_directories(${PROJECT_SOURCE_DIR}/../thirdparty)

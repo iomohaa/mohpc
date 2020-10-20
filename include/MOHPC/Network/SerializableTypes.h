@@ -12,19 +12,26 @@ namespace MOHPC
 	class playerState_t;
 	class entityState_t;
 
-	enum class fieldType_e : uint8_t
+	/**
+	 * Field type for protocol version 8.
+	 */
+	enum class fieldType_ver6_e : uint8_t
 	{
 		number,
 		angle,
-		time,
+		animTime,
 		animWeight,
-		time2,
-		animWeight2,
+		scale,
+		alpha,
 		largeCoord,
 		smallCoord,
 	};
 
-	enum class fieldType_ver17_e : uint8_t
+	/**
+	 * Field type for protocol version 15.
+	 * Introduced mediumCoord, presumably to provide something between large and medium
+	 */
+	enum class fieldType_ver15_e : uint8_t
 	{
 		number,
 		angle,
@@ -60,6 +67,16 @@ namespace MOHPC
 		}
 	};
 
+	template<typename fieldType>
+	struct netField_template_t : public netField_t
+	{
+		using fieldType_e = fieldType_ver6_e;
+
+		constexpr netField_template_t(const char* inName, uint16_t inOffset, uint8_t inSize, int8_t inBits, fieldType inType)
+			: netField_t(inName, inOffset, inSize, inBits, (uint8_t)inType)
+		{}
+	};
+
 	namespace EntityField
 	{
 		void ReadNumberPlayerStateField(MSG& msg, size_t bits, void* toF, size_t size);
@@ -90,50 +107,44 @@ namespace MOHPC
 		float UnpackCoordExtra(int32_t val);
 	}
 
-	class EntityException : public Network::NetworkException {};
-	class BadEntityNumberException : public EntityException
+	class MOHPC_EXPORTS EntityException : public Network::NetworkException {};
+
+	class MOHPC_EXPORTS BadEntityNumberException : public EntityException
 	{
 	private:
 		size_t badNumber;
 
 	public:
-		BadEntityNumberException(size_t inBadNumber)
-			: badNumber(inBadNumber)
-		{}
+		BadEntityNumberException(size_t inBadNumber);
 
-		size_t getNumber() const { return badNumber; }
-		str what() const override { return str(badNumber); }
+		size_t getNumber() const;
+		str what() const override;
 	};
 
-	class BadEntityFieldException : public EntityException
+	class MOHPC_EXPORTS BadEntityFieldException : public EntityException
 	{
 	private:
 		uint8_t fieldType;
 		const char* fieldName;
 
 	public:
-		BadEntityFieldException(uint8_t inFieldType, const char* inFieldName)
-			: fieldType(inFieldType)
-			, fieldName(inFieldName)
-		{}
+		BadEntityFieldException(uint8_t inFieldType, const char* inFieldName);
 
-		uint8_t getFieldType() const { return fieldType; }
-		const char* getFieldName() const { return fieldName; }
-		str what() const override { return str::printf("%s: %d", getFieldName(), getFieldType()); }
+		uint8_t getFieldType() const;
+		const char* getFieldName() const;
+		str what() const override;
 	};
 
-	class BadEntityFieldCountException : public EntityException
+	class MOHPC_EXPORTS BadEntityFieldCountException : public EntityException
 	{
 	private:
 		uint8_t count;
 
 	public:
-		BadEntityFieldCountException(uint8_t inCount)
-			: count(inCount)
-		{}
+		BadEntityFieldCountException(uint8_t inCount);
 
-		uint8_t getCount() const { return count; }
-		str what() const override { return str((int)getCount()); }
+		uint8_t getCount() const;
+		str what() const override;
 	};
 
 	class MOHPC_EXPORTS SerializableUsercmd : public ISerializableMessage
@@ -160,7 +171,8 @@ namespace MOHPC
 			: eyesInfo(inEyesInfo)
 		{}
 
-		virtual void SerializeDelta(MSG & msg, const ISerializableMessage * from) override;
+		virtual void SaveDelta(MSG& msg, const ISerializableMessage* from) override;
+		virtual void LoadDelta(MSG& msg, const ISerializableMessage* from) override;
 	};
 
 	class MOHPC_EXPORTS SerializablePlayerState : public ISerializableMessage
@@ -179,10 +191,10 @@ namespace MOHPC
 		playerState_t* GetState() const { return &state; }
 	};
 
-	class MOHPC_EXPORTS SerializablePlayerState_ver17 : public SerializablePlayerState
+	class MOHPC_EXPORTS SerializablePlayerState_ver15 : public SerializablePlayerState
 	{
 	public:
-		SerializablePlayerState_ver17(playerState_t& inState)
+		SerializablePlayerState_ver15(playerState_t& inState)
 			: SerializablePlayerState(inState)
 		{}
 

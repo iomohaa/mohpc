@@ -87,5 +87,7 @@ namespace MOHPC
 		static constexpr unsigned int CS_TEAMINFO = 1;
 
 		//static constexpr unsigned int CS_MAX = (CS_PARTICLES + MAX_LOCATIONS); }
+
+		using csNum_t = uint16_t;
 	}
 }

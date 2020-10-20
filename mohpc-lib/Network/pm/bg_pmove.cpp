@@ -358,6 +358,15 @@ float Pmove::PM_CmdScale( usercmd_t *cmd ) {
 
 	total = sqrtf( ( float )( fmove * fmove
 		+ smove * smove + cmd->upmove * cmd->upmove ) );
+
+	// FIXME: this is a change since SH 2.0
+	// Refactor PM_CmdScale to make it abstract
+	//total = sqrtf(float(
+	//	cmd->upmove * cmd->upmove
+	//	+ cmd->rightmove * cmd->rightmove
+	//	+ cmd->forwardmove *  cmd->forwardmove
+	//));
+
 	scale = ( float )pm.ps->speed * max / ( 127.0f * total );
 
 	return scale;

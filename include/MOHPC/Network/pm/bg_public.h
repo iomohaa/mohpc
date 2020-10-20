@@ -199,6 +199,7 @@ namespace MOHPC
 		pml_t();
 	};
 
+	// FIXME: Make it an abstract interface for versions
 	class Pmove
 	{
 	public:
