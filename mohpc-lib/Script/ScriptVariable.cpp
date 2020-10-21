@@ -792,7 +792,7 @@ bool ScriptVariable::booleanNumericValue(void)
 		return m_data.intValue != 0;
 
 	case VARIABLE_FLOAT:
-		return ::fabs(m_data.floatValue) >= 0.00009999999747378752;
+		return fabs(m_data.floatValue) >= 0.00009999999747378752;
 
 	case VARIABLE_LISTENER:
 		return (*m_data.listenerValue) != NULL;
@@ -823,7 +823,7 @@ bool ScriptVariable::booleanValue(void) const
 		return m_data.intValue != 0;
 
 	case VARIABLE_FLOAT:
-		return ::fabs(m_data.floatValue) >= 0.00009999999747378752;
+		return fabs(m_data.floatValue) >= 0.00009999999747378752;
 
 	case VARIABLE_CONSTSTRING:
 		return m_data.intValue != STRING_EMPTY;

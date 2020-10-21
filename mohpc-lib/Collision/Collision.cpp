@@ -550,7 +550,7 @@ float CollisionWorld::CM_DistanceFromLineSquared(vec3_t p, vec3_t lp1, vec3_t lp
 			(proj[j] < lp1[j] && proj[j] < lp2[j]))
 			break;
 	if (j < 3) {
-		if (::fabs(proj[j] - lp1[j]) < ::fabs(proj[j] - lp2[j]))
+		if (fabs(proj[j] - lp1[j]) < fabs(proj[j] - lp2[j]))
 			VecSubtract(p, lp1, t);
 		else
 			VecSubtract(p, lp2, t);

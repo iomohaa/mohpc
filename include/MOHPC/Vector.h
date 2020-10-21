@@ -80,15 +80,15 @@ namespace MOHPC
 		static float			Epsilon(void);
 		static Vector &			Identity(void);
 		Vector					operator-(void) const;
-		friend Vector			fabs(const Vector &a);
+		static Vector			fabs(const Vector &a);
 		float					toYaw(void) const;
 		float					toPitch(void) const;
 		Vector					toAngles(void) const;
 		Vector					AnglesMod(void) const;
 		void					AngleVectors(Vector *forward, Vector *right = NULL, Vector *up = NULL)  const;
 		void					AngleVectorsLeft(Vector *forward, Vector *right = NULL, Vector *up = NULL)  const;
-		friend Vector			LerpVector(const Vector &w1, const Vector &w2, const float t);
-		friend float			MaxValue(const Vector &a);
+		static Vector			LerpVector(const Vector& w1, const Vector& w2, const float t);
+		static float			MaxValue(const Vector& a);
 		Vector					GetRotatedX(float angle) const;
 		void					RotateX(float angle);
 		Vector					GetRotatedY(float angle) const;
@@ -666,12 +666,12 @@ namespace MOHPC
 		return Vector(-x, -y, -z);
 	}
 
-	inline Vector fabs(const Vector &a)
+	inline Vector Vector::fabs(const Vector &a)
 	{
 		return Vector(VECTOR_FABS(a.x), VECTOR_FABS(a.y), VECTOR_FABS(a.z));
 	}
 
-	inline float MaxValue(const Vector &a)
+	inline float Vector::MaxValue(const Vector &a)
 	{
 		float maxy;
 		float maxz;
@@ -814,7 +814,7 @@ namespace MOHPC
 
 
 #define LERP_DELTA 1e-6
-	inline Vector LerpVector(const Vector &vector1, const Vector &vector2, const float t)
+	inline Vector Vector::LerpVector(const Vector &vector1, const Vector &vector2, const float t)
 	{
 		float	omega, cosom, sinom, scale0, scale1;
 

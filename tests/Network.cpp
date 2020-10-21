@@ -314,6 +314,15 @@ public:
 
 		while(!wantsDisconnect)
 		{
+			if (connection)
+			{
+				CGameModuleBase* cgame = connection->getCGModule();
+				if (cgame)
+				{
+					const playerState_t& ps = cgame->getPredictedPlayerState();
+					MOHPC_LOG(Verbose, "(t %d, %d), origin = (%f %f %f)", connection->getServerTime(), ps.commandTime, ps.origin[0], ps.origin[1], ps.origin[2]);
+				}
+			}
 			if (kbhit())
 			{
 				const char c = _getch();
@@ -424,7 +433,7 @@ public:
 			}
 
 			manager->processTicks();
-			Sleep(10);
+			Sleep(25);
 		}
 	}
 };

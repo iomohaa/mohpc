@@ -379,11 +379,11 @@ namespace MOHPC
 			/**
 			 * Called each frame for replaying move that have not been executed yet on server.
 			 *
-			 * @param	ucmd	Input to replay.
-			 * @param	ps		Player state where to apply movement.
-			 * @param	msec	delta time between last cmd time and playerState command time. Usually client's frametime.
+			 * @param	ucmd		Input to replay.
+			 * @param	ps			Player state where to apply movement.
+			 * @param	frameTime	delta time between last cmd time and playerState command time. Usually client's frametime.
 			 */
-			struct ReplayMove : public HandlerNotifyBase<void(const usercmd_t& ucmd, playerState_t& ps, uint32_t msec)> {};
+			struct ReplayMove : public HandlerNotifyBase<void(const usercmd_t& ucmd, playerState_t& ps, float frameTime)> {};
 
 			/**
 			 * Called to print a message on console.
@@ -851,6 +851,38 @@ namespace MOHPC
 		};
 
 		/**
+		 * Client settings data structure.
+		 */
+		struct MOHPC_EXPORTS clientSettings_t
+		{
+		public:
+			clientSettings_t();
+
+			/**
+			 * Update pmove sub-ticking.
+			 * @param value Values are in range through [8, 33]
+			 */
+			void setPmoveMsec(uint32_t value);
+
+			/** Return pmove sub-ticking milliseconds. */
+			uint32_t getPmoveMsec() const;
+
+			/**
+			 * Set whether or not pmove sub-ticking should be using a fixed time.
+			 *
+			 * @param value true for fixed sub-ticking.
+			 */
+			void setPmoveFixed(bool value);
+
+			/** Return whether or not pmove sub-ticking is a fixed time. */
+			bool isPmoveFixed() const;
+
+		private:
+			uint32_t pmove_msec;
+			bool pmove_fixed;
+		};
+
+		/**
 		 * Base CG module, contains most implementations.
 		 */
 		class CGameModuleBase
@@ -888,7 +920,7 @@ namespace MOHPC
 				MOHPC_HANDLERLIST_HANDLER1_NODEF(CGameHandlers::EntityAdded, entityAddedHandler, const EntityInfo&);
 				MOHPC_HANDLERLIST_HANDLER1_NODEF(CGameHandlers::EntityRemoved, entityRemovedHandler, const EntityInfo&);
 				MOHPC_HANDLERLIST_HANDLER1_NODEF(CGameHandlers::EntityModified, entityModifiedHandler, const EntityInfo&);
-				MOHPC_HANDLERLIST_HANDLER3(CGameHandlers::ReplayMove, replayCmdHandler, const usercmd_t&, playerState_t&, uint32_t);
+				MOHPC_HANDLERLIST_HANDLER3(CGameHandlers::ReplayMove, replayCmdHandler, const usercmd_t&, playerState_t&, float);
 				MOHPC_HANDLERLIST_HANDLER2_NODEF(CGameHandlers::Print, serverCommandPrintHandler, hudMessage_e, const char*);
 				MOHPC_HANDLERLIST_HANDLER1_NODEF(CGameHandlers::ServerCommand_HudPrint, scmdHudPrintHandler, const char*);
 				MOHPC_HANDLERLIST_HANDLER1(CGameHandlers::ServerCommand_Scores, scmdScoresHandler, const Scoreboard&);
@@ -1024,6 +1056,9 @@ namespace MOHPC
 			/** Get a client info in the interval of [0, MAX_CLIENTS]. */
 			MOHPC_EXPORTS const clientInfo_t& getClientInfo(uint32_t clientNum) const;
 
+			/** Return the client settings. */
+			MOHPC_EXPORTS clientSettings_t& getSettings();
+
 			/** CG message notification. */
 			void parseCGMessage(MSG& msg);
 
@@ -1036,6 +1071,8 @@ namespace MOHPC
 
 			/** Get imports list. */
 			const ClientImports& getImports() const;
+
+			virtual Pmove& getMove() = 0;
 
 			/** Used to parse CG messages between different versions. */
 			virtual void handleCGMessage(MSG& msg, uint8_t msgType) = 0;
@@ -1094,8 +1131,9 @@ namespace MOHPC
 			/**
 			 * Player movement
 			 */
-			bool replayMove(Pmove& pmove);
+			bool replayMove(Pmove& pmove, usercmd_t& cmd);
 			void extendMove(Pmove& pmove, uint32_t msec);
+			void physicsNoclip(Pmove& pmove, float frametime);
 			//====
 		
 		private:
@@ -1118,6 +1156,7 @@ namespace MOHPC
 			uint64_t svTime;
 			TraceFunction traceFunction;
 			PointContentsFunction pointContentsFunction;
+			HandlerListCGame handlerList;
 			uintptr_t processedSnapshotNum;
 			uintptr_t latestSnapshotNum;
 			uintptr_t latestCommandSequence;
@@ -1130,8 +1169,8 @@ namespace MOHPC
 			Vector cameraAngles;
 			Vector cameraOrigin;
 			playerState_t predictedPlayerState;
-			HandlerListCGame handlerList;
 			CollisionWorld boxHull;
+			clientSettings_t settings;
 			cgsInfo cgs;
 			environment_t environment;
 			rain_t rain;
@@ -1161,12 +1200,16 @@ namespace MOHPC
 			CGameModule6(const ClientImports& inImports);
 
 		protected:
-			virtual void handleCGMessage(MSG& msg, uint8_t msgType) override;
-			virtual void normalizePlayerState(playerState_t& ps) override;
-			virtual void parseFogInfo(const char* s, environment_t& env) override;
+			void handleCGMessage(MSG& msg, uint8_t msgType) override;
+			void normalizePlayerState(playerState_t& ps) override;
+			void parseFogInfo(const char* s, environment_t& env) override;
+			Pmove& getMove() override;
 
 		private:
 			effects_e getEffectId(uint32_t effectId);
+
+		private:
+			Pmove_ver6 pmove;
 		};
 
 		/**
@@ -1179,12 +1222,16 @@ namespace MOHPC
 			CGameModule15(const ClientImports& inImports);
 
 		protected:
-			virtual void handleCGMessage(MSG& msg, uint8_t msgType) override;
-			virtual void setupMove(Pmove& pmove) override;
-			virtual void parseFogInfo(const char* s, environment_t& env) override;
+			void handleCGMessage(MSG& msg, uint8_t msgType) override;
+			void setupMove(Pmove& pmove) override;
+			void parseFogInfo(const char* s, environment_t& env) override;
+			Pmove& getMove() override;
 
 		private:
 			effects_e getEffectId(uint32_t effectId);
+
+		private:
+			Pmove_ver15 pmove;
 		};
 	}
 }

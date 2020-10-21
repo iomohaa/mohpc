@@ -564,13 +564,13 @@ void CGameModuleBase::predictPlayerState(uint64_t deltaTime)
 	}
 
 	// Pmove
-	Pmove pmove;
+	Pmove& pmove = getMove();
 	pmove_t& pm = pmove.get();
 	pm.ps = &predictedPlayerState;
 	pm.pointcontents = pointContentsFunction;
 	pm.trace = traceFunction;
 	
-	if (pm.ps->pm_type == pmType_e::PM_DEAD) {
+	if (pm.ps->pm_type == pmType_e::Dead) {
 		pm.tracemask = ContentFlags::MASK_PLAYERSOLID & ~ContentFlags::MASK_DYNAMICBODY;
 	}
 	else {
@@ -599,13 +599,18 @@ void CGameModuleBase::predictPlayerState(uint64_t deltaTime)
 		physicsTime = snap->serverTime;
 	}
 
-	pm.pmove_fixed = 0;
-	pm.pmove_msec = 8;
+	const uint32_t pmove_msec = settings.getPmoveMsec();
+	pm.pmove_fixed = settings.isPmoveFixed();
+	pm.pmove_msec = pmove_msec;
 
 	bool moved = false;
-	for (uintptr_t cmdNum = current - CMD_BACKUP + 1; cmdNum <= current; ++cmdNum)
+	for (uintptr_t cmdNum = CMD_BACKUP; cmdNum > 0; --cmdNum)
 	{
-		getImports().getUserCmd(cmdNum, pm.cmd);
+		getImports().getUserCmd(current - cmdNum + 1, pm.cmd);
+
+		if (pm.pmove_fixed) {
+			pmove.PM_UpdateViewAngles(pm.ps, &pm.cmd);
+		}
 
 		// don't do anything if the time is before the snapshot player time
 		if (pm.cmd.serverTime <= predictedPlayerState.commandTime) {
@@ -628,8 +633,16 @@ void CGameModuleBase::predictPlayerState(uint64_t deltaTime)
 			// FIXME: Should it have some sort of predicted error?
 		}
 
+		if (pm.pmove_fixed)
+		{
+			pm.cmd.serverTime = (
+					(pm.cmd.serverTime + pmove_msec - 1)
+					/ pmove_msec
+				) * pmove_msec;
+		}
+
 		// Replay movement
-		moved |= replayMove(pmove);
+		moved |= replayMove(pmove, pm.cmd);
 	}
 
 	// interpolate camera view (spectator, cutscenes, etc)
@@ -955,18 +968,18 @@ void Network::CGameModuleBase::normalizePlayerState(playerState_t& ps)
 {
 }
 
-bool Network::CGameModuleBase::replayMove(Pmove& pmove)
+bool Network::CGameModuleBase::replayMove(Pmove& pmove, usercmd_t& cmd)
 {
 	pmove_t& pm = pmove.get();
 
 	if (pm.ps->feetfalling && pm.waterlevel <= 1)
 	{
-		// clear movement when falling/under water
-		pm.cmd.forwardmove = 0;
-		pm.cmd.rightmove = 0;
+		// clear xy movement when falling or when under water
+		cmd.moveForward(0);
+		cmd.moveRight(0);
 	}
 
-	// calculate delta time
+	// calculate delta time between server command time and current client time
 	const uint32_t msec = pm.cmd.serverTime - pm.ps->commandTime;
 
 	// call move handler
@@ -984,16 +997,29 @@ void Network::CGameModuleBase::extendMove(Pmove& pmove, uint32_t msec)
 {
 	const pmove_t& pm = pmove.get();
 
-	if (pm.ps->pm_type == pmType_e::PM_NOCLIP)
+	const float frametime = float(msec / 1000.f);
+
+	switch (pm.ps->pm_type)
 	{
-		const float frametime = msec / 1000.f;
-		pm.ps->origin += pm.ps->velocity * frametime;
+	case pmType_e::Noclip:
+		// on the server, the origin is changed in pm code and in G_Physics_Noclip;
+		// as a consequence, do the same client-side
+		physicsNoclip(pmove, frametime);
+		break;
+	default:
+		break;
 	}
 
-	// Notify to replay/predict other events that are not present in the original pm code
-	// It can be in PM related code, but it's not what the server expect
-	// PM must remain identical to the server PM code
-	handlers().notify<CGameHandlers::ReplayMove>(pm.cmd, *pm.ps, msec);
+	// let the callee replay/predict other events that are not present in the original pm code
+	// the event could be called inside the PM code, but it's not what the server expect (no sub-ticking)
+	// and PM must remain identical to the server PM code
+	handlers().notify<CGameHandlers::ReplayMove>(pm.cmd, *pm.ps, frametime);
+}
+
+void CGameModuleBase::physicsNoclip(Pmove& pmove, float frametime)
+{
+	const pmove_t& pm = pmove.get();
+	pm.ps->origin += pm.ps->velocity * frametime;
 }
 
 const rain_t& CGameModuleBase::getRain() const
@@ -1487,6 +1513,11 @@ void CGameModuleBase::SCmd_PrintDeathMsg(TokenParser& args)
 	}
 }
 
+clientSettings_t& CGameModuleBase::getSettings()
+{
+	return settings;
+}
+
 CGameModule6::CGameModule6(const ClientImports& inImports)
 	: CGameModuleBase(inImports)
 {
@@ -1944,6 +1975,12 @@ effects_e CGameModule6::getEffectId(uint32_t effectId)
 	}
 
 	return effects_e::bh_stone_hard;
+}
+
+Pmove& CGameModule6::getMove()
+{
+	pmove = Pmove_ver6();
+	return pmove;
 }
 
 void Network::CGameModule6::normalizePlayerState(playerState_t& ps)
@@ -2543,12 +2580,19 @@ effects_e CGameModule15::getEffectId(uint32_t effectId)
 	return effects_e::bh_stone_hard;
 }
 
+Pmove& CGameModule15::getMove()
+{
+	pmove = Pmove_ver15();
+	return pmove;
+}
+
 void Network::CGameModule15::setupMove(Pmove& pmove)
 {
 	pmove_t& pm = pmove.get();
 	// in SH/BT, can't lean by default
 	// unless a dmflag specify it
-	pm.canLean = getServerInfo().hasAnyDMFlags(DMFlags::DF_ALLOW_LEAN);
+	Pmove_ver15& pmoveVer = static_cast<Pmove_ver15&>(pmove);
+	pmoveVer.canLeanWhileMoving = getServerInfo().hasAnyDMFlags(DMFlags::DF_ALLOW_LEAN);
 }
 
 void Network::CGameModule15::parseFogInfo(const char* s, environment_t& env)
@@ -2962,4 +3006,30 @@ Network::teamType_e Network::clientInfo_t::getTeam() const
 const PropertyObject& Network::clientInfo_t::getProperties() const
 {
 	return properties;
+}
+
+clientSettings_t::clientSettings_t()
+	: pmove_fixed(false)
+	, pmove_msec(8)
+{
+}
+
+void clientSettings_t::setPmoveMsec(uint32_t value)
+{
+	pmove_msec = value;
+}
+
+uint32_t clientSettings_t::getPmoveMsec() const
+{
+	return pmove_msec;
+}
+
+void clientSettings_t::setPmoveFixed(bool value)
+{
+	pmove_fixed = value;
+}
+
+bool clientSettings_t::isPmoveFixed() const
+{
+	return pmove_fixed;
 }

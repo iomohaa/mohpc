@@ -146,9 +146,50 @@ void usereyes_t::getAngles(float& pitch, float& yaw)
 	yaw = angles[1];
 }
 
+radarInfo_t::radarInfo_t()
+	: radarValue(0)
+{
+
+}
+
+radarInfo_t::radarInfo_t(uint32_t value)
+	: radarValue(value)
+{
+}
+
+int8_t radarInfo_t::clientNum() const
+{
+	return radarValue & 0x3F;
+}
+
+int8_t radarInfo_t::x() const
+{
+	return ((radarValue >> 6) & 0x7F) - 0x3F;
+}
+
+int8_t radarInfo_t::y() const
+{
+	return ((radarValue >> 13) & 0x7F) - 0x3F;
+}
+
+int8_t radarInfo_t::yaw() const
+{
+	return (radarValue >> 20) & 0x1F;
+}
+
+int8_t radarInfo_t::flags() const
+{
+	return radarValue >> 25;
+}
+
+uint32_t radarInfo_t::getRaw() const
+{
+	return radarValue;
+}
+
 playerState_t::playerState_t()
 	: commandTime(0)
-	, pm_type(pmType_e::PM_NORMAL)
+	, pm_type(pmType_e::Normal)
 	, bobCycle(0)
 	, pm_flags(0)
 	, pm_time(0)
@@ -399,7 +440,7 @@ const Vector& playerState_t::getDamageAngles() const
 	return damage_angles;
 }
 
-uint32_t playerState_t::getRadarInfo() const
+radarInfo_t playerState_t::getRadarInfo() const
 {
 	return radarInfo;
 }

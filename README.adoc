@@ -71,16 +71,18 @@ Unknown:: Absence of testing, but this does not mean the library will not work.
 * Query LAN server list
 * Query server status/info
 * Connect to server
+** Supports AA 1.0-1.11 | SH 2.0-2.15 | BT 2.30-2.40
 
 ===== In-game
 
-* Full support for packets/messages in realtime
+* Full support for realtime packets/messages processing
 * Download is supported
 * User input simulation
 * Entities/snapshots fetching
 * Interpolation/Extrapolation support
 * Game events parsing, callbacks & notifications
 * Player movement prediction with collision support
+* Radar support (requires server to be running at least SH 2.0) used to keep track of teammates.
 
 === Example
 

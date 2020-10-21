@@ -337,39 +337,33 @@ This allows the clients to use axial -127 to 127 values for all directions
 without getting a sqrtf(2) distortion in speed.
 ============
 */
-float Pmove::PM_CmdScale( usercmd_t *cmd ) {
-	int		max;
-	float	total;
-	float	scale;
-	float	fmove, smove;
+float Pmove::PM_CmdScale( usercmd_t *cmd )
+{
+	float fmove, smove;
+	PM_GetMove(&fmove, &smove);
+	const float smovepos = abs(smove);
 
-	PM_GetMove( &fmove, &smove );
+	int max = (int)abs(fmove);
+	if (smovepos > max) {
+		max = (int)smovepos;
+	}
 
-	max = (int)::fabs( fmove );
-	if(::fabs( smove ) > max ) {
-		max = (int)::fabs( smove );
+	const int upmove = abs(cmd->upmove);
+	if (upmove > max) {
+		max = upmove;
 	}
-	if (::fabs( cmd->upmove ) > max ) {
-		max = (int)::fabs( cmd->upmove );
-	}
-	if ( !max ) {
+
+	if (!max) {
 		return 0;
 	}
 
-	total = sqrtf( ( float )( fmove * fmove
-		+ smove * smove + cmd->upmove * cmd->upmove ) );
+	const double total = sqrt(double(
+			cmd->forwardmove * cmd->forwardmove
+			+ cmd->rightmove * cmd->rightmove
+			+ cmd->upmove * cmd->upmove
+		));
 
-	// FIXME: this is a change since SH 2.0
-	// Refactor PM_CmdScale to make it abstract
-	//total = sqrtf(float(
-	//	cmd->upmove * cmd->upmove
-	//	+ cmd->rightmove * cmd->rightmove
-	//	+ cmd->forwardmove *  cmd->forwardmove
-	//));
-
-	scale = ( float )pm.ps->speed * max / ( 127.0f * total );
-
-	return scale;
+	return float(double(pm.ps->speed * max) / (127.0 * total));
 }
 
 //============================================================================
@@ -1155,7 +1149,7 @@ void Pmove::PM_CheckDuck( void )
 
 	pm.mins[ 2 ] = MINS_Z;
 
-	if( pm.ps->pm_type == pmType_e::PM_DEAD )
+	if( pm.ps->pm_type == pmType_e::Dead )
 	{
 		pm.maxs[ 2 ] = DEAD_MINS_Z;
 		pm.ps->viewheight = CROUCH_VIEWHEIGHT;
@@ -1339,43 +1333,40 @@ This can be used as another entry point when only the viewangles
 are being updated isntead of a full move
 ================
 */
-void Pmove::PM_UpdateViewAngles( playerState_t *ps, const usercmd_t *cmd )
+void Pmove::PM_UpdateViewAngles(playerState_t* ps, const usercmd_t* cmd)
 {
-	short	temp;
-	int	i;
-
-	if( ps->pm_flags & PMF_FROZEN )
+	if (ps->pm_flags & PMF_FROZEN)
 	{
 		// no view changes at all
 		return;
 	}
 
-	if( ps->stats[(size_t)playerstat_e::STAT_HEALTH] <= 0 )
+	if (ps->stats[(size_t)playerstat_e::STAT_HEALTH] <= 0)
 	{
 		// no view changes at all
 		return;
 	}
 
 	// circularly clamp the angles with deltas
-	for( i = 0; i < 3; i++ )
+	for (uint8_t i = 0; i < 3; i++)
 	{
-		temp = cmd->angles[ i ] + ps->delta_angles[ i ];
-		if( i == PITCH )
+		short temp = cmd->angles[i] + ps->delta_angles[i];
+		if (i == PITCH)
 		{
 			// don't let the player look up or down more than 90 degrees
-			if( temp > 16000 )
+			if (temp > 16000)
 			{
-				ps->delta_angles[ i ] = 16000 - cmd->angles[ i ];
+				ps->delta_angles[i] = 16000 - cmd->angles[i];
 				temp = 16000;
 			}
-			else if( temp < -16000 )
+			else if (temp < -16000)
 			{
-				ps->delta_angles[ i ] = -16000 - cmd->angles[ i ];
+				ps->delta_angles[i] = -16000 - cmd->angles[i];
 				temp = -16000;
 			}
 		}
 
-		ps->viewangles[ i ] = ShortToAngle( temp );
+		ps->viewangles[i] = ShortToAngle(temp);
 	}
 }
 
@@ -1405,18 +1396,7 @@ void Pmove::moveSingle()
 		pm.tracemask &= ~( CONTENTS_BODY | CONTENTS_NOBOTCLIP );	// corpses can fly through bodies
 	}
 
-	/*/
-	if( pmove->cmd.buttons & BUTTON_TALK )
-	{
-		pmove->cmd.forwardmove = 0;
-		pmove->cmd.rightmove = 0;
-		pmove->cmd.upmove = 0;
-		pmove->cmd.buttons = BUTTON_TALK;
-		pm.ps->fLeanAngle = 0.0f;
-	}
-	*/
-
-	if( pm.ps->pm_type == pmType_e::PM_CLIMBWALL )
+	if( pm.ps->pm_type == pmType_e::ClimbWall )
 	{
 		pm.ps->fLeanAngle = 0.0f;
 		pm.cmd.buttons.flags &= ~( BUTTON_LEANLEFT | BUTTON_LEANRIGHT );
@@ -1441,13 +1421,11 @@ void Pmove::moveSingle()
 	// save old velocity for crashlanding
 	VecCopy( pm.ps->velocity, pml.previous_velocity );
 
-	pml.frametime = pml.msec * 0.001f;
+	pml.frametime = float(pml.msec * 0.001);
 
 	if ((pm.cmd.buttons.flags & (BUTTON_LEANLEFT | BUTTON_LEANRIGHT) &&
 		(pm.cmd.buttons.flags & (BUTTON_LEANLEFT | BUTTON_LEANRIGHT)) != (BUTTON_LEANLEFT | BUTTON_LEANRIGHT))
-		&& (!pm.cmd.forwardmove || pm.canLean)
-		&& (!pm.cmd.rightmove || pm.canLean)
-		&& (!pm.cmd.upmove || pm.canLean))
+		&& canLean(pm.cmd))
 	{
 		if( pm.cmd.buttons.flags & BUTTON_LEANLEFT )
 		{
@@ -1519,6 +1497,10 @@ void Pmove::moveSingle()
 		}
 	}
 
+	if (shouldClearLean()) {
+		pm.ps->fLeanAngle = 0.f;
+	}
+
 	// update the viewangles
 	PM_UpdateViewAngles( pm.ps, &pm.cmd );
 
@@ -1527,7 +1509,7 @@ void Pmove::moveSingle()
 	tempVec[ YAW ] = pm.ps->viewangles[ YAW ];
 	AngleVectorsLeft( tempVec, pml.flat_forward, pml.flat_left, pml.flat_up );
 
-	if (pm.ps->pm_type >= pmType_e::PM_DEAD)
+	if (pm.ps->pm_type >= pmType_e::Dead)
 	{
 		pm.cmd.forwardmove = 0;
 		pm.cmd.rightmove = 0;
@@ -1535,7 +1517,7 @@ void Pmove::moveSingle()
 		pm.ps->fLeanAngle = 0.0f;
 	}
 
-	if (pm.ps->pm_type == pmType_e::PM_NOCLIP)
+	if (pm.ps->pm_type == pmType_e::Noclip)
 	{
 		PM_NoclipMove();
 		PM_DropTimers();
@@ -1558,7 +1540,7 @@ void Pmove::moveSingle()
 	// set groundentity
 	PM_GroundTrace();
 
-	if ( pm.ps->pm_type == pmType_e::PM_DEAD ) {
+	if ( pm.ps->pm_type == pmType_e::Dead ) {
 		PM_DeadMove();
 	}
 
@@ -1707,7 +1689,7 @@ void Pmove::moveAdjustAngleSettings(Vector& vViewAngles, Vector& vAngles, player
 	Vector armsAngles, torsoAngles, headAngles;
 	float fTmp;
 
-	if( pPlayerState->pm_type == pmType_e::PM_CLIMBWALL )
+	if( pPlayerState->pm_type == pmType_e::ClimbWall )
 	{
 		moveAdjustViewAngleSettings_OnLadder( vViewAngles, vAngles, pPlayerState, pEntState );
 		VecSet( pEntState->bone_angles[ TORSO_TAG ], 0, 0, 0 );
@@ -1724,7 +1706,7 @@ void Pmove::moveAdjustAngleSettings(Vector& vViewAngles, Vector& vAngles, player
 		return;
 	}
 
-	if( pPlayerState->pm_type != pmType_e::PM_DEAD )
+	if( pPlayerState->pm_type != pmType_e::Dead )
 	{
 		fTmp = AngleMod( vViewAngles[ 1 ] );
 		VecSet( vAngles, 0, fTmp, 0 );
@@ -1797,4 +1779,33 @@ void Pmove::moveAdjustAngleSettings_Client(Vector& vViewAngles, Vector& vAngles,
 
 	// called by cgame
 	// FIXME
+}
+
+bool Pmove_ver6::canLean(const usercmd_t& cmd)
+{
+	return true;
+}
+
+bool Pmove_ver6::shouldClearLean()
+{
+	return false;
+}
+
+Pmove_ver15::Pmove_ver15()
+	: canLeanWhileMoving(false)
+{
+
+}
+
+bool Pmove_ver15::canLean(const usercmd_t& cmd)
+{
+	// a new setting since SH that allow leaning while moving
+	return (!cmd.forwardmove || canLeanWhileMoving)
+		&& (!cmd.rightmove || canLeanWhileMoving)
+		&& (!cmd.upmove || canLeanWhileMoving);
+}
+
+bool Pmove_ver15::shouldClearLean()
+{
+	return (pm.ps->getPlayerMoveFlags() & PMF_LEVELEXIT) != 0;
 }

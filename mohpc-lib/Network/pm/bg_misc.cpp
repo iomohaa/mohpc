@@ -38,7 +38,7 @@ and after local prediction on the client
 */
 void BG_PlayerStateToEntityState( playerState_t *ps, entityState_t *s, bool snap )
 {
-	if ( ps->pm_type == pmType_e::PM_NOCLIP ) {
+	if ( ps->pm_type == pmType_e::Noclip ) {
 		s->eType = (entityType_e)0;//ET_INVISIBLE;
 	//} else if ( ps->stats[STAT_HEALTH] <= GIB_HEALTH ) {
 	//	s->eType = 0;//ET_INVISIBLE;
@@ -85,7 +85,7 @@ and after local prediction on the client
 */
 void BG_PlayerStateToEntityStateExtraPolate( playerState_t *ps, entityState_t *s, int time, bool snap )
 {
-	if ( ps->pm_type == pmType_e::PM_NOCLIP ) {
+	if ( ps->pm_type == pmType_e::Noclip ) {
 		s->eType = (entityType_e)0;//ET_INVISIBLE;
 	//} else if ( ps->stats[STAT_HEALTH] <= GIB_HEALTH ) {
 	//	s->eType = 0;//ET_INVISIBLE;

@@ -138,6 +138,13 @@ namespace MOHPC
 			 * @param	gameState	New game state.
 			 */
 			struct GameStateParsed : public HandlerNotifyBase<void(const gameState_t& gameState, bool differentMap)> {};
+
+			/**
+			 * Called when a client is not visible to the player.
+			 * It is used to update radar information (radar = teammate icons on the compass)
+			 * and to keep track of players (teammates) that are not visible.
+			 */
+			struct ReadNonPVSClient : public HandlerNotifyBase<void(const radarUnpacked_t& radarUnpacked)> {};
 		}
 
 		struct outPacket_t
@@ -476,6 +483,26 @@ namespace MOHPC
 			uint32_t downloadBlock;
 			bool downloadRequested;
 		};
+
+		class MOHPC_EXPORTS clientGameSettings_t
+		{
+		public:
+			clientGameSettings_t();
+
+			/** Set the maximum radar bounds. The default value is 1024. */
+			void setRadarRange(float value);
+
+			/** Return the radar range. */
+			float getRadarRange() const;
+
+			void setTimeNudge(uint32_t value);
+
+			uint32_t getTimeNudge() const;
+
+		private:
+			float radarRange;
+			uint32_t timeNudge;
+		};
 		
 		/**
 		 * Client game connection class.
@@ -513,6 +540,7 @@ namespace MOHPC
 				MOHPC_HANDLERLIST_HANDLER1_NODEF(ClientHandlers::FirstSnapshot, firstSnapshotHandler, const ClientSnapshot&);
 				MOHPC_HANDLERLIST_HANDLER1_NODEF(ClientHandlers::SnapReceived, snapshotReceivedHandler, const ClientSnapshot&);
 				MOHPC_HANDLERLIST_HANDLER2(ClientHandlers::GameStateParsed, gameStateParsedHandler, const gameState_t&, bool);
+				MOHPC_HANDLERLIST_HANDLER1(ClientHandlers::ReadNonPVSClient, readNonPVSClientHandler, const radarUnpacked_t&);
 			};
 
 		private:
@@ -524,6 +552,7 @@ namespace MOHPC
 			using readDeltaPlayerstate_f = void(ClientGameConnection::*)(MSG& msg, const playerState_t* from, playerState_t* to);
 			using readDeltaEntity_f = void(ClientGameConnection::*)(MSG& msg, const entityState_t* from, entityState_t* to, entityNum_t newNum);
 			using getNormalizedConfigstring_f = csNum_t(ClientGameConnection::*)(csNum_t num);
+			using readNonPVSClient_f = void(ClientGameConnection::*)(radarInfo_t radarInfo);
 
 		private:
 			std::chrono::steady_clock::time_point lastTimeoutTime;
@@ -536,6 +565,7 @@ namespace MOHPC
 			readDeltaPlayerstate_f readDeltaPlayerstate_pf;
 			readDeltaEntity_f readDeltaEntity_pf;
 			getNormalizedConfigstring_f getNormalizedConfigstring_pf;
+			readNonPVSClient_f readNonPVSClient_pf;
 			CGameModuleBase* cgameModule;
 			EncodingPtr encoder;
 			INetchanPtr netchan;
@@ -560,6 +590,7 @@ namespace MOHPC
 			uint32_t serverId;
 			int32_t reliableSequence;
 			int32_t reliableAcknowledge;
+			clientGameSettings_t settings;
 			netadr_t adr;
 			bool newSnapshots : 1;
 			bool extrapolatedSnapshot : 1;
@@ -770,6 +801,7 @@ namespace MOHPC
 			void createCmd(usercmd_t& outcmd);
 			bool sendCmd(uint64_t currentTime);
 			void writePacket(uint32_t serverMessageSequence, uint64_t currentTime);
+			bool unpackNonPVSClient(radarInfo_t radarInfo, radarUnpacked_t& unpacked);
 
 			void fillClientImports(ClientImports& imports);
 			StringMessage readStringMessage(MSG& msg);
@@ -779,6 +811,7 @@ namespace MOHPC
 			void readDeltaPlayerstate(MSG& msg, const playerState_t* from, playerState_t* to);
 			void readDeltaEntity(MSG& msg, const entityState_t* from, entityState_t* to, uint16_t newNum);
 			csNum_t getNormalizedConfigstring(csNum_t num);
+			void readNonPVSClient(radarInfo_t radarInfo);
 
 		private:
 			static StringMessage readStringMessage_normal(MSG& msg);
@@ -797,6 +830,8 @@ namespace MOHPC
 			void readDeltaEntity_ver15(MSG& msg, const entityState_t* from, entityState_t* to, entityNum_t newNum);
 			csNum_t getNormalizedConfigstring_ver6(csNum_t num);
 			csNum_t getNormalizedConfigstring_ver15(csNum_t num);
+			void readNonPVSClient_ver6(radarInfo_t radarInfo);
+			void readNonPVSClient_ver15(radarInfo_t radarInfo);
 		};
 
 		using ClientGameConnectionPtr = SharedPtr<ClientGameConnection>;

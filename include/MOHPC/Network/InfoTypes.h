@@ -223,7 +223,7 @@ static constexpr unsigned int RF_ALWAYSDRAW			= (1<<30);
 	// Prone view
 	static constexpr unsigned int PMF_VIEW_PRONE		= (1 << 1);
 
-	// Those flags was deleted in SH/BT
+	// Those flags were deleted in SH/BT, reason why other flags are shifted
 	//
 	// pm_time is time before rejump
 	//static constexpr unsigned int PMF_TIME_LAND			= (1 << 2);
@@ -403,13 +403,60 @@ static constexpr unsigned int RF_ALWAYSDRAW			= (1<<30);
 
 	enum class pmType_e : unsigned char {
 		/** Normal movement. */
-		PM_NORMAL,
+		Normal,
 		/** Ladder climbing. */
-		PM_CLIMBWALL,
+		ClimbWall,
 		/** Noclip movement. */
-		PM_NOCLIP,
+		Noclip,
 		/** no acceleration or turning, but free falling */
-		PM_DEAD,
+		Dead,
+	};
+
+	static constexpr unsigned int RADAR_PLAYER_FAR = 1;
+
+	/**
+	 * Radar info, packed into one 32-bit value.
+	 */
+	struct MOHPC_EXPORTS radarInfo_t
+	{
+	public:
+		radarInfo_t();
+		radarInfo_t(uint32_t value);
+
+		/** Get the clientnum targetted by this radar. */
+		int8_t clientNum() const;
+
+		/** Return the compass-space horizontal value. Range is [-63, 63]. */
+		int8_t x() const;
+
+		/** Return the compass-space vertical value. Range is [-63, 63]. */
+		int8_t y() const;
+
+		/**
+		 * Return the target packed yaw (5-bits value). Range is [0, 31].
+		 * Divide 360 by the number of values to get the actual yaw.
+		 */
+		int8_t yaw() const;
+
+		/** Flags of the radar. See RADAR_* for values. */
+		int8_t flags() const;
+
+		/** Return the raw radar info value. */
+		uint32_t getRaw() const;
+
+	private:
+		uint32_t radarValue;
+	};
+
+	/**
+	 * Unpacked radar information.
+	 */
+	struct radarUnpacked_t
+	{
+		uint32_t clientNum;
+		float x;
+		float y;
+		float yaw;
 	};
 
 	class MOHPC_EXPORTS playerState_t
@@ -440,7 +487,7 @@ static constexpr unsigned int RF_ALWAYSDRAW			= (1<<30);
 
 		// cmd->serverTime of last executed command
 		uint32_t commandTime;
-		uint32_t radarInfo;
+		radarInfo_t radarInfo;
 		// last trace on ground
 		trace_t groundTrace;
 
@@ -585,7 +632,7 @@ static constexpr unsigned int RF_ALWAYSDRAW			= (1<<30);
 		const Vector& getDamageAngles() const;
 
 		/** Information on the player compass in an SH/BT server. */
-		uint32_t getRadarInfo() const;
+		radarInfo_t getRadarInfo() const;
 
 		/** Whether or not the player has voted in an SH/BT server. */
 		bool hasVoted() const;

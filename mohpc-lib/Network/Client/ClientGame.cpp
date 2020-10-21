@@ -340,6 +340,7 @@ ClientGameConnection::ClientGameConnection(const NetworkManagerPtr& inNetworkMan
 		readDeltaPlayerstate_pf = &ClientGameConnection::readDeltaPlayerstate_ver6;
 		readDeltaEntity_pf = &ClientGameConnection::readDeltaEntity_ver6;
 		getNormalizedConfigstring_pf = &ClientGameConnection::getNormalizedConfigstring_ver6;
+		readNonPVSClient_pf = &ClientGameConnection::readNonPVSClient_ver6;
 
 		cgameModule = new CGameModule6(imports);
 		break;
@@ -353,6 +354,7 @@ ClientGameConnection::ClientGameConnection(const NetworkManagerPtr& inNetworkMan
 		readDeltaPlayerstate_pf = &ClientGameConnection::readDeltaPlayerstate_ver15;
 		readDeltaEntity_pf = &ClientGameConnection::readDeltaEntity_ver15;
 		getNormalizedConfigstring_pf = &ClientGameConnection::getNormalizedConfigstring_ver15;
+		readNonPVSClient_pf = &ClientGameConnection::readNonPVSClient_ver15;
 
 		cgameModule = new CGameModule15(imports);
 		break;
@@ -507,7 +509,7 @@ void Network::ClientGameConnection::receive(const netadr_t& from, MSG& msg, size
 		// call the handler
 		handlerList.notify<ClientHandlers::Error>(e);
 	}
-	catch (StreamMessageException& e)
+	catch (StreamMessageException&)
 	{
 		MOHPC_LOG(Error, "Tried to read past end of server message (length %d)", stream.GetLength());
 	}
@@ -805,6 +807,9 @@ void Network::ClientGameConnection::parseSnapshot(MSG& msg, uint32_t serverMessa
 
 	snapshots[currentSnap.messageNum & PACKET_MASK] = currentSnap;
 	newSnapshots = true;
+
+	// read and unpack radar info on SH/BT
+	readNonPVSClient(currentSnap.ps.getRadarInfo());
 
 	getHandlerList().notify<ClientHandlers::SnapReceived>(currentSnap);
 }
@@ -1315,14 +1320,14 @@ void Network::ClientGameConnection::createCmd(usercmd_t& outcmd)
 
 bool Network::ClientGameConnection::sendCmd(uint64_t currentTime)
 {
-	if (!readyToSendPacket(currentTime)) {
-		return false;
-	}
-
-	if(canCreateCommand())
+	if (canCreateCommand())
 	{
 		// only create commands if the client is completely ready
 		createNewCommands();
+	}
+
+	if (!readyToSendPacket(currentTime)) {
+		return false;
 	}
 
 	return true;
@@ -1475,6 +1480,16 @@ void ClientGameConnection::writeStringMessage_scrambled(MSG& msg, const char* s)
 	msg.WriteScrambledString(s, charByteMapping);
 }
 
+csNum_t ClientGameConnection::getNormalizedConfigstring(csNum_t num)
+{
+	return (this->*getNormalizedConfigstring_pf)(num);
+}
+
+void Network::ClientGameConnection::readNonPVSClient(radarInfo_t radarInfo)
+{
+	return (this->*readNonPVSClient_pf)(radarInfo);
+}
+
 uint32_t ClientGameConnection::hashKey_ver6(const char* string, size_t maxlen)
 {
 	uint32_t hash = 0;
@@ -1537,6 +1552,44 @@ void ClientGameConnection::readDeltaEntity_ver6(MSG& msg, const entityState_t* f
 void ClientGameConnection::readDeltaEntity_ver15(MSG& msg, const entityState_t* from, entityState_t* to, entityNum_t newNum)
 {
 	msg.ReadDeltaClass(from ? &SerializableEntityState_ver15(*const_cast<entityState_t*>(from), newNum) : nullptr, &SerializableEntityState_ver15(*to, newNum));
+}
+
+csNum_t ClientGameConnection::getNormalizedConfigstring_ver6(csNum_t num)
+{
+	if (num <= CS_WARMUP || num >= 26) {
+		return num;
+	}
+
+	return num - 2;
+}
+
+csNum_t ClientGameConnection::getNormalizedConfigstring_ver15(csNum_t num)
+{
+	return num;
+}
+
+void ClientGameConnection::readNonPVSClient_ver6(radarInfo_t radarInfo)
+{
+	// unsupported in AA
+}
+
+void ClientGameConnection::readNonPVSClient_ver15(radarInfo_t radarInfo)
+{
+	radarUnpacked_t unpacked;
+
+	if (unpackNonPVSClient(radarInfo, unpacked))
+	{
+		const Vector& origin = currentSnap.ps.getOrigin();
+		unpacked.x += origin[0];
+		unpacked.y += origin[1];
+
+		handlerList.notify<ClientHandlers::ReadNonPVSClient>(unpacked);
+	}
+}
+
+CGameModuleBase* Network::ClientGameConnection::getCGModule()
+{
+	return cgameModule;
 }
 
 const netadr_t& ClientGameConnection::getRemoteAddress() const
@@ -1693,7 +1746,7 @@ bool ClientGameConnection::getUserCmd(uintptr_t cmdNum, usercmd_t& outCmd)
 {
 	// the usercmd has been overwritten in the wrapping
 	// buffer because it is too far out of date
-	if (cmdNum < this->cmdNumber - CMD_BACKUP) {
+	if (cmdNum + CMD_BACKUP < this->cmdNumber) {
 		return false;
 	}
 
@@ -1869,9 +1922,12 @@ void ClientGameConnection::setCGameTime(uint64_t currentTime)
 		return;
 	}
 
+	// FIXME: check when server has restarted
+	// FIXME: throw if snap server time went backward
+
 	oldFrameServerTime = currentSnap.serverTime;
 
-	int32_t tn = 10;
+	int32_t tn = settings.getTimeNudge();
 	if (tn < -30) {
 		tn = -30;
 	}
@@ -1972,6 +2028,34 @@ bool ClientGameConnection::readyToSendPacket(uint64_t currentTime) const
 	return true;
 }
 
+bool ClientGameConnection::unpackNonPVSClient(radarInfo_t radarInfo, radarUnpacked_t& unpacked)
+{
+	unpacked.clientNum = radarInfo.clientNum();
+
+	if (unpacked.clientNum == currentSnap.ps.getClientNum()) {
+		return false;
+	}
+
+	const float radarRange = settings.getRadarRange();
+	const float radarScaled = radarRange / 63.f;
+
+	unpacked.x = radarInfo.x() * radarScaled;
+	unpacked.y = radarInfo.y() * radarScaled;
+
+	if (radarInfo.flags() & RADAR_PLAYER_FAR)
+	{
+		// when it's too far it needs to be scaled to make it look very far away
+		unpacked.x = unpacked.x * 1024.f;
+		unpacked.y = unpacked.y * 1024.f;
+	}
+
+	// retrieve the yaw from 5-bits value
+	unpacked.yaw = radarInfo.yaw() * (360.f / 32.f);
+
+	return true;
+}
+
+
 void ClientGameConnection::fillClientImports(ClientImports& imports)
 {
 	using namespace std::placeholders;
@@ -1986,30 +2070,6 @@ void ClientGameConnection::fillClientImports(ClientImports& imports)
 	imports.getGameState				= std::bind(&ClientGameConnection::getGameState, this);
 	imports.readStringMessage			= std::bind(&ClientGameConnection::readStringMessage, this, _1);
 	imports.addReliableCommand			= std::bind(&ClientGameConnection::addReliableCommand, this, _1);
-}
-
-csNum_t ClientGameConnection::getNormalizedConfigstring(csNum_t num)
-{
-	return (this->*getNormalizedConfigstring_pf)(num);
-}
-
-CGameModuleBase* Network::ClientGameConnection::getCGModule()
-{
-	return cgameModule;
-}
-
-csNum_t ClientGameConnection::getNormalizedConfigstring_ver6(csNum_t num)
-{
-	if (num <= CS_WARMUP || num >= 26) {
-		return num;
-	}
-
-	return num - 2;
-}
-
-csNum_t ClientGameConnection::getNormalizedConfigstring_ver15(csNum_t num)
-{
-	return num;
 }
 
 MOHPC_OBJECT_DEFINITION(ClientInfo);
@@ -2097,3 +2157,29 @@ void ClientInfo::fillInfoString(Info& info) const
 	}
 }
 
+clientGameSettings_t::clientGameSettings_t()
+	: radarRange(1024.f)
+	, timeNudge(0)
+{
+
+}
+
+void clientGameSettings_t::setRadarRange(float value)
+{
+	radarRange = value;
+}
+
+float clientGameSettings_t::getRadarRange() const
+{
+	return radarRange;
+}
+
+void clientGameSettings_t::setTimeNudge(uint32_t value)
+{
+	timeNudge = value;
+}
+
+uint32_t clientGameSettings_t::getTimeNudge() const
+{
+	return timeNudge;
+}

@@ -40,6 +40,7 @@ namespace MOHPC
 			BroadcastIPX
 		};
 
+		// FIXME: TODO
 		class INetAddr
 		{
 		public:
@@ -48,6 +49,7 @@ namespace MOHPC
 		};
 
 		// FIXME: use an abstract interface for netadr_t instead (IPv4 and IPv6)
+		// however mohaa uses IPv4 only so it's not really important here
 		struct netadr_t
 		{
 			netadrtype_t type;
@@ -153,7 +155,7 @@ namespace MOHPC
 			Baseline,
 			/** [string] server command to execute on client. */
 			ServerCommand,
-			/** [short] size [size bytes] */
+			/** [short] download block. */
 			Download,
 			/** Snapshot parsing. */
 			Snapshot,
@@ -161,9 +163,9 @@ namespace MOHPC
 			Centerprint,
 			/** [short] [short] [string] Locationprint command. */
 			Locprint,
-			/** [byte6] Message for cgame. */
+			/** [byte6] Message for client game module. */
 			CGameMessage,
-			/** Indicate the end of message. */
+			/** Indicate the end of message (no more commands). */
 			Eof
 		};
 

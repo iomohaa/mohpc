@@ -139,7 +139,6 @@ namespace MOHPC
 		int debugLevel;
 		// if the game is setup for no footsteps by the server
 		bool noFootsteps;
-		bool canLean;
 
 		int framecount;
 
@@ -203,12 +202,8 @@ namespace MOHPC
 	class Pmove
 	{
 	public:
-		pmove_t pm;
-		pml_t pml;
-		int c_pmove;
-
-	public:
 		MOHPC_EXPORTS Pmove();
+		virtual ~Pmove() = default;
 
 		MOHPC_EXPORTS pmove_t& get();
 
@@ -247,6 +242,35 @@ namespace MOHPC
 		void PM_Accelerate(const Vector& wishdir, float wishspeed, float accel);
 		float PM_CmdScale(usercmd_t* cmd);
 		void PM_CheckTerminalVelocity();
+
+	protected:
+		virtual bool canLean(const usercmd_t& cmd) = 0;
+		virtual bool shouldClearLean() = 0;
+
+	protected:
+		pmove_t pm;
+		pml_t pml;
+		size_t c_pmove;
+	};
+
+	class Pmove_ver6 : public Pmove
+	{
+	protected:
+		bool canLean(const usercmd_t& cmd) override;
+		bool shouldClearLean() override;
+	};
+
+	class Pmove_ver15 : public Pmove
+	{
+	public:
+		bool canLeanWhileMoving;
+
+	public:
+		Pmove_ver15();
+
+	protected:
+		bool canLean(const usercmd_t& cmd) override;
+		bool shouldClearLean() override;
 	};
 
 	//===================================================================================
