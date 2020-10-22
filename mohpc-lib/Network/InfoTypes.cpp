@@ -5,9 +5,7 @@ using namespace MOHPC;
 using namespace Network;
 
 netadr_t::netadr_t()
-	: type(netadrtype_t::Bad)
-	, ip{ 0 }
-	, ipx{ 0 }
+	: ip{ 0 }
 	, port(0)
 {}
 

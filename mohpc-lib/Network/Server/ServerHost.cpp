@@ -197,7 +197,10 @@ void ServerHost::processRequests()
 	if (sequenceNum == -1)
 	{
 		// connectionless command
-		const uint8_t dirByte = msg.ReadByte();
+		const netsrc_e dirByte = (netsrc_e)msg.ReadByte();
+		if (dirByte != netsrc_e::Server) {
+			return;
+		}
 
 		StringMessage command = msg.ReadString();
 		if (!str::icmp(command, "getchallenge"))

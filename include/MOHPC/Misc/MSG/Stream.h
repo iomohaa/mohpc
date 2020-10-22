@@ -92,10 +92,11 @@ namespace MOHPC
 		virtual void Seek(size_t offset, SeekPos from) noexcept override;
 		virtual size_t GetPosition() const noexcept override;
 		virtual size_t GetLength() const noexcept override;
-
+		void reserve(size_t size);
 		const uint8_t* getStorage() const;
 
 	private:
+		void reallocate(size_t newLen);
 		void allocate(size_t writeLength);
 	};
 }

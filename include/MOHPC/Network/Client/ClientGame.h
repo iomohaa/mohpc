@@ -125,6 +125,11 @@ namespace MOHPC
 			struct FirstSnapshot : public HandlerNotifyBase<void(const ClientSnapshot& snap)> {};
 
 			/**
+			 * Called when the server has restarted (when a restart command has been issued on the server).
+			 */
+			struct ServerRestarted : public HandlerNotifyBase<void()> {};
+
+			/**
 			 * Called when a snap was received.
 			 *
 			 * @param	snap	The snapshot that was received.
@@ -135,9 +140,11 @@ namespace MOHPC
 			 * Called the game state was parsed. Can be called multiple times.
 			 * This is the callback to use for map change/loading.
 			 *
-			 * @param	gameState	New game state.
+			 * @param   gameState       New game state.
+			 * @param   differentLevel  False if the client has to re-download game state for the current game.
+			 *                          True = new game session (but doesn't necessarily mean that it is a different map file).
 			 */
-			struct GameStateParsed : public HandlerNotifyBase<void(const gameState_t& gameState, bool differentMap)> {};
+			struct GameStateParsed : public HandlerNotifyBase<void(const gameState_t& gameState, bool differentLevel)> {};
 
 			/**
 			 * Called when a client is not visible to the player.
@@ -149,6 +156,7 @@ namespace MOHPC
 
 		struct outPacket_t
 		{
+		public:
 			/** cl.cmdNumber when packet was sent */
 			uint32_t p_cmdNumber;
 
@@ -160,6 +168,9 @@ namespace MOHPC
 
 			/** eyeInfo when packet was sent */
 			usereyes_t p_eyeinfo;
+
+		public:
+			outPacket_t();
 		};
 
 		/**
@@ -368,7 +379,11 @@ namespace MOHPC
 			ClientSnapshot();
 		};
 
-		/** Class for handling client specifing settings. */
+		/**
+		 * Handle client specific settings.
+		 *
+		 * It reflects userinfo from server.
+		 */
 		class ClientInfo
 		{
 			MOHPC_OBJECT_DECLARATION(ClientInfo);
@@ -421,11 +436,17 @@ namespace MOHPC
 			MOHPC_EXPORTS void setUserKeyValue(const char* key, const char* value);
 			MOHPC_EXPORTS const char* getUserKeyValue(const char* key) const;
 
-			/** Build info string from properties. */
-			MOHPC_EXPORTS void fillInfoString(Info& info) const;
+			/** Return the list of properties. */
+			MOHPC_EXPORTS const PropertyObject& getPropertyObject() const;
 		};
 		using ClientInfoPtr = SharedPtr<ClientInfo>;
 		using ConstClientInfoPtr = SharedPtr<const ClientInfo>;
+
+		class ClientInfoHelper
+		{
+		public:
+			static void fillInfoString(const ClientInfo& clientInfo, Info& info);
+		};
 
 		class DownloadManager
 		{
@@ -489,6 +510,18 @@ namespace MOHPC
 		public:
 			clientGameSettings_t();
 
+			/** Return the maximum number of packets that can be sent per second. */
+			uint32_t getMaxPackets() const;
+
+			/** Set the maximum number of packets that can be sent per second, in the range of [1, 125]. */
+			void setMaxPackets(uint32_t inMaxPackets);
+
+			/** Return the maximum number of packets that can be processed at once in once tick. */
+			uint32_t getMaxTickPackets() const;
+
+			/** Set the maximum number of packets that can be sent processed at once in one tick, in the range of [1, 1000]. */
+			void setMaxTickPackets(uint32_t inMaxPackets);
+
 			/** Set the maximum radar bounds. The default value is 1024. */
 			void setRadarRange(float value);
 
@@ -496,10 +529,11 @@ namespace MOHPC
 			float getRadarRange() const;
 
 			void setTimeNudge(uint32_t value);
-
 			uint32_t getTimeNudge() const;
 
 		private:
+			uint32_t maxPackets;
+			uint32_t maxTickPackets;
 			float radarRange;
 			uint32_t timeNudge;
 		};
@@ -539,6 +573,7 @@ namespace MOHPC
 				MOHPC_HANDLERLIST_NOTIFY1(const ClientSnapshot&);
 				MOHPC_HANDLERLIST_HANDLER1_NODEF(ClientHandlers::FirstSnapshot, firstSnapshotHandler, const ClientSnapshot&);
 				MOHPC_HANDLERLIST_HANDLER1_NODEF(ClientHandlers::SnapReceived, snapshotReceivedHandler, const ClientSnapshot&);
+				MOHPC_HANDLERLIST_HANDLER0_NODEF(ClientHandlers::ServerRestarted, serverRestartedHandler);
 				MOHPC_HANDLERLIST_HANDLER2(ClientHandlers::GameStateParsed, gameStateParsedHandler, const gameState_t&, bool);
 				MOHPC_HANDLERLIST_HANDLER1(ClientHandlers::ReadNonPVSClient, readNonPVSClientHandler, const radarUnpacked_t&);
 			};
@@ -579,8 +614,6 @@ namespace MOHPC
 			uint64_t lastPacketSendTime;
 			uint64_t serverDeltaFrequency;
 			std::chrono::milliseconds timeoutTime;
-			uint32_t maxPackets;
-			uint32_t maxTickPackets;
 			uint32_t parseEntitiesNum;
 			uint32_t serverCommandSequence;
 			uint32_t serverMessageSequence;
@@ -588,8 +621,9 @@ namespace MOHPC
 			uint32_t clientNum;
 			uint32_t checksumFeed;
 			uint32_t serverId;
-			int32_t reliableSequence;
-			int32_t reliableAcknowledge;
+			uint32_t reliableSequence;
+			uint32_t reliableAcknowledge;
+			uint32_t lastSnapFlags;
 			clientGameSettings_t settings;
 			netadr_t adr;
 			bool newSnapshots : 1;
@@ -680,20 +714,12 @@ namespace MOHPC
 			/** Return modifiable user info. */
 			MOHPC_EXPORTS const ClientInfoPtr& getUserInfo();
 
-			/** Send the server a new user info string. Must be called after having finished modifying the userinfo. */
+			/** Send the server a new user info string. Must be called when done modifying the userinfo. */
 			MOHPC_EXPORTS void updateUserInfo();
 
-			/** Return the maximum number of packets that can be sent per second. */
-			MOHPC_EXPORTS uint32_t getMaxPackets() const;
+			MOHPC_EXPORTS clientGameSettings_t& getSettings();
 
-			/** Set the maximum number of packets that can be sent per second, in the range of [1, 125]. */
-			MOHPC_EXPORTS void setMaxPackets(uint32_t inMaxPackets);
-
-			/** Return the maximum number of packets that can be processed at once in once tick. */
-			MOHPC_EXPORTS uint32_t getMaxTickPackets() const;
-
-			/** Set the maximum number of packets that can be sent processed at once in one tick, in the range of [1, 1000]. */
-			MOHPC_EXPORTS void setMaxTickPackets(uint32_t inMaxPackets);
+			MOHPC_EXPORTS const clientGameSettings_t& getSettings() const;
 
 			/** Return the current snapshot number. */
 			MOHPC_EXPORTS uintptr_t getCurrentSnapshotNumber() const;
@@ -791,7 +817,10 @@ namespace MOHPC
 			bool isDifferentServer(uint32_t id);
 			void setCGameTime(uint64_t currentTime);
 			void adjustTimeDelta(uint64_t realTime);
+			uint64_t getTimeDelta(uint64_t time) const;
 			void firstSnapshot(uint64_t currentTime);
+			void serverRestarted();
+			void updateSnapFlags();
 
 			void configStringModified(csNum_t num, const char* newString);
 

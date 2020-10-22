@@ -123,6 +123,7 @@ namespace MOHPC
 			struct ConnectionParams
 			{
 				ConnectResponse response;
+				Callbacks::ServerTimeout timeoutCallback;
 				ClientInfoPtr info;
 				ConnectSettingsPtr settings;
 
@@ -140,6 +141,9 @@ namespace MOHPC
 				Callbacks::ServerTimeout timeoutCallback;
 
 			public:
+				IEngineRequest() = default;
+				IEngineRequest(Callbacks::ServerTimeout&& inTimeoutCallback);
+
 				/** Called to generate a request string. */
 				virtual str generateRequest() = 0;
 
@@ -180,7 +184,7 @@ namespace MOHPC
 				uint8_t numRetries;
 
 			public:
-				ChallengeRequest(const protocolType_c& proto, ConnectionParams&& inData);
+				ChallengeRequest(const protocolType_c& proto, ConnectionParams&& inData, Callbacks::ServerTimeout&& inTimeoutCallback);
 				virtual str generateRequest();
 				virtual bool supportsEvent(const char* name) override;
 				virtual IRequestPtr handleResponse(const char* name, TokenParser& parser) override;
@@ -198,7 +202,7 @@ namespace MOHPC
 				uint8_t numRetries;
 
 			public:
-				AuthorizeRequest(const protocolType_c& proto, ConnectionParams&& inData, const char* challenge);
+				AuthorizeRequest(const protocolType_c& proto, ConnectionParams&& inData, const char* challenge, Callbacks::ServerTimeout&& inTimeoutCallback);
 				virtual str generateRequest();
 				virtual bool supportsEvent(const char* name) override;
 				virtual IRequestPtr handleResponse(const char* name, TokenParser& parser) override;
@@ -216,7 +220,7 @@ namespace MOHPC
 				uint8_t numRetries;
 
 			public:
-				ConnectRequest(const protocolType_c& proto, ConnectionParams&& inData, uint32_t challenge);
+				ConnectRequest(const protocolType_c& proto, ConnectionParams&& inData, uint32_t challenge, Callbacks::ServerTimeout&& inTimeoutCallback);
 				virtual str generateRequest();
 				virtual bool shouldCompressRequest(size_t& offset);
 				virtual bool supportsEvent(const char* name) override;

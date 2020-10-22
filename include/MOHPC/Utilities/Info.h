@@ -24,6 +24,7 @@ namespace MOHPC
 
 		void operator++();
 		InfoIterator& operator++(int);
+		bool isLast() const;
 		operator bool() const;
 
 	private:
@@ -76,5 +77,116 @@ namespace MOHPC
 		size_t GetInfoLength() const;
 
 		InfoIterator createConstIterator() const;
+	};
+
+	class JsonStyleBeautifier
+	{
+	public:
+		static void writeScopeBegin(str& json)
+		{
+			json += "\n";
+		}
+
+		static void writeScopeEnd(str& json)
+		{
+			json += "\n";
+		}
+
+		static void writeObjectBegin(str& json)
+		{
+			json += "  ";
+		}
+
+		static void writeObjectEndLine(str& json)
+		{
+			json += "\n";
+		}
+
+		static void writeLastObjectEndLine(str& json)
+		{
+		}
+
+		static void writeObjectBeginValue(str& json)
+		{
+			json += " ";
+		}
+	};
+
+	class JsonStyleCompressed
+	{
+	public:
+		static void writeScopeBegin(str& json) {}
+		static void writeScopeEnd(str& json) {}
+		static void writeObjectBegin(str& json) {}
+		static void writeObjectEndLine(str& json) {}
+		static void writeLastObjectEndLine(str& json) {}
+		static void writeObjectBeginValue(str& json) {}
+	};
+
+	/**
+	 * A class used to convert info data into a json data.
+	 */
+	class InfoJson
+	{
+	public:
+		/**
+		 * Convert the input info into a json string.
+		 */
+		template<typename JsonStyle>
+		static str toJson(const ReadOnlyInfo& info)
+		{
+			return toJson<JsonStyle>(info.GetString(), info.GetInfoLength());
+		}
+
+		template<typename JsonStyle>
+		static str toJson(const Info& info)
+		{
+			return toJson<JsonStyle>(info.GetString(), info.GetInfoLength());
+		}
+
+	private:
+		template<typename JsonStyle>
+		static str toJson(const char* infoString, size_t length)
+		{
+			str json;
+
+			json.reserve(length);
+			json += "{";
+
+			JsonStyle::writeScopeBegin(json);
+
+			for (InfoIterator it(infoString, length); it; ++it)
+			{
+				JsonStyle::writeObjectBegin(json);
+
+				// write key
+				json += "\"";
+				json += it.key();
+				json += "\"";
+
+				json += ":";
+				JsonStyle::writeObjectBeginValue(json);
+
+				// write value
+				json += "\"";
+				json += it.value();
+				json += "\"";
+
+				if (!it.isLast())
+				{
+					json += ",";
+					JsonStyle::writeObjectEndLine(json);
+				}
+				else {
+					JsonStyle::writeLastObjectEndLine(json);
+				}
+			}
+
+			JsonStyle::writeScopeEnd(json);
+
+			json += "}";
+
+			return json;
+		}
 	};
 }

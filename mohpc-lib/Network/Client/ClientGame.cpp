@@ -87,6 +87,14 @@ const char byteCharMapping[256] =
 };
 */
 
+outPacket_t::outPacket_t()
+	: p_cmdNumber(0)
+	, p_serverTime(0)
+	, p_currentTime(0)
+{
+
+}
+
 BadCommandByteException::BadCommandByteException(uint8_t inCmdNum)
 	: cmdNum(inCmdNum)
 {}
@@ -303,8 +311,6 @@ ClientGameConnection::ClientGameConnection(const NetworkManagerPtr& inNetworkMan
 	, oldFrameServerTime(0)
 	, lastPacketSendTime(0)
 	, timeoutTime(60000)
-	, maxPackets(30)
-	, maxTickPackets(60)
 	, parseEntitiesNum(0)
 	, serverCommandSequence(0)
 	, cmdNumber(0)
@@ -313,6 +319,7 @@ ClientGameConnection::ClientGameConnection(const NetworkManagerPtr& inNetworkMan
 	, serverId(0)
 	, reliableSequence(0)
 	, reliableAcknowledge(0)
+	, lastSnapFlags(0)
 	, newSnapshots(false)
 	, extrapolatedSnapshot(false)
 	, isActive(false)
@@ -411,7 +418,7 @@ void ClientGameConnection::tick(uint64_t deltaTime, uint64_t currentTime)
 	IUdpSocket* socket = getNetchan()->getRawSocket();
 	// Loop until there is no valid data
 	// or the max number of processed packets has reached the limit
-	while(isChannelValid() && socket->dataAvailable() && count++ < maxTickPackets)
+	while(isChannelValid() && socket->dataAvailable() && count++ < settings.getMaxTickPackets())
 	{
 		// No need to be more
 		uint8_t data[MAX_UDP_DATA_SIZE];
@@ -478,7 +485,7 @@ void Network::ClientGameConnection::receive(const netadr_t& from, MSG& msg, size
 
 	// Read the ack
 	reliableAcknowledge = msg.ReadInteger();
-	if (reliableAcknowledge < reliableSequence - (int32_t)MAX_RELIABLE_COMMANDS) {
+	if (reliableAcknowledge + MAX_RELIABLE_COMMANDS < reliableSequence) {
 		reliableAcknowledge = reliableSequence;
 	}
 
@@ -557,7 +564,7 @@ void ClientGameConnection::receiveConnectionLess(const netadr_t& from, MSG& msg)
 
 void Network::ClientGameConnection::addReliableCommand(const char* cmd)
 {
-	if (reliableSequence - reliableAcknowledge > MAX_RELIABLE_COMMANDS)
+	if (reliableAcknowledge + MAX_RELIABLE_COMMANDS < reliableSequence)
 	{
 		// FIXME: throw
 		return;
@@ -776,7 +783,7 @@ void Network::ClientGameConnection::parseSnapshot(MSG& msg, uint32_t serverMessa
 
 	uint32_t oldMessageNum = currentSnap.messageNum + 1;
 
-	if (newSnap.messageNum - oldMessageNum >= PACKET_BACKUP) {
+	if (newSnap.messageNum >= PACKET_BACKUP + oldMessageNum) {
 		oldMessageNum = newSnap.messageNum - (PACKET_BACKUP - 1);
 	}
 
@@ -784,7 +791,7 @@ void Network::ClientGameConnection::parseSnapshot(MSG& msg, uint32_t serverMessa
 		snapshots[oldMessageNum & PACKET_MASK].valid = false;
 	}
 
-	if (currentSnap.valid && (newSnap.snapFlags ^ newSnap.snapFlags) & SNAPFLAG_SERVERCOUNT)
+	if (currentSnap.valid && (currentSnap.snapFlags ^ newSnap.snapFlags) & SNAPFLAG_SERVERCOUNT)
 	{
 		serverStartTime = newSnap.serverTime;
 		realTimeStart = currentTime;
@@ -1349,7 +1356,7 @@ void Network::ClientGameConnection::writePacket(uint32_t serverMessageSequence, 
 	msg.WriteUInteger(serverMessageSequence);
 	msg.WriteUInteger(serverCommandSequence);
 
-	for (int32_t i = reliableAcknowledge + 1; i <= reliableSequence; ++i)
+	for (uint32_t i = reliableAcknowledge + 1; i <= reliableSequence; ++i)
 	{
 		msg.WriteByte(clc_ops_e::ClientCommand);
 		msg.WriteInteger(i);
@@ -1362,7 +1369,7 @@ void Network::ClientGameConnection::writePacket(uint32_t serverMessageSequence, 
 	if (count > MAX_PACKET_USERCMDS)
 	{
 		count = MAX_PACKET_USERCMDS;
-		// FIXME: message?
+		MOHPC_LOG(Warning, "MAX_PACKET_USERCMDS");
 	}
 
 	if (count >= 1)
@@ -1625,41 +1632,19 @@ const ClientInfoPtr& ClientGameConnection::getUserInfo()
 void ClientGameConnection::updateUserInfo()
 {
 	Info info;
-	userInfo->fillInfoString(info);
-	// Send the new user info.
+	ClientInfoHelper::fillInfoString(*userInfo, info);
+	// send the new user info to the server
 	addReliableCommand(str::printf("userinfo \"%s\"", info.GetString()));
 }
 
-uint32_t ClientGameConnection::getMaxPackets() const
+clientGameSettings_t& ClientGameConnection::getSettings()
 {
-	return maxPackets;
+	return settings;
 }
 
-void ClientGameConnection::setMaxPackets(uint32_t inMaxPackets)
+const clientGameSettings_t& ClientGameConnection::getSettings() const
 {
-	maxPackets = inMaxPackets;
-	if (maxPackets < 1) {
-		maxPackets = 1;
-	}
-	else if (maxPackets > 125) {
-		maxPackets = 125;
-	}
-}
-
-uint32_t ClientGameConnection::getMaxTickPackets() const
-{
-	return maxTickPackets;
-}
-
-void ClientGameConnection::setMaxTickPackets(uint32_t inMaxPackets)
-{
-	maxTickPackets = inMaxPackets;
-	if (maxTickPackets < 1) {
-		maxTickPackets = 1;
-	}
-	else if (maxTickPackets > 1000) {
-		maxTickPackets = 1000;
-	}
+	return settings;
 }
 
 void ClientGameConnection::initTime(uint64_t currentTime)
@@ -1678,7 +1663,7 @@ uintptr_t ClientGameConnection::getCurrentSnapshotNumber() const
 bool ClientGameConnection::getSnapshot(uintptr_t snapshotNum, SnapshotInfo& outSnapshot) const
 {
 	// if the frame has fallen out of the circular buffer, we can't return it
-	if (currentSnap.messageNum - snapshotNum >= PACKET_BACKUP) {
+	if (currentSnap.messageNum >= PACKET_BACKUP + snapshotNum) {
 		return false;
 	}
 
@@ -1690,7 +1675,7 @@ bool ClientGameConnection::getSnapshot(uintptr_t snapshotNum, SnapshotInfo& outS
 
 	// if the entities in the frame have fallen out of their
 	// circular buffer, we can't return it
-	if (parseEntitiesNum - foundSnap->parseEntitiesNum >= MAX_PARSE_ENTITIES) {
+	if (parseEntitiesNum >= MAX_PARSE_ENTITIES + foundSnap->parseEntitiesNum) {
 		return false;
 	}
 
@@ -1922,7 +1907,11 @@ void ClientGameConnection::setCGameTime(uint64_t currentTime)
 		return;
 	}
 
-	// FIXME: check when server has restarted
+	// Check when server has restarted
+	if ((currentSnap.snapFlags ^  lastSnapFlags) & SNAPFLAG_SERVERCOUNT) {
+		serverRestarted();
+	}
+
 	// FIXME: throw if snap server time went backward
 
 	oldFrameServerTime = currentSnap.serverTime;
@@ -1946,7 +1935,7 @@ void ClientGameConnection::setCGameTime(uint64_t currentTime)
 		serverTime = oldServerTime;
 	}
 
-	if (realServerTime >= currentSnap.serverTime - 5) {
+	if (realServerTime + 5 >= currentSnap.serverTime) {
 		extrapolatedSnapshot = true;
 	}
 
@@ -1962,7 +1951,7 @@ void ClientGameConnection::adjustTimeDelta(uint64_t realTime)
 	constexpr size_t BASE_RESET_TIME = 400;
 
 	const uint64_t resetTime = BASE_RESET_TIME + serverDeltaFrequency;
-	uint64_t deltaDelta = abs((int64_t)(currentSnap.serverTime - serverTime));
+	const uint64_t deltaDelta = getTimeDelta(serverTime);
 
 	if (deltaDelta > resetTime)
 	{
@@ -1988,11 +1977,23 @@ void ClientGameConnection::adjustTimeDelta(uint64_t realTime)
 	}
 }
 
+uint64_t ClientGameConnection::getTimeDelta(uint64_t time) const
+{
+	if (currentSnap.serverTime < time) {
+		return time - currentSnap.serverTime;
+	}
+	else {
+		return currentSnap.serverTime - time;
+	}
+}
+
 void ClientGameConnection::firstSnapshot(uint64_t currentTime)
 {
 	if (currentSnap.snapFlags & SNAPFLAG_NOT_ACTIVE) {
 		return;
 	}
+
+	updateSnapFlags();
 
 	serverStartTime = currentSnap.serverTime;
 	//serverTime = (uint32_t)(currentSnap.serverTime - currentTime);
@@ -2003,6 +2004,18 @@ void ClientGameConnection::firstSnapshot(uint64_t currentTime)
 	getHandlerList().notify<ClientHandlers::FirstSnapshot>(currentSnap);
 
 	cgameModule->init(serverMessageSequence, serverMessageSequence);
+}
+
+void Network::ClientGameConnection::serverRestarted()
+{
+	updateSnapFlags();
+
+	handlerList.notify<ClientHandlers::ServerRestarted>();
+}
+
+void Network::ClientGameConnection::updateSnapFlags()
+{
+	lastSnapFlags = currentSnap.snapFlags;
 }
 
 bool ClientGameConnection::readyToSendPacket(uint64_t currentTime) const
@@ -2021,7 +2034,7 @@ bool ClientGameConnection::readyToSendPacket(uint64_t currentTime) const
 
 	const size_t oldPacketNum = (getNetchan()->getOutgoingSequence() - 1) & PACKET_MASK;
 	const uint64_t delta = currentTime - outPackets[oldPacketNum].p_currentTime;
-	if (delta < 1000 / maxPackets) {
+	if (delta < 1000 / settings.getMaxPackets()) {
 		return false;
 	}
 
@@ -2140,15 +2153,20 @@ const char* ClientInfo::getUserKeyValue(const char* key) const
 	return properties.GetPropertyRawValue(key);
 }
 
-void ClientInfo::fillInfoString(Info& info) const
+const PropertyObject& ClientInfo::getPropertyObject() const
+{
+	return properties;
+}
+
+void Network::ClientInfoHelper::fillInfoString(const ClientInfo& clientInfo, Info& info)
 {
 	// Build mandatory variables
-	info.SetValueForKey("rate", str::printf("%i", rate));
-	info.SetValueForKey("snaps", str::printf("%i", snaps));
-	info.SetValueForKey("name", name.c_str());
+	info.SetValueForKey("rate", str::printf("%i", clientInfo.getRate()));
+	info.SetValueForKey("snaps", str::printf("%i", clientInfo.getSnaps()));
+	info.SetValueForKey("name", clientInfo.getName());
 
 	// Build miscellaneous values
-	for (PropertyMapIterator it = properties.GetIterator(); it; ++it)
+	for (PropertyMapIterator it = clientInfo.getPropertyObject().GetIterator(); it; ++it)
 	{
 		info.SetValueForKey(
 			it.key().GetFullPropertyName(),
@@ -2157,8 +2175,11 @@ void ClientInfo::fillInfoString(Info& info) const
 	}
 }
 
+
 clientGameSettings_t::clientGameSettings_t()
-	: radarRange(1024.f)
+	: maxPackets(30)
+	, maxTickPackets(60)
+	, radarRange(1024.f)
 	, timeNudge(0)
 {
 
@@ -2172,6 +2193,38 @@ void clientGameSettings_t::setRadarRange(float value)
 float clientGameSettings_t::getRadarRange() const
 {
 	return radarRange;
+}
+
+uint32_t clientGameSettings_t::getMaxPackets() const
+{
+	return maxPackets;
+}
+
+void clientGameSettings_t::setMaxPackets(uint32_t inMaxPackets)
+{
+	maxPackets = inMaxPackets;
+	if (maxPackets < 1) {
+		maxPackets = 1;
+	}
+	else if (maxPackets > 125) {
+		maxPackets = 125;
+	}
+}
+
+uint32_t clientGameSettings_t::getMaxTickPackets() const
+{
+	return maxTickPackets;
+}
+
+void clientGameSettings_t::setMaxTickPackets(uint32_t inMaxPackets)
+{
+	maxTickPackets = inMaxPackets;
+	if (maxTickPackets < 1) {
+		maxTickPackets = 1;
+	}
+	else if (maxTickPackets > 1000) {
+		maxTickPackets = 1000;
+	}
 }
 
 void clientGameSettings_t::setTimeNudge(uint32_t value)

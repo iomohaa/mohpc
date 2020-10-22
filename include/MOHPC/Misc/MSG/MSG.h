@@ -66,6 +66,9 @@ namespace MOHPC
 	protected:
 		IMessageStream& input() const { return inputStream; };
 		IMessageStream& output() const { return outputStream; };
+
+	private:
+		void compressBuf(Huff& huff, size_t& bloc, uint8_t* buffer, size_t bufSize, uint8_t* bitData, size_t bitDataSize);
 	};
 
 	enum class msgMode_e : uint8_t

@@ -291,14 +291,16 @@ bool Network::ConnectionlessChan::receive(netadr_t& from, IMessageStream& stream
 	// Set in OOB mode to read one single byte each call
 	msg.SetCodec(MessageCodecs::OOB);
 
-	const int32_t marker = msg.ReadInteger();
+	sequenceNum = msg.ReadInteger();
 
 	// Should be -1 for connectionless packets
-	//assert(marker == -1);
+	//assert(sequenceNum == -1);
 
-	sequenceNum = marker;
+	const netsrc_e dirByte = (netsrc_e)msg.ReadByte();
 
-	const uint8_t dirByte = msg.ReadByte();
+	if (dirByte != netsrc_e::Client) {
+		return false;
+	}
 
 	// Seek after header
 	stream.Seek(5);

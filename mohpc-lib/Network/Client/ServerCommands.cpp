@@ -12,6 +12,11 @@ using namespace MOHPC;
 using namespace Network;
 using namespace Log;
 
+EngineServer::IEngineRequest::IEngineRequest(Callbacks::ServerTimeout&& inTimeoutCallback)
+	: timeoutCallback(inTimeoutCallback)
+{
+}
+
 //== Get version before challenge
 MOHPC::Network::EngineServer::VerBeforeChallengeRequest::VerBeforeChallengeRequest(ConnectionParams&& inData)
 	: data(std::move(inData))
@@ -50,12 +55,13 @@ IRequestPtr MOHPC::Network::EngineServer::VerBeforeChallengeRequest::handleRespo
 	}
 
 	MOHPC_LOG(Log, "server type %d protocol version %d game version \"%s\"", serverType, protocolVersionNumber, value.c_str());
-	return makeShared<ChallengeRequest>(protocolType_c(serverType, protocolVersion), std::move(data));
+	return makeShared<ChallengeRequest>(protocolType_c(serverType, protocolVersion), std::move(data), std::move(timeoutCallback));
 }
 
 //== Challenge
-Network::EngineServer::ChallengeRequest::ChallengeRequest(const protocolType_c& proto, ConnectionParams&& inData)
-	: data(std::move(inData))
+Network::EngineServer::ChallengeRequest::ChallengeRequest(const protocolType_c& proto, ConnectionParams&& inData, Callbacks::ServerTimeout&& inTimeoutCallback)
+	: IEngineRequest(std::move(inTimeoutCallback))
+	, data(std::move(inData))
 	, protocol(proto)
 	, numRetries(0)
 {
@@ -78,12 +84,12 @@ IRequestPtr MOHPC::Network::EngineServer::ChallengeRequest::handleResponse(const
 	{
 		const char* challenge = parser.GetLine(false);
 		MOHPC_LOG(Verbose, "forwarding request for getKey: %s", name);
-		return makeShared<AuthorizeRequest>(protocol, std::move(data), challenge);
+		return makeShared<AuthorizeRequest>(protocol, std::move(data), challenge, std::move(timeoutCallback));
 	}
 
 	int32_t challengeResponse = parser.GetInteger(false);
 	MOHPC_LOG(Verbose, "challenge %d", challengeResponse);
-	return makeShared<ConnectRequest>(protocol, std::move(data), challengeResponse);
+	return makeShared<ConnectRequest>(protocol, std::move(data), challengeResponse, std::move(timeoutCallback));
 }
 
 size_t MOHPC::Network::EngineServer::ChallengeRequest::overrideTimeoutTime(bool& overriden)
@@ -96,7 +102,7 @@ MOHPC::IRequestPtr EngineServer::ChallengeRequest::timedOut()
 {
 	if (numRetries > 5)
 	{
-		return IRequestBase::timedOut();
+		return IEngineRequest::timedOut();
 	}
 
 	numRetries++;
@@ -109,8 +115,9 @@ size_t EngineServer::ChallengeRequest::deferredTime()
 }
 
 //== Authorize
-Network::EngineServer::AuthorizeRequest::AuthorizeRequest(const protocolType_c& proto, ConnectionParams&& inData, const char* inChallenge)
-	: data(std::move(inData))
+Network::EngineServer::AuthorizeRequest::AuthorizeRequest(const protocolType_c& proto, ConnectionParams&& inData, const char* inChallenge, Callbacks::ServerTimeout&& inTimeoutCallback)
+	: IEngineRequest(std::move(inTimeoutCallback))
+	, data(std::move(inData))
 	, protocol(proto)
 	, challenge(inChallenge)
 	, numRetries(0)
@@ -140,7 +147,7 @@ IRequestPtr MOHPC::Network::EngineServer::AuthorizeRequest::handleResponse(const
 	{
 		int32_t challenge = parser.GetInteger(false);
 		MOHPC_LOG(Verbose, "got challenge %d", challenge);
-		return makeShared<ConnectRequest>(protocol, std::move(data), challenge);
+		return makeShared<ConnectRequest>(protocol, std::move(data), challenge, std::move(timeoutCallback));
 	}
 
 	return nullptr;
@@ -164,8 +171,9 @@ MOHPC::IRequestPtr MOHPC::Network::EngineServer::AuthorizeRequest::timedOut()
 }
 
 //== Connect
-Network::EngineServer::ConnectRequest::ConnectRequest(const protocolType_c& proto, ConnectionParams&& inData, uint32_t inChallenge)
-	: data(std::move(inData))
+Network::EngineServer::ConnectRequest::ConnectRequest(const protocolType_c& proto, ConnectionParams&& inData, uint32_t inChallenge, Callbacks::ServerTimeout&& inTimeoutCallback)
+	: IEngineRequest(std::move(inTimeoutCallback))
+	, data(std::move(inData))
 	, protocol(proto)
 	, challenge(inChallenge)
 	, numRetries(0)
@@ -176,8 +184,6 @@ Network::EngineServer::ConnectRequest::ConnectRequest(const protocolType_c& prot
 
 str Network::EngineServer::ConnectRequest::generateRequest()
 {
-	str connectArgs = "connect";
-
 	Info info;
 
 	// Fill in important info
@@ -195,11 +201,13 @@ str Network::EngineServer::ConnectRequest::generateRequest()
 
 	info.SetValueForKey("qport", str::printf("%i", qport));
 
-	// Set user info
-	data.info->fillInfoString(info);
+	// Append user settings
+	ClientInfoHelper::fillInfoString(*data.info, info);
 
 	// Send user info string
-	connectArgs.reserve(info.GetInfoLength() + 2);
+	str connectArgs;
+	connectArgs.reserve(9 + info.GetInfoLength() + 2);
+	connectArgs += "connect ";
 	connectArgs += " \"";
 	connectArgs += info.GetString();
 	connectArgs += '"';
@@ -309,7 +317,6 @@ IRequestPtr MOHPC::Network::EngineServer::StatusRequest::handleResponse(const ch
 Network::EngineServer::InfoRequest::InfoRequest(Callbacks::Response&& inResponse)
 	: response(inResponse)
 {
-
 }
 
 str Network::EngineServer::InfoRequest::generateRequest()

@@ -228,60 +228,70 @@ void MOHPC::Network::EngineServer::IEngineRequest::generateOutput(IMessageStream
 	msg.SetCodec(MessageCodecs::OOB);
 
 	msg.WriteUInteger(-1);
-	msg.WriteByte(2);
+	msg.WriteByte((uint8_t)netsrc_e::Server);
 
 	// Generate the request string
-	str reqstr = generateRequest();
-
-	size_t startOffset = output.GetPosition();
+	const str reqstr = generateRequest();
+	const size_t startOffset = output.GetPosition();
 
 	size_t compressionOffset;
 	if (shouldCompressRequest(compressionOffset))
 	{
+		DynamicDataMessageStream compressedStream;
+		DynamicDataMessageStream uncompressedStream;
+
 		compressionOffset -= startOffset;
 
-		// New compression stream
-		std::vector<uint8_t> compressedData(8192, 0);
-		FixedDataMessageStream compressedStream(compressedData.data(), compressedData.size());
-
-		// Copy existing data into the new stream
+		// copy existing data into the new stream
+		compressedStream.reserve(MAX_INFO_STRING);
 		compressedStream.Seek(0, IMessageStream::SeekPos::Begin);
+		// write the uncompressed data first into the stream
 		compressedStream.Write(reqstr.c_str(), compressionOffset);
 
-		std::vector<uint8_t> uncompressedData(8192, 0);
-		FixedDataMessageStream uncompressedStream(uncompressedData.data(), uncompressedData.size());
-
-		// Copy existing data into the new stream
+		// copy existing data into the new stream
+		uncompressedStream.reserve(MAX_INFO_STRING);
 		uncompressedStream.Seek(0, IMessageStream::SeekPos::Begin);
-		uncompressedStream.Write(reqstr.c_str(), reqstr.length());
+		uncompressedStream.Write(reqstr.c_str() + compressionOffset, reqstr.length() - compressionOffset);
 
 		// Compress data after the connect offset
 		const size_t compressionLength = reqstr.length() - compressionOffset;
 		CompressedMessage compression(uncompressedStream, compressedStream);
-		compression.Compress(compressionOffset, compressionLength);
+		compression.Compress(0, compressionLength);
 
-		msg.WriteData(compressedData.data(), compressedStream.GetPosition());
+		msg.WriteData(compressedStream.getStorage(), compressedStream.GetLength());
 	}
 	else
 	{
 		// Write the request string
-		StringMessage string = reqstr;
+		const StringMessage string(reqstr);
 		msg.WriteString(string);
 	}
 }
 
 IRequestPtr MOHPC::Network::EngineServer::IEngineRequest::process(RequestData& data)
 {
-	IRequestPtr newRequest;
-
 	const netadr_t& from = data.getParam<GamespyUDPRequestParam>().getLastIp();
 
 	// Set in OOB mode to read one single byte each call
 	MSG msg(data.stream, msgMode_e::Reading);
 	msg.SetCodec(MessageCodecs::OOB);
 
-	uint32_t marker = msg.ReadUInteger();
-	uint8_t dirByte = msg.ReadByte();
+	const uint32_t marker = msg.ReadUInteger();
+	if (marker != -1)
+	{
+		// must be a connectionless packet
+		MOHPC_LOG(Log, "Received a sequenced packet (%d)", marker);
+		return nullptr;
+	}
+
+	const netsrc_e dirByte = (netsrc_e)msg.ReadByte();
+	if (dirByte != netsrc_e::Client)
+	{
+		MOHPC_LOG(Log, "Wrong direction for connectionLess packet (must be targeted at client, got %d)", dirByte);
+		return nullptr;
+	}
+
+	IRequestPtr newRequest;
 
 	// Read request string from remote
 	StringMessage arg = msg.ReadString();
@@ -291,15 +301,15 @@ IRequestPtr MOHPC::Network::EngineServer::IEngineRequest::process(RequestData& d
 		TokenParser parser;
 		parser.Parse(arg, strlen(arg) + 1);
 
-		str command = parser.GetToken(false);
+		const char* command = parser.GetToken(false);
 		if (supportsEvent(command)) {
-			newRequest = handleResponse(command.c_str(), parser);
+			newRequest = handleResponse(command, parser);
 		}
 		else
 		{
 			// Unexpected response
 			MOHPC_LOG(
-				Warning, "got wrong reply \"%s\" from %d.%d.%d.%d:%d",
+				Log, "unexpected reply \"%s\" from %d.%d.%d.%d:%d",
 				command, from.ip[0], from.ip[1], from.ip[2], from.ip[3], from.port
 			);
 		}
@@ -308,7 +318,7 @@ IRequestPtr MOHPC::Network::EngineServer::IEngineRequest::process(RequestData& d
 	{
 		// Empty response
 		MOHPC_LOG(
-			Warning, "empty response from %d.%d.%d.%d:%d",
+			Log, "empty response from %d.%d.%d.%d:%d",
 			from.ip[0], from.ip[1], from.ip[2], from.ip[3], from.port
 		);
 	}

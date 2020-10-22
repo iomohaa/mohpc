@@ -181,7 +181,7 @@ ReadOnlyInfo::ReadOnlyInfo(ReadOnlyInfo&& other) noexcept
 	size = other.size;
 }
 
-MOHPC::ReadOnlyInfo::ReadOnlyInfo()
+ReadOnlyInfo::ReadOnlyInfo()
 	: keyBuffer(nullptr)
 	, size(0)
 {
@@ -211,7 +211,7 @@ str ReadOnlyInfo::ValueForKey(const char* key) const
 	return str();
 }
 
-const char* MOHPC::ReadOnlyInfo::ValueForKey(const char* key, size_t& outLen) const
+const char* ReadOnlyInfo::ValueForKey(const char* key, size_t& outLen) const
 {
 	const char* pkey = keyBuffer;
 	const char* endBuf = keyBuffer + size;
@@ -302,7 +302,7 @@ InfoIterator::operator bool() const
 
 void InfoIterator::parseInfo()
 {
-	if (keyPtr >= endBuffer)
+	if (isLast())
 	{
 		deleteTmps();
 		tmpKey = tmpValue = nullptr;
@@ -343,4 +343,9 @@ void InfoIterator::deleteTmps()
 {
 	if (tmpKey) delete tmpKey;
 	if (tmpValue) delete tmpValue;
+}
+
+bool InfoIterator::isLast() const
+{
+	return keyPtr >= endBuffer;
 }

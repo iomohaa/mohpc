@@ -12,6 +12,9 @@ namespace MOHPC
 	namespace Network
 	{
 		static constexpr unsigned long MAX_RELIABLE_COMMANDS = 64;
+		static constexpr unsigned long MAX_INFO_STRING = 1350;
+		static constexpr unsigned long MAX_INFO_KEY = 1024;
+		static constexpr unsigned long MAX_INFO_VALUE = 1024;
 		static constexpr unsigned long MAX_STRING_CHARS = 1024;
 		static constexpr unsigned long MAX_UDP_DATA_SIZE = 65507;
 		static constexpr char CLIENT_VERSION[] = "3.00";
@@ -40,6 +43,11 @@ namespace MOHPC
 			BroadcastIPX
 		};
 
+		enum class netsrc_e : uint8_t {
+			Client = 1,
+			Server
+		};
+
 		// FIXME: TODO
 		class INetAddr
 		{
@@ -52,8 +60,6 @@ namespace MOHPC
 		// however mohaa uses IPv4 only so it's not really important here
 		struct netadr_t
 		{
-			netadrtype_t type;
-			uint8_t ipx[10];
 			uint8_t ip[4];
 			uint16_t port;
 

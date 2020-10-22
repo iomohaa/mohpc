@@ -118,25 +118,35 @@ void MOHPC::DynamicDataMessageStream::Write(const void* data, size_t writeLen)
 
 void MOHPC::DynamicDataMessageStream::allocate(size_t writeLength)
 {
+	return reallocate((maxLength + writeLength) * 2);
+}
+
+void MOHPC::DynamicDataMessageStream::reallocate(size_t newLen)
+{
 	if (storage)
 	{
-		const size_t newLen = (maxLength + writeLength) * 2;
-
 		// allocate a new buffer
 		uint8_t* newStorage = new uint8_t[newLen];
 		// and copy the data of the current buffer into it
-		memcpy(newStorage, storage, maxLength);
+		memcpy(newStorage, storage, std::min(newLen, maxLength));
 
 		// delete the previous buffer
 		delete[] storage;
 
 		storage = newStorage;
-		maxLength = newLen;
+	} else {
+		storage = new uint8_t[newLen];
 	}
-	else
+
+	maxLength = newLen;
+}
+
+void MOHPC::DynamicDataMessageStream::reserve(size_t size)
+{
+	if(size > maxLength)
 	{
-		maxLength = 4 + writeLength;
-		storage = new uint8_t[maxLength];
+		// reallocate the size of the buffer
+		reallocate(size);
 	}
 }
 

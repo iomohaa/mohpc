@@ -106,7 +106,6 @@ public:
 		);
 
 		memcpy(from.ip, &fromAddr.sin_addr, sizeof(from.ip));
-		from.type = MOHPC::Network::netadrtype_t::IP;
 		from.port = htons(fromAddr.sin_port);
 
 		return bytesWritten;
@@ -276,7 +275,6 @@ public:
 		sockaddr_in* sockad = (sockaddr_in*)result->ai_addr;
 
 		netadr_t adr;
-		adr.type = netadrtype_t::IP;
 		memcpy(&adr.ip, &sockad->sin_addr, sizeof(adr.ip));
 
 		freeaddrinfo(result);

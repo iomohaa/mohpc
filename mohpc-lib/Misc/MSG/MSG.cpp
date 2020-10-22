@@ -766,13 +766,7 @@ MOHPC::StringMessage::operator const char* () const noexcept
 
 void MOHPC::CompressedMessage::Compress(size_t offset, size_t len)
 {
-	size_t i;
-	int ch;
-	size_t size;
-	uint8_t bitData[8]{ 0 };
-	uint8_t buffer[8]{ 0 };
-
-	size = std::min(std::min(output().GetLength(), input().GetLength()), len);
+	const size_t size = std::min(input().GetLength(), len);
 
 	if (size <= 0) {
 		return;
@@ -780,6 +774,7 @@ void MOHPC::CompressedMessage::Compress(size_t offset, size_t len)
 
 	Huff huff;
 
+	uint8_t bitData[8]{ 0 };
 	// store the original size
 	bitData[0] = (uint8_t)(size >> 8);
 	bitData[1] = (uint8_t)size & 0xff;
@@ -791,20 +786,14 @@ void MOHPC::CompressedMessage::Compress(size_t offset, size_t len)
 	input().Seek(offset);
 	MessageCodecs::FlushBits(bloc, output(), bitData, sizeof(bitData));
 
-	for (i = 0; i < size; i += sizeof(buffer))
-	{
-		size_t bufSize = std::min(sizeof(buffer), size - i);
-		input().Read(buffer, bufSize);
-		for (size_t j = 0; j < bufSize; ++j)
-		{
-			ch = buffer[j];
-			// Transmit symbol
-			huff.transmit(ch, bitData, bloc);
-			// Do update
-			huff.addRef(ch);
+	uint8_t buffer[8]{ 0 };
 
-			MessageCodecs::FlushBits(bloc, output(), bitData, sizeof(bitData));
-		}
+	for (uintptr_t i = 0; i < size; i += sizeof(buffer))
+	{
+		const size_t bufSize = std::min(sizeof(buffer), size - i);
+
+		input().Read(buffer, bufSize);
+		compressBuf(huff, bloc, buffer, bufSize, bitData, sizeof(bitData));
 	}
 
 	if (bloc)
@@ -816,12 +805,7 @@ void MOHPC::CompressedMessage::Compress(size_t offset, size_t len)
 
 void MOHPC::CompressedMessage::Decompress(size_t offset, size_t len)
 {
-	size_t i, j;
-	size_t cch;
-	size_t size;
-	uint8_t bitData[8]{ 0 };
-
-	size = input().GetLength() - offset;
+	const size_t size = input().GetLength() - offset;
 
 	if (size <= 0) {
 		return;
@@ -831,9 +815,11 @@ void MOHPC::CompressedMessage::Decompress(size_t offset, size_t len)
 
 	// Seek at the specified offset
 	input().Seek(offset);
+
+	uint8_t bitData[8]{ 0 };
 	input().Read(bitData, sizeof(bitData));
 
-	cch = bitData[0] * 256 + bitData[1];
+	size_t cch = bitData[0] * 256 + bitData[1];
 	// don't overflow with bad messages
 	if (cch > len) {
 		cch = len;
@@ -845,7 +831,7 @@ void MOHPC::CompressedMessage::Decompress(size_t offset, size_t len)
 	uint8_t buffer[8];
 	size_t pos = 0;
 
-	for (j = 0; j < cch; ++j)
+	for (uintptr_t j = 0; j < cch; ++j)
 	{
 		MessageCodecs::ReadBits(bloc, input(), bitData, sizeof(bitData));
 
@@ -864,7 +850,7 @@ void MOHPC::CompressedMessage::Decompress(size_t offset, size_t len)
 		{
 			// We got a NYT, get the symbol associated with it
 			ch = 0;
-			for (i = 0; i < 8; i++) {
+			for (uintptr_t i = 0; i < 8; i++) {
 				ch = (ch << 1) + Huff::getBit(bitData, bloc);
 			}
 		}
@@ -887,6 +873,20 @@ void MOHPC::CompressedMessage::Decompress(size_t offset, size_t len)
 	{
 		// write remaining bytes
 		output().Write(buffer, pos);
+	}
+}
+
+void CompressedMessage::compressBuf(Huff& huff, size_t& bloc, uint8_t* buffer, size_t bufSize, uint8_t* bitData, size_t bitDataSize)
+{
+	for (size_t i = 0; i < bufSize; ++i)
+	{
+		uint8_t ch = buffer[i];
+		// Transmit symbol
+		huff.transmit(ch, bitData, bloc);
+		// Do update
+		huff.addRef(ch);
+
+		MessageCodecs::FlushBits(bloc, output(), bitData, sizeof(bitData));
 	}
 }
 

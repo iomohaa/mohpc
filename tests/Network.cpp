@@ -94,21 +94,23 @@ public:
 		using namespace MOHPC;
 		using namespace MOHPC::Network;
 
-		Info info;
-		info.SetValueForKey("testKey1", "value");
-		info.SetValueForKey("testKey2", "value2");
-		info.SetValueForKey("somekey", "somevalue");
-		info.SetValueForKey("keyToBe", "deleted");
-		info.SetValueForKey("foo", "bar");
-		info.SetValueForKey("fu", "boor");
-		info.RemoveKey("keyToBe");
-		info.SetValueForKey("afterkey", "deletion");
+		{
+			Info info;
+			info.SetValueForKey("testKey1", "value");
+			info.SetValueForKey("testKey2", "value2");
+			info.SetValueForKey("somekey", "somevalue");
+			info.SetValueForKey("keyToBe", "deleted");
+			info.SetValueForKey("foo", "bar");
+			info.SetValueForKey("fu", "boor");
+			info.RemoveKey("keyToBe");
+			info.SetValueForKey("afterkey", "deletion");
 
-		str someKeyVal = info.ValueForKey("somekey");
-		assert(someKeyVal == "somevalue");
+			str someKeyVal = info.ValueForKey("somekey");
+			assert(someKeyVal == "somevalue");
 
-		someKeyVal = info.ValueForKey("keyToBe");
-		assert(someKeyVal.isEmpty());
+			someKeyVal = info.ValueForKey("keyToBe");
+			assert(someKeyVal.isEmpty());
+		}
 
 		NetworkManagerPtr manager = AM->GetManager<NetworkManager>();
 
@@ -178,26 +180,27 @@ public:
 		Network::ConnectSettingsPtr connectSettings = Network::ConnectSettings::create();
 		clientBase->connect(clientInfo, connectSettings, [&](const Network::ClientGameConnectionPtr& cg, const char* errorMessage)
 			{
+				if (errorMessage)
+				{
+					MOHPC_LOG(Error, "server returned error: \"%s\"", errorMessage);
+					wantsDisconnect = true;
+					return;
+				}
+
 				connection = cg;
 
 				CGameModuleBase* cgame = connection->getCGModule();
-
-				if (errorMessage)
-				{
-					printf("server returned error: \"%s\"\n", errorMessage);
-					return;
-				}
 
 				connection->setCallback<ClientHandlers::Error>([](const Network::NetworkException& exception)
 					{
 						MOHPC_LOG(Log, "Exception of type \"%s\": \"%s\"", typeid(exception).name(), exception.what().c_str());
 					});
 
-				connection->setCallback<ClientHandlers::GameStateParsed>([&AM, &connection, cgame, &cm, &mapfilename](const Network::gameState_t& gameState, bool differentMap)
+				connection->setCallback<ClientHandlers::GameStateParsed>([&AM, &connection, cgame, &cm, &mapfilename](const Network::gameState_t& gameState, bool differentLevel)
 					{
 						const cgsInfo& cgs = cgame->getServerInfo();
 						const str& loadedMap = cgs.getMapFilenameStr();
-						if (differentMap)
+						if (differentLevel)
 						{
 							MOHPC_LOG(Log, "New map: \"%s\"", loadedMap.c_str());
 							mapfilename = loadedMap;
@@ -211,6 +214,11 @@ public:
 						}
 						
 						connection->markReady();
+					});
+
+				connection->setCallback<ClientHandlers::ServerRestarted>([]()
+					{
+						MOHPC_LOG(Log, "server restarted");
 					});
 
 				fnHandle_t cb = cgame->setCallback<CGameHandlers::EntityAdded>([&connection](const EntityInfo& entity)
@@ -307,6 +315,11 @@ public:
 							shouldJump = false;
 						}
 					});
+			},
+			[&wantsDisconnect]()
+			{
+				MOHPC_LOG(Error, "connect to server timed out");
+				wantsDisconnect = true;
 			});
 
 		char buf[512];
@@ -314,6 +327,7 @@ public:
 
 		while(!wantsDisconnect)
 		{
+			/*
 			if (connection)
 			{
 				CGameModuleBase* cgame = connection->getCGModule();
@@ -323,6 +337,8 @@ public:
 					MOHPC_LOG(Verbose, "(t %d, %d), origin = (%f %f %f)", connection->getServerTime(), ps.commandTime, ps.origin[0], ps.origin[1], ps.origin[2]);
 				}
 			}
+			*/
+
 			if (kbhit())
 			{
 				const char c = _getch();
@@ -401,7 +417,7 @@ public:
 						{
 							const uint32_t maxPackets = parser.GetInteger(false);
 							if (connection) {
-								connection->setMaxPackets(maxPackets);
+								connection->getSettings().setMaxPackets(maxPackets);
 							}
 						}
 					}
@@ -433,7 +449,7 @@ public:
 			}
 
 			manager->processTicks();
-			Sleep(25);
+			Sleep(15);
 		}
 	}
 };
