@@ -57,6 +57,32 @@ namespace MOHPC
 		virtual size_t GetLength() const = 0;
 	};
 
+	namespace StreamHelpers
+	{
+		/**
+		 * Copy content from input stream to output stream.
+		 *
+		 * @tparam BLOCK_SIZE The size of each block to read at once.
+		 * @param in The input stream to copy from.
+		 * @param out The output stream to copy to.
+		 * @param len Length to copy.
+		 */
+		template<size_t BLOCK_SIZE>
+		void Copy(IMessageStream& out, IMessageStream& in, size_t len)
+		{
+			for (size_t block = 0; block < len; block += BLOCK_SIZE)
+			{
+				uint8_t buf[BLOCK_SIZE];
+
+				const size_t remaining = std::min(len - in.GetPosition(), BLOCK_SIZE);
+
+				// read the data and save it
+				in.Read(buf, remaining);
+				out.Write(buf, remaining);
+			}
+		}
+	};
+
 	class MOHPC_EXPORTS FixedDataMessageStream : public IMessageStream
 	{
 	private:
@@ -87,12 +113,18 @@ namespace MOHPC
 		DynamicDataMessageStream() noexcept;
 		~DynamicDataMessageStream() noexcept;
 
+		DynamicDataMessageStream(DynamicDataMessageStream&& other) noexcept;
+		DynamicDataMessageStream& operator=(DynamicDataMessageStream&& other) noexcept;
+
 		virtual void Read(void* data, size_t length) override;
 		virtual void Write(const void* data, size_t length) override;
-		virtual void Seek(size_t offset, SeekPos from) noexcept override;
+		virtual void Seek(size_t offset, SeekPos from = IMessageStream::SeekPos::Begin) noexcept override;
 		virtual size_t GetPosition() const noexcept override;
 		virtual size_t GetLength() const noexcept override;
+
+		void clear(bool freeMemory = true);
 		void reserve(size_t size);
+		uint8_t* getStorage();
 		const uint8_t* getStorage() const;
 
 	private:

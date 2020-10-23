@@ -34,19 +34,16 @@ MOHPC::SerializableAngle8::SerializableAngle8(float inValue)
 {
 }
 
-void MOHPC::SerializableAngle8::Serialize(MSG& msg)
+void MOHPC::SerializableAngle8::Load(MSG& msg)
 {
-	if (!msg.IsReading())
-	{
-		uint8_t byteValue = AngleToByte(value);
-		msg.SerializeByte(byteValue);
-	}
-	else
-	{
-		uint8_t byteValue;
-		msg.SerializeByte(byteValue);
-		value = ByteToAngle(byteValue);
-	}
+	const uint8_t byteValue = msg.ReadByte();
+	value = ByteToAngle(byteValue);
+}
+
+void MOHPC::SerializableAngle8::Save(MSG& msg) const
+{
+	const uint8_t byteValue = AngleToByte(value);
+	msg.WriteByte(byteValue);
 }
 
 MOHPC::SerializableAngle16::SerializableAngle16(float inValue)
@@ -54,18 +51,14 @@ MOHPC::SerializableAngle16::SerializableAngle16(float inValue)
 {
 }
 
-void MOHPC::SerializableAngle16::Serialize(MSG& msg)
+void MOHPC::SerializableAngle16::Load(MSG& msg)
 {
-	if (!msg.IsReading())
-	{
-		uint16_t shortValue = AngleToShort(value);
-		msg.SerializeUShort(shortValue);
-	}
-	else
-	{
-		uint16_t shortValue;
-		msg.SerializeUShort(shortValue);
-		value = ShortToAngle(shortValue);
-	}
+	const uint16_t shortValue = msg.ReadUShort();
+	value = ShortToAngle(shortValue);
 }
 
+void MOHPC::SerializableAngle16::Save(MSG& msg) const
+{
+	const uint16_t shortValue = AngleToShort(value);
+	msg.WriteUShort(shortValue);
+}

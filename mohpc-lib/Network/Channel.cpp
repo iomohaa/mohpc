@@ -25,14 +25,10 @@ Netchan::Netchan(const IUdpSocketPtr& existingSocket, const netadr_t& inFrom, ui
 	, dropped(false)
 	, fragmentSequence(0)
 {
-	fragmentBuffer = new uint8_t[MAX_MSGLEN];
 }
 
 Netchan::~Netchan()
 {
-	if (fragmentBuffer) {
-		delete[] fragmentBuffer;
-	}
 }
 
 IUdpSocketPtr Network::INetchan::getSocket() const
@@ -50,7 +46,7 @@ uint16_t Network::INetchan::getOutgoingSequence() const
 	return 0;
 }
 
-bool Network::Netchan::receive(netadr_t& from, IMessageStream& stream, size_t& outSeqNum)
+bool Network::Netchan::receive(netadr_t& from, IMessageStream& stream, uint32_t& outSeqNum)
 {
 	uint8_t data[MAX_UDP_DATA_SIZE];
 	size_t len = getSocket()->receive(data, sizeof(data), from);
@@ -59,7 +55,6 @@ bool Network::Netchan::receive(netadr_t& from, IMessageStream& stream, size_t& o
 	}
 
 	stream.Write(data, len);
-
 	stream.Seek(0);
 
 	MSG msgRead(stream, msgMode_e::Reading);
@@ -91,7 +86,8 @@ bool Network::Netchan::receive(netadr_t& from, IMessageStream& stream, size_t& o
 	uint32_t fragmentStart = 0;
 	uint16_t fragmentLength = 0;
 
-	if (fragmented) {
+	if (fragmented)
+	{
 		fragmentStart = msgRead.ReadUInteger();
 		fragmentLength = msgRead.ReadUShort();
 	}
@@ -106,11 +102,18 @@ bool Network::Netchan::receive(netadr_t& from, IMessageStream& stream, size_t& o
 	{
 		if (sequenceNum != fragmentSequence)
 		{
+			// received sequence number must match with the current fragment sequence
+			// otherwise it's a new unrelated packet
 			fragmentSequence = sequenceNum;
-			this->fragmentLength = 0;
+			clearFragment();
 		}
 
-		if (fragmentStart != this->fragmentLength) {
+		const size_t currentFragmentLength = fragmentStream.GetLength();
+
+		if (fragmentStart != currentFragmentLength)
+		{
+			// this means that a packet was missed (lost, or wrong order)
+			// the start fragment must match with the current length
 			return false;
 		}
 
@@ -119,29 +122,32 @@ bool Network::Netchan::receive(netadr_t& from, IMessageStream& stream, size_t& o
 		}
 
 		stream.Seek(msgRead.GetPosition());
-		stream.Read(fragmentBuffer + this->fragmentLength, fragmentLength);
-		this->fragmentLength += fragmentLength;
+		//stream.Read(fragmentBuffer + this->fragmentLength, fragmentLength);
+		fragmentStream.Seek(fragmentLength);
+		fragmentStream.Seek(currentFragmentLength);
+		StreamHelpers::Copy<FRAGMENT_SIZE>(fragmentStream, stream, fragmentLength + stream.GetPosition());
 
 		if (fragmentLength == FRAGMENT_SIZE) {
 			return false;
 		}
 
-		//if (this->fragmentLength >= stream.GetLength()) {
-		//	return false;
-		//}
-
-		// Copy the full message
+		// seek to preallocate
+		stream.Seek(fragmentStream.GetLength());
+		// reset position to create a message
 		stream.Seek(0);
 
-		// Write the sequence num
-		MSG msgW(stream, msgMode_e::Writing);
-		msgW.SetCodec(MessageCodecs::OOB);
-		msgW.SerializeUInteger(sequenceNum);
-		msgW.Flush();
+		// write all necessary stuff
+		writePacketServerHeader(stream, sequenceNum);
 
+		// save the initial position
 		const size_t savedPos = stream.GetPosition();
-		stream.Write(fragmentBuffer, this->fragmentLength);
+		// set the fragment to the beginning and copy it to the message stream
+		fragmentStream.Seek(0);
+		StreamHelpers::Copy<FRAGMENT_SIZE>(stream, fragmentStream, fragmentStream.GetLength());
+		// return to the beginning of the message
 		stream.Seek(savedPos);
+		// now get rid of the fragment buffer
+		clearFragment();
 	}
 	else {
 		stream.Seek(msgRead.GetPosition());
@@ -154,43 +160,44 @@ bool Network::Netchan::receive(netadr_t& from, IMessageStream& stream, size_t& o
 
 bool Network::Netchan::transmit(const netadr_t& to, IMessageStream& stream)
 {
-	size_t bufLen = stream.GetLength();
+	const size_t bufLen = stream.GetLength();
 	if (bufLen >= FRAGMENT_SIZE)
 	{
-		size_t unsentFragmentStart = 0;
-		size_t unsentLength = bufLen;
+		fragment_t unsentFragmentStart = 0;
+		fragmentLen_t unsentLength = (fragmentLen_t)bufLen;
 		bool unsentFragments = true;
 
-		while (unsentFragments)
+		do
 		{
-			// send fragment by fragment
+			// send each fragment
 			transmitNextFragment(to, stream, unsentFragmentStart, unsentLength, unsentFragments);
-		}
+		} while(unsentFragments);
 
 		return true;
 	}
 	else
 	{
 		// unfragmented packet
-
-		uint8_t newBuf[MAX_PACKETLEN];
-		FixedDataMessageStream newStream(newBuf, sizeof(newBuf), 0);
+		DynamicDataMessageStream newStream;
+		newStream.reserve(bufLen + sizeof(uint32_t) + sizeof(uint16_t));
 
 		// write the header
 		writePacketHeader(newStream);
 
-		// get the length of the header (normally 6)
+		// the header length must be 6
 		const size_t headerLen = newStream.GetLength();
 		assert(headerLen == 6);
 
+		stream.Seek(0);
 		// seek to the end of the packet to set the correct length
 		newStream.Seek(bufLen, IMessageStream::SeekPos::Current);
-		stream.Seek(0);
+		newStream.Seek(headerLen, IMessageStream::SeekPos::Begin);
+
 		// read the data and save it
-		stream.Read(newBuf + headerLen, bufLen);
+		StreamHelpers::Copy<MAX_PACKETLEN>(newStream, stream, bufLen);
 
 		// send the packet now
-		getSocket()->send(to, newBuf, newStream.GetLength());
+		getSocket()->send(to, newStream.getStorage(), newStream.GetLength());
 
 		++outgoingSequence;
 	}
@@ -198,7 +205,7 @@ bool Network::Netchan::transmit(const netadr_t& to, IMessageStream& stream)
 	return true;
 }
 
-void Netchan::transmitNextFragment(const netadr_t& to, IMessageStream& stream, size_t& unsentFragmentStart, size_t& unsentLength, bool& unsentFragments)
+void Netchan::transmitNextFragment(const netadr_t& to, IMessageStream& stream, fragment_t& unsentFragmentStart, fragmentLen_t& unsentLength, bool& unsentFragments)
 {
 	// a fragment contains:
 	// - qport [2 bytes]
@@ -206,33 +213,28 @@ void Netchan::transmitNextFragment(const netadr_t& to, IMessageStream& stream, s
 	// - length of fragment [2 bytes]
 	// - data up to FRAGMENT_SIZE
 
-	uint8_t sendBuf[MAX_PACKETLEN];
-	FixedDataMessageStream outputPacket(sendBuf, sizeof(sendBuf), 0);
+	DynamicDataMessageStream outputPacket;
 
-	MSG msg(outputPacket, msgMode_e::Writing);
-	msg.SetCodec(MessageCodecs::OOB);
-
-	uint16_t fragmentLength = FRAGMENT_SIZE;
+	fragmentLen_t fragmentLength = FRAGMENT_SIZE;
 	if (unsentFragmentStart + fragmentLength > unsentLength) {
-		fragmentLength = (uint16_t)(unsentLength - unsentFragmentStart);
+		fragmentLength = (fragmentLen_t)(unsentLength - unsentFragmentStart);
 	}
 
-	// write the sequence num and the fragment bit
-	msg.WriteUInteger(outgoingSequence | FRAGMENT_BIT);
+	outputPacket.reserve(sizeof(uint16_t) + sizeof(uint32_t) + sizeof(uint16_t) + fragmentLength);
 
-	// write the client qport
-	msg.WriteShort(qport);
-
-	// write the start offset of the fragment
-	msg.WriteUInteger((uint32_t)unsentFragmentStart);
-	msg.WriteShort((uint16_t)fragmentLength);
-	msg.Flush();
+	// now write the packet header with the fragment start & length
+	writePacketFragment(outputPacket, unsentFragmentStart, unsentLength);
 
 	const size_t offset = outputPacket.GetPosition();
+	// seek to the end to preallocate
 	outputPacket.Seek(fragmentLength, IMessageStream::SeekPos::Current);
-	stream.Read(sendBuf + offset, fragmentLength);
-	//msg.WriteData(unsentBuffer + unsentFragmentStart, fragmentLength);
+	// return back to post-header
+	outputPacket.Seek(offset, IMessageStream::SeekPos::Begin);
 
+	// now copy the fragment to the output packet
+	StreamHelpers::Copy<FRAGMENT_SIZE>(outputPacket, stream, fragmentLength);
+
+	const uint8_t* sendBuf = outputPacket.getStorage();
 	getSocket()->send(to, sendBuf, outputPacket.GetLength());
 
 	unsentFragmentStart += fragmentLength;
@@ -246,7 +248,7 @@ void Netchan::transmitNextFragment(const netadr_t& to, IMessageStream& stream, s
 		// there is a bug in the Quake 3 code where the receiver won't increment the incoming sequence
 		// in source channel when receiving fragments.
 		// i.e send seq=3, receiving fragment: seq=4, send seq=5
-		// for the receiver the previous seq was 3, so 1 loss assumed which will be dropped
+		// for the receiver receiving seq 5, the previous seq was 3, as a consequence, 1 loss
 		//
 		// because of this, the next packet will be dropped
 		outgoingSequence++;
@@ -254,15 +256,52 @@ void Netchan::transmitNextFragment(const netadr_t& to, IMessageStream& stream, s
 	}
 }
 
-void MOHPC::Network::Netchan::writePacketHeader(IMessageStream& stream)
+void Netchan::writePacketServerHeader(IMessageStream& stream, uint32_t sequenceNum)
+{
+	// create a new message and write the sequence number
+	MSG msg(stream, msgMode_e::Writing);
+	msg.SetCodec(MessageCodecs::OOB);
+	msg.WriteUInteger(sequenceNum);
+	msg.Flush();
+}
+
+void Netchan::clearFragment()
+{
+	// free memory if it's above the max message size
+	fragmentStream.clear(fragmentStream.GetLength() >= MAX_MSGLEN);
+}
+
+void MOHPC::Network::Netchan::writePacketHeader(IMessageStream& stream, bool fragmented)
 {
 	MSG chanMsg(stream, msgMode_e::Writing);
-
 	chanMsg.SetCodec(MessageCodecs::OOB);
-	chanMsg.WriteUInteger(outgoingSequence);
+
+	writePacketHeader(chanMsg, fragmented);
+}
+
+void MOHPC::Network::Netchan::writePacketFragment(IMessageStream& stream, fragment_t unsentFragmentStart, fragmentLen_t fragmentLength)
+{
+	MSG msg(stream, msgMode_e::Writing);
+	msg.SetCodec(MessageCodecs::OOB);
+
+	writePacketHeader(msg, true);
+
+	// write the start offset of the fragment
+	msg.WriteUInteger(unsentFragmentStart);
+	msg.WriteShort(fragmentLength);
+}
+
+void MOHPC::Network::Netchan::writePacketHeader(MSG& msg, bool fragmented)
+{
+	// write the sequence num and the fragment bit
+	if(!fragmented) {
+		msg.WriteUInteger(outgoingSequence);
+	} else {
+		msg.WriteUInteger(outgoingSequence |FRAGMENT_BIT);
+	}
 
 	// write the client port
-	chanMsg.WriteShort(qport);
+	msg.WriteShort(qport);
 }
 
 uint16_t Network::Netchan::getOutgoingSequence() const
@@ -284,7 +323,7 @@ Network::ConnectionlessChan::ConnectionlessChan(const IUdpSocketPtr& existingSoc
 
 }
 
-bool Network::ConnectionlessChan::receive(netadr_t& from, IMessageStream& stream, size_t& sequenceNum)
+bool Network::ConnectionlessChan::receive(netadr_t& from, IMessageStream& stream, uint32_t& sequenceNum)
 {
 	MSG msg(stream, msgMode_e::Reading);
 

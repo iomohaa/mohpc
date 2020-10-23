@@ -149,6 +149,16 @@ str Info::ValueForKey(const char* key)
 	return str();
 }
 
+uint32_t Info::IntValueForKey(const char* key)
+{
+	return atoi(ValueForKey("key"));
+}
+
+uint64_t Info::LongValueForKey(const char* key)
+{
+	return atoll(ValueForKey("key"));
+}
+
 const char* Info::GetString() const
 {
 	return keyBuffer;
@@ -243,6 +253,16 @@ const char* ReadOnlyInfo::ValueForKey(const char* key, size_t& outLen) const
 	return str();
 }
 
+uint32_t ReadOnlyInfo::IntValueForKey(const char* key)
+{
+	return atoi(ValueForKey(key));
+}
+
+uint64_t ReadOnlyInfo::LongValueForKey(const char* key)
+{
+	return atoll(ValueForKey(key));
+}
+
 const char* ReadOnlyInfo::GetString() const
 {
 	return keyBuffer;
@@ -257,6 +277,7 @@ InfoIterator ReadOnlyInfo::createConstIterator() const
 {
 	return InfoIterator(keyBuffer, size);
 }
+
 
 InfoIterator::InfoIterator(const char* text, size_t size)
 	: keyBuffer(text)

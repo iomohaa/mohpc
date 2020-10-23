@@ -13,6 +13,7 @@
 #include "../../Object.h"
 #include "../../Misc/MSG/MSG.h"
 #include "../../Managers/NetworkManager.h"
+#include "UserInfo.h"
 #include "Imports.h"
 #include <stdint.h>
 #include <functional>
@@ -58,12 +59,14 @@ namespace MOHPC
 			struct Error : public HandlerNotifyBase<void(const NetworkException& exception)> {};
 
 			/**
+			 * REMOVED! Entity handlers from CGame Module should be used instead.
+			 *
 			 * Called when an entity has been modified or added.
 			 *
 			 * @param	old		The entity before modification.
 			 * @param	state	The new entity.
 			 */
-			struct EntityRead : public HandlerNotifyBase<void(const entityState_t* old, const entityState_t* state)> {};
+			//struct EntityRead : public HandlerNotifyBase<void(const entityState_t* old, const entityState_t* state)> {};
 
 			/**
 			 * Called when the current player state has been modified.
@@ -149,9 +152,14 @@ namespace MOHPC
 			/**
 			 * Called when a client is not visible to the player.
 			 * It is used to update radar information (radar = teammate icons on the compass)
-			 * and to keep track of players (teammates) that are not visible.
+			 * to be able to keep track of players (teammates) that are not visible.
 			 */
 			struct ReadNonPVSClient : public HandlerNotifyBase<void(const radarUnpacked_t& radarUnpacked)> {};
+
+			/**
+			 * Called just before writing a packet and sending it.
+			 */
+			struct PreWritePacket : public HandlerNotifyBase<void()> {};
 		}
 
 		struct outPacket_t
@@ -339,6 +347,7 @@ namespace MOHPC
 			 * @return	The configstring. NULL if num is greater than MAX_CONFIGSTRINGS
 			 */
 			MOHPC_EXPORTS const char* getConfigString(csNum_t num) const;
+			const char* getConfigStringChecked(csNum_t num) const;
 
 			/**
 			 * Return the configstring at the specified number.
@@ -378,69 +387,6 @@ namespace MOHPC
 		public:
 			ClientSnapshot();
 		};
-
-		/**
-		 * Handle client specific settings.
-		 *
-		 * It reflects userinfo from server.
-		 */
-		class ClientInfo
-		{
-			MOHPC_OBJECT_DECLARATION(ClientInfo);
-
-		private:
-			str name;
-			uint32_t rate;
-			uint32_t snaps;
-			PropertyObject properties;
-
-		private:
-			MOHPC_EXPORTS ClientInfo();
-			ClientInfo(ClientInfo&& other) = default;
-			ClientInfo& operator=(ClientInfo&& other) = default;
-			ClientInfo(const ClientInfo& other) = delete;
-			ClientInfo& operator=(const ClientInfo& other) = delete;
-			~ClientInfo() = default;
-
-		public:
-			/**
-			 * Set/get the client rate, in kbps. Common rates are :
-			 * - 2500 : 28.8k modem
-			 * - 3000 : 33.6k modem
-			 * - 4000 : 56k modem
-			 * - 5000 : ISDN
-			 * - 20000 : Cable
-			 * - 25000 : xDSL
-			 * - 30000 : LAN
-			 */
-			MOHPC_EXPORTS void setRate(uint32_t inRate);
-			MOHPC_EXPORTS uint32_t getRate() const;
-
-			/** Set/get the number of processed snapshots per second. */
-			MOHPC_EXPORTS void setSnaps(uint32_t inSnaps);
-			MOHPC_EXPORTS uint32_t getSnaps() const;
-
-			/** Set/get the client name. */
-			MOHPC_EXPORTS void setName(const char* newName);
-			MOHPC_EXPORTS const char* getName() const;
-
-			/** Set/get the client deathmatch allied model. */
-			MOHPC_EXPORTS void setPlayerAlliedModel(const char* newModel);
-			MOHPC_EXPORTS const char* getPlayerAlliedModel() const;
-
-			/** Set/get the client deathmatch german model. */
-			MOHPC_EXPORTS void setPlayerGermanModel(const char* newModel);
-			MOHPC_EXPORTS const char* getPlayerGermanModel() const;
-
-			/** Set/get an user value. */
-			MOHPC_EXPORTS void setUserKeyValue(const char* key, const char* value);
-			MOHPC_EXPORTS const char* getUserKeyValue(const char* key) const;
-
-			/** Return the list of properties. */
-			MOHPC_EXPORTS const PropertyObject& getPropertyObject() const;
-		};
-		using ClientInfoPtr = SharedPtr<ClientInfo>;
-		using ConstClientInfoPtr = SharedPtr<const ClientInfo>;
 
 		class ClientInfoHelper
 		{
@@ -561,7 +507,6 @@ namespace MOHPC
 				MOHPC_HANDLERLIST_HANDLER0_NODEF(ClientHandlers::Timeout, timeoutHandler);
 				MOHPC_HANDLERLIST_HANDLER1_NODEF(ClientHandlers::Disconnect, disconnectHandler, const char*);
 				MOHPC_HANDLERLIST_HANDLER1(ClientHandlers::Error, errorHandler, const NetworkException&);
-				MOHPC_HANDLERLIST_HANDLER2(ClientHandlers::EntityRead, entityReadHandler, const entityState_t*, const entityState_t*);
 				MOHPC_HANDLERLIST_HANDLER2(ClientHandlers::PlayerstateRead, playerStateReadHandler, const playerState_t*, const playerState_t*);
 				MOHPC_HANDLERLIST_HANDLER2(ClientHandlers::Configstring, configStringHandler, csNum_t, const char*);
 				MOHPC_HANDLERLIST_HANDLER1(ClientHandlers::Sound, soundHandler, const sound_t&);
@@ -576,13 +521,14 @@ namespace MOHPC
 				MOHPC_HANDLERLIST_HANDLER0_NODEF(ClientHandlers::ServerRestarted, serverRestartedHandler);
 				MOHPC_HANDLERLIST_HANDLER2(ClientHandlers::GameStateParsed, gameStateParsedHandler, const gameState_t&, bool);
 				MOHPC_HANDLERLIST_HANDLER1(ClientHandlers::ReadNonPVSClient, readNonPVSClientHandler, const radarUnpacked_t&);
+				MOHPC_HANDLERLIST_HANDLER0_NODEF(ClientHandlers::PreWritePacket, preWritePacketHandler);
 			};
 
 		private:
 			using parse_f = void (ClientGameConnection::*)(MSG& msg);
 			using readString_f = StringMessage(*)(MSG& msg);
 			using writeString_f = void (*)(MSG& msg, const char* s);
-			using hashKey_f = uint32_t(ClientGameConnection::*)(const char* string, size_t maxlen);
+			using hashKey_f = uint32_t (ClientGameConnection::*)(const char* string, size_t maxlen) const;
 			using readEntityNum_f = entityNum_t (ClientGameConnection::*)(MsgTypesHelper& msgHelper);
 			using readDeltaPlayerstate_f = void(ClientGameConnection::*)(MSG& msg, const playerState_t* from, playerState_t* to);
 			using readDeltaEntity_f = void(ClientGameConnection::*)(MSG& msg, const entityState_t* from, entityState_t* to, entityNum_t newNum);
@@ -643,7 +589,6 @@ namespace MOHPC
 			outPacket_t outPackets[CMD_BACKUP];
 			entityState_t entityBaselines[MAX_GENTITIES];
 			entityState_t parseEntities[MAX_PARSE_ENTITIES];
-			std::bitset<MAX_GENTITIES> validEntities;
 
 		public:
 			/**
@@ -742,8 +687,17 @@ namespace MOHPC
 			/** Return the frequency at which the game server is running (sv_fps). */
 			MOHPC_EXPORTS uint64_t getServerFrameFrequency() const;
 
-			/** Return th current user input number. */
-			MOHPC_EXPORTS uintptr_t getCurrentCmdNumber();
+			/** Return the current user input number. */
+			MOHPC_EXPORTS uintptr_t getCurrentCmdNumber() const;
+
+			/** Return the current client number. */
+			MOHPC_EXPORTS uint32_t getClientNum() const;
+
+			/** Return the current user input number. */
+			MOHPC_EXPORTS uint32_t getCurrentServerMessageSequence() const;
+
+			/** Return the current user input number. */
+			MOHPC_EXPORTS uint32_t getCurrentServerCommandSequence() const;
 
 			/**
 			 * Return user input data.
@@ -752,7 +706,7 @@ namespace MOHPC
 			 * @param	outCmd		Output data.
 			 * @return	true if the command is valid.
 			 */
-			MOHPC_EXPORTS bool getUserCmd(uintptr_t cmdNum, usercmd_t& outCmd);
+			MOHPC_EXPORTS bool getUserCmd(uintptr_t cmdNum, usercmd_t& outCmd) const;
 
 			/**
 			 * Return parseable server command.
@@ -792,7 +746,7 @@ namespace MOHPC
 
 		private:
 			const INetchanPtr& getNetchan() const;
-			void receive(const netadr_t& from, MSG& msg, size_t sequenceNum, uint64_t currentTime);
+			void receive(const netadr_t& from, MSG& msg, uint64_t currentTime, uint32_t sequenceNum);
 			void receiveConnectionLess(const netadr_t& from, MSG& msg);
 			void wipeChannel();
 			bool isChannelValid() const;
@@ -800,10 +754,10 @@ namespace MOHPC
 			void terminateConnection(const char* reason);
 			void addReliableCommand(const char* command);
 
-			void parseServerMessage(MSG& msg, uint32_t serverMessageSequence, uint64_t currentTime);
+			void parseServerMessage(MSG& msg, uint64_t currentTime);
 			void parseGameState(MSG& msg);
-			void parseSnapshot(MSG& msg, uint32_t serverMessageSequence, uint64_t currentTime);
-			void parsePacketEntities(MSG& msg, ClientSnapshot* oldFrame, ClientSnapshot* newFrame);
+			void parseSnapshot(MSG& msg, uint64_t currentTime);
+			void parsePacketEntities(MSG& msg, const ClientSnapshot* oldFrame, ClientSnapshot* newFrame);
 			void parseDeltaEntity(MSG& msg, ClientSnapshot* frame, uint32_t newNum, entityState_t* old, bool unchanged);
 			void parseSounds(MSG& msg, ClientSnapshot* newFrame);
 			void parseDownload(MSG& msg);
@@ -821,34 +775,49 @@ namespace MOHPC
 			void firstSnapshot(uint64_t currentTime);
 			void serverRestarted();
 			void updateSnapFlags();
+			void calculatePing(uint64_t currentTime);
 
-			void configStringModified(csNum_t num, const char* newString);
-
+			void configStringModified(csNum_t num, const char* newString, bool notify = true);
+			void notifyConfigStringChange(csNum_t num, const char* newString);
+			void notifyAllConfigStringChanges();
 			void systemInfoChanged();
+
 			bool readyToSendPacket(uint64_t currentTime) const;
 			void createNewCommands();
 			void createCmd(usercmd_t& outcmd);
 			bool sendCmd(uint64_t currentTime);
-			void writePacket(uint32_t serverMessageSequence, uint64_t currentTime);
-			bool unpackNonPVSClient(radarInfo_t radarInfo, radarUnpacked_t& unpacked);
+			clc_ops_e getClientOperation() const;
+			uint32_t getCommandHashKey() const;
+			uint8_t getNumCommandsToWrite(uint32_t oldPacketNum) const;
+
+			void writePacket(uint64_t currentTime);
+			void writePacketHeader(MSG& msg);
+			void writeReliableCommands(MSG& msg);
+			void writeUserInput(MSG& msg, uint64_t currentTime);
+			void writeAllCommands(MSG& msg, const usercmd_t*& oldcmd, size_t count, uint32_t key);
+			void storeOutputPacket(uint64_t currentTime, uint32_t serverTime);
 
 			void fillClientImports(ClientImports& imports);
 			StringMessage readStringMessage(MSG& msg);
 			void writeStringMessage(MSG& msg, const char* s);
-			uint32_t hashKey(const char* string, size_t maxlen);
+			uint32_t hashKey(const char* string, size_t maxlen) const;
 			entityNum_t readEntityNum(MsgTypesHelper& msgHelper);
 			void readDeltaPlayerstate(MSG& msg, const playerState_t* from, playerState_t* to);
 			void readDeltaEntity(MSG& msg, const entityState_t* from, entityState_t* to, uint16_t newNum);
 			csNum_t getNormalizedConfigstring(csNum_t num);
 			void readNonPVSClient(radarInfo_t radarInfo);
+			bool unpackNonPVSClient(radarInfo_t radarInfo, radarUnpacked_t& unpacked);
+			const ClientSnapshot* readOldSnapshot(MSG& msg, ClientSnapshot& snap) const;
+			void readAreaMask(MSG& msg, ClientSnapshot& snap);
+			void setNewSnap(ClientSnapshot& newSnap);
 
 		private:
 			static StringMessage readStringMessage_normal(MSG& msg);
 			static void writeStringMessage_normal(MSG& msg, const char* s);
 			static StringMessage readStringMessage_scrambled(MSG& msg);
 			static void writeStringMessage_scrambled(MSG& msg, const char* s);
-			uint32_t hashKey_ver6(const char* string, size_t maxlen);
-			uint32_t hashKey_ver15(const char* string, size_t maxlen);
+			uint32_t hashKey_ver6(const char* string, size_t maxlen) const;
+			uint32_t hashKey_ver15(const char* string, size_t maxlen) const;
 			entityNum_t readEntityNum_ver6(MsgTypesHelper& msgHelper);
 			entityNum_t readEntityNum_ver15(MsgTypesHelper& msgHelper);
 			void parseGameState_ver6(MSG& msg);

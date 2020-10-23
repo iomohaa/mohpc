@@ -121,9 +121,9 @@ void MOHPC::Network::LANServer::query(Callbacks::Query&& response, Callbacks::Se
 
 MOHPC_OBJECT_DEFINITION(EngineServer);
 
-EngineServer::EngineServer(const NetworkManagerPtr& inManager, const netadr_t& inAddress)
+EngineServer::EngineServer(const NetworkManagerPtr& inManager, const netadr_t& inAddress, const IUdpSocketPtr& existingSocket)
 	: ITickableNetwork(inManager)
-	, socket(ISocketFactory::get()->createUdp(addressType_e::IPv4))
+	, socket(existingSocket ? existingSocket : ISocketFactory::get()->createUdp(addressType_e::IPv4))
 	, address(inAddress)
 {
 }
@@ -240,8 +240,6 @@ void MOHPC::Network::EngineServer::IEngineRequest::generateOutput(IMessageStream
 		DynamicDataMessageStream compressedStream;
 		DynamicDataMessageStream uncompressedStream;
 
-		compressionOffset -= startOffset;
-
 		// copy existing data into the new stream
 		compressedStream.reserve(MAX_INFO_STRING);
 		compressedStream.Seek(0, IMessageStream::SeekPos::Begin);
@@ -329,14 +327,47 @@ IRequestPtr MOHPC::Network::EngineServer::IEngineRequest::process(RequestData& d
 MOHPC_OBJECT_DEFINITION(ConnectSettings);
 
 ConnectSettings::ConnectSettings()
-	: deferredChallengeTime(100)
+	: version(CLIENT_VERSION)
+	, cdKey("")
+	, deferredChallengeTime(100)
 	, deferredConnectTime(100)
+	, qport(0)
 {
 }
 
 void MOHPC::Network::ConnectSettings::setDeferredChallengeTime(size_t newTime)
 {
 	deferredChallengeTime = newTime;
+}
+
+const char* ConnectSettings::getCDKey() const
+{
+	return cdKey;
+}
+
+void ConnectSettings::setCDKey(const char* value)
+{
+	cdKey = value ? value : "";
+}
+
+const char* ConnectSettings::getVersion() const
+{
+	return version;
+}
+
+void ConnectSettings::setVersion(const char* value)
+{
+	version = value && *value ? value : CLIENT_VERSION;
+}
+
+uint16_t ConnectSettings::getQport() const
+{
+	return qport;
+}
+
+void ConnectSettings::setQport(uint16_t newValue)
+{
+	qport = newValue;
 }
 
 size_t ConnectSettings::getDeferredChallengeTime() const

@@ -46,9 +46,24 @@ namespace MOHPC
 			MOHPC_EXPORTS void setDeferredConnectTime(size_t newTime);
 			MOHPC_EXPORTS size_t getDeferredConnectTime() const;
 
+			/** The qport the player is using, to be able to connect on the same public network. */
+			MOHPC_EXPORTS void setQport(uint16_t newValue);
+			MOHPC_EXPORTS uint16_t getQport() const;
+
+			/** The version that is sent when connecting. Set to null or empty to set to the default version (CLIENT_VERSION). */
+			MOHPC_EXPORTS void setVersion(const char* value);
+			MOHPC_EXPORTS const char* getVersion() const;
+
+			/** The CD-Key to use when asked for an authorize request. */
+			MOHPC_EXPORTS void setCDKey(const char* value);
+			MOHPC_EXPORTS const char* getCDKey() const;
+
 		private:
+			const char* version;
+			const char* cdKey;
 			size_t deferredConnectTime;
 			size_t deferredChallengeTime;
+			uint16_t qport;
 		};
 		using ConnectSettingsPtr = SharedPtr<ConnectSettings>;
 
@@ -275,7 +290,7 @@ namespace MOHPC
 			RequestHandler<IRequestBase, GamespyUDPRequestParam> handler;
 
 		public:
-			MOHPC_EXPORTS EngineServer(const NetworkManagerPtr& inManager, const netadr_t& inAddress);
+			MOHPC_EXPORTS EngineServer(const NetworkManagerPtr& inManager, const netadr_t& inAddress, const IUdpSocketPtr& existingSocket = nullptr);
 			MOHPC_EXPORTS ~EngineServer();
 
 			virtual void tick(uint64_t deltaTime, uint64_t currentTime) override;

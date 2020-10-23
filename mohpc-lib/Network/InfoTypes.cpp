@@ -4,6 +4,8 @@
 using namespace MOHPC;
 using namespace Network;
 
+const char Network::CLIENT_VERSION[] = "3.00";
+
 netadr_t::netadr_t()
 	: ip{ 0 }
 	, port(0)
@@ -798,16 +800,16 @@ bool sound_t::hasSoundPitch() const
 }
 
 protocolType_c::protocolType_c()
-	: serverType(0)
+	: serverType(serverType_e::none)
 	, protocolVersion(protocolVersion_e::bad)
 {}
 
-protocolType_c::protocolType_c(uint8_t inServerType, protocolVersion_e inProtocolVersion)
+protocolType_c::protocolType_c(serverType_e inServerType, protocolVersion_e inProtocolVersion)
 	: serverType(inServerType)
 	, protocolVersion(inProtocolVersion)
 {}
 
-uint8_t protocolType_c::getServerType() const
+serverType_e protocolType_c::getServerType() const
 {
 	return serverType;
 }

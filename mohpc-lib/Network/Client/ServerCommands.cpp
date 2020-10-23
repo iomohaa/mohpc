@@ -38,13 +38,8 @@ IRequestPtr MOHPC::Network::EngineServer::VerBeforeChallengeRequest::handleRespo
 	const char* token = parser.GetLine(true);
 	ReadOnlyInfo info(token);
 
-	str value = info.ValueForKey("serverType");
-	const uint32_t serverType = atoi(value.c_str());
-
-	value = info.ValueForKey("protocol");
-	const uint32_t protocolVersionNumber = atoi(value.c_str());
-
-	value = info.ValueForKey("gamever");
+	const serverType_e serverType = serverType_e(info.IntValueForKey("serverType"));
+	const uint32_t protocolVersionNumber = info.IntValueForKey("protocol");
 
 	const protocolVersion_e protocolVersion = getProtocolEnumVersion(protocolVersionNumber);
 	if (protocolVersion == protocolVersion_e::bad)
@@ -54,7 +49,10 @@ IRequestPtr MOHPC::Network::EngineServer::VerBeforeChallengeRequest::handleRespo
 		return nullptr;
 	}
 
-	MOHPC_LOG(Log, "server type %d protocol version %d game version \"%s\"", serverType, protocolVersionNumber, value.c_str());
+	size_t gameVersionLen;
+	const char* gameVersion = info.ValueForKey("gamever", gameVersionLen);
+
+	MOHPC_LOG(Log, "server type %d protocol version %d game version \"%.*s\"", serverType, protocolVersionNumber, gameVersionLen, gameVersion);
 	return makeShared<ChallengeRequest>(protocolType_c(serverType, protocolVersion), std::move(data), std::move(timeoutCallback));
 }
 
@@ -131,10 +129,12 @@ bool Network::EngineServer::AuthorizeRequest::supportsEvent(const char* name)
 
 str Network::EngineServer::AuthorizeRequest::generateRequest()
 {
+	const char* cdKey = data.settings ? data.settings->getCDKey() : "";
+
 	char outResponse[76];
 
 	// Get the key
-	gcd_compute_response((char*)"", (char*)challenge.c_str(), outResponse, CDResponseMethod_NEWAUTH);
+	gcd_compute_response((char*)cdKey, (char*)challenge.c_str(), outResponse, CDResponseMethod_NEWAUTH);
 
 	ILog::get().log(logType_e::Verbose, "network", "will send authorization \"%s\"", outResponse);
 
@@ -157,12 +157,13 @@ size_t MOHPC::Network::EngineServer::AuthorizeRequest::overrideTimeoutTime(bool&
 {
 	overriden = true;
 	// 5000 is the timeout time for the server to authorize
-	return 5000;
+	// but adding 500ms more to let the server receive the response
+	return 5500;
 }
 
 MOHPC::IRequestPtr MOHPC::Network::EngineServer::AuthorizeRequest::timedOut()
 {
-	if (numRetries > 0) {
+	if (numRetries > 2) {
 		return IEngineRequest::timedOut();
 	}
 
@@ -178,35 +179,50 @@ Network::EngineServer::ConnectRequest::ConnectRequest(const protocolType_c& prot
 	, challenge(inChallenge)
 	, numRetries(0)
 {
-	// a port between 20000 and 65535
-	qport = (rand() % 45536) + 20000;
+	qport = data.settings ? data.settings->getQport() : 0;
+	if(!qport)
+	{
+		// choose a random port between 20000 and 65535
+		qport = (rand() % 45536) + 20000;
+	}
 }
 
 str Network::EngineServer::ConnectRequest::generateRequest()
 {
+	//========================
+	// fill in important info
+	//========================
+
 	Info info;
-
-	// Fill in important info
-
-	// Append the challenge
+	// append the challenge
 	info.SetValueForKey("challenge", str::printf("%i", challenge));
-	// Send the client version and the protocol
-	info.SetValueForKey("version", CLIENT_VERSION);
+	// send the client version and the protocol
+	const char* version = data.settings ? data.settings->getVersion() : CLIENT_VERSION;
+	info.SetValueForKey("version", version);
 	info.SetValueForKey("protocol", str::printf("%i", protocol.getProtocolVersion()));
 
-	// In case it's connecting to a breakthrough server
-	if (protocol.getServerType() == 2) {
+	switch (protocol.getServerType())
+	{
+	default:
+		// regular
+		break;
+	case serverType_e::breakthrough:
+		// in case it's connecting to a breakthrough server
 		info.SetValueForKey("clientType", "Breakthrough");
+		break;
 	}
 
+	// write the translated port
 	info.SetValueForKey("qport", str::printf("%i", qport));
 
-	// Append user settings
+	// fill user settings into an info instance
 	ClientInfoHelper::fillInfoString(*data.info, info);
 
-	// Send user info string
+	// send user info string
 	str connectArgs;
-	connectArgs.reserve(9 + info.GetInfoLength() + 2);
+	// 9: --> "connect " <--
+	// 2: quotes
+	connectArgs.reserve(info.GetInfoLength() + 9 + 2);
 	connectArgs += "connect ";
 	connectArgs += " \"";
 	connectArgs += info.GetString();
@@ -217,7 +233,8 @@ str Network::EngineServer::ConnectRequest::generateRequest()
 
 bool Network::EngineServer::ConnectRequest::shouldCompressRequest(size_t& offset)
 {
-	offset = 13;
+	// after --> "connect " <--
+	offset = 8;
 	return true;
 }
 

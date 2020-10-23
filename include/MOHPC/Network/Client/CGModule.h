@@ -877,9 +877,19 @@ namespace MOHPC
 			/** Return whether or not pmove sub-ticking is a fixed time. */
 			bool isPmoveFixed() const;
 
+			/** Disable local prediction on client. */
+			void disablePrediction();
+
+			/** Enable local prediction on client. */
+			void enablePrediction();
+
+			/** Return whether or not the prediction is disabled. */
+			bool isPredictionDisabled() const;
+
 		private:
 			uint32_t pmove_msec;
-			bool pmove_fixed;
+			bool pmove_fixed : 1;
+			bool forceDisablePrediction : 1;
 		};
 
 		/**
@@ -1044,12 +1054,6 @@ namespace MOHPC
 			/** Return the server info. */
 			MOHPC_EXPORTS const cgsInfo& getServerInfo() const;
 
-			/** Disable local prediction on client. */
-			MOHPC_EXPORTS void disablePrediction();
-
-			/** Enable local prediction on client. */
-			MOHPC_EXPORTS void enablePrediction();
-
 			/** Get an objective in the interval of [0, MAX_OBJECTIVES]. */
 			MOHPC_EXPORTS const objective_t& getObjective(uint32_t objNum) const;
 
@@ -1063,7 +1067,7 @@ namespace MOHPC
 			void parseCGMessage(MSG& msg);
 
 			/** Notified when a configString has been modified. */
-			void configStringModified(uint16_t num);
+			void configStringModified(uint16_t num, const char* newString);
 
 		protected:
 			/** Get the list of handlers. */
@@ -1078,16 +1082,17 @@ namespace MOHPC
 			virtual void handleCGMessage(MSG& msg, uint8_t msgType) = 0;
 
 			/** Setup move between versions. */
-			virtual void setupMove(Pmove& pmove);
+			virtual void setupMove(Pmove& pmove) = 0;
 
 			/** Normalize some playerState fields so they all match between versions. */
-			virtual void normalizePlayerState(playerState_t& ps);
+			virtual void normalizePlayerState(playerState_t& ps) = 0;
 
 			/** Parse fog/environment info between versions. */
 			virtual void parseFogInfo(const char* s, environment_t& env) = 0;
 
 		private:
 			void parseServerInfo(const char* cs);
+			void conditionalReflectClient(const clientInfo_t& client);
 
 			/**
 			 * Snapshot parsing
@@ -1131,6 +1136,8 @@ namespace MOHPC
 			/**
 			 * Player movement
 			 */
+			bool replayAllCommands();
+			bool tryReplayCommand(Pmove& pmove, const playerState_t& oldPlayerState, const usercmd_t& latestCmd, uintptr_t cmdNum);
 			bool replayMove(Pmove& pmove, usercmd_t& cmd);
 			void extendMove(Pmove& pmove, uint32_t msec);
 			void physicsNoclip(Pmove& pmove, float frametime);
@@ -1187,7 +1194,6 @@ namespace MOHPC
 			bool thisFrameTeleport : 1;
 			bool validPPS : 1;
 			bool nextFrameCameraCut : 1;
-			bool forceDisablePrediction : 1;
 		};
 
 		/**
@@ -1204,6 +1210,7 @@ namespace MOHPC
 			void normalizePlayerState(playerState_t& ps) override;
 			void parseFogInfo(const char* s, environment_t& env) override;
 			Pmove& getMove() override;
+			void setupMove(Pmove& pmove) override;
 
 		private:
 			effects_e getEffectId(uint32_t effectId);
@@ -1214,7 +1221,7 @@ namespace MOHPC
 
 		/**
 		 * CG Module for protocol version 15.
-		 * => MOH:SH ver 2.00 and above.
+		 * => MOH ver 2.00 and above (since SH).
 		 */
 		class CGameModule15 : public CGameModuleBase
 		{
@@ -1223,6 +1230,7 @@ namespace MOHPC
 
 		protected:
 			void handleCGMessage(MSG& msg, uint8_t msgType) override;
+			void normalizePlayerState(playerState_t& ps) override;
 			void setupMove(Pmove& pmove) override;
 			void parseFogInfo(const char* s, environment_t& env) override;
 			Pmove& getMove() override;

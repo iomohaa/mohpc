@@ -77,7 +77,7 @@ void MOHPC::SerializableUsercmd::LoadDelta(MSG& msg, const ISerializableMessage*
 	}
 }
 
-void MOHPC::SerializableUsercmd::SaveDelta(MSG& msg, const ISerializableMessage* from, intptr_t key)
+void MOHPC::SerializableUsercmd::SaveDelta(MSG& msg, const ISerializableMessage* from, intptr_t key) const
 {
 	const usercmd_t* fromCmd = &((SerializableUsercmd*)from)->ucmd;
 
@@ -130,7 +130,7 @@ void SerializableUserEyes::LoadDelta(MSG& msg, const ISerializableMessage* from)
 	}
 }
 
-void SerializableUserEyes::SaveDelta(MSG& msg, const ISerializableMessage* from)
+void SerializableUserEyes::SaveDelta(MSG& msg, const ISerializableMessage* from) const
 {
 	const usereyes_t& fromEye = ((SerializableUserEyes*)from)->eyesInfo;
 
@@ -589,7 +589,7 @@ const netField_template_t<fieldType_ver15_e> entityStateFields_ver15[] =
 
 static_assert(sizeof(entityStateFields_ver15) == sizeof(netField_t) * 146);
 
-void MOHPC::SerializablePlayerState::SaveDelta(MSG& msg, const ISerializableMessage* from)
+void MOHPC::SerializablePlayerState::SaveDelta(MSG& msg, const ISerializableMessage* from) const
 {
 	MsgTypesHelper msgHelper(msg);
 
@@ -911,7 +911,7 @@ void MOHPC::SerializablePlayerState::LoadDelta(MSG& msg, const ISerializableMess
 	}
 }
 
-void MOHPC::SerializablePlayerState_ver15::SaveDelta(MSG& msg, const ISerializableMessage* from)
+void MOHPC::SerializablePlayerState_ver15::SaveDelta(MSG& msg, const ISerializableMessage* from) const
 {
 
 }
@@ -1075,7 +1075,7 @@ void MOHPC::SerializablePlayerState_ver15::LoadDelta(MSG& msg, const ISerializab
 	}
 }
 
-void MOHPC::SerializableEntityState::SaveDelta(MSG& msg, const ISerializableMessage* from)
+void MOHPC::SerializableEntityState::SaveDelta(MSG& msg, const ISerializableMessage* from) const
 {
 	MsgTypesHelper msgHelper(msg);
 	constexpr size_t numFields = sizeof(entityStateFields) / sizeof(entityStateFields[0]);
@@ -1269,7 +1269,7 @@ void MOHPC::SerializableEntityState::LoadDelta(MSG& msg, const ISerializableMess
 	// FIXME: not sure if origin, angles and bone_angles should be set
 }
 
-void MOHPC::SerializableEntityState_ver15::SaveDelta(MSG& msg, const ISerializableMessage* from)
+void MOHPC::SerializableEntityState_ver15::SaveDelta(MSG& msg, const ISerializableMessage* from) const
 {
 
 }

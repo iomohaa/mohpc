@@ -12,12 +12,9 @@ namespace MOHPC
 	{
 	public:
 		virtual ~ISerializableMessage() {};
-		virtual void Serialize(MSG& msg) {};
-		virtual void SerializeDelta(MSG& msg, const ISerializableMessage* from) {};
-		virtual void SerializeDelta(MSG& msg, const ISerializableMessage* from, intptr_t key) {};
-		virtual void Save(MSG& msg) {};
-		virtual void SaveDelta(MSG& msg, const ISerializableMessage* from) {};
-		virtual void SaveDelta(MSG& msg, const ISerializableMessage* from, intptr_t key) {};
+		virtual void Save(MSG& msg) const {};
+		virtual void SaveDelta(MSG& msg, const ISerializableMessage* from) const {};
+		virtual void SaveDelta(MSG& msg, const ISerializableMessage* from, intptr_t key) const {};
 		virtual void Load(MSG& msg) {};
 		virtual void LoadDelta(MSG& msg, const ISerializableMessage* from) {};
 		virtual void LoadDelta(MSG& msg, const ISerializableMessage* from, intptr_t key) {};
@@ -43,7 +40,8 @@ namespace MOHPC
 	public:
 		SerializableAngle8() = default;
 		SerializableAngle8(float inValue);
-		virtual void Serialize(MSG& msg) override;
+		void Load(MSG& msg) override;
+		void Save(MSG& msg) const override;
 	};
 
 	class MOHPC_EXPORTS SerializableAngle16 : public SerializableAngle
@@ -51,6 +49,7 @@ namespace MOHPC
 	public:
 		SerializableAngle16() = default;
 		SerializableAngle16(float inValue);
-		virtual void Serialize(MSG& msg) override;
+		void Load(MSG& msg) override;
+		void Save(MSG& msg) const override;
 	};
 };

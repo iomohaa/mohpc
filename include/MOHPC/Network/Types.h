@@ -11,13 +11,24 @@ namespace MOHPC
 {
 	namespace Network
 	{
-		static constexpr unsigned long MAX_RELIABLE_COMMANDS = 64;
-		static constexpr unsigned long MAX_INFO_STRING = 1350;
-		static constexpr unsigned long MAX_INFO_KEY = 1024;
-		static constexpr unsigned long MAX_INFO_VALUE = 1024;
-		static constexpr unsigned long MAX_STRING_CHARS = 1024;
-		static constexpr unsigned long MAX_UDP_DATA_SIZE = 65507;
-		static constexpr char CLIENT_VERSION[] = "3.00";
+		static constexpr unsigned long MAX_RELIABLE_COMMANDS	= 64u;
+		static constexpr unsigned long MAX_INFO_STRING			= 1350u;
+		static constexpr unsigned long MAX_INFO_KEY				= 1024u;
+		static constexpr unsigned long MAX_INFO_VALUE			= 1024u;
+		static constexpr unsigned long MAX_STRING_CHARS			= 1024u;
+		static constexpr unsigned long MAX_UDP_DATA_SIZE		= 65507u;
+
+		// max size of a network packet
+		static constexpr unsigned long MAX_PACKETLEN	= 1400u;
+
+		static constexpr unsigned long FRAGMENT_SIZE	= (MAX_PACKETLEN - 100u);
+		// two ints and a short
+		static constexpr unsigned long PACKET_HEADER	= 10u;
+		static constexpr unsigned long FRAGMENT_BIT		= (1u << 31u);
+
+		static constexpr unsigned long MAX_MSGLEN		= 49152u;
+
+		extern const char CLIENT_VERSION[];
 
 		class MOHPC_EXPORTS NetworkException
 		{
@@ -103,29 +114,47 @@ namespace MOHPC
 			/** Bad protocol. */
 			bad = 0,
 
-			/** MOHAA 1.0 -> not (yet) supported. */
+			/** MOHAA 0.05 (Demo SP version). */
+			ver005 = 5,
+
+			/** MOHAA 1.0. */
 			ver100 = 6,
 
-			/** MOHAA 1.1. */
+			/** MOHAA >= 1.1. */
 			ver111 = 8,
 
-			/** Spearhead 2.0 -> not (yet) supported. */
+			/** Spearhead 2.0. */
 			ver200 = 15,
+
+			/** Spearhead 2.11 and Breakthrough demo 0.30. */
+			ver211_demo = 16,
 
 			/** Spearhead 2.11 and above. */
 			ver211 = 17
+		};
+
+		enum class serverType_e : unsigned char
+		{
+			/** Regular server type (the default). */
+			none = 1,
+			/** Breakthrough server. */
+			breakthrough = 2
 		};
 
 		inline protocolVersion_e getProtocolEnumVersion(const uint32_t value)
 		{
 			switch (value)
 			{
+			case 5:
+				return protocolVersion_e::ver005;
 			case 6:
 				return protocolVersion_e::ver100;
 			case 8:
 				return protocolVersion_e::ver111;
 			case 15:
 				return protocolVersion_e::ver200;
+			case 16:
+				return protocolVersion_e::ver211_demo;
 			case 17:
 				return protocolVersion_e::ver211;
 			default:
@@ -136,14 +165,14 @@ namespace MOHPC
 		class MOHPC_EXPORTS protocolType_c
 		{
 		public:
-			uint8_t serverType;
+			serverType_e serverType;
 			protocolVersion_e protocolVersion;
 
 		public:
 			explicit protocolType_c();
-			protocolType_c(uint8_t inServerType, protocolVersion_e inProtocolVersion);
+			protocolType_c(serverType_e inServerType, protocolVersion_e inProtocolVersion);
 
-			uint8_t getServerType() const;
+			serverType_e getServerType() const;
 			protocolVersion_e getProtocolVersion() const;
 		};
 

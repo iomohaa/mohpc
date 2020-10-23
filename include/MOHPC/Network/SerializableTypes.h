@@ -158,7 +158,7 @@ namespace MOHPC
 		{}
 
 		virtual void LoadDelta(MSG& msg, const ISerializableMessage* from, intptr_t key) override;
-		virtual void SaveDelta(MSG& msg, const ISerializableMessage* from, intptr_t key) override;
+		virtual void SaveDelta(MSG& msg, const ISerializableMessage* from, intptr_t key) const override;
 	};
 
 	class MOHPC_EXPORTS SerializableUserEyes : public ISerializableMessage
@@ -171,7 +171,7 @@ namespace MOHPC
 			: eyesInfo(inEyesInfo)
 		{}
 
-		virtual void SaveDelta(MSG& msg, const ISerializableMessage* from) override;
+		virtual void SaveDelta(MSG& msg, const ISerializableMessage* from) const override;
 		virtual void LoadDelta(MSG& msg, const ISerializableMessage* from) override;
 	};
 
@@ -185,7 +185,7 @@ namespace MOHPC
 			: state(inState)
 		{}
 
-		virtual void SaveDelta(MSG& msg, const ISerializableMessage* from) override;
+		virtual void SaveDelta(MSG& msg, const ISerializableMessage* from) const override;
 		virtual void LoadDelta(MSG& msg, const ISerializableMessage* from) override;
 
 		playerState_t* GetState() const { return &state; }
@@ -198,7 +198,7 @@ namespace MOHPC
 			: SerializablePlayerState(inState)
 		{}
 
-		virtual void SaveDelta(MSG& msg, const ISerializableMessage* from) override;
+		virtual void SaveDelta(MSG& msg, const ISerializableMessage* from) const override;
 		virtual void LoadDelta(MSG& msg, const ISerializableMessage* from) override;
 	};
 
@@ -214,7 +214,7 @@ namespace MOHPC
 			, entNum(newNum)
 		{}
 
-		virtual void SaveDelta(MSG& msg, const ISerializableMessage* from) override;
+		virtual void SaveDelta(MSG& msg, const ISerializableMessage* from) const override;
 		virtual void LoadDelta(MSG& msg, const ISerializableMessage* from) override;
 		entityState_t* GetState() const { return &state; }
 	};
@@ -226,7 +226,7 @@ namespace MOHPC
 			: SerializableEntityState(inState, newNum)
 		{}
 
-		virtual void SaveDelta(MSG& msg, const ISerializableMessage* from) override;
+		virtual void SaveDelta(MSG& msg, const ISerializableMessage* from) const override;
 		virtual void LoadDelta(MSG& msg, const ISerializableMessage* from) override;
 
 	private:

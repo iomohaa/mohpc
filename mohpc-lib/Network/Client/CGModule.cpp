@@ -136,7 +136,6 @@ CGameModuleBase::CGameModuleBase(const ClientImports& inImports)
 	, nextFrameTeleport(false)
 	, thisFrameTeleport(false)
 	, validPPS(false)
-	, forceDisablePrediction(false)
 	, processedSnapshotNum(0)
 	, latestSnapshotNum(0)
 	, latestCommandSequence(0)
@@ -557,93 +556,13 @@ void CGameModuleBase::predictPlayerState(uint64_t deltaTime)
 	}
 
 	// non-predicting local movement will grab the latest angles
-	if (forceDisablePrediction)
+	if (settings.isPredictionDisabled())
 	{
 		interpolatePlayerState(true);
 		return;
 	}
 
-	// Pmove
-	Pmove& pmove = getMove();
-	pmove_t& pm = pmove.get();
-	pm.ps = &predictedPlayerState;
-	pm.pointcontents = pointContentsFunction;
-	pm.trace = traceFunction;
-	
-	if (pm.ps->pm_type == pmType_e::Dead) {
-		pm.tracemask = ContentFlags::MASK_PLAYERSOLID & ~ContentFlags::MASK_DYNAMICBODY;
-	}
-	else {
-		pm.tracemask = ContentFlags::MASK_PLAYERSOLID;
-	}
-	
-	pm.noFootsteps = cgs.hasAnyDMFlags(DMFlags::DF_NO_FOOTSTEPS);
-	// Set settings depending on the protocol/version
-	setupMove(pmove);
-
-	playerState_t oldPlayerState = predictedPlayerState;
-	const uintptr_t current = getImports().getCurrentCmdNumber();
-
-	// Grab the latest cmd
-	usercmd_t latestCmd;
-	getImports().getUserCmd(current, latestCmd);
-
-	if (nextSnap && !nextFrameTeleport && !thisFrameTeleport)
-	{
-		predictedPlayerState = nextSnap->ps;
-		physicsTime = nextSnap->serverTime;
-	}
-	else
-	{
-		predictedPlayerState = snap->ps;
-		physicsTime = snap->serverTime;
-	}
-
-	const uint32_t pmove_msec = settings.getPmoveMsec();
-	pm.pmove_fixed = settings.isPmoveFixed();
-	pm.pmove_msec = pmove_msec;
-
-	bool moved = false;
-	for (uintptr_t cmdNum = CMD_BACKUP; cmdNum > 0; --cmdNum)
-	{
-		getImports().getUserCmd(current - cmdNum + 1, pm.cmd);
-
-		if (pm.pmove_fixed) {
-			pmove.PM_UpdateViewAngles(pm.ps, &pm.cmd);
-		}
-
-		// don't do anything if the time is before the snapshot player time
-		if (pm.cmd.serverTime <= predictedPlayerState.commandTime) {
-			continue;
-		}
-
-		// don't do anything if the command was from a previous map_restart
-		if (pm.cmd.serverTime > latestCmd.serverTime) {
-			continue;
-		}
-
-		if (predictedPlayerState.commandTime == oldPlayerState.commandTime)
-		{
-			if (thisFrameTeleport)
-			{
-				predictedError = Vector();
-				thisFrameTeleport = false;
-			}
-
-			// FIXME: Should it have some sort of predicted error?
-		}
-
-		if (pm.pmove_fixed)
-		{
-			pm.cmd.serverTime = (
-					(pm.cmd.serverTime + pmove_msec - 1)
-					/ pmove_msec
-				) * pmove_msec;
-		}
-
-		// Replay movement
-		moved |= replayMove(pmove, pm.cmd);
-	}
+	const bool moved = replayAllCommands();
 
 	// interpolate camera view (spectator, cutscenes, etc)
 	interpolatePlayerStateCamera();
@@ -904,7 +823,7 @@ void CGameModuleBase::trace(CollisionWorld& cm, trace_t& tr, const Vector& start
 	}
 }
 
-uint32_t Network::CGameModuleBase::pointContents(CollisionWorld& cm, const Vector& point, uintptr_t passEntityNum) const
+uint32_t CGameModuleBase::pointContents(CollisionWorld& cm, const Vector& point, uintptr_t passEntityNum) const
 {
 	// get the contents in world
 	uint32_t contents = cm.CM_PointContents(point, 0);
@@ -935,40 +854,116 @@ uint32_t Network::CGameModuleBase::pointContents(CollisionWorld& cm, const Vecto
 	return contents;
 }
 
-void Network::CGameModuleBase::disablePrediction()
-{
-	forceDisablePrediction = true;
-}
-
-void Network::CGameModuleBase::enablePrediction()
-{
-	forceDisablePrediction = false;
-}
-
-const objective_t& Network::CGameModuleBase::getObjective(uint32_t objNum) const
+const objective_t& CGameModuleBase::getObjective(uint32_t objNum) const
 {
 	return objectives[objNum];
 }
 
-const clientInfo_t& Network::CGameModuleBase::getClientInfo(uint32_t clientNum) const
+const clientInfo_t& CGameModuleBase::getClientInfo(uint32_t clientNum) const
 {
 	return clientInfo[clientNum];
 }
 
-const Network::ClientImports& Network::CGameModuleBase::getImports() const
+const ClientImports& CGameModuleBase::getImports() const
 {
 	return imports;
 }
 
-void Network::CGameModuleBase::setupMove(Pmove& pmove)
+bool CGameModuleBase::replayAllCommands()
 {
+	// Pmove
+	Pmove& pmove = getMove();
+	pmove_t& pm = pmove.get();
+	pm.ps = &predictedPlayerState;
+	pm.pointcontents = pointContentsFunction;
+	pm.trace = traceFunction;
+
+	if (pm.ps->pm_type == pmType_e::Dead) {
+		pm.tracemask = ContentFlags::MASK_PLAYERSOLID & ~ContentFlags::MASK_DYNAMICBODY;
+	}
+	else {
+		pm.tracemask = ContentFlags::MASK_PLAYERSOLID;
+	}
+
+	pm.noFootsteps = cgs.hasAnyDMFlags(DMFlags::DF_NO_FOOTSTEPS);
+	// Set settings depending on the protocol/version
+	setupMove(pmove);
+
+	playerState_t oldPlayerState = predictedPlayerState;
+	const uintptr_t current = getImports().getCurrentCmdNumber();
+
+	// Grab the latest cmd
+	usercmd_t latestCmd;
+	getImports().getUserCmd(current, latestCmd);
+
+	if (nextSnap && !nextFrameTeleport && !thisFrameTeleport)
+	{
+		predictedPlayerState = nextSnap->ps;
+		physicsTime = nextSnap->serverTime;
+	}
+	else
+	{
+		predictedPlayerState = snap->ps;
+		physicsTime = snap->serverTime;
+	}
+
+	const uint32_t pmove_msec = settings.getPmoveMsec();
+	pm.pmove_fixed = settings.isPmoveFixed();
+	pm.pmove_msec = pmove_msec;
+
+	bool moved = false;
+	for (uintptr_t cmdNum = CMD_BACKUP; cmdNum > 0; --cmdNum)
+	{
+		moved |= tryReplayCommand(pmove, oldPlayerState, latestCmd, current - cmdNum + 1);
+	}
+
+	return moved;
 }
 
-void Network::CGameModuleBase::normalizePlayerState(playerState_t& ps)
+bool CGameModuleBase::tryReplayCommand(Pmove& pmove, const playerState_t& oldPlayerState, const usercmd_t& latestCmd, uintptr_t cmdNum)
 {
+	pmove_t& pm = pmove.get();
+
+	getImports().getUserCmd(cmdNum, pm.cmd);
+
+	if (pm.pmove_fixed) {
+		pmove.PM_UpdateViewAngles(pm.ps, &pm.cmd);
+	}
+
+	// don't do anything if the time is before the snapshot player time
+	if (pm.cmd.serverTime <= predictedPlayerState.commandTime) {
+		return false;
+	}
+
+	// don't do anything if the command was from a previous map_restart
+	if (pm.cmd.serverTime > latestCmd.serverTime) {
+		return false;
+	}
+
+	if (predictedPlayerState.commandTime == oldPlayerState.commandTime)
+	{
+		if (thisFrameTeleport)
+		{
+			predictedError = Vector();
+			thisFrameTeleport = false;
+		}
+
+		// FIXME: Should it have some sort of predicted error?
+	}
+
+	if (pm.pmove_fixed)
+	{
+		pm.cmd.serverTime = (
+			(pm.cmd.serverTime + pm.pmove_msec - 1)
+			/ pm.pmove_msec
+			) * pm.pmove_msec;
+	}
+
+	// Replay movement
+	return replayMove(pmove, pm.cmd);
 }
 
-bool Network::CGameModuleBase::replayMove(Pmove& pmove, usercmd_t& cmd)
+bool CGameModuleBase::replayMove(Pmove& pmove, usercmd_t& cmd)
 {
 	pmove_t& pm = pmove.get();
 
@@ -993,7 +988,7 @@ bool Network::CGameModuleBase::replayMove(Pmove& pmove, usercmd_t& cmd)
 	return true;
 }
 
-void Network::CGameModuleBase::extendMove(Pmove& pmove, uint32_t msec)
+void CGameModuleBase::extendMove(Pmove& pmove, uint32_t msec)
 {
 	const pmove_t& pm = pmove.get();
 
@@ -1136,49 +1131,48 @@ const str& cgsInfo::getMapNameStr() const
 	return mapName;
 }
 
-const str& MOHPC::Network::cgsInfo::getMapFilenameStr() const
+const str& cgsInfo::getMapFilenameStr() const
 {
 	return mapFilename;
 }
 
-bool Network::cgsInfo::hasAnyDMFlags(uint32_t flags) const
+bool cgsInfo::hasAnyDMFlags(uint32_t flags) const
 {
 	return (dmFlags & flags) != 0;
 }
 
-bool Network::cgsInfo::hasAllDMFlags(uint32_t flags) const
+bool cgsInfo::hasAllDMFlags(uint32_t flags) const
 {
 	return (dmFlags & flags) == flags;
 }
 
-uint64_t Network::cgsInfo::getVoteTime() const
+uint64_t cgsInfo::getVoteTime() const
 {
 	return voteTime;
 }
 
-uint32_t Network::cgsInfo::getNumVotesYes() const
+uint32_t cgsInfo::getNumVotesYes() const
 {
 	return numVotesYes;
 }
 
-uint32_t Network::cgsInfo::getNumVotesNo() const
+uint32_t cgsInfo::getNumVotesNo() const
 {
 	return numVotesNo;
 }
 
-uint32_t Network::cgsInfo::getNumVotesUndecided() const
+uint32_t cgsInfo::getNumVotesUndecided() const
 {
 	return numUndecidedVotes;
 }
 
-const char* Network::cgsInfo::getVoteString() const
+const char* cgsInfo::getVoteString() const
 {
 	return voteString.c_str();
 }
 
-void CGameModuleBase::configStringModified(uint16_t num)
+void CGameModuleBase::configStringModified(uint16_t num, const char* cs)
 {
-	const char* cs = getImports().getGameState().getConfigString(num);
 	switch (num)
 	{
 	case CS_SERVERINFO:
@@ -1277,16 +1271,12 @@ void CGameModuleBase::configStringModified(uint16_t num)
 		ReadOnlyInfo info(cs);
 
 		objective_t& objective = objectives[num - CS_OBJECTIVES];
-	
-		size_t strLen;
-		// Get objective flags
-		const char* flStr = info.ValueForKey("flags", strLen);
-
-		objective.flags = atol(flStr);
+		objective.flags = info.IntValueForKey("flags");
 		// Get objective text
 		objective.text = info.ValueForKey("text");
 
 		// Get objective location
+		size_t strLen;
 		const char* locStr = info.ValueForKey("loc", strLen);
 		sscanf(locStr, "%f %f %f", &objective.location[0], &objective.location[1], &objective.location[2]);
 	}
@@ -1296,15 +1286,14 @@ void CGameModuleBase::configStringModified(uint16_t num)
 	{
 		ReadOnlyInfo info(cs);
 
-		clientInfo_t& client = clientInfo[num - CS_PLAYERS];
+		const uint32_t clientNum = num - CS_PLAYERS;
+		clientInfo_t& client = clientInfo[clientNum];
 		client.name = info.ValueForKey("name");
 		// Specify a valid name if empty
 		if(!client.name.length()) client.name = "UnnamedSolider";
 
-		size_t strLen;
 		// Get the current team
-		const char* teamStr = info.ValueForKey("team", strLen);
-		client.team = (teamType_e)atoi(teamStr);
+		client.team = teamType_e(info.IntValueForKey("team"));
 
 		// Add other unknown properties
 		for (InfoIterator it = info.createConstIterator(); it; ++it)
@@ -1315,6 +1304,8 @@ void CGameModuleBase::configStringModified(uint16_t num)
 				client.properties.SetPropertyValue(key, it.value());
 			}
 		}
+
+		conditionalReflectClient(client);
 	}
 }
 
@@ -1323,12 +1314,12 @@ void CGameModuleBase::parseServerInfo(const char* cs)
 	ReadOnlyInfo info(cs);
 
 	// Parse match settings
-	cgs.gameType = (gameType_e)atol(info.ValueForKey("g_gametype"));
-	cgs.dmFlags = atol(info.ValueForKey("dmflags"));
-	cgs.teamFlags = atol(info.ValueForKey("teamflags"));
-	cgs.fragLimit = atol(info.ValueForKey("fraglimit"));
-	cgs.timeLimit = atol(info.ValueForKey("timelimit"));
-	cgs.maxClients = atol(info.ValueForKey("sv_maxclients"));
+	cgs.gameType = gameType_e(info.IntValueForKey("g_gametype"));
+	cgs.dmFlags = info.IntValueForKey("dmflags");
+	cgs.teamFlags = info.IntValueForKey("teamflags");
+	cgs.fragLimit = info.IntValueForKey("fraglimit");
+	cgs.timeLimit = info.IntValueForKey("timelimit");
+	cgs.maxClients = info.IntValueForKey("sv_maxclients");
 	// Parse map
 	cgs.mapName = info.ValueForKey("mapname");
 	cgs.mapFilename = "maps/" + cgs.mapName + ".bsp";
@@ -1342,6 +1333,27 @@ void CGameModuleBase::parseServerInfo(const char* cs)
 	cgs.axisText[2] = info.ValueForKey("g_obj_axistext3");
 	cgs.scoreboardPic = info.ValueForKey("g_scoreboardpic");
 	cgs.scoreboardPicOver = info.ValueForKey("g_scoreboardpicover");
+}
+
+void CGameModuleBase::conditionalReflectClient(const clientInfo_t& client)
+{
+	uintptr_t clientNum = &client - clientInfo;
+	if (clientNum == imports.getClientNum())
+	{
+		// something has changed locally so reflect the change
+		const ClientInfoPtr& userInfo = imports.getUserInfo();
+
+		const char* currentName = userInfo->getName();
+		if (str::icmp(client.name, currentName))
+		{
+			MOHPC_LOG(Log, "Name changed from \"%s\" to \"%s\"", currentName, client.name.c_str());
+			// the name has changed (can be because it was sanitized)
+			// as a consequence, the change must be reflected on the client
+			userInfo->setName(client.name.c_str());
+
+			// don't resend user info because it would be useless to do so
+		}
+	}
 }
 
 void CGameModuleBase::buildSolidList()
@@ -1983,7 +1995,11 @@ Pmove& CGameModule6::getMove()
 	return pmove;
 }
 
-void Network::CGameModule6::normalizePlayerState(playerState_t& ps)
+void CGameModule6::setupMove(Pmove& pmove)
+{
+}
+
+void CGameModule6::normalizePlayerState(playerState_t& ps)
 {
 	const uint32_t pmFlags = ps.pm_flags;
 	uint32_t newPmFlags = 0;
@@ -2001,7 +2017,7 @@ void Network::CGameModule6::normalizePlayerState(playerState_t& ps)
 	ps.pm_flags = newPmFlags;
 }
 
-void Network::CGameModule6::parseFogInfo(const char* s, environment_t& env)
+void CGameModule6::parseFogInfo(const char* s, environment_t& env)
 {
 	int tmp = 0;
 	sscanf(
@@ -2580,13 +2596,18 @@ effects_e CGameModule15::getEffectId(uint32_t effectId)
 	return effects_e::bh_stone_hard;
 }
 
+void CGameModule15::normalizePlayerState(playerState_t& ps)
+{
+	// already normalized
+}
+
 Pmove& CGameModule15::getMove()
 {
 	pmove = Pmove_ver15();
 	return pmove;
 }
 
-void Network::CGameModule15::setupMove(Pmove& pmove)
+void CGameModule15::setupMove(Pmove& pmove)
 {
 	pmove_t& pm = pmove.get();
 	// in SH/BT, can't lean by default
@@ -2595,7 +2616,7 @@ void Network::CGameModule15::setupMove(Pmove& pmove)
 	pmoveVer.canLeanWhileMoving = getServerInfo().hasAnyDMFlags(DMFlags::DF_ALLOW_LEAN);
 }
 
-void Network::CGameModule15::parseFogInfo(const char* s, environment_t& env)
+void CGameModule15::parseFogInfo(const char* s, environment_t& env)
 {
 	int tmp = 0, tmp2 = 0;
 	sscanf(
@@ -2620,7 +2641,7 @@ void Network::CGameModule15::parseFogInfo(const char* s, environment_t& env)
 	env.renderTerrain = tmp2;
 }
 
-const char* Network::getEffectName(effects_e effect)
+const char* getEffectName(effects_e effect)
 {
 	return effectsModel[(size_t)effect];
 }
@@ -2740,32 +2761,32 @@ bool environment_t::isSkyPortal() const
 	return skyPortal;
 }
 
-float Network::environment_t::getFarplaneBias() const
+float environment_t::getFarplaneBias() const
 {
 	return farplaneBias;
 }
 
-float Network::environment_t::getSkyboxFarplane() const
+float environment_t::getSkyboxFarplane() const
 {
 	return skyboxFarplane;
 }
 
-float Network::environment_t::getSkyboxSpeed() const
+float environment_t::getSkyboxSpeed() const
 {
 	return skyboxSpeed;
 }
 
-float Network::environment_t::getFarclipOverride() const
+float environment_t::getFarclipOverride() const
 {
 	return farclipOverride;
 }
 
-const Vector& Network::environment_t::getFarplaneColorOverride() const
+const Vector& environment_t::getFarplaneColorOverride() const
 {
 	return farplaneColorOverride;
 }
 
-bool Network::environment_t::shouldRenderTerrain() const
+bool environment_t::shouldRenderTerrain() const
 {
 	return renderTerrain;
 }
@@ -2988,29 +3009,30 @@ bool Scoreboard::player_t::isAlive() const
 	return alive;
 }
 
-Network::clientInfo_t::clientInfo_t()
+clientInfo_t::clientInfo_t()
 	: team(teamType_e::None)
 {
 }
 
-const char* Network::clientInfo_t::getName() const
+const char* clientInfo_t::getName() const
 {
 	return name.c_str();
 }
 
-Network::teamType_e Network::clientInfo_t::getTeam() const
+teamType_e clientInfo_t::getTeam() const
 {
 	return team;
 }
 
-const PropertyObject& Network::clientInfo_t::getProperties() const
+const PropertyObject& clientInfo_t::getProperties() const
 {
 	return properties;
 }
 
 clientSettings_t::clientSettings_t()
-	: pmove_fixed(false)
-	, pmove_msec(8)
+	: pmove_msec(8)
+	, pmove_fixed(false)
+	, forceDisablePrediction(false)
 {
 }
 
@@ -3032,4 +3054,19 @@ void clientSettings_t::setPmoveFixed(bool value)
 bool clientSettings_t::isPmoveFixed() const
 {
 	return pmove_fixed;
+}
+
+void clientSettings_t::disablePrediction()
+{
+	forceDisablePrediction = true;
+}
+
+void clientSettings_t::enablePrediction()
+{
+	forceDisablePrediction = false;
+}
+
+bool clientSettings_t::isPredictionDisabled() const
+{
+	return forceDisablePrediction;
 }

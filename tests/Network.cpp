@@ -135,7 +135,17 @@ public:
 		RCon->send("echo test");
 		*/
 		
-		Network::EngineServerPtr clientBase = Network::EngineServer::create(manager, adr);
+		//bindv4_t bindAddress;
+		//bindAddress.ip[0] = 127;
+		//bindAddress.ip[1] = 0;
+		//bindAddress.ip[2] = 0;
+		//bindAddress.ip[3] = 2;
+		//bindAddress.port = 0;
+		Network::EngineServerPtr clientBase = Network::EngineServer::create(
+			manager,
+			adr
+			//ISocketFactory::get()->createUdp(addressType_e::IPv4, &bindAddress)
+		);
 
 #if 0
 		// Query server list
@@ -177,7 +187,12 @@ public:
 		clientInfo->setName("mohpc_test");
 		clientInfo->setRate(25000);
 
+		srand((unsigned int)time(NULL));
+
 		Network::ConnectSettingsPtr connectSettings = Network::ConnectSettings::create();
+		connectSettings->setQport(rand() % 45536 + 20000);
+		connectSettings->setCDKey("12345");
+
 		clientBase->connect(clientInfo, connectSettings, [&](const Network::ClientGameConnectionPtr& cg, const char* errorMessage)
 			{
 				if (errorMessage)
@@ -302,8 +317,11 @@ public:
 						MOHPC_LOG(VeryVerbose, "Server connection timed out");
 					});
 
-				connection->setCallback<ClientHandlers::UserInput>([&forwardValue, &rightValue, &angle, &shouldJump, cgame, &connection, &cm](usercmd_t& ucmd, usereyes_t& eyeinfo)
+				connection->setCallback<ClientHandlers::UserInput>(
+				[&forwardValue, &rightValue, &angle, &shouldJump, cgame, &connection, &cm](usercmd_t& ucmd, usereyes_t& eyeinfo)
 					{
+						const uint32_t seq = connection->getCurrentServerMessageSequence();
+
 						eyeinfo.setAngles(30.f, angle);
 						ucmd.buttons.fields.button.run = true;
 						ucmd.moveForward((int8_t)(forwardValue * 127.f));
@@ -312,9 +330,13 @@ public:
 						if (shouldJump)
 						{
 							ucmd.jump();
-							shouldJump = false;
 						}
 					});
+
+				connection->setCallback<ClientHandlers::PreWritePacket>([&shouldJump]()
+				{
+					shouldJump = false;
+				});
 			},
 			[&wantsDisconnect]()
 			{

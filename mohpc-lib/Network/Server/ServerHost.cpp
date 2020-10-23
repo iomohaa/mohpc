@@ -244,10 +244,7 @@ void ServerHost::processRequests()
 			const char* userInfo = arguments + 1;
 			ReadOnlyInfo info(userInfo, strlen(userInfo) - 1);
 
-			size_t challengeLen;
-			const char* challengeStr = info.ValueForKey("challenge", challengeLen);
-			const uint32_t challengeNum = atoi(challengeStr);
-
+			const uint32_t challengeNum = info.IntValueForKey("challenge");
 			// find the challenge by the source address
 			const uintptr_t challengeIndex = getChallenge(from);
 			if (!challengeIndex)
@@ -265,9 +262,7 @@ void ServerHost::processRequests()
 
 			challenges.RemoveObjectAt(challengeIndex);
 
-			size_t qportLen;
-			const char* qportStr = info.ValueForKey("qport", qportLen);
-			uint16_t qport = atoi(qportStr);
+			uint16_t qport = info.IntValueForKey("qport");
 
 			// success, now create the client
 			ClientData& client = createClient(from, qport, challengeNum);

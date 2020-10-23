@@ -75,12 +75,12 @@ size_t FixedDataMessageStream::GetLength() const noexcept
 	return std::min(length, maxLength);
 }
 
-size_t MOHPC::FixedDataMessageStream::GetPosition() const noexcept
+size_t FixedDataMessageStream::GetPosition() const noexcept
 {
 	return curPos;
 }
 
-MOHPC::DynamicDataMessageStream::DynamicDataMessageStream() noexcept
+DynamicDataMessageStream::DynamicDataMessageStream() noexcept
 	: storage(nullptr)
 	, length(0)
 	, maxLength(0)
@@ -88,12 +88,34 @@ MOHPC::DynamicDataMessageStream::DynamicDataMessageStream() noexcept
 {
 }
 
-MOHPC::DynamicDataMessageStream::~DynamicDataMessageStream() noexcept
+DynamicDataMessageStream::~DynamicDataMessageStream() noexcept
 {
 	if (storage) delete[] storage;
 }
 
-void MOHPC::DynamicDataMessageStream::Read(void* data, size_t readLen)
+DynamicDataMessageStream::DynamicDataMessageStream(DynamicDataMessageStream&& other) noexcept
+	: storage(other.storage)
+	, length(other.length)
+	, maxLength(other.maxLength)
+	, curPos(other.curPos)
+{
+	other.storage = nullptr;
+	other.length = other.maxLength = other.curPos = 0;
+}
+
+DynamicDataMessageStream& DynamicDataMessageStream::operator=(DynamicDataMessageStream&& other) noexcept
+{
+	storage = other.storage;
+	length = other.length;
+	maxLength = other.maxLength;
+	curPos = other.curPos;
+	other.storage = nullptr;
+	other.length = other.maxLength = other.curPos = 0;
+
+	return *this;
+}
+
+void DynamicDataMessageStream::Read(void* data, size_t readLen)
 {
 	if (curPos + readLen - 1 > length) {
 		throw StreamOverflowException(StreamOverflowException::Reading);
@@ -103,7 +125,7 @@ void MOHPC::DynamicDataMessageStream::Read(void* data, size_t readLen)
 	curPos += readLen;
 }
 
-void MOHPC::DynamicDataMessageStream::Write(const void* data, size_t writeLen)
+void DynamicDataMessageStream::Write(const void* data, size_t writeLen)
 {
 	if (curPos + writeLen > maxLength)
 	{
@@ -116,12 +138,12 @@ void MOHPC::DynamicDataMessageStream::Write(const void* data, size_t writeLen)
 	if(curPos > length) length = curPos;
 }
 
-void MOHPC::DynamicDataMessageStream::allocate(size_t writeLength)
+void DynamicDataMessageStream::allocate(size_t writeLength)
 {
 	return reallocate((maxLength + writeLength) * 2);
 }
 
-void MOHPC::DynamicDataMessageStream::reallocate(size_t newLen)
+void DynamicDataMessageStream::reallocate(size_t newLen)
 {
 	if (storage)
 	{
@@ -141,7 +163,7 @@ void MOHPC::DynamicDataMessageStream::reallocate(size_t newLen)
 	maxLength = newLen;
 }
 
-void MOHPC::DynamicDataMessageStream::reserve(size_t size)
+void DynamicDataMessageStream::reserve(size_t size)
 {
 	if(size > maxLength)
 	{
@@ -150,7 +172,7 @@ void MOHPC::DynamicDataMessageStream::reserve(size_t size)
 	}
 }
 
-void MOHPC::DynamicDataMessageStream::Seek(size_t offset, SeekPos from) noexcept
+void DynamicDataMessageStream::Seek(size_t offset, SeekPos from) noexcept
 {
 	switch (from)
 	{
@@ -177,14 +199,32 @@ void MOHPC::DynamicDataMessageStream::Seek(size_t offset, SeekPos from) noexcept
 	}
 }
 
-size_t MOHPC::DynamicDataMessageStream::GetPosition() const noexcept
+void DynamicDataMessageStream::clear(bool freeMemory)
+{
+	if (storage && freeMemory)
+	{
+		delete[] storage;
+		storage = nullptr;
+		maxLength = 0;
+	}
+
+	length = 0;
+	curPos = 0;
+}
+
+size_t DynamicDataMessageStream::GetPosition() const noexcept
 {
 	return curPos;
 }
 
-size_t MOHPC::DynamicDataMessageStream::GetLength() const noexcept
+size_t DynamicDataMessageStream::GetLength() const noexcept
 {
 	return length;
+}
+
+uint8_t* DynamicDataMessageStream::getStorage()
+{
+	return storage;
 }
 
 const uint8_t* DynamicDataMessageStream::getStorage() const

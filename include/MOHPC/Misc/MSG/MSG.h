@@ -263,6 +263,12 @@ namespace MOHPC
 		StringMessage ReadScrambledString(const char* byteCharMapping);
 
 		template<typename T>
+		T ReadByteEnum()
+		{
+			return T(ReadByte());
+		}
+
+		template<typename T>
 		T ReadDeltaType(const T& a)
 		{
 			static_assert(std::is_arithmetic<T>::value, "Type must be an arithmetic type");
@@ -340,6 +346,12 @@ namespace MOHPC
 		MSG& WriteScrambledString(const StringMessage& s, const uint8_t* charByteMapping);
 
 		template<typename T>
+		void WriteByteEnum(T value)
+		{
+			WriteByte(unsigned char(value));
+		}
+
+		template<typename T>
 		MSG& WriteDeltaType(const T& a, T& b)
 		{
 			static_assert(std::is_arithmetic<T>::value, "Type must be an arithmetic type");
@@ -368,10 +380,10 @@ namespace MOHPC
 		}
 
 		/** Serialize b if b is different than a. */
-		MSG& WriteDeltaClass(const ISerializableMessage* a, ISerializableMessage* b);
+		MSG& WriteDeltaClass(const ISerializableMessage* a, const ISerializableMessage* b);
 
 		/** Serialize b if b is different than a, with a key so output will be XORed. */
-		MSG& WriteDeltaClass(const ISerializableMessage* a, ISerializableMessage* b, intptr_t key);
+		MSG& WriteDeltaClass(const ISerializableMessage* a, const ISerializableMessage* b, intptr_t key);
 
 		/** Return the stream associated to this message. */
 		IMessageStream& stream() const noexcept

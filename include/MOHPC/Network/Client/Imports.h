@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <functional>
 
+#include "UserInfo.h"
+
 namespace MOHPC
 {
 	class TokenParser;
@@ -19,6 +21,7 @@ namespace MOHPC
 		class ClientImports
 		{
 		public:
+			std::function<uint32_t()> getClientNum;
 			std::function<uintptr_t()> getCurrentSnapshotNumber;
 			std::function<bool(uintptr_t snapshotNum, SnapshotInfo& outSnapshot)> getSnapshot;
 			std::function<uint64_t()> getServerStartTime;
@@ -30,6 +33,7 @@ namespace MOHPC
 			std::function<const gameState_t& ()> getGameState;
 			std::function<StringMessage(MSG& msg)> readStringMessage;
 			std::function<void(const char* cmd)> addReliableCommand;
+			std::function<const ClientInfoPtr&()> getUserInfo;
 		};
 	}
 }

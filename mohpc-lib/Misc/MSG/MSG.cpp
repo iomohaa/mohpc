@@ -185,7 +185,6 @@ MOHPC::MSG& MOHPC::MSG::SerializeDelta(const void* a, void* b, intptr_t key, siz
 
 MSG& MOHPC::MSG::SerializeDeltaClass(const ISerializableMessage* a, ISerializableMessage* b)
 {
-	b->SerializeDelta(*this, a);
 	if (!IsReading()) b->SaveDelta(*this, a);
 	else b->LoadDelta(*this, a);
 	return *this;
@@ -193,7 +192,6 @@ MSG& MOHPC::MSG::SerializeDeltaClass(const ISerializableMessage* a, ISerializabl
 
 MSG& MOHPC::MSG::SerializeDeltaClass(const ISerializableMessage* a, ISerializableMessage* b, intptr_t key)
 {
-	b->SerializeDelta(*this, a, key);
 	if (!IsReading()) b->SaveDelta(*this, a,key);
 	else b->LoadDelta(*this, a, key);
 	return *this;
@@ -285,7 +283,6 @@ MSG& MOHPC::MSG::SerializeFloat(float& value)
 
 MSG& MOHPC::MSG::SerializeClass(ISerializableMessage* value)
 {
-	value->Serialize(*this);
 	if (!IsReading()) value->Save(*this);
 	else value->Load(*this);
 	return *this;
@@ -472,7 +469,6 @@ MOHPC::StringMessage MOHPC::MSG::ReadScrambledString(const char* byteCharMapping
 MSG& MOHPC::MSG::ReadDeltaClass(const ISerializableMessage* a, ISerializableMessage* b)
 {
 	assert(IsReading());
-	b->SerializeDelta(*this, a);
 	b->LoadDelta(*this, a);
 	return *this;
 }
@@ -488,7 +484,6 @@ MSG& MOHPC::MSG::WriteData(const void* data, uintptr_t size)
 MSG& MOHPC::MSG::ReadDeltaClass(const ISerializableMessage* a, ISerializableMessage* b, intptr_t key)
 {
 	assert(IsReading());
-	b->SerializeDelta(*this, a, key);
 	b->LoadDelta(*this, a, key);
 	return *this;
 }
@@ -603,18 +598,16 @@ MSG& MOHPC::MSG::WriteScrambledString(const StringMessage& s, const uint8_t* cha
 	return *this;
 }
 
-MSG& MOHPC::MSG::WriteDeltaClass(const ISerializableMessage* a, ISerializableMessage* b)
+MSG& MOHPC::MSG::WriteDeltaClass(const ISerializableMessage* a, const ISerializableMessage* b)
 {
 	assert(IsWriting());
-	b->SerializeDelta(*this, a);
 	b->SaveDelta(*this, a);
 	return *this;
 }
 
-MSG& MOHPC::MSG::WriteDeltaClass(const ISerializableMessage* a, ISerializableMessage* b, intptr_t key)
+MSG& MOHPC::MSG::WriteDeltaClass(const ISerializableMessage* a, const ISerializableMessage* b, intptr_t key)
 {
 	assert(IsWriting());
-	b->SerializeDelta(*this, a, key);
 	b->SaveDelta(*this, a, key);
 	return *this;
 }
