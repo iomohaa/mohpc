@@ -301,9 +301,32 @@ public:
 						MOHPC_LOG(VeryVerbose, "server print (%d): \"%s\"", hudMessage, text);
 					});
 
+				cgame->setCallback<CGameHandlers::HudPrint>([&logPtr](const char* text)
+					{
+						MOHPC_LOG(VeryVerbose, "server print \"%s\"", text);
+					});
+
 				cgame->setCallback<CGameHandlers::HudDraw_Shader>([&logPtr](uint8_t index, const char* shaderName)
 					{
 						MOHPC_LOG(Verbose, "huddraw_shader : %d \"%s\"", index, shaderName);
+					});
+
+				cgame->setCallback<CGameHandlers::VoteModified>([](const voteInfo_t& voteInfo)
+					{
+						if(voteInfo.getVoteTime())
+						{
+							MOHPC_LOG(Verbose, "vote: \"%s\"", voteInfo.getVoteString());
+							MOHPC_LOG(
+								Verbose,
+								"vote: yes %d no %d undecided %d",
+								voteInfo.getNumVotesYes(),
+								voteInfo.getNumVotesNo(),
+								voteInfo.getNumVotesUndecided()
+							);
+						}
+						else {
+							MOHPC_LOG(Verbose, "vote: \"%s\" has ended", voteInfo.getVoteString());
+						}
 					});
 
 				connection->setCallback<ClientHandlers::Disconnect>([&wantsDisconnect](const char* reason)

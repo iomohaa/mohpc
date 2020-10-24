@@ -64,7 +64,6 @@ namespace MOHPC
 		constexpr operator const char* () const { return mapping; }
 	};
 	byteCharMapping_c byteCharMapping;
-
 }
 
 /*
@@ -352,6 +351,7 @@ ClientGameConnection::ClientGameConnection(const NetworkManagerPtr& inNetworkMan
 		readDeltaPlayerstate_pf = &ClientGameConnection::readDeltaPlayerstate_ver6;
 		readDeltaEntity_pf = &ClientGameConnection::readDeltaEntity_ver6;
 		getNormalizedConfigstring_pf = &ClientGameConnection::getNormalizedConfigstring_ver6;
+		getMaxCommandSize_pf = &ClientGameConnection::getMaxCommandSize_ver6;
 		readNonPVSClient_pf = &ClientGameConnection::readNonPVSClient_ver6;
 
 		cgameModule = new CGameModule6(imports);
@@ -367,6 +367,7 @@ ClientGameConnection::ClientGameConnection(const NetworkManagerPtr& inNetworkMan
 		readDeltaPlayerstate_pf = &ClientGameConnection::readDeltaPlayerstate_ver15;
 		readDeltaEntity_pf = &ClientGameConnection::readDeltaEntity_ver15;
 		getNormalizedConfigstring_pf = &ClientGameConnection::getNormalizedConfigstring_ver15;
+		getMaxCommandSize_pf = &ClientGameConnection::getMaxCommandSize_ver15;
 		readNonPVSClient_pf = &ClientGameConnection::readNonPVSClient_ver15;
 
 		cgameModule = new CGameModule15(imports);
@@ -580,9 +581,10 @@ void ClientGameConnection::addReliableCommand(const char* cmd)
 
 	++reliableSequence;
 	const size_t index = reliableSequence & (MAX_RELIABLE_COMMANDS - 1);
+	const size_t maxSize = getMaxCommandSize();
 
 	//reliableCommands[index] = &reliableCmdStrings[MAX_STRING_CHARS * index];
-	strncpy(reliableCommands[index], cmd, sizeof(reliableCmdStrings[MAX_STRING_CHARS * index]) * MAX_STRING_CHARS);
+	strncpy(reliableCommands[index], cmd, sizeof(reliableCmdStrings[maxSize * index]) * maxSize);
 }
 
 void ClientGameConnection::parseServerMessage(MSG& msg, uint64_t currentTime)
@@ -1136,7 +1138,7 @@ void ClientGameConnection::parseCommandString(MSG& msg)
 	const uint32_t index = seq & (MAX_RELIABLE_COMMANDS - 1);
 
 	//serverCommands[index] = &serverCmdStrings[MAX_STRING_CHARS * index];
-	strncpy(serverCommands[index], s, sizeof(serverCmdStrings[0]) * MAX_STRING_CHARS);
+	strncpy(serverCommands[index], s, sizeof(serverCmdStrings[index * MAX_STRING_CHARS]) * MAX_STRING_CHARS);
 
 	Event ev;
 	TokenParser parser;
@@ -1454,6 +1456,11 @@ csNum_t ClientGameConnection::getNormalizedConfigstring(csNum_t num)
 	return (this->*getNormalizedConfigstring_pf)(num);
 }
 
+size_t Network::ClientGameConnection::getMaxCommandSize() const
+{
+	return (this->*getMaxCommandSize_pf)();
+}
+
 void ClientGameConnection::readNonPVSClient(radarInfo_t radarInfo)
 {
 	return (this->*readNonPVSClient_pf)(radarInfo);
@@ -1606,6 +1613,16 @@ csNum_t ClientGameConnection::getNormalizedConfigstring_ver6(csNum_t num)
 csNum_t ClientGameConnection::getNormalizedConfigstring_ver15(csNum_t num)
 {
 	return num;
+}
+
+size_t Network::ClientGameConnection::getMaxCommandSize_ver6() const
+{
+	return 1024;
+}
+
+size_t Network::ClientGameConnection::getMaxCommandSize_ver15() const
+{
+	return MAX_STRING_CHARS;
 }
 
 void ClientGameConnection::readNonPVSClient_ver6(radarInfo_t radarInfo)

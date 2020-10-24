@@ -204,6 +204,10 @@ void CGameModuleBase::tick(uint64_t deltaTime, uint64_t currentTime, uint64_t se
 		// FIXME: Useless now as some code was moved to transitionSnapshot
 		//addPacketEntities();
 	}
+
+	if (cgs.voteInfo.modified) {
+		voteModified();
+	}
 }
 
 float CGameModuleBase::getFrameInterpolation() const
@@ -787,9 +791,15 @@ void CGameModuleBase::processServerCommand(TokenParser& tokenized)
 		{ "svlag", &CGameModuleBase::SCmd_ServerLag },
 		{ "stufftext", &CGameModuleBase::SCmd_Stufftext },
 		// Since SH
-		{ "printdeathmsg", &CGameModuleBase::SCmd_PrintDeathMsg }
+		{ "printdeathmsg", &CGameModuleBase::SCmd_PrintDeathMsg },
+		{ "vo0", &CGameModuleBase::SCmd_VoteOptions_StartReadFromServer },
+		{ "vo1", &CGameModuleBase::SCmd_VoteOptions_ContinueReadFromServer },
+		{ "vo2", &CGameModuleBase::SCmd_VoteOptions_FinishReadFromServer }
 	};
-	static constexpr size_t numCmds = sizeof(cmds)/sizeof(cmds[0]);
+	static constexpr size_t numCmds = sizeof(cmds) / sizeof(cmds[0]);
+
+	TokenParser::scriptmarker_t mark;
+	tokenized.MarkPosition(&mark);
 
 	const char* command = tokenized.GetToken(false);
 	// find the command in list
@@ -803,6 +813,9 @@ void CGameModuleBase::processServerCommand(TokenParser& tokenized)
 			break;
 		}
 	}
+
+	tokenized.RestorePosition(&mark);
+	handlers().notify<CGameHandlers::ServerCommand>(command, tokenized);
 }
 
 void CGameModuleBase::trace(CollisionWorld& cm, trace_t& tr, const Vector& start, const Vector& mins, const Vector& maxs, const Vector& end, uint16_t skipNumber, uint32_t mask, bool cylinder, bool cliptoentities)
@@ -1146,31 +1159,6 @@ bool cgsInfo::hasAllDMFlags(uint32_t flags) const
 	return (dmFlags & flags) == flags;
 }
 
-uint64_t cgsInfo::getVoteTime() const
-{
-	return voteTime;
-}
-
-uint32_t cgsInfo::getNumVotesYes() const
-{
-	return numVotesYes;
-}
-
-uint32_t cgsInfo::getNumVotesNo() const
-{
-	return numVotesNo;
-}
-
-uint32_t cgsInfo::getNumVotesUndecided() const
-{
-	return numUndecidedVotes;
-}
-
-const char* cgsInfo::getVoteString() const
-{
-	return voteString.c_str();
-}
-
 void CGameModuleBase::configStringModified(uint16_t num, const char* cs)
 {
 	switch (num)
@@ -1249,19 +1237,24 @@ void CGameModuleBase::configStringModified(uint16_t num, const char* cs)
 		cgs.matchEndTme = atol(cs);
 		break;
 	case CS_VOTE_TIME:
-		cgs.voteTime = atol(cs);
+		cgs.voteInfo.voteTime = atol(cs);
+		cgs.voteInfo.modified = true;
 		break;
 	case CS_VOTE_STRING:
-		cgs.voteString = cs;
+		cgs.voteInfo.voteString = cs;
+		cgs.voteInfo.modified = true;
 		break;
 	case CS_VOTES_YES:
-		cgs.numVotesYes = atol(cs);
+		cgs.voteInfo.numVotesYes = atol(cs);
+		cgs.voteInfo.modified = true;
 		break;
 	case CS_VOTES_NO:
-		cgs.numVotesNo = atol(cs);
+		cgs.voteInfo.numVotesNo = atol(cs);
+		cgs.voteInfo.modified = true;
 		break;
 	case CS_VOTES_UNDECIDED:
-		cgs.numUndecidedVotes = atol(cs);
+		cgs.voteInfo.numUndecidedVotes = atol(cs);
+		cgs.voteInfo.modified = true;
 		break;
 	}
 
@@ -1408,7 +1401,7 @@ void CGameModuleBase::SCmd_Print(TokenParser& args)
 void CGameModuleBase::SCmd_HudPrint(TokenParser& args)
 {
 	const char* text = args.GetString(true, false);
-	handlers().notify<CGameHandlers::ServerCommand_HudPrint>(text);
+	handlers().notify<CGameHandlers::HudPrint>(text);
 }
 
 void CGameModuleBase::SCmd_Scores(TokenParser& args)
@@ -1525,9 +1518,74 @@ void CGameModuleBase::SCmd_PrintDeathMsg(TokenParser& args)
 	}
 }
 
+void CGameModuleBase::SCmd_VoteOptions_StartReadFromServer(TokenParser& args)
+{
+	cgs.voteInfo.voteOptionsStr = args.GetString(true, false);
+}
+
+void CGameModuleBase::SCmd_VoteOptions_ContinueReadFromServer(TokenParser& args)
+{
+	cgs.voteInfo.voteOptionsStr += args.GetString(true, false);
+}
+
+void CGameModuleBase::SCmd_VoteOptions_FinishReadFromServer(TokenParser& args)
+{
+	cgs.voteInfo.voteOptionsStr += args.GetString(true, false);
+
+	const size_t len = cgs.voteInfo.voteOptionsStr.length();
+	// fix options string
+	for (size_t i = 0; i < len; ++i)
+	{
+		if (cgs.voteInfo.voteOptionsStr[i] == 1) {
+			cgs.voteInfo.voteOptionsStr[i] = '\"';
+		}
+	}
+
+	parseVoteOptions(cgs.voteInfo.voteOptionsStr, len);
+}
+
 clientSettings_t& CGameModuleBase::getSettings()
 {
 	return settings;
+}
+
+void CGameModuleBase::voteModified()
+{
+	cgs.voteInfo.modified = false;
+	handlers().notify<CGameHandlers::VoteModified>(cgs.voteInfo);
+}
+
+void CGameModuleBase::parseVoteOptions(const char* options, size_t len)
+{
+	// FIXME: For now, ignore exceptions, instead, log them.
+	// in the original game, the client is disconnected
+	// but it's better to not do so and just log it instead, it's not dangerous
+
+	try
+	{
+		voteOptions.parseVoteOptions(cgs.voteInfo.voteOptionsStr, len);
+	}
+	catch (IllegalOptionTypeException& e)
+	{
+		MOHPC_LOG(
+			Error,
+			"Vote option exception -- %s. Line %ul, option \"%s\": option type \"%s\"",
+			e.what(),
+			e.getOptionName(),
+			e.getLineNumber(),
+			e.getOptionType()
+		);
+	}
+	catch (VoteOptionException& e)
+	{
+		MOHPC_LOG(Error, "Vote option exception -- %s. Line %ul, option \"%s\"", e.what(), e.getOptionName(), e.getLineNumber());
+	}
+	catch (VoteException& e)
+	{
+		MOHPC_LOG(Error, "Vote exception -- %s. Line %ul", e.what(), e.getLineNumber());
+	}
+
+	handlers().notify<CGameHandlers::ReceivedVoteOptions>(voteOptions);
 }
 
 CGameModule6::CGameModule6(const ClientImports& inImports)

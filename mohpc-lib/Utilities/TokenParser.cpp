@@ -22,7 +22,7 @@ TokenParser::TokenParser()
 	token.clear();
 }
 
-void TokenParser::Close(void)
+void TokenParser::Close()
 {
 	if (releaseBuffer && buffer)
 	{
@@ -56,7 +56,7 @@ void TokenParser::Close(void)
 ==============
 */
 
-const char* TokenParser::Filename(void)
+const char* TokenParser::Filename()
 {
 	return filename.c_str();
 }
@@ -69,7 +69,7 @@ const char* TokenParser::Filename(void)
 ==============
 */
 
-int TokenParser::GetLineNumber(void)
+int TokenParser::GetLineNumber() const
 {
 	return line;
 }
@@ -82,7 +82,7 @@ int TokenParser::GetLineNumber(void)
 ==============
 */
 
-void TokenParser::Reset(void)
+void TokenParser::Reset()
 {
 	script_p = buffer;
 	line = 1;
@@ -140,7 +140,7 @@ void TokenParser::RestorePosition(const scriptmarker_t* mark)
 ==============
 */
 
-bool TokenParser::SkipToEOL(void)
+bool TokenParser::SkipToEOL()
 {
 	if (script_p >= end_p)
 	{
@@ -166,7 +166,7 @@ bool TokenParser::SkipToEOL(void)
 ==============
 */
 
-void TokenParser::CheckOverflow(void)
+void TokenParser::CheckOverflow()
 {
 	if (script_p >= end_p)
 	{
@@ -205,7 +205,7 @@ void TokenParser::SkipWhiteSpace(bool crossline)
 	}
 }
 
-bool TokenParser::AtComment(void)
+bool TokenParser::AtComment()
 {
 	if (script_p >= end_p)
 	{
@@ -371,7 +371,7 @@ GetToken (false);
 ==============
 */
 
-void TokenParser::UnGetToken(void)
+void TokenParser::UnGetToken()
 {
 	tokenready = true;
 }
@@ -712,7 +712,7 @@ double TokenParser::EvaluateMacroMath(double value, double newval, char oper)
 =
 ==============
 */
-bool TokenParser::isMacro(void)
+bool TokenParser::isMacro()
 {
 	if (!TokenAvailable(true))
 		return false;
@@ -767,7 +767,7 @@ const char* TokenParser::GetLine(bool crossline)
 ==============
 */
 
-const char* TokenParser::GetRaw(void)
+const char* TokenParser::GetRaw()
 {
 	const char* start;
 
@@ -1004,7 +1004,7 @@ Vector TokenParser::GetVector(bool crossline)
 =
 ===================
 */
-int TokenParser::LinesInFile(void)
+int TokenParser::LinesInFile()
 {
 	bool temp_tokenready;
 	const char* temp_script_p;
@@ -1058,12 +1058,12 @@ bool TokenParser::isValid()
 	return !hasError;
 }
 
-bool TokenParser::EndOfFile(void)
+bool TokenParser::EndOfFile()
 {
 	return script_p >= end_p;
 }
 
-const char* TokenParser::Token(void)
+const char* TokenParser::Token()
 {
 	return token.c_str();
 }

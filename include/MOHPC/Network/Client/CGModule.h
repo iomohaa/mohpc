@@ -9,6 +9,7 @@
 #include "../../Utilities/Function.h"
 #include "../../Vector.h"
 #include "Imports.h"
+#include "Vote.h"
 #include <type_traits>
 
 namespace MOHPC
@@ -398,7 +399,15 @@ namespace MOHPC
 			 *
 			 * @param	text	Text to print.
 			 */
-			struct ServerCommand_HudPrint : public HandlerNotifyBase<void(const char* text)> {};
+			struct HudPrint : public HandlerNotifyBase<void(const char* text)> {};
+
+			/**
+			 * Called when the client received a command.
+			 *
+			 * @param	command	The command.
+			 * @param	parser	Used to parse the command arguments.
+			 */
+			struct ServerCommand : public HandlerNotifyBase<void(const char* command, TokenParser& parser)> {};
 
 			/**
 			 * Called from server after score has been parsed.
@@ -434,6 +443,20 @@ namespace MOHPC
 			 * @note	Better not allow the server to exec any command. Should not even process it at all.
 			 */
 			struct ServerCommand_Stufftext : public HandlerNotifyBase<void(TokenParser& tokenized)> {};
+
+			/**
+			 * Called when the vote options has been received and parsed.
+			 *
+			 * @param options Vote options.
+			 */
+			struct ReceivedVoteOptions : public HandlerNotifyBase<void (const VoteOptions& options)> {};
+
+			/**
+			 * Called when the vote options has been received and parsed.
+			 *
+			 * @param options Vote options.
+			 */
+			struct VoteModified : public HandlerNotifyBase<void(const voteInfo_t& voteInfo)> {};
 		}
 
 		struct EntityInfo
@@ -811,43 +834,24 @@ namespace MOHPC
 			/** Return the scoreboard pic shader when game is over. */
 			MOHPC_EXPORTS const char* getScoreboardPicOver() const;
 
-			/** Return the last time vote has started. */
-			MOHPC_EXPORTS uint64_t getVoteTime() const;
-
-			/** Return the number of players that voted yes. */
-			MOHPC_EXPORTS uint32_t getNumVotesYes() const;
-
-			/** Return the number of players that voted no. */
-			MOHPC_EXPORTS uint32_t getNumVotesNo() const;
-
-			/** Return the number of players that didn't vote. */
-			MOHPC_EXPORTS uint32_t getNumVotesUndecided() const;
-
-			/** Return the vote name/text. */
-			MOHPC_EXPORTS const char* getVoteString() const;
-
 		public:
 			uint64_t matchStartTime;
 			uint64_t matchEndTme;
 			uint64_t levelStartTime;
 			uint64_t serverLagTime;
-			uint64_t voteTime;
-			gameType_e gameType;
+			voteInfo_t voteInfo;
 			uint32_t dmFlags;
 			uint32_t teamFlags;
 			uint32_t maxClients;
 			int32_t fragLimit;
 			int32_t timeLimit;
-			uint32_t numVotesYes;
-			uint32_t numVotesNo;
-			uint32_t numUndecidedVotes;
+			gameType_e gameType;
 			str mapName;
 			str mapFilename;
 			str alliedText[3];
 			str axisText[3];
 			str scoreboardPic;
 			str scoreboardPicOver;
-			str voteString;
 		};
 
 		/**
@@ -932,12 +936,15 @@ namespace MOHPC
 				MOHPC_HANDLERLIST_HANDLER1_NODEF(CGameHandlers::EntityModified, entityModifiedHandler, const EntityInfo&);
 				MOHPC_HANDLERLIST_HANDLER3(CGameHandlers::ReplayMove, replayCmdHandler, const usercmd_t&, playerState_t&, float);
 				MOHPC_HANDLERLIST_HANDLER2_NODEF(CGameHandlers::Print, serverCommandPrintHandler, hudMessage_e, const char*);
-				MOHPC_HANDLERLIST_HANDLER1_NODEF(CGameHandlers::ServerCommand_HudPrint, scmdHudPrintHandler, const char*);
+				MOHPC_HANDLERLIST_HANDLER2(CGameHandlers::ServerCommand, scmdHandler, const char*, TokenParser&);
+				MOHPC_HANDLERLIST_HANDLER1_NODEF(CGameHandlers::HudPrint, scmdHudPrintHandler, const char*);
 				MOHPC_HANDLERLIST_HANDLER1(CGameHandlers::ServerCommand_Scores, scmdScoresHandler, const Scoreboard&);
 				MOHPC_HANDLERLIST_HANDLER1_NODEF(CGameHandlers::ServerCommand_Stats, scmdStatsHandler, const stats_t&);
 				MOHPC_HANDLERLIST_HANDLER2(CGameHandlers::ServerCommand_Stopwatch, scmdStopwatchHandler, uint64_t, uint64_t);
 				MOHPC_HANDLERLIST_HANDLER0_NODEF(CGameHandlers::ServerCommand_ServerLag, scmdServerLagHandler);
 				MOHPC_HANDLERLIST_HANDLER1(CGameHandlers::ServerCommand_Stufftext, scmdStufftextHandler, TokenParser&);
+				MOHPC_HANDLERLIST_HANDLER1(CGameHandlers::ReceivedVoteOptions, receivedVoteOptionsHandler, const VoteOptions&);
+				MOHPC_HANDLERLIST_HANDLER1(CGameHandlers::VoteModified, voteModifiedHandler, const voteInfo_t&);
 			};
 
 		public:
@@ -1142,6 +1149,13 @@ namespace MOHPC
 			void extendMove(Pmove& pmove, uint32_t msec);
 			void physicsNoclip(Pmove& pmove, float frametime);
 			//====
+
+			/**
+			 * Vote
+			 */
+			 void voteModified();
+			 void parseVoteOptions(const char* options, size_t len);
+			 //====
 		
 		private:
 			/**
@@ -1155,6 +1169,10 @@ namespace MOHPC
 			void SCmd_ServerLag(TokenParser& args);
 			void SCmd_Stufftext(TokenParser& args);
 			void SCmd_PrintDeathMsg(TokenParser& args);
+
+			void SCmd_VoteOptions_StartReadFromServer(TokenParser& args);
+			void SCmd_VoteOptions_ContinueReadFromServer(TokenParser& args);
+			void SCmd_VoteOptions_FinishReadFromServer(TokenParser& args);
 
 		protected:
 			ClientImports imports;
@@ -1181,6 +1199,7 @@ namespace MOHPC
 			cgsInfo cgs;
 			environment_t environment;
 			rain_t rain;
+			VoteOptions voteOptions;
 			objective_t objectives[MAX_OBJECTIVES];
 			clientInfo_t clientInfo[MAX_CLIENTS];
 			SnapshotInfo oldSnap;

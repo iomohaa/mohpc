@@ -534,6 +534,7 @@ namespace MOHPC
 			using readDeltaEntity_f = void(ClientGameConnection::*)(MSG& msg, const entityState_t* from, entityState_t* to, entityNum_t newNum);
 			using getNormalizedConfigstring_f = csNum_t(ClientGameConnection::*)(csNum_t num);
 			using readNonPVSClient_f = void(ClientGameConnection::*)(radarInfo_t radarInfo);
+			using getMaxCommandSize_f = size_t(ClientGameConnection::*)() const;
 
 		private:
 			std::chrono::steady_clock::time_point lastTimeoutTime;
@@ -547,6 +548,7 @@ namespace MOHPC
 			readDeltaEntity_f readDeltaEntity_pf;
 			getNormalizedConfigstring_f getNormalizedConfigstring_pf;
 			readNonPVSClient_f readNonPVSClient_pf;
+			getMaxCommandSize_f getMaxCommandSize_pf;
 			CGameModuleBase* cgameModule;
 			EncodingPtr encoder;
 			INetchanPtr netchan;
@@ -805,6 +807,7 @@ namespace MOHPC
 			void readDeltaPlayerstate(MSG& msg, const playerState_t* from, playerState_t* to);
 			void readDeltaEntity(MSG& msg, const entityState_t* from, entityState_t* to, uint16_t newNum);
 			csNum_t getNormalizedConfigstring(csNum_t num);
+			size_t getMaxCommandSize() const;
 			void readNonPVSClient(radarInfo_t radarInfo);
 			bool unpackNonPVSClient(radarInfo_t radarInfo, radarUnpacked_t& unpacked);
 			const ClientSnapshot* readOldSnapshot(MSG& msg, ClientSnapshot& snap) const;
@@ -828,6 +831,8 @@ namespace MOHPC
 			void readDeltaEntity_ver15(MSG& msg, const entityState_t* from, entityState_t* to, entityNum_t newNum);
 			csNum_t getNormalizedConfigstring_ver6(csNum_t num);
 			csNum_t getNormalizedConfigstring_ver15(csNum_t num);
+			size_t getMaxCommandSize_ver6() const;
+			size_t getMaxCommandSize_ver15() const;
 			void readNonPVSClient_ver6(radarInfo_t radarInfo);
 			void readNonPVSClient_ver15(radarInfo_t radarInfo);
 		};
