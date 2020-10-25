@@ -217,7 +217,7 @@ public:
 							cm = CollisionWorld::create();
 							Asset->FillCollisionWorld(*cm);
 						}
-						
+
 						connection->markReady();
 					});
 

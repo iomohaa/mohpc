@@ -4,6 +4,7 @@
 #include <cassert>
 #include <utility>
 #include <exception>
+#include "Memory.h"
 
 #undef new
 
@@ -226,7 +227,7 @@ namespace MOHPC
 				objlist[i].~Type();
 			}
 
-			delete[] (uint8_t*)objlist;
+			freeMemory(objlist);
 
 			if (maxobjects == 0)
 			{
@@ -234,7 +235,7 @@ namespace MOHPC
 				return;
 			}
 
-			objlist = (Type*)new uint8_t[sizeof(Type) * maxobjects];
+			objlist = (Type*)allocateMemory(sizeof(Type) * maxobjects);
 			numobjects = 0;
 		}
 	}
@@ -260,7 +261,7 @@ namespace MOHPC
 				objlist[i].~Type();
 			}
 
-			delete[] (uint8_t*)objlist;
+			freeMemory(objlist);
 		}
 
 		objlist = NULL;
@@ -304,7 +305,7 @@ namespace MOHPC
 			maxobjects = numobjects;
 			if (!objlist)
 			{
-				objlist = new uint8_t[sizeof(Type) * maxobjects];
+				objlist = allocateMemory(sizeof(Type) * maxobjects);
 				for (size_t i = 0; i < arrayIndex; ++i) {
 					new(objlist + i) Type();
 				}
@@ -319,7 +320,7 @@ namespace MOHPC
 					maxobjects = numobjects;
 				}
 
-				objlist = new uint8_t[sizeof(Type) * maxobjects];
+				objlist = allocateMemory(sizeof(Type) * maxobjects);
 
 				for (intptr_t i = 0; i < arrayIndex; ++i) {
 					new(objlist + i) Type(std::move_if_noexcept(temp[i]));
@@ -330,7 +331,7 @@ namespace MOHPC
 					new(objlist + i) Type(std::move_if_noexcept(temp[i]));
 				}
 
-				delete[] (uint8_t*)temp;
+				freeMemory(temp);
 			}
 		}
 		else
@@ -429,9 +430,8 @@ namespace MOHPC
 		if (!objlist)
 		{
 			maxobjects = maxelements;
-			//objlist = new Type[maxobjects];
 			// allocate without initializing
-			objlist = (Type*)new uint8_t[sizeof(Type) * maxobjects];
+			objlist = (Type*)allocateMemory(sizeof(Type) * maxobjects);
 		}
 		else
 		{
@@ -443,10 +443,8 @@ namespace MOHPC
 				maxobjects = numobjects;
 			}
 
-			//objlist = new Type[maxobjects];
-
 			// allocate without initializing
-			objlist = (Type*)new uint8_t[maxobjects * sizeof(Type)];
+			objlist = (Type*)allocateMemory(maxobjects * sizeof(Type));
 
 			for (size_t i = 0; i < numobjects; i++)
 			{
@@ -457,7 +455,7 @@ namespace MOHPC
 				temp[i].~Type();
 			}
 
-			delete[] (uint8_t*)temp;
+			freeMemory(temp);
 		}
 	}
 
@@ -498,7 +496,7 @@ namespace MOHPC
 			return;
 		}
 
-		Type* newlist = (Type*)new uint8_t[sizeof(Type) * numobjects];
+		Type* newlist = (Type*)allocateMemory(sizeof(Type) * numobjects);
 
 		for (size_t i = 0; i < numobjects; i++)
 		{
@@ -506,7 +504,7 @@ namespace MOHPC
 			objlist[i].~Type();
 		}
 
-		delete[] (uint8_t*)objlist;
+		freeMemory(objlist);
 		objlist = newlist;
 		maxobjects = numobjects;
 	}
