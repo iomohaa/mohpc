@@ -6,9 +6,9 @@ namespace MOHPC
 	static constexpr unsigned long VERSION_MAJOR = 1;
 	static constexpr unsigned long VERSION_MINOR = 2;
 	static constexpr unsigned long VERSION_PATCH = 0;
-	static constexpr unsigned long VERSION_BUILD = 10945;
+	static constexpr unsigned long VERSION_BUILD = 10948;
 
-	static constexpr char VERSION_STRING[] = "1.2.0.10945";
+	static constexpr char VERSION_STRING[] = "1.2.0.10948";
 	static constexpr char VERSION_SHORT_STRING[] = "1.2.0";
 	static constexpr char VERSION_DATE[] = "Oct 25 2020";
 

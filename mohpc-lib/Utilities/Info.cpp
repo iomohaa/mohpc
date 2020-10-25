@@ -117,7 +117,7 @@ void Info::RemoveKey(const char* key)
 	}
 }
 
-str Info::ValueForKey(const char* key)
+str Info::ValueForKey(const char* key) const
 {
 	char* pkey = keyBuffer;
 
@@ -149,12 +149,12 @@ str Info::ValueForKey(const char* key)
 	return str();
 }
 
-uint32_t Info::IntValueForKey(const char* key)
+uint32_t Info::IntValueForKey(const char* key) const
 {
 	return atoi(ValueForKey("key"));
 }
 
-uint64_t Info::LongValueForKey(const char* key)
+uint64_t Info::LongValueForKey(const char* key) const
 {
 	return atoll(ValueForKey("key"));
 }
@@ -253,12 +253,12 @@ const char* ReadOnlyInfo::ValueForKey(const char* key, size_t& outLen) const
 	return str();
 }
 
-uint32_t ReadOnlyInfo::IntValueForKey(const char* key)
+uint32_t ReadOnlyInfo::IntValueForKey(const char* key) const
 {
 	return atoi(ValueForKey(key));
 }
 
-uint64_t ReadOnlyInfo::LongValueForKey(const char* key)
+uint64_t ReadOnlyInfo::LongValueForKey(const char* key) const
 {
 	return atoll(ValueForKey(key));
 }
