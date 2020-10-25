@@ -75,10 +75,10 @@
 #include <MOHPC/Script/Archiver.h>
 #include <MOHPC/Script/Compiler.h>
 #include <MOHPC/Script/ConstStr.h>
-#include <MOHPC/Script/Container.h>
+#include <MOHPC/Common/Container.h>
 #include <MOHPC/Script/ContainerClass.h>
 #include <MOHPC/Script/con_arrayset.h>
-#include <MOHPC/Script/con_set.h>
+#include <MOHPC/Common/con_set.h>
 #include <MOHPC/Script/con_timer.h>
 #include <MOHPC/Script/Event.h>
 #include <MOHPC/Script/Game.h>
@@ -101,6 +101,6 @@
 #include <MOHPC/Script/SimpleEntity.h>
 #include <MOHPC/Script/Stack.h>
 #include <MOHPC/Script/StateScript.h>
-#include <MOHPC/Script/str.h>
+#include <MOHPC/Common/str.h>
 #include <MOHPC/Script/World.h>
 #include <MOHPC/Script.h>

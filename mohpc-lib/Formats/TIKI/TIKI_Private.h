@@ -3,7 +3,7 @@
 #include <MOHPC/Formats/TIKI.h>
 #include <MOHPC/Vector.h>
 #include <MOHPC/Utilities/SharedPtr.h>
-#include <MOHPC/Script/con_set.h>
+#include <MOHPC/Common/con_set.h>
 #include "TIKI_Script.h"
 
 // skb skeletor

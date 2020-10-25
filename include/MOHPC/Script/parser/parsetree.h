@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../str.h"
+#include "../../Common/str.h"
 
 namespace MOHPC
 {

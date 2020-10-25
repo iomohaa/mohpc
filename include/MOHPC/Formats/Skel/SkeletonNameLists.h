@@ -1,9 +1,9 @@
 #pragma once
 
 #include "../../Global.h"
-#include "../../Script/Container.h"
-#include "../../Script/str.h"
-#include "../../Script/con_set.h"
+#include "../../Common/Container.h"
+#include "../../Common/str.h"
+#include "../../Common/con_set.h"
 #include <stdint.h>
 
 #define MAX_CHANNELS 200

@@ -1,9 +1,9 @@
 #pragma once
 
 #include "../Global.h"
-#include "../Script/Container.h"
-#include "../Script/con_set.h"
-#include "../Script/str.h"
+#include "../Common/Container.h"
+#include "../Common/con_set.h"
+#include "../Common/str.h"
 #include "../Utilities/SharedPtr.h"
 #include "Manager.h"
 

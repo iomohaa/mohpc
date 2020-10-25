@@ -1,5 +1,5 @@
 #include <Shared.h>
-#include <MOHPC/Script/str.h>
+#include <MOHPC/Common/str.h>
 #include <stdlib.h>
 #include <ctype.h>
 #include <stdio.h>

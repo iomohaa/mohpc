@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include "HuffmanTree.h"
 #include <exception>
-#include "../../Script/str.h"
+#include "../../Common/str.h"
 
 namespace MOHPC
 {

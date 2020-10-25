@@ -1,5 +1,5 @@
 #include <Shared.h>
-#include <MOHPC/Script/con_timer.h>
+#include <MOHPC/Common/con_timer.h>
 #include <MOHPC/Script/Archiver.h>
 #include <MOHPC/Script/Archiver.h>
 

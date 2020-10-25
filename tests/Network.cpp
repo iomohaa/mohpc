@@ -8,7 +8,7 @@
 #include <MOHPC/Network/Event.h>
 #include <MOHPC/Network/Types.h>
 #include <MOHPC/Misc/MSG/Stream.h>
-#include <MOHPC/Script/str.h>
+#include <MOHPC/Common/str.h>
 #include <MOHPC/Utilities/Info.h>
 #include <MOHPC/Utilities/TokenParser.h>
 #include <MOHPC/Formats/BSP.h>

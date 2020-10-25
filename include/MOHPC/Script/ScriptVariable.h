@@ -1,10 +1,10 @@
 #pragma once
 
 #include "ScriptClass.h"
-#include "Container.h"
 #include "ContainerClass.h"
-#include "con_set.h"
-#include "str.h"
+#include "../Common/Container.h"
+#include "../Common/con_set.h"
+#include "../Common/str.h"
 #include "../Vector.h"
 
 namespace MOHPC

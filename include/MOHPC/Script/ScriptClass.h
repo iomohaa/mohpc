@@ -1,9 +1,9 @@
 #pragma once
 
 #include "../Class.h"
-#include "Container.h"
-#include "str.h"
-#include "con_arrayset.h"
+#include "../Common/Container.h"
+#include "../Common/str.h"
+#include "../Common/con_arrayset.h"
 
 namespace MOHPC
 {

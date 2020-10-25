@@ -3,7 +3,7 @@
 #include "../Global.h"
 #include "../Formats/Skel.h"
 #include "../Managers/ShaderManager.h"
-#include "../Script/str.h"
+#include "../Common/str.h"
 #include "../Object.h"
 
 namespace MOHPC

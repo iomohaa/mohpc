@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../Script/str.h"
+#include "../../Common/str.h"
 #include "../../Utilities/PropertyMap.h"
 
 namespace MOHPC

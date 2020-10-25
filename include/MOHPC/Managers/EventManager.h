@@ -3,8 +3,8 @@
 #include "../Global.h"
 #include "../Managers/Manager.h"
 #include "../Script/Event.h"
-#include "../Script/con_set.h"
-#include "../Script/con_arrayset.h"
+#include "../Common/con_set.h"
+#include "../Common/con_arrayset.h"
 
 namespace MOHPC
 {

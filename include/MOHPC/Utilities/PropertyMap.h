@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../Global.h"
-#include "../Script/str.h"
+#include "../Common/str.h"
 #include "../Vector.h"
 #include <map>
 

@@ -1,8 +1,8 @@
 #include <Shared.h>
 // Basic Hash functions
 
-#include <MOHPC/Script/con_set.h>
-#include <MOHPC/Script/str.h>
+#include <MOHPC/Common/con_set.h>
+#include <MOHPC/Common/str.h>
 #include <MOHPC/Vector.h>
 
 using namespace MOHPC;

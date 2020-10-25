@@ -4,10 +4,10 @@
 #include "Manager.h"
 #include "../Script/ScriptClass.h"
 #include "../Script/ScriptThread.h"
-#include "../Script/con_set.h"
-#include "../Script/con_arrayset.h"
-#include "../Script/str.h"
-#include "../Script/con_timer.h"
+#include "../Common/con_set.h"
+#include "../Common/con_arrayset.h"
+#include "../Common/str.h"
+#include "../Common/con_timer.h"
 #include "../Script/Parm.h"
 
 namespace MOHPC

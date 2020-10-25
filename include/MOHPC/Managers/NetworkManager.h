@@ -2,8 +2,8 @@
 
 #include "Manager.h"
 #include <exception>
-#include "../Script/Container.h"
-#include "../Script/str.h"
+#include "../Common/Container.h"
+#include "../Common/str.h"
 #include "../Network/Types.h"
 
 namespace MOHPC

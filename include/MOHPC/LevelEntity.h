@@ -2,7 +2,7 @@
 
 #include "Global.h"
 #include "Vector.h"
-#include "Script/str.h"
+#include "Common/str.h"
 #include "Utilities/PropertyMap.h"
 #include <map>
 

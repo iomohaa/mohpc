@@ -2,7 +2,7 @@
 
 #include "Listener.h"
 #include "../Vector.h"
-#include "str.h"
+#include "../Common/str.h"
 
 namespace MOHPC
 {

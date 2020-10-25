@@ -2,6 +2,13 @@ cmake_minimum_required(VERSION 3.1)
 
 project(mohpc-lib VERSION 1.0)
 
+#file(GLOB_RECURSE SRC_ASSETS "Formats/*.cpp")
+#file(GLOB_RECURSE SRC_COLLISION "Collision/*.cpp")
+#file(GLOB_RECURSE SRC_COMMON "Common/*.cpp")
+#file(GLOB_RECURSE SRC_NETWORK "Network/*.cpp")
+#file(GLOB_RECURSE SRC_SCRIPT "Script/*.cpp")
+#file(GLOB_RECURSE SRC_MISC "Utilities/*.cpp" "Platform/*.cpp" "Misc/*.cpp" "Managers/*.cpp")
+#file(GLOB SRC_MISC "*.cpp" "*.h")
 file(GLOB_RECURSE SRC "*.cpp" "*.h")
 file(GLOB_RECURSE HEADERS "${CMAKE_SOURCE_DIR}/include/*.h")
 

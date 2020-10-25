@@ -2,7 +2,7 @@
 
 #include "Global.h"
 #include "Class.h"
-#include "Script/str.h"
+#include "Common/str.h"
 
 namespace MOHPC
 {

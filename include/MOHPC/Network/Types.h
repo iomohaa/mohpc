@@ -4,7 +4,7 @@
 #include <exception>
 #include "../Utilities/SharedPtr.h"
 #include "../Utilities/WeakPtr.h"
-#include "../Script/str.h"
+#include "../Common/str.h"
 #include "../Object.h"
 
 namespace MOHPC

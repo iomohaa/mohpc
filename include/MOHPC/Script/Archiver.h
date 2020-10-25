@@ -1,6 +1,6 @@
 #pragma once
 
-#include "con_set.h"
+#include "../Common/con_set.h"
 
 namespace MOHPC
 {

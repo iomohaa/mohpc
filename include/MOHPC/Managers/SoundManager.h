@@ -2,7 +2,7 @@
 
 #include "../Global.h"
 #include "Manager.h"
-#include "../Script/str.h"
+#include "../Common/str.h"
 #include <stdint.h>
 #include <unordered_map>
 #include <algorithm>

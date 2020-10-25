@@ -132,12 +132,6 @@ EngineServer::~EngineServer()
 {
 }
 
-static uintptr_t getCurrentTime()
-{
-	using namespace std::chrono;
-	return duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-}
-
 void EngineServer::tick(uint64_t deltaTime, uint64_t currentTime)
 {
 	EngineServerPtr ThisPtr = shared_from_this();
@@ -152,13 +146,10 @@ void EngineServer::connect(const ClientInfoPtr& clientInfo, const ConnectSetting
 	connData.response = std::bind(&EngineServer::onConnect, this, std::move(result), _1, _2, _3, _4, _5);
 	connData.info = std::move(clientInfo);
 	connData.settings = std::move(connectSettings);
-	if (!connData.settings) connData.settings = ConnectSettings::create();
 
 	sendRequest(makeShared<VerBeforeChallengeRequest>(std::move(connData)), std::move(timeoutResult));
 
 	MOHPC_LOG(Verbose, "connection request sent");
-	//protocolType_c proto(0, protocolVersion_e::ver211);
-	//sendRequest(to, makeShared<ChallengeRequest>(proto, std::move(connData)));
 }
 
 void EngineServer::getStatus(Callbacks::Response&& result, Callbacks::ServerTimeout&& timeoutResult, size_t timeoutTime)
@@ -183,10 +174,10 @@ void EngineServer::onConnect(const Callbacks::Connect result, uint16_t qport, ui
 {
 	if (!errorMessage)
 	{
-		// Create a net channel
+		// create a net channel and use the same socket
 		INetchanPtr newChannel = makeShared<Netchan>(socket, qport);
-		// And pass it to the new client game connection
-		// Using CreatePtr to use the deleter from the library itself
+		// and pass it to the new client game connection
+		// using a shared ptr, to be able to use the deleter from the library itself
 		ClientGameConnectionPtr connection = ClientGameConnection::create(
 			getManager(),
 			newChannel,
@@ -196,14 +187,14 @@ void EngineServer::onConnect(const Callbacks::Connect result, uint16_t qport, ui
 			cInfo
 		);
 		
-		// Init client time
+		// init the client time with the current time
 		connection->initTime(getCurrentTime());
 		// Return the newly created client game connection
 		result(connection, nullptr);
 	}
 	else
 	{
-		// Send the error message
+		// notify about the error message
 		result(nullptr, errorMessage);
 	}
 }

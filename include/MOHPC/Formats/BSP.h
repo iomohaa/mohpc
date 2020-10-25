@@ -5,8 +5,8 @@
 #include "../Managers/FileManager.h"
 #include "../Managers/ShaderManager.h"
 #include <stdint.h>
-#include "../Script/Container.h"
-#include "../Script/str.h"
+#include "../Common/Container.h"
+#include "../Common/str.h"
 #include "../Vector.h"
 #include "../Utilities/SharedPtr.h"
 

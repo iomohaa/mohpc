@@ -1,8 +1,8 @@
 #pragma once
 
 #include "ScriptClass.h"
-#include "con_set.h"
-#include "Container.h"
+#include "../Common/con_set.h"
+#include "../Common/Container.h"
 
 namespace MOHPC
 {

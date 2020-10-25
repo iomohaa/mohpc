@@ -318,9 +318,7 @@ Network::ConnectionlessChan::ConnectionlessChan()
 
 Network::ConnectionlessChan::ConnectionlessChan(const IUdpSocketPtr& existingSocket)
 	: INetchan(existingSocket)
-{
-
-}
+{}
 
 bool Network::ConnectionlessChan::receive(NetAddrPtr& from, IMessageStream& stream, uint32_t& sequenceNum)
 {

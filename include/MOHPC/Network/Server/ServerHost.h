@@ -8,7 +8,7 @@
 #include "../Encoding.h"
 #include "../Channel.h"
 
-#include "../../Script/Container.h"
+#include "../../Common/Container.h"
 
 namespace MOHPC
 {

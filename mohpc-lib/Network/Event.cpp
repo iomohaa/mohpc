@@ -1,5 +1,5 @@
 #include <MOHPC/Network/Event.h>
-#include <MOHPC/Script/str.h>
+#include <MOHPC/Common/str.h>
 
 using namespace MOHPC;
 using namespace Network;

@@ -2,7 +2,7 @@
 
 #include "../Global.h"
 #include "../Utilities/SharedPtr.h"
-#include "../Script/con_set.h"
+#include "../Common/con_set.h"
 #include <stdint.h>
 
 namespace MOHPC

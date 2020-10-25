@@ -109,7 +109,7 @@ MOHPC::IRequestPtr EngineServer::ChallengeRequest::timedOut()
 
 size_t EngineServer::ChallengeRequest::deferredTime()
 {
-	return data.settings->getDeferredChallengeTime();
+	return data.settings ? data.settings->getDeferredChallengeTime() : 100;
 }
 
 //== Authorize
@@ -293,7 +293,7 @@ MOHPC::IRequestPtr MOHPC::Network::EngineServer::ConnectRequest::timedOut()
 
 size_t EngineServer::ConnectRequest::deferredTime()
 {
-	return data.settings->getDeferredConnectTime();
+	return data.settings ? data.settings->getDeferredConnectTime() : 100;
 }
 
 //== GetStatus

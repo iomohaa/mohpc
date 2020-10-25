@@ -2,7 +2,7 @@
 
 #include "ScriptClass.h"
 #include "ContainerClass.h"
-#include "con_set.h"
+#include "../Common/con_set.h"
 #include "Event.h"
 
 namespace MOHPC
