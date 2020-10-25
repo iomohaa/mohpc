@@ -14,12 +14,12 @@ MOHPC_OBJECT_DEFINITION(RemoteConsole);
 
 constexpr unsigned long MAX_RCON_RECV_PACKETS = 10;
 
-RemoteConsole::RemoteConsole(const NetworkManagerPtr& networkManager, const netadr_t& inAddress, const char* inPassword)
+RemoteConsole::RemoteConsole(const NetworkManagerPtr& networkManager, const NetAddrPtr& inAddress, const char* inPassword)
 	: ITickableNetwork(networkManager)
 	, password(inPassword)
 	, address(inAddress)
 {
-	socket = ISocketFactory::get()->createUdp(addressType_e::IPv4);
+	socket = ISocketFactory::get()->createUdp();
 }
 
 MOHPC::Network::RemoteConsole::~RemoteConsole()
@@ -32,10 +32,10 @@ void MOHPC::Network::RemoteConsole::tick(uint64_t deltaTime, uint64_t currentTim
 
 	while (socket->dataAvailable() && numPackets++ < MAX_RCON_RECV_PACKETS)
 	{
-		netadr_t from;
 		uint8_t buf[MAX_UDP_DATA_SIZE];
 
-		size_t len = socket->receive(buf, sizeof(buf), from);
+		NetAddrPtr from;
+		const size_t len = socket->receive(buf, sizeof(buf), from);
 		if (len == -1) {
 			break;
 		}
@@ -108,5 +108,5 @@ void RemoteConsole::send(const char* command)
 	msg.Flush();
 
 	// Send the buffer data
-	socket->send(address, buf, stream.GetPosition());
+	socket->send(*address, buf, stream.GetPosition());
 }

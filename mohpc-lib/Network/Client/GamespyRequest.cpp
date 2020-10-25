@@ -31,7 +31,7 @@ GamespyRequestParam::GamespyRequestParam(const ITcpSocketPtr& inSocket)
 {
 }
 
-MOHPC::Network::GamespyRequestParam::GamespyRequestParam()
+GamespyRequestParam::GamespyRequestParam()
 {
 }
 
@@ -55,7 +55,7 @@ size_t GamespyRequestParam::receiveSize() const
 	return 512;
 }
 
-void MOHPC::Network::IGamespyServerRequest::generateOutput(IMessageStream& output)
+void IGamespyServerRequest::generateOutput(IMessageStream& output)
 {
 	// Send the type of query
 	const char* queryName = generateQuery();
@@ -65,56 +65,56 @@ void MOHPC::Network::IGamespyServerRequest::generateOutput(IMessageStream& outpu
 	output.Write("\\", 1);
 }
 
-MOHPC::Network::GamespyUDPRequestParam::GamespyUDPRequestParam(const IUdpSocketPtr& inSocket, const netadr_t& inAddr)
+GamespyUDPRequestParam::GamespyUDPRequestParam(const IUdpSocketPtr& inSocket, const NetAddrPtr& inAddr)
 	: socket(inSocket)
 	, addr(inAddr)
 {
 }
 
-MOHPC::Network::GamespyUDPRequestParam::GamespyUDPRequestParam()
+GamespyUDPRequestParam::GamespyUDPRequestParam()
 {
 }
 
-void MOHPC::Network::GamespyUDPRequestParam::send(const uint8_t* buf, size_t size)
+void GamespyUDPRequestParam::send(const uint8_t* buf, size_t size)
 {
-	socket->send(addr, buf, size);
+	socket->send(*addr, buf, size);
 }
 
-size_t MOHPC::Network::GamespyUDPRequestParam::receive(uint8_t* buf, size_t size)
+size_t GamespyUDPRequestParam::receive(uint8_t* buf, size_t size)
 {
 	return socket->receive(buf, size, addr);
 }
 
-bool MOHPC::Network::GamespyUDPRequestParam::hasData() const
+bool GamespyUDPRequestParam::hasData() const
 {
 	return socket && socket->wait(0);
 }
 
-size_t MOHPC::Network::GamespyUDPRequestParam::receiveSize() const
+size_t GamespyUDPRequestParam::receiveSize() const
 {
 	return 2048;
 }
 
-const MOHPC::Network::netadr_t& MOHPC::Network::GamespyUDPRequestParam::getLastIp() const
+const NetAddr& GamespyUDPRequestParam::getLastIp() const
 {
-	return addr;
+	return *addr;
 }
 
-MOHPC::Network::GamespyUDPBroadcastRequestParam::GamespyUDPBroadcastRequestParam()
+GamespyUDPBroadcastRequestParam::GamespyUDPBroadcastRequestParam()
 {
 
 }
 
-MOHPC::Network::GamespyUDPBroadcastRequestParam::GamespyUDPBroadcastRequestParam(const IUdpSocketPtr& inSocket, uint16_t inStartPort, uint16_t inEndPort)
+GamespyUDPBroadcastRequestParam::GamespyUDPBroadcastRequestParam(const IUdpSocketPtr& inSocket, uint16_t inStartPort, uint16_t inEndPort)
 	: socket(inSocket)
 	, startPort(inStartPort)
 	, endPort(inEndPort)
 {
 }
 
-void MOHPC::Network::GamespyUDPBroadcastRequestParam::send(const uint8_t* buf, size_t size)
+void GamespyUDPBroadcastRequestParam::send(const uint8_t* buf, size_t size)
 {
-	netadr_t addr;
+	NetAddr4 addr;
 	addr.ip[0] = 0xFF; addr.ip[1] = 0xFF; addr.ip[2] = 0xFF; addr.ip[3] = 0xFF;
 
 	for (uint16_t i = startPort; i < endPort; ++i)
@@ -124,22 +124,22 @@ void MOHPC::Network::GamespyUDPBroadcastRequestParam::send(const uint8_t* buf, s
 	}
 }
 
-size_t MOHPC::Network::GamespyUDPBroadcastRequestParam::receive(uint8_t* buf, size_t size)
+size_t GamespyUDPBroadcastRequestParam::receive(uint8_t* buf, size_t size)
 {
 	return socket->receive(buf, size, lastIp);
 }
 
-bool MOHPC::Network::GamespyUDPBroadcastRequestParam::hasData() const
+bool GamespyUDPBroadcastRequestParam::hasData() const
 {
 	return socket && socket->wait(0);
 }
 
-size_t MOHPC::Network::GamespyUDPBroadcastRequestParam::receiveSize() const
+size_t GamespyUDPBroadcastRequestParam::receiveSize() const
 {
 	return 2048;
 }
 
-const MOHPC::Network::netadr_t& MOHPC::Network::GamespyUDPBroadcastRequestParam::getLastIp() const
+const NetAddrPtr& GamespyUDPBroadcastRequestParam::getLastIp() const
 {
 	return lastIp;
 }

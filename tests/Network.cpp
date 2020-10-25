@@ -119,57 +119,47 @@ public:
 		ILogPtr logPtr = std::make_shared<Logger>();
 		ILog::set(logPtr);
 
-		Network::netadr_t adr;
-		adr.ip[0] = 127; adr.ip[1] = 0; adr.ip[2] = 0; adr.ip[3] = 1;
-		//adr.ip[0] = 0; adr.ip[1] = 0; adr.ip[2] = 0; adr.ip[3] = 0;
-
-		adr.port = 12203;
+		NetAddr4Ptr adr = NetAddr4::create();
+		adr->setIp(127, 0, 0, 1);
+		adr->setPort(12203);
 
 		// Send remote command
-		/*
 		RemoteConsolePtr RCon = RemoteConsole::create(manager, adr, "12345");
 		RCon->getHandlerList().set<RConHandlers::Print>([](const char* text)
 		{
 			MOHPC_LOG(Log, "Remote console \"%s\"", text);
 		});
 		RCon->send("echo test");
-		*/
-		
-		//bindv4_t bindAddress;
-		//bindAddress.ip[0] = 127;
-		//bindAddress.ip[1] = 0;
-		//bindAddress.ip[2] = 0;
-		//bindAddress.ip[3] = 2;
-		//bindAddress.port = 0;
+
 		Network::EngineServerPtr clientBase = Network::EngineServer::create(
 			manager,
 			adr
-			//ISocketFactory::get()->createUdp(addressType_e::IPv4, &bindAddress)
+			//ISocketFactory::get()->createUdp(&bindAddress)
 		);
 
-#if 0
 		// Query server list
-		Network::ServerList master(manager, Network::gameListType_e::mohaa);
-		master.fetch(
+#if 0
+		Network::ServerListPtr master = ServerList::create(manager, Network::gameListType_e::mohaab);
+		master->fetch(
 			[](const Network::IServerPtr& ptr)
 			{
 				ptr->query([ptr](const ReadOnlyInfo& response)
 					{
-						const Network::netadr_t& address = ptr->getAddress();
+						const NetAddrPtr& address = ptr->getAddress();
 						const str version = response.ValueForKey("gamever");
-						printf("Ping: %d.%d.%d.%d:%d -> version %s\n", address.ip[0], address.ip[1], address.ip[2], address.ip[3], address.port, version.c_str());
+						printf("Ping: %s:%d -> version %s\n", address->asString().c_str(), address->getPort(), version.c_str());
 					},
 					[ptr]()
 					{
-						const Network::netadr_t& address = ptr->getAddress();
-						printf("Timed out: %d.%d.%d.%d:%d\n", address.ip[0], address.ip[1], address.ip[2], address.ip[3], address.port);
+						const NetAddrPtr& address = ptr->getAddress();
+						printf("Timed out: %s:%d\n", address->asString().c_str(), address->getPort());
 					});
 			},
 			[]()
 			{
 				printf("done listing\n");
 			});
-#endif
+	#endif
 
 		Network::ClientGameConnectionPtr connection;
 		bool wantsDisconnect = false;

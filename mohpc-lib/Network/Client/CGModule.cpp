@@ -453,8 +453,21 @@ void CGameModuleBase::transitionSnapshot(bool differentServer)
 		for (size_t i = 0; i < target->numEntities; ++i)
 		{
 			EntityInfo& entInfo = clientEnts[target->entities[i].number];
-
 			handlers().notify<CGameHandlers::EntityAdded>(entInfo);
+		}
+	}
+
+	for (uintptr_t i = 0; i < snap->numEntities; i++)
+	{
+		EntityInfo& entInfo = clientEnts[snap->entities[i].number];
+
+		// only check if the entity is present in snap
+		// otherwise it's useless
+		if (target->getEntityStateByNumber(entInfo.getNextState().number)
+			&& memcmp(&entInfo.currentState, &entInfo.nextState, sizeof(entityState_t)))
+		{
+			// notify about modification
+			handlers().notify<CGameHandlers::EntityModified>(entInfo);
 		}
 	}
 
@@ -462,13 +475,6 @@ void CGameModuleBase::transitionSnapshot(bool differentServer)
 	for (uintptr_t i = 0; i < snap->numEntities; i++)
 	{
 		EntityInfo& entInfo = clientEnts[snap->entities[i].number];
-
-		if (memcmp(&entInfo.currentState, &entInfo.nextState, sizeof(entityState_t)))
-		{
-			// notify about modification
-			handlers().notify<CGameHandlers::EntityModified>(entInfo);
-		}
-
 		entInfo.currentValid = false;
 	}
 
@@ -1173,10 +1179,10 @@ void CGameModuleBase::configStringModified(uint16_t num, const char* cs)
 		rain.speed = (float)atof(cs);
 		break;
 	case CS_RAIN_SPEEDVARY:
-		rain.speedVary = atol(cs);
+		rain.speedVary = atoi(cs);
 		break;
 	case CS_RAIN_SLANT:
-		rain.slant = atol(cs);
+		rain.slant = atoi(cs);
 		break;
 	case CS_RAIN_LENGTH:
 		rain.length = (float)atof(cs);
@@ -1203,7 +1209,7 @@ void CGameModuleBase::configStringModified(uint16_t num, const char* cs)
 		}
 		break;
 	case CS_RAIN_NUMSHADERS:
-		rain.numShaders = atol(cs);
+		rain.numShaders = atoi(cs);
 		{
 			const str tmp = rain.shader[0];
 			for (size_t i = 0; i < rain.numShaders; ++i)
@@ -1217,27 +1223,20 @@ void CGameModuleBase::configStringModified(uint16_t num, const char* cs)
 		cgs.matchStartTime = atoll(cs);
 		break;
 	case CS_FOGINFO:
-		{
-			// Fog differs between games
-			parseFogInfo(cs, environment);
-		}
+		// Fog differs between games
+		parseFogInfo(cs, environment);
 		break;
 	case CS_SKYINFO:
-		{
-			int tmp = 0;
-			sscanf(cs, "%f %d", &environment.skyAlpha, &tmp);
-			// Parse bool
-			environment.skyPortal = tmp;
-		}
+		parseSkyInfo(cs, environment);
 		break;
 	case CS_LEVEL_START_TIME:
-		cgs.levelStartTime = atol(cs);
+		cgs.levelStartTime = atoll(cs);
 		break;
 	case CS_MATCHEND:
-		cgs.matchEndTme = atol(cs);
+		cgs.matchEndTme = atoll(cs);
 		break;
 	case CS_VOTE_TIME:
-		cgs.voteInfo.voteTime = atol(cs);
+		cgs.voteInfo.voteTime = atoll(cs);
 		cgs.voteInfo.modified = true;
 		break;
 	case CS_VOTE_STRING:
@@ -1245,15 +1244,15 @@ void CGameModuleBase::configStringModified(uint16_t num, const char* cs)
 		cgs.voteInfo.modified = true;
 		break;
 	case CS_VOTES_YES:
-		cgs.voteInfo.numVotesYes = atol(cs);
+		cgs.voteInfo.numVotesYes = atoi(cs);
 		cgs.voteInfo.modified = true;
 		break;
 	case CS_VOTES_NO:
-		cgs.voteInfo.numVotesNo = atol(cs);
+		cgs.voteInfo.numVotesNo = atoi(cs);
 		cgs.voteInfo.modified = true;
 		break;
 	case CS_VOTES_UNDECIDED:
-		cgs.voteInfo.numUndecidedVotes = atol(cs);
+		cgs.voteInfo.numUndecidedVotes = atoi(cs);
 		cgs.voteInfo.modified = true;
 		break;
 	}
@@ -1347,6 +1346,13 @@ void CGameModuleBase::conditionalReflectClient(const clientInfo_t& client)
 			// don't resend user info because it would be useless to do so
 		}
 	}
+}
+void CGameModuleBase::parseSkyInfo(const char* cs, environment_t& env)
+{
+	int tmp = 0;
+	sscanf(cs, "%f %d", &env.skyAlpha, &tmp);
+	// Parse bool
+	env.skyPortal = tmp;
 }
 
 void CGameModuleBase::buildSolidList()
@@ -2782,14 +2788,14 @@ const Vector& objective_t::getLocation() const
 }
 
 environment_t::environment_t()
-	: farplaneCull(false)
-	, farplaneDistance(0.f)
+	: farplaneDistance(0.f)
 	, skyAlpha(0.f)
-	, skyPortal(false)
 	, skyboxFarplane(0.f)
 	, skyboxSpeed(0.f)
 	, farplaneBias(0.f)
 	, farclipOverride(0.f)
+	, farplaneCull(false)
+	, skyPortal(false)
 	, renderTerrain(true)
 {
 }

@@ -3,6 +3,7 @@
 #include "../../Utilities/SharedPtr.h"
 #include "../../Utilities/RequestHandler.h"
 #include "../Types.h"
+#include "../Socket.h"
 
 namespace MOHPC
 {
@@ -64,18 +65,18 @@ namespace MOHPC
 		{
 		private:
 			IUdpSocketPtr socket;
-			netadr_t addr;
+			NetAddrPtr addr;
 
 		public:
 			GamespyUDPRequestParam();
-			GamespyUDPRequestParam(const IUdpSocketPtr& inSocket, const netadr_t& inAddr);
+			GamespyUDPRequestParam(const IUdpSocketPtr& inSocket, const NetAddrPtr& inAddr);
 
 			void send(const uint8_t* buf, size_t size);
 			size_t receive(uint8_t* buf, size_t size);
 			bool hasData() const;
 			size_t receiveSize() const;
 
-			const netadr_t& getLastIp() const;
+			const NetAddr& getLastIp() const;
 		};
 
 		class GamespyUDPBroadcastRequestParam
@@ -84,7 +85,7 @@ namespace MOHPC
 			IUdpSocketPtr socket;
 			uint16_t startPort;
 			uint16_t endPort;
-			netadr_t lastIp;
+			NetAddrPtr lastIp;
 
 		public:
 			GamespyUDPBroadcastRequestParam();
@@ -95,7 +96,7 @@ namespace MOHPC
 			bool hasData() const;
 			size_t receiveSize() const;
 
-			const netadr_t& getLastIp() const;
+			const NetAddrPtr& getLastIp() const;
 		};
 	}
 }

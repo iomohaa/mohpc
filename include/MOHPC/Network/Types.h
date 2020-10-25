@@ -5,7 +5,7 @@
 #include "../Utilities/SharedPtr.h"
 #include "../Utilities/WeakPtr.h"
 #include "../Script/str.h"
-#include "Socket.h"
+#include "../Object.h"
 
 namespace MOHPC
 {
@@ -30,64 +30,9 @@ namespace MOHPC
 
 		extern const char CLIENT_VERSION[];
 
-		class MOHPC_EXPORTS NetworkException
-		{
-		public:
-			virtual ~NetworkException() = default;
-
-			virtual str what() const { return str(); };
-		};
-
-		class MOHPC_EXPORTS RuntPacketNetException : public NetworkException
-		{
-		};
-
-		enum class netadrtype_t : uint8_t
-		{
-			Bot,
-			// an address lookup failed
-			Bad,
-			Loopback,
-			Broadcast,
-			IP,
-			IPX,
-			BroadcastIPX
-		};
-
 		enum class netsrc_e : uint8_t {
 			Client = 1,
 			Server
-		};
-
-		// FIXME: TODO
-		class INetAddr
-		{
-		public:
-			virtual void getAddress(void* data);
-			virtual size_t getAddressSize() const = 0;
-		};
-
-		// FIXME: use an abstract interface for netadr_t instead (IPv4 and IPv6)
-		// however mohaa uses IPv4 only so it's not really important here
-		struct netadr_t
-		{
-			uint8_t ip[4];
-			uint16_t port;
-
-		public:
-			MOHPC_EXPORTS netadr_t();
-
-			MOHPC_EXPORTS bool operator==(const netadr_t& other) const;
-			MOHPC_EXPORTS bool operator!=(const netadr_t& other) const;
-		};
-
-		struct bindv4_t
-		{
-			uint8_t ip[4];
-			uint16_t port;
-
-		public:
-			MOHPC_EXPORTS bindv4_t();
 		};
 
 		//==
@@ -218,5 +163,93 @@ namespace MOHPC
 			/** Indicate the end of client message. */
 			eof
 		};
+
+		/**
+		 * Abstract interface for internet address.
+		 */
+		struct NetAddr
+		{
+			uint16_t port;
+
+		public:
+			MOHPC_EXPORTS NetAddr();
+
+			/**
+			 * Set the address port.
+			 *
+			 * @param value Port.
+			 */
+			MOHPC_EXPORTS void setPort(uint16_t value);
+			/** Return this address port. */
+			MOHPC_EXPORTS uint16_t getPort() const;
+
+			/** Return whether or not this address equals to another one. */
+			MOHPC_EXPORTS bool operator==(const NetAddr& other) const;
+			/** Return whether or not this address differs from another one. */
+			MOHPC_EXPORTS bool operator!=(const NetAddr& other) const;
+
+		public:
+			/** Return the address size. */
+			virtual size_t getAddrSize() const = 0;
+			/** Return the address array. */
+			virtual const uint8_t* getAddress() const = 0;
+			/** Return the address parsed as a string. */
+			virtual str asString() const = 0;
+		};
+		using NetAddrPtr = SharedPtr<NetAddr>;
+
+		/**
+		 * IPv4 internet address.
+		 */
+		struct NetAddr4 : public NetAddr
+		{
+			MOHPC_OBJECT_DECLARATION(NetAddr4);
+		public:
+			MOHPC_EXPORTS NetAddr4();
+
+			/** Set the IPv4 address. */
+			MOHPC_EXPORTS void setIp(uint8_t a, uint8_t b, uint8_t c, uint8_t d);
+
+		public:
+			size_t getAddrSize() const override;
+			const uint8_t* getAddress() const override;
+			virtual str asString() const override;
+
+		public:
+			uint8_t ip[4];
+		};
+		using NetAddr4Ptr = SharedPtr<NetAddr4>;
+
+		/**
+		 * IPv6 internet address.
+		 */
+		struct NetAddr6 : public NetAddr
+		{
+			MOHPC_OBJECT_DECLARATION(NetAddr6);
+
+		public:
+			MOHPC_EXPORTS NetAddr6();
+
+			/** Set the IPv6 address. */
+			MOHPC_EXPORTS void setIp(uint16_t a, uint16_t b, uint16_t c, uint16_t d, uint16_t e, uint16_t f, uint16_t g, uint16_t h);
+
+		public:
+			size_t getAddrSize() const override;
+			const uint8_t* getAddress() const override;
+			virtual str asString() const override;
+
+		public:
+			uint8_t ip[16];
+		};
+		using NetAddr6Ptr = SharedPtr<NetAddr6>;
+
+		class MOHPC_EXPORTS NetworkException
+		{
+		public:
+			virtual ~NetworkException() = default;
+			virtual str what() const { return str(); };
+		};
+
+		class MOHPC_EXPORTS RuntPacketNetException : public NetworkException {};
 	}
 }

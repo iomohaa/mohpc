@@ -16,12 +16,11 @@ INetchan::INetchan(const IUdpSocketPtr& inSocket)
 
 MOHPC_OBJECT_DEFINITION(Netchan);
 
-Netchan::Netchan(const IUdpSocketPtr& existingSocket, const netadr_t& inFrom, uint16_t inQport)
+Netchan::Netchan(const IUdpSocketPtr& existingSocket, uint16_t inQport)
 	: INetchan(existingSocket)
 	, qport(inQport)
 	, incomingSequence(0)
 	, outgoingSequence(1)
-	, from(inFrom)
 	, dropped(false)
 	, fragmentSequence(0)
 {
@@ -46,7 +45,7 @@ uint16_t Network::INetchan::getOutgoingSequence() const
 	return 0;
 }
 
-bool Network::Netchan::receive(netadr_t& from, IMessageStream& stream, uint32_t& outSeqNum)
+bool Network::Netchan::receive(NetAddrPtr& from, IMessageStream& stream, uint32_t& outSeqNum)
 {
 	uint8_t data[MAX_UDP_DATA_SIZE];
 	size_t len = getSocket()->receive(data, sizeof(data), from);
@@ -158,7 +157,7 @@ bool Network::Netchan::receive(netadr_t& from, IMessageStream& stream, uint32_t&
 	return true;
 }
 
-bool Network::Netchan::transmit(const netadr_t& to, IMessageStream& stream)
+bool Network::Netchan::transmit(const NetAddr& to, IMessageStream& stream)
 {
 	const size_t bufLen = stream.GetLength();
 	if (bufLen >= FRAGMENT_SIZE)
@@ -205,7 +204,7 @@ bool Network::Netchan::transmit(const netadr_t& to, IMessageStream& stream)
 	return true;
 }
 
-void Netchan::transmitNextFragment(const netadr_t& to, IMessageStream& stream, fragment_t& unsentFragmentStart, fragmentLen_t& unsentLength, bool& unsentFragments)
+void Netchan::transmitNextFragment(const NetAddr& to, IMessageStream& stream, fragment_t& unsentFragmentStart, fragmentLen_t& unsentLength, bool& unsentFragments)
 {
 	// a fragment contains:
 	// - qport [2 bytes]
@@ -312,7 +311,7 @@ uint16_t Network::Netchan::getOutgoingSequence() const
 MOHPC_OBJECT_DEFINITION(ConnectionlessChan);
 
 Network::ConnectionlessChan::ConnectionlessChan()
-	: INetchan(ISocketFactory::get()->createUdp(addressType_e::IPv4))
+	: INetchan(ISocketFactory::get()->createUdp())
 {
 
 }
@@ -323,7 +322,7 @@ Network::ConnectionlessChan::ConnectionlessChan(const IUdpSocketPtr& existingSoc
 
 }
 
-bool Network::ConnectionlessChan::receive(netadr_t& from, IMessageStream& stream, uint32_t& sequenceNum)
+bool Network::ConnectionlessChan::receive(NetAddrPtr& from, IMessageStream& stream, uint32_t& sequenceNum)
 {
 	MSG msg(stream, msgMode_e::Reading);
 
@@ -346,7 +345,7 @@ bool Network::ConnectionlessChan::receive(netadr_t& from, IMessageStream& stream
 	return true;
 }
 
-bool Network::ConnectionlessChan::transmit(const netadr_t& to, IMessageStream& stream)
+bool Network::ConnectionlessChan::transmit(const NetAddr& to, IMessageStream& stream)
 {
 	uint8_t msgBuf[MAX_UDP_DATA_SIZE];
 

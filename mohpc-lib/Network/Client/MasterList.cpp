@@ -43,9 +43,9 @@ Network::ServerList::ServerList(const NetworkManagerPtr& inManager, gameListType
 	: IServerList(inManager)
 	, gameType(type)
 {
-	netadr_t addr = ISocketFactory::get()->getHost("master.x-null.net");
+	NetAddr4 addr = ISocketFactory::get()->getHost("master.x-null.net");
 	addr.port = 28900;
-	socket = ISocketFactory::get()->createTcp(addressType_e::IPv4, addr);
+	socket = ISocketFactory::get()->createTcp(addr);
 
 	sendRequest(makeShared<Request_SendCon>(inManager, type));
 }
@@ -277,9 +277,11 @@ SharedPtr<IRequestBase> Network::ServerList::Request_FetchServers::process(Reque
 		const uint16_t port = rotl(*(uint16_t*)p, 8);
 		p += sizeof(port);
 
-		netadr_t adr;
-		memcpy(adr.ip, ip, sizeof(adr.ip));
-		adr.port = port;
+		// the master server only return IPv4 entries
+		// for now, only use netadr4_t
+		NetAddr4Ptr adr = makeShared<NetAddr4>();
+		memcpy(adr->ip, ip, sizeof(adr->ip));
+		adr->port = port;
 	
 		IServerPtr ptr = makeShared<GSServer>(networkManager, adr);
 		callback(ptr);
@@ -292,9 +294,9 @@ SharedPtr<IRequestBase> Network::ServerList::Request_FetchServers::process(Reque
 
 void Network::ServerList::Request_FetchServers::nullCallback(const IServerPtr& server)
 {
-	const netadr_t& address = server->getAddress();
+	const NetAddrPtr& address = server->getAddress();
 
-	MOHPC_LOG(VeryVerbose, "Request_FetchServers::nullCallback: found %d.%d.%d.%d:%d", address.ip[0], address.ip[1], address.ip[2], address.ip[3], address.port);
+	MOHPC_LOG(VeryVerbose, "Request_FetchServers::nullCallback: found %s:%d", address->asString().c_str(), address->port);
 }
 
 MOHPC_OBJECT_DEFINITION(ServerListLAN);
@@ -302,13 +304,11 @@ MOHPC_OBJECT_DEFINITION(ServerListLAN);
 ServerListLAN::ServerListLAN(const NetworkManagerPtr& inManager)
 	: IServerList(inManager)
 {
-	socket = ISocketFactory::get()->createUdp(addressType_e::IPv4);
+	socket = ISocketFactory::get()->createUdp();
 }
 
 void ServerListLAN::fetch(FoundServerCallback&& callback, MasterServerDone&& doneCallback)
 {
-	netadr_t to;
-
 	GamespyUDPBroadcastRequestParam param(socket, 12203, 12218);
 	handler.sendRequest(makeShared<Request_InfoBroadcast>(getManager(), std::forward<FoundServerCallback>(callback)), std::move(param), 1000);
 }
@@ -344,7 +344,7 @@ SharedPtr<IRequestBase> Network::ServerListLAN::Request_InfoBroadcast::process(R
 	dataStr[len] = 0;
 
 	const GamespyUDPBroadcastRequestParam& param = data.getParam<GamespyUDPBroadcastRequestParam>();
-	netadr_t addr = param.getLastIp();
+	const NetAddrPtr& addr = param.getLastIp();
 
 	// Don't create a server without a callback
 	if (response)

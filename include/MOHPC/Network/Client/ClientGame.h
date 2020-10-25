@@ -573,7 +573,7 @@ namespace MOHPC
 			uint32_t reliableAcknowledge;
 			uint32_t lastSnapFlags;
 			clientGameSettings_t settings;
-			netadr_t adr;
+			NetAddrPtr adr;
 			bool newSnapshots : 1;
 			bool extrapolatedSnapshot : 1;
 			bool isActive : 1;
@@ -601,7 +601,7 @@ namespace MOHPC
 			 * @param	challengeResponse	Challenge used to XOR data.
 			 * @param	protocolVersion		Version of the protocol to use.
 			 */
-			ClientGameConnection(const NetworkManagerPtr& inNetworkManager, const INetchanPtr& netchan, const netadr_t& inAdr, uint32_t challengeResponse, const protocolType_c& protoType, const ClientInfoPtr& cInfo);
+			ClientGameConnection(const NetworkManagerPtr& inNetworkManager, const INetchanPtr& netchan, const NetAddrPtr& inAdr, uint32_t challengeResponse, const protocolType_c& protoType, const ClientInfoPtr& cInfo);
 			~ClientGameConnection();
 
 			// ITickableNetwork
@@ -641,7 +641,7 @@ namespace MOHPC
 			}
 
 			/** Return the IP address of the remote server. */
-			const netadr_t& getRemoteAddress() const;
+			const NetAddr& getRemoteAddress() const;
 
 			/** Retrieve the current game state. */
 			MOHPC_EXPORTS const gameState_t& getGameState() const;
@@ -748,8 +748,8 @@ namespace MOHPC
 
 		private:
 			const INetchanPtr& getNetchan() const;
-			void receive(const netadr_t& from, MSG& msg, uint64_t currentTime, uint32_t sequenceNum);
-			void receiveConnectionLess(const netadr_t& from, MSG& msg);
+			void receive(const NetAddrPtr& from, MSG& msg, uint64_t currentTime, uint32_t sequenceNum);
+			void receiveConnectionLess(const NetAddrPtr& from, MSG& msg);
 			void wipeChannel();
 			bool isChannelValid() const;
 			void serverDisconnected(const char* reason);

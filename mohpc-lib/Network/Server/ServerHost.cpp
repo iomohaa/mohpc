@@ -18,7 +18,7 @@ using namespace MOHPC::Network;
 
 MOHPC_OBJECT_DEFINITION(Challenge);
 
-Challenge::Challenge(const netadr_t& inFrom, clientNetTime inTime, uint32_t inChallenge)
+Challenge::Challenge(const NetAddrPtr& inFrom, clientNetTime inTime, uint32_t inChallenge)
 	: time(inTime)
 	, challenge(inChallenge)
 	, from(inFrom)
@@ -37,14 +37,14 @@ uint32_t Challenge::getChallenge() const
 	return challenge;
 }
 
-const MOHPC::Network::netadr_t& Challenge::getSourceAddress() const
+const NetAddr& Challenge::getSourceAddress() const
 {
-	return from;
+	return *from;
 }
 
 MOHPC_OBJECT_DEFINITION(ClientData);
 
-ClientData::ClientData(const IUdpSocketPtr& inSocket, const netadr_t& from, uint16_t inQport, uint32_t inChallenge)
+ClientData::ClientData(const IUdpSocketPtr& inSocket, const NetAddrPtr& from, uint16_t inQport, uint32_t inChallenge)
 	: socket(inSocket)
 	, source(from)
 	, challengeNum(inChallenge)
@@ -65,9 +65,9 @@ ClientData::ClientData(const IUdpSocketPtr& inSocket, const netadr_t& from, uint
 	encoding = Encoding::create(challengeNum, (const char**)serverCommandList, (const char**)reliableCommandList);
 }
 
-const netadr_t& ClientData::getAddress() const
+const NetAddr& ClientData::getAddress() const
 {
-	return source;
+	return *source;
 }
 
 uint16_t ClientData::getQPort() const
@@ -90,16 +90,16 @@ MOHPC_OBJECT_DEFINITION(ServerHost);
 ServerHost::ServerHost(const NetworkManagerPtr& networkManager)
 	: ITickableNetwork(networkManager)
 {
-	bindv4_t bindAddress;
+	NetAddr4 bindAddress;
 	bindAddress.port = 12203;
 
-	serverSocket = ISocketFactory::get()->createUdp(addressType_e::IPv4, &bindAddress);
+	serverSocket = ISocketFactory::get()->createUdp(&bindAddress);
 	conChan = ConnectionlessChan::create(serverSocket);
 
 	serverId = rand();
 }
 
-ClientData& ServerHost::createClient(const netadr_t& from, uint16_t qport, uint32_t challengeNum)
+ClientData& ServerHost::createClient(const NetAddrPtr& from, uint16_t qport, uint32_t challengeNum)
 {
 	ClientDataPtr data = ClientData::create(serverSocket, from, qport, challengeNum);
 	clientList.AddObject(data);
@@ -107,7 +107,7 @@ ClientData& ServerHost::createClient(const netadr_t& from, uint16_t qport, uint3
 	return *data;
 }
 
-ClientData* ServerHost::findClient(const netadr_t& from, uint16_t qport) const
+ClientData* ServerHost::findClient(const NetAddr& from, uint16_t qport) const
 {
 	const size_t numClients = clientList.NumObjects();
 	for (size_t i = 1; i <= numClients; ++i)
@@ -122,13 +122,13 @@ ClientData* ServerHost::findClient(const netadr_t& from, uint16_t qport) const
 	return nullptr;
 }
 
-Challenge& ServerHost::createChallenge(const netadr_t& from)
+Challenge& ServerHost::createChallenge(const NetAddrPtr& from)
 {
 	Challenge* challenge = new (challenges) Challenge(from, std::chrono::steady_clock::now(), rand());
 	return *challenge;
 }
 
-uintptr_t ServerHost::getChallenge(const netadr_t& from) const
+uintptr_t ServerHost::getChallenge(const NetAddr& from) const
 {
 	const size_t numChallenges = challenges.NumObjects();
 	for (size_t i = 1; i <= numChallenges; ++i)
@@ -163,7 +163,7 @@ void ServerHost::tick(uint64_t deltaTime, uint64_t currentTime)
 	sendStateToClients();
 }
 
-void ServerHost::connectionLessReply(const netadr_t& target, const char* reply)
+void ServerHost::connectionLessReply(const NetAddr& target, const char* reply)
 {
 	uint8_t transmission[MAX_UDP_DATA_SIZE];
 	FixedDataMessageStream clientStream(transmission, MAX_UDP_DATA_SIZE);
@@ -182,7 +182,7 @@ void ServerHost::processRequests()
 {
 	uint8_t data[MAX_UDP_DATA_SIZE];
 
-	netadr_t from;
+	NetAddrPtr from;
 	const size_t len = serverSocket->receive((void*)data, sizeof(data), from);
 	FixedDataMessageStream stream(data, len);
 
@@ -207,7 +207,7 @@ void ServerHost::processRequests()
 		{
 			Challenge* challenge;
 
-			const uintptr_t challengeIndex = getChallenge(from);
+			const uintptr_t challengeIndex = getChallenge(*from);
 			if (challengeIndex)
 			{
 				// a challenge already exist for this ip
@@ -220,7 +220,7 @@ void ServerHost::processRequests()
 			}
 
 			// send the client challenge
-			connectionLessReply(from, str::printf("challengeResponse %d", challenge->getChallenge()));
+			connectionLessReply(*from, str::printf("challengeResponse %d", challenge->getChallenge()));
 		}
 		else if (!str::icmp(command, "connect "))
 		{
@@ -246,7 +246,7 @@ void ServerHost::processRequests()
 
 			const uint32_t challengeNum = info.IntValueForKey("challenge");
 			// find the challenge by the source address
-			const uintptr_t challengeIndex = getChallenge(from);
+			const uintptr_t challengeIndex = getChallenge(*from);
 			if (!challengeIndex)
 			{
 				// don't continue further
@@ -268,7 +268,7 @@ void ServerHost::processRequests()
 			ClientData& client = createClient(from, qport, challengeNum);
 
 			// inform the client that it's connected
-			connectionLessReply(from, "connectResponse");
+			connectionLessReply(*from, "connectResponse");
 		}
 	}
 	else
@@ -276,7 +276,7 @@ void ServerHost::processRequests()
 		// in-game packet
 		const uint32_t qport = msg.ReadUShort();
 
-		ClientData* client = findClient(from, qport);
+		ClientData* client = findClient(*from, qport);
 		if (!client)
 		{
 			// Not connected
@@ -289,7 +289,7 @@ void ServerHost::processRequests()
 			clientMessage.WriteByte(0);
 			clientMessage.WriteString("disconnect");
 
-			conChan->transmit(from, clientStream);
+			conChan->transmit(*from, clientStream);
 
 			return;
 		}

@@ -303,7 +303,7 @@ ClientSnapshot::ClientSnapshot()
 
 MOHPC_OBJECT_DEFINITION(ClientGameConnection);
 
-ClientGameConnection::ClientGameConnection(const NetworkManagerPtr& inNetworkManager, const INetchanPtr& inNetchan, const netadr_t& inAdr, uint32_t challengeResponse, const protocolType_c& protoType, const ClientInfoPtr& cInfo)
+ClientGameConnection::ClientGameConnection(const NetworkManagerPtr& inNetworkManager, const INetchanPtr& inNetchan, const NetAddrPtr& inAdr, uint32_t challengeResponse, const protocolType_c& protoType, const ClientInfoPtr& cInfo)
 	: ITickableNetwork(inNetworkManager)
 	, netchan(inNetchan)	
 	, adr(inAdr)
@@ -432,7 +432,7 @@ void ClientGameConnection::tick(uint64_t deltaTime, uint64_t currentTime)
 		stream.reserve(MINIMUM_RECEIVE_BUFFER_SIZE);
 
 		uint32_t sequenceNum;
-		netadr_t from;
+		NetAddrPtr from;
 
 		if(getNetchan()->receive(from, stream, sequenceNum))
 		{
@@ -484,7 +484,7 @@ const INetchanPtr& ClientGameConnection::getNetchan() const
 	return netchan;
 }
 
-void ClientGameConnection::receive(const netadr_t& from, MSG& msg, uint64_t currentTime, uint32_t sequenceNum)
+void ClientGameConnection::receive(const NetAddrPtr& from, MSG& msg, uint64_t currentTime, uint32_t sequenceNum)
 {
 	serverMessageSequence = (uint32_t)sequenceNum;
 
@@ -531,7 +531,7 @@ void ClientGameConnection::receive(const netadr_t& from, MSG& msg, uint64_t curr
 	}
 }
 
-void ClientGameConnection::receiveConnectionLess(const netadr_t& from, MSG& msg)
+void ClientGameConnection::receiveConnectionLess(const NetAddrPtr& from, MSG& msg)
 {
 	msg.SetCodec(MessageCodecs::OOB);
 
@@ -1316,7 +1316,7 @@ void ClientGameConnection::writePacket(uint64_t currentTime)
 	stream.Seek(0, IMessageStream::SeekPos::Begin);
 	
 	// transmit the encoded message
-	getNetchan()->transmit(adr, stream);
+	getNetchan()->transmit(*adr, stream);
 
 	lastPacketSendTime = currentTime;
 }
@@ -1649,9 +1649,9 @@ CGameModuleBase* ClientGameConnection::getCGModule()
 	return cgameModule;
 }
 
-const netadr_t& ClientGameConnection::getRemoteAddress() const
+const NetAddr& ClientGameConnection::getRemoteAddress() const
 {
-	return adr;
+	return *adr;
 }
 
 const gameState_t& ClientGameConnection::getGameState() const

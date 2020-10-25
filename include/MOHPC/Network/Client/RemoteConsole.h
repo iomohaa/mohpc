@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../Types.h"
+#include "../Socket.h"
 #include "../../Managers/NetworkManager.h"
 #include "../../Object.h"
 #include "../../Utilities/SharedPtr.h"
@@ -41,12 +42,12 @@ namespace MOHPC
 			RConHandlerList handlerList;
 			IUdpSocketPtr socket;
 			str password;
-			netadr_t address;
+			NetAddrPtr address;
 			// FIXME: RequestHandler (queue response each requests)
 			// FIXME: HandlerList (callbacks, for all rcon response)
 
 		public:
-			MOHPC_EXPORTS RemoteConsole(const NetworkManagerPtr& networkManager, const netadr_t& address, const char* password);
+			MOHPC_EXPORTS RemoteConsole(const NetworkManagerPtr& networkManager, const NetAddrPtr& address, const char* password);
 			~RemoteConsole();
 
 			virtual void tick(uint64_t deltaTime, uint64_t currentTime) override;

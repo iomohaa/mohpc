@@ -5,6 +5,7 @@
 #include "../Utilities/SharedPtr.h"
 #include "../Misc/MSG/Stream.h"
 #include "Types.h"
+#include "Socket.h"
 #include <stdint.h>
 
 namespace MOHPC
@@ -44,10 +45,10 @@ namespace MOHPC
 			virtual ~INetchan() = default;
 
 			/** Read data from the socket to the stream. */
-			virtual bool receive(netadr_t& from, IMessageStream& stream, uint32_t& sequenceNum) = 0;
+			virtual bool receive(NetAddrPtr& from, IMessageStream& stream, uint32_t& sequenceNum) = 0;
 
 			/** Transmit data from stream to the socket. */
-			virtual bool transmit(const netadr_t& to, IMessageStream& stream) = 0;
+			virtual bool transmit(const NetAddr& to, IMessageStream& stream) = 0;
 
 			/** Return the socket of this channel. */
 			IUdpSocketPtr getSocket() const;
@@ -72,18 +73,17 @@ namespace MOHPC
 			uint16_t dropped;
 			uint16_t fragmentSequence;
 			DynamicDataMessageStream fragmentStream;
-			netadr_t from;
 
 		public:
-			MOHPC_EXPORTS Netchan(const IUdpSocketPtr& existingSocket, const netadr_t& from, uint16_t inQport);
+			MOHPC_EXPORTS Netchan(const IUdpSocketPtr& existingSocket, uint16_t inQport);
 			~Netchan();
 
-			virtual bool receive(netadr_t& from, IMessageStream& stream, uint32_t& sequenceNum) override;
-			virtual bool transmit(const netadr_t& to, IMessageStream& stream) override;
+			virtual bool receive(NetAddrPtr& from, IMessageStream& stream, uint32_t& sequenceNum) override;
+			virtual bool transmit(const NetAddr& to, IMessageStream& stream) override;
 			virtual uint16_t getOutgoingSequence() const override;
 
 		private:
-			void transmitNextFragment(const netadr_t& to, IMessageStream& stream, fragment_t& unsentFragmentStart, fragmentLen_t& unsentLength, bool& unsentFragments);
+			void transmitNextFragment(const NetAddr& to, IMessageStream& stream, fragment_t& unsentFragmentStart, fragmentLen_t& unsentLength, bool& unsentFragments);
 			void clearFragment();
 			void writePacketServerHeader(IMessageStream& stream, uint32_t sequenceNum);
 			void writePacketHeader(IMessageStream& stream, bool fragmented = false);
@@ -99,8 +99,8 @@ namespace MOHPC
 			MOHPC_EXPORTS ConnectionlessChan();
 			MOHPC_EXPORTS ConnectionlessChan(const IUdpSocketPtr& existingSocket);
 
-			virtual bool receive(netadr_t& from, IMessageStream& stream, uint32_t& sequenceNum) override;
-			virtual bool transmit(const netadr_t& to, IMessageStream& stream) override;
+			virtual bool receive(NetAddrPtr& from, IMessageStream& stream, uint32_t& sequenceNum) override;
+			virtual bool transmit(const NetAddr& to, IMessageStream& stream) override;
 		};
 	}
 }

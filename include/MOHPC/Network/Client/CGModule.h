@@ -472,10 +472,15 @@ namespace MOHPC
 		public:
 			EntityInfo();
 
+			/** Get the current entity state. */
 			MOHPC_EXPORTS const entityState_t& getCurrentState() const;
+			/** Get the next entity state from the next incoming snap. */
 			MOHPC_EXPORTS const entityState_t& getNextState() const;
+			/** Get the last updated time (snapshot time). */
 			MOHPC_EXPORTS uint32_t getSnapshotTime() const;
+			/** Whether or not this entity info exists in world. */
 			MOHPC_EXPORTS bool isValid() const;
+			/** Whether or not this entity info should interpolate. */
 			MOHPC_EXPORTS bool isInterpolating() const;
 			MOHPC_EXPORTS bool hasTeleported() const;
 		};
@@ -1100,6 +1105,11 @@ namespace MOHPC
 		private:
 			void parseServerInfo(const char* cs);
 			void conditionalReflectClient(const clientInfo_t& client);
+
+			/**
+			 * Environment
+			 */
+			void parseSkyInfo(const char* cs, environment_t& env);
 
 			/**
 			 * Snapshot parsing

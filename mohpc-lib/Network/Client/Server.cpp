@@ -7,23 +7,23 @@
 #include <MOHPC/Log.h>
 
 using namespace MOHPC;
-using namespace Network;
+using namespace MOHPC::Network;
 
 #define MOHPC_LOG_NAMESPACE "gs_server"
 
-MOHPC::Network::GSServer::GSServer(const NetworkManagerPtr& inManager, const netadr_t& adr)
+GSServer::GSServer(const NetworkManagerPtr& inManager, const NetAddrPtr& adr)
 	: IServer(inManager, adr)
 {
-	socket = ISocketFactory::get()->createUdp(addressType_e::IPv4);
+	socket = ISocketFactory::get()->createUdp();
 }
 
-void MOHPC::Network::GSServer::query(Callbacks::Query&& response, Callbacks::ServerTimeout&& timeoutResult, size_t timeoutTime)
+void GSServer::query(Callbacks::Query&& response, Callbacks::ServerTimeout&& timeoutResult, size_t timeoutTime)
 {
 	GamespyUDPRequestParam param(socket, getAddress());
 	handler.sendRequest(makeShared<Request_Query>(std::move(response), std::move(timeoutResult)), std::move(param), timeoutTime);
 }
 
-void MOHPC::Network::GSServer::tick(uint64_t deltaTime, uint64_t currentTime)
+void GSServer::tick(uint64_t deltaTime, uint64_t currentTime)
 {
 	// Avoid deletion while the request was pending
 	IServerPtr This = shared_from_this();
@@ -31,18 +31,18 @@ void MOHPC::Network::GSServer::tick(uint64_t deltaTime, uint64_t currentTime)
 	handler.handle();
 }
 
-MOHPC::Network::GSServer::Request_Query::Request_Query(Callbacks::Query&& inResponse, Callbacks::ServerTimeout&& timeoutResult)
+GSServer::Request_Query::Request_Query(Callbacks::Query&& inResponse, Callbacks::ServerTimeout&& timeoutResult)
 	: response(std::move(inResponse))
 	, timeout(std::move(timeoutResult))
 {
 }
 
-const char* MOHPC::Network::GSServer::Request_Query::generateQuery()
+const char* GSServer::Request_Query::generateQuery()
 {
 	return "status";
 }
 
-MOHPC::SharedPtr<MOHPC::IRequestBase> MOHPC::Network::GSServer::Request_Query::process(RequestData& data)
+SharedPtr<IRequestBase> GSServer::Request_Query::process(RequestData& data)
 {
 	const size_t len = data.stream.GetLength();
 
@@ -80,40 +80,40 @@ MOHPC::SharedPtr<MOHPC::IRequestBase> MOHPC::Network::GSServer::Request_Query::p
 	return shared_from_this();
 }
 
-MOHPC::SharedPtr<MOHPC::IRequestBase> MOHPC::Network::GSServer::Request_Query::timedOut()
+SharedPtr<IRequestBase> GSServer::Request_Query::timedOut()
 {
 	if(timeout) timeout();
 	return nullptr;
 }
 
-MOHPC::Network::IServer::IServer(const NetworkManagerPtr& inManager, const netadr_t& adr)
+IServer::IServer(const NetworkManagerPtr& inManager, const NetAddrPtr& adr)
 	: ITickableNetwork(inManager)
 	, address(adr)
 {
 }
 
-const netadr_t& IServer::getAddress() const
+const NetAddrPtr& IServer::getAddress() const
 {
 	return address;
 }
 
-MOHPC::Network::LANServer::LANServer(const NetworkManagerPtr& inManager, const netadr_t& inAddress, char* inInfo, size_t infoSize)
+LANServer::LANServer(const NetworkManagerPtr& inManager, const NetAddrPtr& inAddress, char* inInfo, size_t infoSize)
 	: IServer(inManager, inAddress)
 	, info(ReadOnlyInfo(inInfo, infoSize))
 	, dataStr(inInfo)
 {
 }
 
-MOHPC::Network::LANServer::~LANServer()
+LANServer::~LANServer()
 {
 	delete[] dataStr;
 }
 
-void MOHPC::Network::LANServer::tick(uint64_t deltaTime, uint64_t currentTime)
+void LANServer::tick(uint64_t deltaTime, uint64_t currentTime)
 {
 }
 
-void MOHPC::Network::LANServer::query(Callbacks::Query&& response, Callbacks::ServerTimeout&& timeoutResult, size_t timeoutTime)
+void LANServer::query(Callbacks::Query&& response, Callbacks::ServerTimeout&& timeoutResult, size_t timeoutTime)
 {
 	// No need to sent any request with the info
 	response(info);
@@ -121,9 +121,9 @@ void MOHPC::Network::LANServer::query(Callbacks::Query&& response, Callbacks::Se
 
 MOHPC_OBJECT_DEFINITION(EngineServer);
 
-EngineServer::EngineServer(const NetworkManagerPtr& inManager, const netadr_t& inAddress, const IUdpSocketPtr& existingSocket)
+EngineServer::EngineServer(const NetworkManagerPtr& inManager, const NetAddrPtr& inAddress, const IUdpSocketPtr& existingSocket)
 	: ITickableNetwork(inManager)
-	, socket(existingSocket ? existingSocket : ISocketFactory::get()->createUdp(addressType_e::IPv4))
+	, socket(existingSocket ? existingSocket : ISocketFactory::get()->createUdp())
 	, address(inAddress)
 {
 }
@@ -184,7 +184,7 @@ void EngineServer::onConnect(const Callbacks::Connect result, uint16_t qport, ui
 	if (!errorMessage)
 	{
 		// Create a net channel
-		INetchanPtr newChannel = makeShared<Netchan>(socket, address, qport);
+		INetchanPtr newChannel = makeShared<Netchan>(socket, qport);
 		// And pass it to the new client game connection
 		// Using CreatePtr to use the deleter from the library itself
 		ClientGameConnectionPtr connection = ClientGameConnection::create(
@@ -215,13 +215,13 @@ EngineServer::EmbeddedRequest::EmbeddedRequest(const IRequestPtr& inRequest, Cal
 
 }
 
-IRequestPtr MOHPC::Network::EngineServer::IEngineRequest::timedOut()
+IRequestPtr EngineServer::IEngineRequest::timedOut()
 {
 	if(timeoutCallback) timeoutCallback();
 	return nullptr;
 }
 
-void MOHPC::Network::EngineServer::IEngineRequest::generateOutput(IMessageStream& output)
+void EngineServer::IEngineRequest::generateOutput(IMessageStream& output)
 {
 	// Set in OOB mode to read one single byte each call
 	MSG msg(output, msgMode_e::Writing);
@@ -266,9 +266,9 @@ void MOHPC::Network::EngineServer::IEngineRequest::generateOutput(IMessageStream
 	}
 }
 
-IRequestPtr MOHPC::Network::EngineServer::IEngineRequest::process(RequestData& data)
+IRequestPtr EngineServer::IEngineRequest::process(RequestData& data)
 {
-	const netadr_t& from = data.getParam<GamespyUDPRequestParam>().getLastIp();
+	const NetAddr& from = data.getParam<GamespyUDPRequestParam>().getLastIp();
 
 	// Set in OOB mode to read one single byte each call
 	MSG msg(data.stream, msgMode_e::Reading);
@@ -307,8 +307,8 @@ IRequestPtr MOHPC::Network::EngineServer::IEngineRequest::process(RequestData& d
 		{
 			// Unexpected response
 			MOHPC_LOG(
-				Log, "unexpected reply \"%s\" from %d.%d.%d.%d:%d",
-				command, from.ip[0], from.ip[1], from.ip[2], from.ip[3], from.port
+				Log, "unexpected reply \"%s\" from %s:%d",
+				command, from.asString().c_str(), from.port
 			);
 		}
 	}
@@ -316,8 +316,8 @@ IRequestPtr MOHPC::Network::EngineServer::IEngineRequest::process(RequestData& d
 	{
 		// Empty response
 		MOHPC_LOG(
-			Log, "empty response from %d.%d.%d.%d:%d",
-			from.ip[0], from.ip[1], from.ip[2], from.ip[3], from.port
+			Log, "empty response from %s:%d",
+			from.asString().c_str(), from.port
 		);
 	}
 
@@ -335,7 +335,7 @@ ConnectSettings::ConnectSettings()
 {
 }
 
-void MOHPC::Network::ConnectSettings::setDeferredChallengeTime(size_t newTime)
+void ConnectSettings::setDeferredChallengeTime(size_t newTime)
 {
 	deferredChallengeTime = newTime;
 }

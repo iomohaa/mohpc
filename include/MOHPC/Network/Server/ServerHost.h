@@ -23,16 +23,16 @@ namespace MOHPC
 			MOHPC_OBJECT_DECLARATION(Challenge);
 
 		public:
-			Challenge(const netadr_t& inFrom, clientNetTime inTime, uint32_t inChallenge);
+			Challenge(const NetAddrPtr& inFrom, clientNetTime inTime, uint32_t inChallenge);
 
 			bool hasElapsed(std::chrono::milliseconds elapsedTime) const;
 			uint32_t getChallenge() const;
-			const netadr_t& getSourceAddress() const;
+			const NetAddr& getSourceAddress() const;
 
 		private:
 			clientNetTime time;
 			uint32_t challenge;
-			netadr_t from;
+			NetAddrPtr from;
 		};
 
 		class ClientData
@@ -44,9 +44,9 @@ namespace MOHPC
 			uint32_t clientSequence;
 
 		public:
-			ClientData(const IUdpSocketPtr& socket, const netadr_t& from, uint16_t qport, uint32_t challengeNum);
+			ClientData(const IUdpSocketPtr& socket, const NetAddrPtr& from, uint16_t qport, uint32_t challengeNum);
 
-			const netadr_t& getAddress() const;
+			const NetAddr& getAddress() const;
 			uint16_t getQPort() const;
 			Encoding& getEncoding() const;
 			uint32_t newSequence();
@@ -54,7 +54,7 @@ namespace MOHPC
 		private:
 			IUdpSocketPtr socket;
 			EncodingPtr encoding;
-			netadr_t source;
+			NetAddrPtr source;
 			uint32_t challengeNum;
 			uint32_t sequenceNum;
 			uint16_t qport;
@@ -74,16 +74,16 @@ namespace MOHPC
 
 			void tick(uint64_t deltaTime, uint64_t currentTime) override;
 
-			ClientData& createClient(const netadr_t& from, uint16_t qport, uint32_t challengeNum);
-			ClientData* findClient(const netadr_t& from, uint16_t qport) const;
+			ClientData& createClient(const NetAddrPtr& from, uint16_t qport, uint32_t challengeNum);
+			ClientData* findClient(const NetAddr& from, uint16_t qport) const;
 
-			Challenge& createChallenge(const netadr_t& from);
-			uintptr_t getChallenge(const netadr_t& from) const;
+			Challenge& createChallenge(const NetAddrPtr& from);
+			uintptr_t getChallenge(const NetAddr& from) const;
 
 			void processClient(ClientData& client, uint32_t sequenceNum, IMessageStream& stream, MSG& msg);
 
 		private:
-			void connectionLessReply(const netadr_t& target, const char* reply);
+			void connectionLessReply(const NetAddr& target, const char* reply);
 
 			void processRequests();
 			void sendStateToClients();

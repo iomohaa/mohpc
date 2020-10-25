@@ -4,14 +4,13 @@
 #include "../Utilities/SharedPtr.h"
 #include "../Utilities/WeakPtr.h"
 #include "../Global.h"
+#include "Types.h"
 
 namespace MOHPC
 {
 	namespace Network
 	{
-		struct netadr_t;
-		struct bindv4_t;
-		struct bindv6_t;
+		struct NetAddr;
 
 		enum class addressType_e : unsigned char {
 			IPv4,
@@ -56,7 +55,7 @@ namespace MOHPC
 			 * @param	bufsize	Size of the data
 			 * @return	Size of the data that was successfully sent
 			 */
-			virtual size_t send(const netadr_t& to, const void* buf, size_t bufsize) = 0;
+			virtual size_t send(const NetAddr& to, const void* buf, size_t bufsize) = 0;
 
 			/**
 			 * Receive data from the socket.
@@ -66,7 +65,7 @@ namespace MOHPC
 			 * @param	from		Client that sent the data
 			 * @return	Size of the data that was successfully received
 			 */
-			virtual size_t receive(void* buf, size_t maxsize, netadr_t& from) = 0;
+			virtual size_t receive(void* buf, size_t maxsize, NetAddrPtr& from) = 0;
 		};
 
 		using IUdpSocketPtr = SharedPtr<IUdpSocket>;
@@ -112,7 +111,7 @@ namespace MOHPC
 			 * @param	from	Address of the client connecting
 			 * @eturn	Client socket connection
 			 */
-			virtual ITcpSocketPtr accept(netadr_t& from) = 0;
+			virtual ITcpSocketPtr accept(NetAddrPtr& from) = 0;
 		};
 
 		using ITcpServerSocketPtr = SharedPtr<ITcpServerSocket>;
@@ -133,33 +132,35 @@ namespace MOHPC
 			 * This function must create an UDP socket that is ready to send/receive.
 			 *
 			 * @param	addressType		Socket domain type
-			 * @return	UDP socket on success
+			 * @return	The UDP socket on success
 			 */
-			virtual IUdpSocketPtr createUdp(addressType_e addressType, const bindv4_t* bindAddress = nullptr) = 0;
+			virtual IUdpSocketPtr createUdp(const NetAddr4* bindAddress = nullptr) = 0;
+			virtual IUdpSocketPtr createUdp6(const NetAddr6* bindAddress = nullptr) = 0;
 
 			/**
 			 * Create a TCP socket that is ready to send/receive.
 			 *
 			 * @param	addressType		Socket domain type
 			 * @param	address			IP/hostname/domain to connect to
-			 * @return	UDP socket on success
+			 * @return	The UDP socket on success
 			 */
-			virtual ITcpSocketPtr createTcp(addressType_e socketType, const netadr_t& address) = 0;
+			virtual ITcpSocketPtr createTcp(const NetAddr4& address) = 0;
+			virtual ITcpSocketPtr createTcp6(const NetAddr6& address) = 0;
 
 			/**
 			 * Create a TCP socket that is ready to accept incoming connections.
 			 *
 			 * @param	socketType		Socket domain type
-			 * @return	TCP server connection socket
+			 * @return	The TCP server connection socket
 			 */
-			virtual ITcpServerSocketPtr createTcpListener(addressType_e socketType) = 0;
+			virtual ITcpServerSocketPtr createTcpListener() = 0;
 
 			/**
 			 * Convert an host domain name to an IP address
 			 *
 			 * @param	domain	Domain name
 			 */
-			virtual netadr_t getHost(const char* domain) = 0;
+			virtual NetAddr4 getHost(const char* domain) = 0;
 
 			/** Get the factory used to create sockets. */
 			MOHPC_EXPORTS static ISocketFactory* get();
