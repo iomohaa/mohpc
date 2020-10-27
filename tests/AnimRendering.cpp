@@ -4,7 +4,7 @@
 #include <MOHPC/Utilities/ModelRenderer.h>
 #include "UnitTest.h"
 
-class CAnimRenderingTest : public IUnitTest, public TAutoInst<CAnimRenderingTest>
+class CAnimRenderingTest : public IUnitTest
 {
 public:
 	virtual const char* name() override
@@ -33,3 +33,4 @@ public:
 		}
 	}
 };
+static CAnimRenderingTest unitTest;

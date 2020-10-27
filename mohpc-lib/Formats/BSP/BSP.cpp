@@ -2734,7 +2734,7 @@ void BSP::MapBrushes()
 	for (size_t b = 0; b < numBrushes; b++)
 	{
 		Brush* brush = &brushesList[b];
-		brush->name = "brush" + str(b); // std::to_string(b);
+		brush->name = "brush" + str(b);
 		for (size_t i = 0; i < numBrushes; i++)
 		{
 			Brush* brush2 = &brushesList[i];

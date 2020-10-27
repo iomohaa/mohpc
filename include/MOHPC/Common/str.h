@@ -1,11 +1,12 @@
 #pragma once
 
 #include "../Global.h"
-#include <assert.h>
-#include <string.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <stdlib.h>
+#include <cassert>
+#include <cstring>
+#include <cstdio>
+#include <cstdint>
+#include <cstdlib>
+#include <utility>
 
 #ifdef _WIN32
 #pragma warning(disable : 4710)     // function 'blah' not inlined
@@ -65,6 +66,8 @@ namespace MOHPC
 		str(const float num);
 		str(const int num);
 		str(const unsigned int num);
+		str(const long num);
+		str(const unsigned long num);
 		str(const long long num);
 		str(const unsigned long long num);
 
@@ -153,9 +156,9 @@ namespace MOHPC
 		void SkipPath();
 
 		template<typename... Args>
-		static str printf(const char* fmt, Args... args)
+		static str printf(const char* fmt, Args&&... args)
 		{
-			return printfImpl(fmt, args...);
+			return printfImpl(fmt, std::forward<Args>(args)...);
 		}
 
 	private:

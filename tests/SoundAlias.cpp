@@ -2,7 +2,7 @@
 #include <MOHPC/Managers/SoundManager.h>
 #include "UnitTest.h"
 
-class CSoundAliasTest : public IUnitTest, public TAutoInst<CSoundAliasTest>
+class CSoundAliasTest : public IUnitTest
 {
 public:
 	virtual const char* name() override
@@ -16,3 +16,4 @@ public:
 		const MOHPC::SoundNode* Alias = SoundManager->FindAlias("30cal_leftwing");
 	}
 };
+static CSoundAliasTest unitTest;

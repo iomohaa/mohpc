@@ -10,10 +10,19 @@ include_directories("${CURRENT_DIR}/gcdkey")
 file(GLOB SRCS_common
 "${CURRENT_DIR}/*.c"
 "${CURRENT_DIR}/common/*.c"
-"${CURRENT_DIR}/common/win32/*.c"
 )
 
-file(GLOB_RECURSE SRCS_gcdkey
+if(UNIX)
+	file(GLOB SRCS_platform "${CURRENT_DIR}/common/linux/*.c")
+elseif(WIN32)
+	file(GLOB SRCS_platform "${CURRENT_DIR}/common/win32/*.c")
+elseif(APPLE)
+	file(GLOB SRCS_platform "${CURRENT_DIR}/common/macosx/*.c")
+endif()
+
+SET(SRCS_common ${SRCS_common} ${SRCS_platform})
+
+file(GLOB SRCS_gcdkey
 "${CURRENT_DIR}/gcdkey/*.c"
 )
 
@@ -21,39 +30,39 @@ file(GLOB_RECURSE SRCS_ghttp
 "${CURRENT_DIR}/gcdkey/*.c"
 )
 
-file(GLOB_RECURSE SRCS_GP
-"${CURRENT_DIR}/gp/*.c"
+file(GLOB SRCS_GP
+"${CURRENT_DIR}/GP/*.c"
 )
 
 file(GLOB_RECURSE SRCS_gstats
 "${CURRENT_DIR}/gstats/*.c"
 )
 
-file(GLOB_RECURSE SRCS_natneg
+file(GLOB SRCS_natneg
 "${CURRENT_DIR}/natneg/*.c"
 )
 
-file(GLOB_RECURSE SRCS_pinger
+file(GLOB SRCS_pinger
 "${CURRENT_DIR}/pinger/*.c"
 )
 
-file(GLOB_RECURSE SRCS_pt
+file(GLOB SRCS_pt
 "${CURRENT_DIR}/pt/*.c"
 )
 
-file(GLOB_RECURSE SRCS_qr2
+file(GLOB SRCS_qr2
 "${CURRENT_DIR}/qr2/*.c"
 )
 
-file(GLOB_RECURSE SRCS_sake
+file(GLOB SRCS_sake
 "${CURRENT_DIR}/sake/*.c"
 )
 
-file(GLOB_RECURSE SRCS_sc
+file(GLOB SRCS_sc
 "${CURRENT_DIR}/sc/*.c"
 )
 
-file(GLOB_RECURSE SRCS_serverbrowsing
+file(GLOB SRCS_serverbrowsing
 "${CURRENT_DIR}/serverbrowsing/*.c"
 )
 
@@ -73,9 +82,13 @@ add_library(gcd_sake STATIC ${SRCS_sake})
 add_library(gcd_sc STATIC ${SRCS_sc})
 add_library(gcd_serverbrowsing STATIC ${SRCS_serverbrowsing})
 add_library(gcd_webservices STATIC ${SRCS_webservices})
-
 add_library(gcd INTERFACE)
-target_link_libraries(gcd INTERFACE
+
+if(UNIX)
+	add_compile_definitions(_LINUX=1)
+endif(UNIX)
+
+set(DEPENDENT_LIBS
 	gcd_common
 	gcd_key
 	gcd_gp
@@ -89,6 +102,12 @@ target_link_libraries(gcd INTERFACE
 	gcd_serverbrowsing
 	gcd_webservices
 )
+
+target_link_libraries(gcd INTERFACE ${DEPENDENT_LIBS})
+
+foreach(LIB ${DEPENDENT_LIBS})
+	target_link_libraries(${LIB} PUBLIC gcd)
+endforeach()
 
 #target_compile_definitions(gcd PRIVATE _CRT_SECURE_NO_WARNINGS)
 #set_property(TARGET gcd PROPERTY POSITION_INDEPENDENT_CODE ON)

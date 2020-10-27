@@ -496,32 +496,25 @@ namespace MOHPC
 			MOHPC_OBJECT_DECLARATION(ClientGameConnection);
 
 		private:
-			struct HandlerListClient : public HandlerList
+			struct HandlerListClient
 			{
 			public:
-				MOHPC_HANDLERLIST_DEFINITIONS();
-
-				MOHPC_HANDLERLIST_NOTIFY0();
-				MOHPC_HANDLERLIST_NOTIFY1(const char*);
-
-				MOHPC_HANDLERLIST_HANDLER0_NODEF(ClientHandlers::Timeout, timeoutHandler);
-				MOHPC_HANDLERLIST_HANDLER1_NODEF(ClientHandlers::Disconnect, disconnectHandler, const char*);
-				MOHPC_HANDLERLIST_HANDLER1(ClientHandlers::Error, errorHandler, const NetworkException&);
-				MOHPC_HANDLERLIST_HANDLER2(ClientHandlers::PlayerstateRead, playerStateReadHandler, const playerState_t*, const playerState_t*);
-				MOHPC_HANDLERLIST_HANDLER2(ClientHandlers::Configstring, configStringHandler, csNum_t, const char*);
-				MOHPC_HANDLERLIST_HANDLER1(ClientHandlers::Sound, soundHandler, const sound_t&);
-				MOHPC_HANDLERLIST_HANDLER1_NODEF(ClientHandlers::CenterPrint, centerPrintHandler, const char*);
-				MOHPC_HANDLERLIST_HANDLER3(ClientHandlers::LocationPrint, locationPrintHandler, uint16_t, uint16_t, const char*);
-				MOHPC_HANDLERLIST_HANDLER2(ClientHandlers::ServerCommand, serverCommandHandler, const char*, const Event&);
-				MOHPC_HANDLERLIST_HANDLER2(ClientHandlers::UserInput, userInputHandler, usercmd_t&, usereyes_t&);
-
-				MOHPC_HANDLERLIST_NOTIFY1(const ClientSnapshot&);
-				MOHPC_HANDLERLIST_HANDLER1_NODEF(ClientHandlers::FirstSnapshot, firstSnapshotHandler, const ClientSnapshot&);
-				MOHPC_HANDLERLIST_HANDLER1_NODEF(ClientHandlers::SnapReceived, snapshotReceivedHandler, const ClientSnapshot&);
-				MOHPC_HANDLERLIST_HANDLER0_NODEF(ClientHandlers::ServerRestarted, serverRestartedHandler);
-				MOHPC_HANDLERLIST_HANDLER2(ClientHandlers::GameStateParsed, gameStateParsedHandler, const gameState_t&, bool);
-				MOHPC_HANDLERLIST_HANDLER1(ClientHandlers::ReadNonPVSClient, readNonPVSClientHandler, const radarUnpacked_t&);
-				MOHPC_HANDLERLIST_HANDLER0_NODEF(ClientHandlers::PreWritePacket, preWritePacketHandler);
+				FunctionList<ClientHandlers::Timeout> timeoutHandler;
+				FunctionList<ClientHandlers::Disconnect> disconnectHandler;
+				FunctionList<ClientHandlers::Error> errorHandler;
+				FunctionList<ClientHandlers::PlayerstateRead> playerStateReadHandler;
+				FunctionList<ClientHandlers::Configstring> configStringHandler;
+				FunctionList<ClientHandlers::Sound> soundHandler;
+				FunctionList<ClientHandlers::CenterPrint> centerPrintHandler;
+				FunctionList<ClientHandlers::LocationPrint> locationPrintHandler;
+				FunctionList<ClientHandlers::ServerCommand> serverCommandHandler;
+				FunctionList<ClientHandlers::UserInput> userInputHandler;
+				FunctionList<ClientHandlers::FirstSnapshot> firstSnapshotHandler;
+				FunctionList<ClientHandlers::SnapReceived> snapshotReceivedHandler;
+				FunctionList<ClientHandlers::ServerRestarted> serverRestartedHandler;
+				FunctionList<ClientHandlers::GameStateParsed> gameStateParsedHandler;
+				FunctionList<ClientHandlers::ReadNonPVSClient> readNonPVSClientHandler;
+				FunctionList<ClientHandlers::PreWritePacket> preWritePacketHandler;
 			};
 
 		private:
@@ -621,24 +614,6 @@ namespace MOHPC
 
 			/** Return the handler list. */
 			MOHPC_EXPORTS HandlerListClient& getHandlerList();
-	
-			/** Generic callback function. See Callbacks above for valid callbacks. */
-			template<typename T>
-			fnHandle_t setCallback(typename T::Type&& handler)
-			{
-				return handlerList.set<T>(std::forward<T::Type>(handler));
-			}
-
-			/**
-			 * Unset a previously set callback.
-			 *
-			 * @param	handle	The returned handle when registering a callback.
-			 */
-			template<typename T>
-			void unsetCallback(fnHandle_t handle)
-			{
-				handlerList.unset<T>(handle);
-			}
 
 			/** Return the IP address of the remote server. */
 			const NetAddr& getRemoteAddress() const;

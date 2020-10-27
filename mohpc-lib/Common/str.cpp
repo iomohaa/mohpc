@@ -45,7 +45,8 @@ str::~str()
 	clear();
 }
 
-str::str() : m_data(NULL)
+str::str()
+	: m_data(NULL)
 {
 
 }
@@ -56,10 +57,8 @@ str::str(str&& string) noexcept
 	string.m_data = NULL;
 }
 
-str::str
-(
-	const char* text
-) : m_data(NULL)
+str::str(const char* text)
+	: m_data(NULL)
 
 {
 	size_t len;
@@ -98,13 +97,8 @@ str::str(const str& text)
 	if (m_data) m_data->AddRef();
 }
 
-str::str
-(
-	const str& text,
-	size_t start,
-	size_t end
-) : m_data(NULL)
-
+str::str(const str& text, size_t start, size_t end)
+	: m_data(NULL)
 {
 	size_t i;
 	size_t len;
@@ -136,11 +130,8 @@ str::str
 	m_data->len = len;
 }
 
-str::str
-(
-	const char ch
-) : m_data(NULL)
-
+str::str(const char ch)
+	: m_data(nullptr)
 {
 	EnsureAlloced(2);
 
@@ -149,10 +140,8 @@ str::str
 	m_data->len = 1;
 }
 
-str::str
-(
-	const float num
-) : m_data(NULL)
+str::str(const float num)
+	: m_data(nullptr)
 
 {
 	char text[32];
@@ -165,11 +154,8 @@ str::str
 	m_data->len = len;
 }
 
-str::str
-(
-	const int num
-) : m_data(NULL)
-
+str::str(const int num)
+	: m_data(nullptr)
 {
 	char text[32];
 	size_t len;
@@ -181,10 +167,8 @@ str::str
 	m_data->len = len;
 }
 
-str::str
-(
-	const unsigned int num
-) : m_data(NULL)
+str::str(const unsigned int num)
+	: m_data(nullptr)
 
 {
 	char text[32];
@@ -197,11 +181,34 @@ str::str
 	m_data->len = len;
 }
 
-str::str
-(
-	const long long num
-) : m_data(NULL)
+str::str(const long num)
+	: m_data(nullptr)
+{
+	char text[32];
+	size_t len;
 
+	sprintf(text, "%l", num);
+	len = strlen(text);
+	EnsureAlloced(len + 1);
+	strcpy(m_data->data, text);
+	m_data->len = len;
+}
+
+str::str(const unsigned long num)
+	: m_data(nullptr)
+{
+	char text[32];
+	size_t len;
+
+	sprintf(text, "%ul", num);
+	len = strlen(text);
+	EnsureAlloced(len + 1);
+	strcpy(m_data->data, text);
+	m_data->len = len;
+}
+
+str::str(const long long num)
+	: m_data(nullptr)
 {
 	char text[32];
 	size_t len;
@@ -213,11 +220,8 @@ str::str
 	m_data->len = len;
 }
 
-str::str
-(
-	const unsigned long long num
-) : m_data(NULL)
-
+str::str(const unsigned long long num)
+	: m_data(NULL)
 {
 	char text[32];
 	size_t len;
@@ -262,11 +266,7 @@ void str::append
 	}
 }
 
-void str::append
-(
-	const str& text
-)
-
+void str::append(const str& text)
 {
 	size_t len;
 
@@ -279,11 +279,7 @@ void str::append
 }
 
 
-char& str::operator[]
-(
-	intptr_t index
-	)
-
+char& str::operator[](intptr_t index)
 {
 	// Used for result for invalid indices
 	static char dummy = 0;
@@ -1369,15 +1365,17 @@ void MOHPC::str::clear()
 str MOHPC::str::printfImpl(const char* fmt, ...)
 {
 	va_list va;
-	va_start(va, fmt);
 
+	va_start(va, fmt);
 	// Calculate the length
 	const size_t len = vsnprintf(nullptr, 0, fmt, va);
+	va_end(va);
 
 	str string;
 	string.resize(len);
-	vsnprintf(string.m_data->data, string.m_data->alloced, fmt, va);
 
+	va_start(va, fmt);
+	vsnprintf(string.m_data->data, string.m_data->alloced, fmt, va);
 	va_end(va);
 
 	return string;

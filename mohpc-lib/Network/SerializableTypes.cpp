@@ -1,6 +1,7 @@
 #include <MOHPC/Network/InfoTypes.h>
 #include <MOHPC/Network/SerializableTypes.h>
 #include <MOHPC/Misc/MSG/MSG.h>
+#include <cstring>
 
 using namespace MOHPC;
 
@@ -626,7 +627,7 @@ void MOHPC::SerializablePlayerState::SaveDelta(MSG& msg, const ISerializableMess
 			continue;
 		}
 
-		switch (field->type)
+		switch (fieldType_ver6_e(field->type))
 		{
 		case fieldType_ver6_e::number:
 			EntityField::WriteNumberPlayerStateField(msg, field->bits, toF);
@@ -802,7 +803,7 @@ void MOHPC::SerializablePlayerState::LoadDelta(MSG& msg, const ISerializableMess
 			continue;
 		}
 
-		switch (field->type)
+		switch (fieldType_ver6_e(field->type))
 		{
 		case fieldType_ver6_e::number:
 			EntityField::ReadNumberPlayerStateField(msg, field->bits, toF, field->size);
@@ -957,7 +958,7 @@ void MOHPC::SerializablePlayerState_ver15::LoadDelta(MSG& msg, const ISerializab
 		intptr_t bits = 0;
 		int32_t coordOffset, coordVal;
 
-		switch (field->type)
+		switch (fieldType_ver15_e(field->type))
 		{
 		case fieldType_ver15_e::number:
 			EntityField::ReadRegular2(msg, field->bits, toF, field->size);
@@ -1135,7 +1136,7 @@ void MOHPC::SerializableEntityState::SaveDelta(MSG& msg, const ISerializableMess
 		float tmp;
 		intptr_t bits;
 
-		switch (field->type)
+		switch (fieldType_ver6_e(field->type))
 		{
 		case fieldType_ver6_e::number:
 			EntityField::WriteNumberEntityField(msg, field->bits, toF, field->size);
@@ -1228,7 +1229,7 @@ void MOHPC::SerializableEntityState::LoadDelta(MSG& msg, const ISerializableMess
 
 		int result;
 
-		switch (field->type)
+		switch (fieldType_ver6_e(field->type))
 		{
 		case fieldType_ver6_e::number:
 			EntityField::ReadRegular(msg, field->bits, toF, field->size);
@@ -1327,7 +1328,7 @@ void MOHPC::SerializableEntityState_ver15::LoadDelta(MSG& msg, const ISerializab
 		int result;
 		int32_t coordOffset, coordVal;
 
-		switch (field->type)
+		switch (fieldType_ver15_e(field->type))
 		{
 		case fieldType_ver15_e::number:
 			EntityField::ReadRegular2(msg, field->bits, toF, field->size);

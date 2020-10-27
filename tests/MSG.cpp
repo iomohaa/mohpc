@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-class CMSGUnitTest : public IUnitTest, public TAutoInst<CMSGUnitTest>
+class CMSGUnitTest : public IUnitTest
 {
 public:
 	virtual unsigned int priority()
@@ -74,7 +74,8 @@ public:
 					msg1.SerializeBits(&byteVal, j);
 				}
 
-				msg1.SerializeClass(MOHPC::SerializableAngle16(180.f));
+				MOHPC::SerializableAngle16 serializableAngle(180.f);
+				msg1.SerializeClass(serializableAngle);
 				msg1.SerializeDelta(&deltaVal1, &deltaVal2, 32);
 			}
 
@@ -197,7 +198,9 @@ public:
 				ps2.activeItems[i] = short(rand());
 			}
 
-			writer.SerializeDeltaClass(&MOHPC::SerializablePlayerState(ps1), &MOHPC::SerializablePlayerState(ps2));
+			MOHPC::SerializablePlayerState sps1(ps1);
+			MOHPC::SerializablePlayerState sps2(ps2);
+			writer.SerializeDeltaClass(&sps1, &sps2);
 		}
 
 		// Reading
@@ -206,7 +209,10 @@ public:
 			MOHPC::MSG reader(streamReader, MOHPC::msgMode_e::Reading);
 
 			MOHPC::playerState_t serializedPS;
-			reader.SerializeDeltaClass(&MOHPC::SerializablePlayerState(ps1), &MOHPC::SerializablePlayerState(serializedPS));
+
+			MOHPC::SerializablePlayerState sps1(ps1);
+			MOHPC::SerializablePlayerState sps2(serializedPS);
+			reader.SerializeDeltaClass(&sps1, &sps2);
 
 			assert(serializedPS.origin == ps2.origin);
 			assert(serializedPS.pm_time == ps2.pm_time);
@@ -256,11 +262,13 @@ public:
 			for (size_t i = 0; i < MOHPC::entityState_t::MAX_FRAMEINFOS; ++i)
 			{
 				en2.frameInfo[i].index = uint8_t(rand());
-				en2.frameInfo[i].time = float(rand() % 65536) / 16387.f;
-				en2.frameInfo[i].weight = float(rand() % 65536) / 16387.f;
+				en2.frameInfo[i].time = float(rand() % 65535) / 16387.f;
+				en2.frameInfo[i].weight = float(rand() % 16388) / 16387.f;
 			}
 
-			writer.SerializeDeltaClass(&MOHPC::SerializableEntityState(en1,0 ), &MOHPC::SerializableEntityState(en2, 0));
+			MOHPC::SerializableEntityState sen1(en1, 0);
+			MOHPC::SerializableEntityState sen2(en2, 0);
+			writer.SerializeDeltaClass(&sen1, &sen2);
 		}
 
 		// Reading
@@ -269,7 +277,9 @@ public:
 			MOHPC::MSG reader(streamReader, MOHPC::msgMode_e::Reading);
 
 			MOHPC::entityState_t sEnt;
-			reader.SerializeDeltaClass(&MOHPC::SerializableEntityState(en1, 0), &MOHPC::SerializableEntityState(sEnt, 0));
+			MOHPC::SerializableEntityState sen1(en1, 0);
+			MOHPC::SerializableEntityState sen2(sEnt, 0);
+			reader.SerializeDeltaClass(&sen1, &sen2);
 
 			assert(sEnt.alpha >= en2.alpha - 0.01f && sEnt.alpha <= en2.alpha + 0.01f);
 			assert(sEnt.netorigin == en2.netorigin);
@@ -287,3 +297,4 @@ public:
 		}
 	}
 };
+static CMSGUnitTest unitTest;

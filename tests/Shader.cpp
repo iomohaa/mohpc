@@ -3,7 +3,7 @@
 #include <MOHPC/Managers/ShaderManager.h>
 #include "UnitTest.h"
 
-class CShaderTest : public IUnitTest, public TAutoInst<CShaderTest>
+class CShaderTest : public IUnitTest
 {
 public:
 	virtual unsigned int priority() override
@@ -29,3 +29,4 @@ public:
 		}
 	}
 };
+static CShaderTest unitTest;

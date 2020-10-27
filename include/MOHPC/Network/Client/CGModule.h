@@ -910,46 +910,38 @@ namespace MOHPC
 			class HandlerListCGame : public HandlerList
 			{
 			public:
-				MOHPC_HANDLERLIST_DEFINITIONS();
-
-				MOHPC_HANDLERLIST_NOTIFY0();
-				MOHPC_HANDLERLIST_NOTIFY1(const EntityInfo&);
-				MOHPC_HANDLERLIST_NOTIFY2(uint8_t, const char*);
-				MOHPC_HANDLERLIST_NOTIFY1(const char*);
-				MOHPC_HANDLERLIST_NOTIFY2(hudMessage_e, const char*);
-
-				MOHPC_HANDLERLIST_HANDLER7(CGameHandlers::MakeBulletTracer, makeBulletTracerHandler, const Vector&, const Vector&, const Vector&, uint32_t, uint32_t, uint32_t, float);
-				MOHPC_HANDLERLIST_HANDLER4(CGameHandlers::MakeBubbleTrail, makeBubbleTrailHandler, const Vector&, const Vector&, uint32_t, float);
-				MOHPC_HANDLERLIST_HANDLER3(CGameHandlers::Impact, impactHandler, const Vector&, const Vector&, uint32_t);
-				MOHPC_HANDLERLIST_HANDLER2(CGameHandlers::MeleeImpact, meleeImpactHandler, const Vector&, const Vector&);
-				MOHPC_HANDLERLIST_HANDLER2(CGameHandlers::MakeExplosionEffect, makeExplosionEffectHandler, const Vector&, effects_e);
-				MOHPC_HANDLERLIST_HANDLER3(CGameHandlers::MakeEffect, makeEffectHandler, const Vector&, const Vector&, effects_e);
-				MOHPC_HANDLERLIST_HANDLER3(CGameHandlers::SpawnDebris, spawnDebrisHandler, CGameHandlers::debrisType_e, const Vector&, uint32_t);
-				MOHPC_HANDLERLIST_HANDLER2_NODEF(CGameHandlers::HudDraw_Shader, huddrawShaderHandler, uint8_t, const char*);
-				MOHPC_HANDLERLIST_HANDLER3(CGameHandlers::HudDraw_Align, huddrawAlignHandler, uint8_t, CGameHandlers::horizontalAlign_e, CGameHandlers::verticalAlign_e);
-				MOHPC_HANDLERLIST_HANDLER5(CGameHandlers::HudDraw_Rect, huddrawRectHandler, uint8_t, uint16_t, uint16_t, uint16_t, uint16_t);
-				MOHPC_HANDLERLIST_HANDLER2(CGameHandlers::HudDraw_VirtualScreen, huddrawVSHandler, uint8_t, bool);
-				MOHPC_HANDLERLIST_HANDLER2(CGameHandlers::HudDraw_Color, huddrawColorHandler, uint8_t, const Vector&);
-				MOHPC_HANDLERLIST_HANDLER2(CGameHandlers::HudDraw_Alpha, huddrawAlphaHandler, uint8_t, float);
-				MOHPC_HANDLERLIST_HANDLER2_NODEF(CGameHandlers::HudDraw_String, huddrawStringHandler, uint8_t, const char*);
-				MOHPC_HANDLERLIST_HANDLER2_NODEF(CGameHandlers::HudDraw_Font, huddrawFontHandler, uint8_t, const char*);
-				MOHPC_HANDLERLIST_HANDLER0_NODEF(CGameHandlers::HitNotify, hitNotifyHandler);
-				MOHPC_HANDLERLIST_HANDLER0_NODEF(CGameHandlers::KillNotify, killNotifyHandler);
-				MOHPC_HANDLERLIST_HANDLER4(CGameHandlers::VoiceMessage, voiceMessageHandler, const Vector&, bool, uint8_t, const char*);
-				MOHPC_HANDLERLIST_HANDLER1_NODEF(CGameHandlers::EntityAdded, entityAddedHandler, const EntityInfo&);
-				MOHPC_HANDLERLIST_HANDLER1_NODEF(CGameHandlers::EntityRemoved, entityRemovedHandler, const EntityInfo&);
-				MOHPC_HANDLERLIST_HANDLER1_NODEF(CGameHandlers::EntityModified, entityModifiedHandler, const EntityInfo&);
-				MOHPC_HANDLERLIST_HANDLER3(CGameHandlers::ReplayMove, replayCmdHandler, const usercmd_t&, playerState_t&, float);
-				MOHPC_HANDLERLIST_HANDLER2_NODEF(CGameHandlers::Print, serverCommandPrintHandler, hudMessage_e, const char*);
-				MOHPC_HANDLERLIST_HANDLER2(CGameHandlers::ServerCommand, scmdHandler, const char*, TokenParser&);
-				MOHPC_HANDLERLIST_HANDLER1_NODEF(CGameHandlers::HudPrint, scmdHudPrintHandler, const char*);
-				MOHPC_HANDLERLIST_HANDLER1(CGameHandlers::ServerCommand_Scores, scmdScoresHandler, const Scoreboard&);
-				MOHPC_HANDLERLIST_HANDLER1_NODEF(CGameHandlers::ServerCommand_Stats, scmdStatsHandler, const stats_t&);
-				MOHPC_HANDLERLIST_HANDLER2(CGameHandlers::ServerCommand_Stopwatch, scmdStopwatchHandler, uint64_t, uint64_t);
-				MOHPC_HANDLERLIST_HANDLER0_NODEF(CGameHandlers::ServerCommand_ServerLag, scmdServerLagHandler);
-				MOHPC_HANDLERLIST_HANDLER1(CGameHandlers::ServerCommand_Stufftext, scmdStufftextHandler, TokenParser&);
-				MOHPC_HANDLERLIST_HANDLER1(CGameHandlers::ReceivedVoteOptions, receivedVoteOptionsHandler, const VoteOptions&);
-				MOHPC_HANDLERLIST_HANDLER1(CGameHandlers::VoteModified, voteModifiedHandler, const voteInfo_t&);
+				FunctionList<CGameHandlers::MakeBulletTracer> makeBulletTracerHandler;
+				FunctionList<CGameHandlers::MakeBubbleTrail> makeBubbleTrailHandler;
+				FunctionList<CGameHandlers::Impact> impactHandler;
+				FunctionList<CGameHandlers::MeleeImpact> meleeImpactHandler;
+				FunctionList<CGameHandlers::MakeExplosionEffect> makeExplosionEffectHandler;
+				FunctionList<CGameHandlers::MakeEffect> makeEffectHandler;
+				FunctionList<CGameHandlers::SpawnDebris> spawnDebrisHandler;
+				FunctionList<CGameHandlers::HudDraw_Shader> huddrawShaderHandler;
+				FunctionList<CGameHandlers::HudDraw_Align> huddrawAlignHandler;
+				FunctionList<CGameHandlers::HudDraw_Rect> huddrawRectHandler;
+				FunctionList<CGameHandlers::HudDraw_VirtualScreen> huddrawVSHandler;
+				FunctionList<CGameHandlers::HudDraw_Color> huddrawColorHandler;
+				FunctionList<CGameHandlers::HudDraw_Alpha> huddrawAlphaHandler;
+				FunctionList<CGameHandlers::HudDraw_String> huddrawStringHandler;
+				FunctionList<CGameHandlers::HudDraw_Font> huddrawFontHandler;
+				FunctionList<CGameHandlers::HitNotify> hitNotifyHandler;
+				FunctionList<CGameHandlers::KillNotify> killNotifyHandler;
+				FunctionList<CGameHandlers::VoiceMessage> voiceMessageHandler;
+				FunctionList<CGameHandlers::EntityAdded> entityAddedHandler;
+				FunctionList<CGameHandlers::EntityRemoved> entityRemovedHandler;
+				FunctionList<CGameHandlers::EntityModified> entityModifiedHandler;
+				FunctionList<CGameHandlers::ReplayMove> replayCmdHandler;
+				FunctionList<CGameHandlers::Print> printHandler;
+				FunctionList<CGameHandlers::ServerCommand> scmdHandler;
+				FunctionList<CGameHandlers::HudPrint> hudPrintHandler;
+				FunctionList<CGameHandlers::ServerCommand_Scores> scmdScoresHandler;
+				FunctionList<CGameHandlers::ServerCommand_Stats> scmdStatsHandler;
+				FunctionList<CGameHandlers::ServerCommand_Stopwatch> scmdStopwatchHandler;
+				FunctionList<CGameHandlers::ServerCommand_ServerLag> scmdServerLagHandler;
+				FunctionList<CGameHandlers::ServerCommand_Stufftext> scmdStufftextHandler;
+				FunctionList<CGameHandlers::ReceivedVoteOptions> receivedVoteOptionsHandler;
+				FunctionList<CGameHandlers::VoteModified> voteModifiedHandler;
 			};
 
 		public:
@@ -960,30 +952,6 @@ namespace MOHPC
 
 			/** Tick function for CGame module. */
 			virtual void tick(uint64_t deltaTime, uint64_t currentTime, uint64_t serverTime);
-
-			/**
-			 * Set a function to be called when a specific game event occurs.
-			 *
-			 * See CGameHandlers above.
-			 * @param	args...	Function
-			 * @return	callback handle so it can be later unregistered.
-			 */
-			template<typename T>
-			fnHandle_t setCallback(typename T::Type&& handler)
-			{
-				return handlerList.set<T>(std::forward<T::Type>(handler));
-			}
-
-			/**
-			 * Unset a previously set callback.
-			 *
-			 * @param	handle	The returned handle when registering a callback.
-			 */
-			template<typename T>
-			void unsetCallback(fnHandle_t handle)
-			{
-				handlerList.unset<T>(handle);
-			}
 
 			/** Return the handler list. */
 			MOHPC_EXPORTS HandlerListCGame& getHandlerList();

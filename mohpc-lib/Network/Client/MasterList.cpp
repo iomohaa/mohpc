@@ -15,7 +15,7 @@ using namespace Network;
 
 #define MOHPC_LOG_NAMESPACE "masterlist"
 
-static const uint8_t gameKeys[gameListType_e::max][7] =
+static const uint8_t gameKeys[(size_t)gameListType_e::max][7] =
 {
 	// MOH:AA
 	{ 'M', '5', 'F', 'd', 'w', 'c' },
@@ -25,7 +25,7 @@ static const uint8_t gameKeys[gameListType_e::max][7] =
 	{ 'y', '3', '2', 'F', 'D', 'c' }
 };
 
-static const char* gameName[gameListType_e::max] =
+static const char* gameName[(size_t)gameListType_e::max] =
 {
 	"mohaa",
 	"mohaas",

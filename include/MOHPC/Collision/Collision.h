@@ -1,6 +1,6 @@
 #pragma once
 
-#include <stdint.h>
+#include <cstdint>
 #include "../Math.h"
 #include "../Vector.h"
 #include "../Utilities/SharedPtr.h"
@@ -28,6 +28,11 @@ namespace MOHPC
 
 	public:
 		collisionPlane_t();
+
+		const Vector& getNormal() const { return normal; }
+		float getDist() const { return dist; }
+		uint8_t getType() const { return type; }
+		uint8_t getSignBits() const { return signbits; }
 
 		template<typename Archive>
 		void serialize(Archive& ar)

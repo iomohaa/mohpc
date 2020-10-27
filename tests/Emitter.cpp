@@ -3,7 +3,7 @@
 #include <MOHPC/Managers/EmitterManager.h>
 #include "UnitTest.h"
 
-class CEmitterTest : public IUnitTest, public TAutoInst<CEmitterTest>
+class CEmitterTest : public IUnitTest
 {
 public:
 	virtual const char* name() override
@@ -28,3 +28,4 @@ public:
 		}
 	}
 };
+static CEmitterTest unitTest;

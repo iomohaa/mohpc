@@ -2,8 +2,7 @@
 
 #include <MOHPC/Managers/NetworkManager.h>
 #include <MOHPC/Network/Server/ServerHost.h>
-
-#include <Windows.h>
+#include "platform.h"
 
 #define MOHPC_LOG_NAMESPACE "testsrv"
 
@@ -34,7 +33,8 @@ private:
 		for(;;)
 		{
 			netMan->processTicks();
-			Sleep(50);
+			sleepTime(50);
 		}
 	}
 };
+static CNetworkServerUnitTest unitTest;

@@ -80,8 +80,8 @@ namespace MOHPC
 			PendingRequest(IRequestPtr&& inRequest, Param&& inParam, size_t timeout);
 		};
 
-		template<typename T>
-		using time_point = std::chrono::time_point<T>;
+		template<typename TimeType>
+		using time_point = std::chrono::time_point<TimeType>;
 		using steady_clock = std::chrono::steady_clock;
 
 	private:

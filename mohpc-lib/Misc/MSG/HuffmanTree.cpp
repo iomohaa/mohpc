@@ -7,21 +7,6 @@
 
 using namespace MOHPC;
 
-constexpr node_t::node_t()
-	: left(nullptr), right(nullptr), parent(nullptr)
-	, next(nullptr), prev(nullptr)
-	, head(nullptr)
-	, weight(0)
-	, symbol(0)
-{
-}
-
-constexpr constNode_t::constNode_t()
-	: left(nullptr), right(nullptr), parent(nullptr)
-	, symbol(0)
-{
-}
-
 MOHPC::Huff::Huff()
 	: blocNode(0)
 	, blocPtrs(0)

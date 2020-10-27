@@ -80,7 +80,8 @@ static constexpr unsigned int RF_ALWAYSDRAW			= (1<<30);
 
 	enum class weaponCommand_e : unsigned char
 	{
-		usePistol = 1,
+		none,
+		usePistol,
 		useRifle,
 		useSmg,
 		useMg,
@@ -94,15 +95,17 @@ static constexpr unsigned int RF_ALWAYSDRAW			= (1<<30);
 		nextWeapon,
 		useLast,
 		holster,
-		drop
+		drop,
+		max
 	};
 
-	static const unsigned int BUTTON_ATTACK = (1 << 0);
-	static const unsigned int BUTTON_MELEE = (1 << 1);
+	static const unsigned int BUTTON_ATTACK_PRIMARY = (1 << 0);
+	static const unsigned int BUTTON_ATTACK_SECONDARY = (1 << 1);
 	static const unsigned int BUTTON_RUN = (1 << 2);
 	static const unsigned int BUTTON_USE = (1 << 3);
 	static const unsigned int BUTTON_LEANLEFT = (1 << 4);
 	static const unsigned int BUTTON_LEANRIGHT = (1 << 5);
+	static const unsigned int WEAPONCOMMAND_MASK = ((unsigned int)weaponCommand_e::max) - 1;
 
 	class playerState_t;
 
@@ -111,27 +114,7 @@ static constexpr unsigned int RF_ALWAYSDRAW			= (1<<30);
 	public:
 		uint32_t serverTime;
 		struct buttons_t {
-			union {
-				struct {
-					// Button flags
-					struct {
-						uint8_t attack		: 1;
-						uint8_t melee		: 1;
-						uint8_t run			: 1;
-						uint8_t use			: 1;
-						uint8_t leanleft	: 1;
-						uint8_t leanright	: 1;
-					} button;
-				} fields;
-
-				struct {
-					uint8_t moveflags : 6;
-					uint8_t weaponFlags : 5;
-				} bitflags;
-
-				// The whole buttons flags
-				uint16_t flags;
-			};
+			uint16_t flags;
 		} buttons;
 		uint16_t angles[3];
 		int8_t forwardmove, rightmove, upmove;
@@ -139,9 +122,6 @@ static constexpr unsigned int RF_ALWAYSDRAW			= (1<<30);
 	public:
 		usercmd_t();
 		usercmd_t(uint32_t inServerTime);
-
-		/** Return buttons that are held. */
-		buttons_t getButtons() const;
 
 		/** Get the user angles. */
 		void getAngles(uint16_t& pitch, uint16_t& yaw, uint16_t& roll);
@@ -176,6 +156,12 @@ static constexpr unsigned int RF_ALWAYSDRAW			= (1<<30);
 
 		/** Crouch. Same as calling moveUp with a value of -128. */
 		void crouch();
+
+		/** Return buttons that are held. */
+		buttons_t getButtons() const;
+
+		void setButtonFlags(uint32_t flags);
+		void removeButtonFlags(uint32_t flags);
 	};
 
 	class MOHPC_EXPORTS usereyes_t

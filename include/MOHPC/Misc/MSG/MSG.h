@@ -348,7 +348,7 @@ namespace MOHPC
 		template<typename T>
 		void WriteByteEnum(T value)
 		{
-			WriteByte(unsigned char(value));
+			WriteByte((unsigned char)value);
 		}
 
 		template<typename T>

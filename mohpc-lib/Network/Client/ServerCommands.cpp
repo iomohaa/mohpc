@@ -30,7 +30,7 @@ MOHPC::str MOHPC::Network::EngineServer::VerBeforeChallengeRequest::generateRequ
 
 bool MOHPC::Network::EngineServer::VerBeforeChallengeRequest::supportsEvent(const char* name)
 {
-	return !stricmp(name, "infoResponse");
+	return !str::icmp(name, "infoResponse");
 }
 
 IRequestPtr MOHPC::Network::EngineServer::VerBeforeChallengeRequest::handleResponse(const char* name, TokenParser& parser)
@@ -73,12 +73,12 @@ str Network::EngineServer::ChallengeRequest::generateRequest()
 
 bool Network::EngineServer::ChallengeRequest::supportsEvent(const char* name)
 {
-	return !stricmp(name, "getKey") || !stricmp(name, "challengeResponse");
+	return !str::icmp(name, "getKey") || !str::icmp(name, "challengeResponse");
 }
 
 IRequestPtr MOHPC::Network::EngineServer::ChallengeRequest::handleResponse(const char* name, TokenParser& parser)
 {
-	if (!stricmp(name, "getKey"))
+	if (!str::icmp(name, "getKey"))
 	{
 		const char* challenge = parser.GetLine(false);
 		MOHPC_LOG(Verbose, "forwarding request for getKey: %s", name);
@@ -124,7 +124,7 @@ Network::EngineServer::AuthorizeRequest::AuthorizeRequest(const protocolType_c& 
 
 bool Network::EngineServer::AuthorizeRequest::supportsEvent(const char* name)
 {
-	return !stricmp(name, "getKey") || !stricmp(name, "challengeResponse");
+	return !str::icmp(name, "getKey") || !str::icmp(name, "challengeResponse");
 }
 
 str Network::EngineServer::AuthorizeRequest::generateRequest()
@@ -143,7 +143,7 @@ str Network::EngineServer::AuthorizeRequest::generateRequest()
 
 IRequestPtr MOHPC::Network::EngineServer::AuthorizeRequest::handleResponse(const char* name, TokenParser& parser)
 {
-	if (!stricmp(name, "challengeResponse"))
+	if (!str::icmp(name, "challengeResponse"))
 	{
 		int32_t challenge = parser.GetInteger(false);
 		MOHPC_LOG(Verbose, "got challenge %d", challenge);
@@ -310,7 +310,7 @@ str Network::EngineServer::StatusRequest::generateRequest()
 
 bool Network::EngineServer::StatusRequest::supportsEvent(const char* name)
 {
-	return !stricmp(name, "statusResponse");
+	return !str::icmp(name, "statusResponse");
 }
 
 IRequestPtr MOHPC::Network::EngineServer::StatusRequest::handleResponse(const char* name, TokenParser& parser)
@@ -343,7 +343,7 @@ str Network::EngineServer::InfoRequest::generateRequest()
 
 bool Network::EngineServer::InfoRequest::supportsEvent(const char* name)
 {
-	return !stricmp(name, "infoResponse");
+	return !str::icmp(name, "infoResponse");
 }
 
 IRequestPtr MOHPC::Network::EngineServer::InfoRequest::handleResponse(const char* name, TokenParser& parser)

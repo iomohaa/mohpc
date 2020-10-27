@@ -3,7 +3,6 @@
 #include <MOHPC/Managers/FileManager.h>
 #include <filesystem>
 #include <string>
-#include <string.h>
 
 using namespace std::string_literals;
 

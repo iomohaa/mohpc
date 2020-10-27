@@ -18,7 +18,13 @@ namespace MOHPC
 		size_t weight;
 		uint16_t symbol;
 
-		constexpr node_t();
+		constexpr node_t()
+			: left(nullptr), right(nullptr), parent(nullptr)
+			, next(nullptr), prev(nullptr)
+			, head(nullptr)
+			, weight(0)
+			, symbol(0)
+		{}
 	};
 
 	struct MOHPC_EXPORTS constNode_t
@@ -28,7 +34,12 @@ namespace MOHPC
 		/* highest ranked node in block */
 		uint16_t symbol;
 
-		constexpr constNode_t();
+		constexpr constNode_t()
+			: left(nullptr), right(nullptr), parent(nullptr)
+			, symbol(0)
+		{
+
+		}
 	};
 
 	struct archivedNode_t

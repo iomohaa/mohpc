@@ -67,23 +67,25 @@ namespace MOHPC
 	template<typename T>
 	class FunctionList
 	{
+		using FunctionType = typename T::Type;
+
 	private:
 		struct FnStorage
 		{
-			T func;
+			FunctionType func;
 			fnHandle_t id;
 
 		public:
-			FnStorage(uint32_t inId, T&& inFunc)
-				: func(std::forward<T>(inFunc))
+			FnStorage(uint32_t inId, FunctionType&& inFunc)
+				: func(std::forward<FunctionType>(inFunc))
 				, id(inId)
 			{}
 
-			//FnStorage(FnStorage&& other) = default;
-			//FnStorage& operator=(FnStorage&& other) = default;
+			FnStorage(FnStorage&& other) = default;
+			FnStorage& operator=(FnStorage&& other) = default;
 			// Non-copyable
-			//FnStorage(const FnStorage&& other) = delete;
-			//FnStorage& operator=(const FnStorage&& other) = delete;
+			FnStorage(const FnStorage& other) = delete;
+			FnStorage& operator=(const FnStorage& other) = delete;
 		};
 
 	private:
@@ -95,15 +97,25 @@ namespace MOHPC
 			: cid(0)
 		{}
 
-		fnHandle_t add(T&& func)
+		/**
+		 * Add a function to the function list.
+		 *
+		 * @param func The function to add.
+		 */
+		fnHandle_t add(FunctionType&& func)
 		{
 			// Add the function and return the id
-			new(functionList) FnStorage(++cid, std::forward<T>(func));
+			new(functionList) FnStorage(++cid, std::forward<FunctionType>(func));
 
 			// Return the handle
 			return cid;
 		}
 
+		/**
+		 * Remove a function from the function list.
+		 *
+		 * @param handle Handle of the function that was returned by add().
+		 */
 		void remove(fnHandle_t handle)
 		{
 			for (size_t i = functionList.NumObjects(); i > 0; i--)
@@ -117,6 +129,11 @@ namespace MOHPC
 			}
 		}
 
+		/**
+		 * Broadcast to all functions.
+		 *
+		 * @param ...args List of arguments
+		 */
 		template<typename...Args>
 		void broadcast(Args&&... args) const
 		{

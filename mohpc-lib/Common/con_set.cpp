@@ -90,6 +90,18 @@ intptr_t MOHPC::HashCode<unsigned int>( const unsigned int& key )
 }
 
 template<>
+intptr_t MOHPC::HashCode<long>(const long& key)
+{
+	return key;
+}
+
+template<>
+intptr_t MOHPC::HashCode<unsigned long>(const unsigned long& key)
+{
+	return key;
+}
+
+template<>
 intptr_t MOHPC::HashCode<long long>(const long long& key)
 {
 	return key;

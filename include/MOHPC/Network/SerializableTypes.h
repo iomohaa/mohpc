@@ -15,7 +15,7 @@ namespace MOHPC
 	/**
 	 * Field type for protocol version 8.
 	 */
-	enum class fieldType_ver6_e : uint8_t
+	enum class fieldType_ver6_e
 	{
 		number,
 		angle,
@@ -31,7 +31,7 @@ namespace MOHPC
 	 * Field type for protocol version 15.
 	 * Introduced mediumCoord, presumably to provide something between large and medium
 	 */
-	enum class fieldType_ver15_e : uint8_t
+	enum class fieldType_ver15_e
 	{
 		number,
 		angle,

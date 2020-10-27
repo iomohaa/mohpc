@@ -88,23 +88,12 @@ namespace MOHPC
 
 		inline protocolVersion_e getProtocolEnumVersion(const uint32_t value)
 		{
-			switch (value)
-			{
-			case 5:
-				return protocolVersion_e::ver005;
-			case 6:
-				return protocolVersion_e::ver100;
-			case 8:
-				return protocolVersion_e::ver111;
-			case 15:
-				return protocolVersion_e::ver200;
-			case 16:
-				return protocolVersion_e::ver211_demo;
-			case 17:
-				return protocolVersion_e::ver211;
-			default:
-				return protocolVersion_e::bad;
-			}
+			return protocolVersion_e(value);
+		}
+
+		inline unsigned int getProtocolVersionNumber(const protocolVersion_e version)
+		{
+			return (unsigned int)version;
 		}
 
 		class MOHPC_EXPORTS protocolType_c
@@ -119,8 +108,9 @@ namespace MOHPC
 
 			serverType_e getServerType() const;
 			protocolVersion_e getProtocolVersion() const;
+			unsigned int getProtocolVersionNumber() const;
 		};
-
+		
 		enum class svc_ops_e : uint8_t
 		{
 			/** Bad operation. */

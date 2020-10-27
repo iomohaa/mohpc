@@ -50,5 +50,8 @@ private:
 		}
 	};
 
-	inline static Instance instance = Instance();
+	static Instance instance;
 };
+
+template<typename T>
+typename TAutoInst<T>::Instance TAutoInst<T>::instance;

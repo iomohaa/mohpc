@@ -1,8 +1,9 @@
 #pragma once
 
 #include "Global.h"
-#include <stdint.h>
-#include <limits.h>
+#include <cstdint>
+#include <climits>
+#include <type_traits>
 
 #define M_PI_FLOAT 3.14159265358979323846f
 #define NUMVERTEXNORMALS	162

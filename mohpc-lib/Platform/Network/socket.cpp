@@ -1,15 +1,11 @@
 #include <MOHPC/Network/Socket.h>
 #include <MOHPC/Network/Types.h>
 #include "network.h"
+#include "generic_sockets.h"
 #include <type_traits>
-
-#include <winsock2.h>
-#include <ws2tcpip.h>
 
 using namespace MOHPC;
 using namespace Network;
-
-#pragma comment(lib, "Ws2_32.lib")
 
 template<addressType_e type>
 static constexpr unsigned long addressSize = (type == addressType_e::IPv6) ? (sizeof(uint8_t) * 16) : (sizeof(uint8_t) * 4);
@@ -35,7 +31,7 @@ public:
 		}
 
 		conn = socket(family, SOCK_DGRAM, IPPROTO_UDP);
-		if (conn == INVALID_SOCKET) 
+		if (conn == badSocket) 
 		{
 			// FIXME: throw?
 			return;
@@ -49,9 +45,10 @@ public:
 
 		if(!bindAddress)
 		{
-			// Bind a default port
+			// bind a default port
 			local.sin_port = 0;
-			inet_pton(AF_INET, "0.0.0.0", &local.sin_addr);
+			// set address to 0
+			memset(&local.sin_addr, 0, sizeof(local.sin_addr));
 		}
 		else
 		{
@@ -64,7 +61,7 @@ public:
 
 	~WindowsUDPSocket()
 	{
-		closesocket(conn);
+		closeSocket(conn);
 	}
 
 	virtual size_t send(const NetAddr& to, const void* buf, size_t bufsize) override
@@ -103,11 +100,11 @@ public:
 		);
 	}
 
-	size_t WindowsUDPSocket::receive(void* buf, size_t maxsize, NetAddrPtr& from)
+	size_t receive(void* buf, size_t maxsize, NetAddrPtr& from)
 	{
 		sockaddr_template fromAddr;
-		int addrSz = sizeof(fromAddr);
-
+		socklen_t addrSz = sizeof(fromAddr);
+		
 		const size_t bytesWritten = recvfrom(
 			conn,
 			(char*)buf,
@@ -129,30 +126,34 @@ public:
 		t.tv_usec = (long)timeout * 1000;
 
 		fd_set readfds;
-		readfds.fd_count = 1;
-		readfds.fd_array[0] = conn;
+		FD_ZERO(&readfds);
+		FD_SET(conn, &readfds);
 
-		int result = select(0, &readfds, NULL, NULL, timeout != -1 ? &t : NULL);
-		return result != SOCKET_ERROR && result == 1;
+		int result = select(1, &readfds, NULL, NULL, timeout != -1 ? &t : NULL);
+		return result == 1;
 	}
 
 	virtual bool dataAvailable() override
 	{
-		u_long count;
-		ioctlsocket(conn, FIONREAD, &count);
+		u_long count = 0;
+		ioctlSocket(conn, FIONREAD, &count);
 		return count > 0;
 	}
 
 	NetAddrPtr createAddress(const sockaddr_template& addr) const;
 
 private:
-	SOCKET conn;
+	socket_t conn;
 	static uint8_t broadcastIP[addressSize];
 };
 
+template<>
 uint8_t WindowsUDPSocket<addressType_e::IPv4>::broadcastIP[] = { 0xFF, 0xFF, 0xFF, 0xFF };
+
+template<>
 uint8_t WindowsUDPSocket<addressType_e::IPv6>::broadcastIP[] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
 
+template <>
 NetAddrPtr WindowsUDPSocket<addressType_e::IPv4>::createAddress(const sockaddr_in& addr) const
 {
 	const NetAddr4Ptr netAddress = NetAddr4::create();
@@ -162,6 +163,7 @@ NetAddrPtr WindowsUDPSocket<addressType_e::IPv4>::createAddress(const sockaddr_i
 	return netAddress;
 }
 
+template <>
 NetAddrPtr WindowsUDPSocket<addressType_e::IPv6>::createAddress(const sockaddr_in6& addr) const
 {
 	const NetAddr6Ptr netAddress = NetAddr6::create();
@@ -178,7 +180,7 @@ class WindowsTCPSocket : public ITcpSocket
 	static constexpr unsigned int family = ::family<type>;
 
 private:
-	SOCKET conn;
+	socket_t conn;
 
 public:
 	WindowsTCPSocket(const NetAddr& addr)
@@ -202,7 +204,7 @@ public:
 			break;
 		}
 
-		if (conn == INVALID_SOCKET) {
+		if (conn == badSocket) {
 			throw("socket creation failed");
 		}
 
@@ -226,10 +228,15 @@ public:
 
 		// Set non-blocking
 		u_long mode = 1;
-		ioctlsocket(conn, FIONBIO, &mode);
+		ioctlSocket(conn, FIONBIO, &mode);
 
 		// Connect to remote
 		connect(conn, (sockaddr*)&srvAddr, sizeof(srvAddr));
+	}
+
+	~WindowsTCPSocket()
+	{
+		closeSocket(conn);
 	}
 
 	virtual size_t send(const void* buf, size_t bufsize) override
@@ -248,10 +255,10 @@ public:
 		t.tv_usec = (long)timeout * 1000;
 
 		fd_set readfds;
-		readfds.fd_count = 1;
-		readfds.fd_array[0] = conn;
+		FD_ZERO(&readfds);
+		FD_SET(conn, &readfds);
 
-		int result = select(0, &readfds, NULL, NULL, timeout != -1 ? &t : NULL);
+		int result = select(1, &readfds, NULL, NULL, timeout != -1 ? &t : NULL);
 		if (result != 1) {
 			return false;
 		}
@@ -259,7 +266,7 @@ public:
 		// now check if there is any data
 		char buf;
 		size_t numBytes = recv(conn, &buf, 1, MSG_PEEK);
-		if (numBytes == -1 || numBytes == 0) {
+		if (!numBytes || numBytes == -1) {
 			return false;
 		}
 
@@ -268,31 +275,23 @@ public:
 
 	virtual bool dataAvailable() override
 	{
-		u_long count;
-		ioctlsocket(conn, FIONREAD, &count);
+		u_long count = 0;
+		ioctlSocket(conn, FIONREAD, &count);
 		return count > 0;
 	}
 };
 
 class WindowsSocketFactory : public ISocketFactory
 {
-private:
-	bool isValidWSA;
-
 public:
 	WindowsSocketFactory()
 	{
-		WSADATA wsaData;
-
-		int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
-		if (iResult == NO_ERROR) {
-			isValidWSA = true;
-		}
+		initSocket();
 	}
 
 	~WindowsSocketFactory()
 	{
-		WSACleanup();
+		cleanupSocket();
 	}
 
 	virtual IUdpSocketPtr createUdp(const NetAddr4* bindAddress) override
@@ -327,7 +326,7 @@ public:
 		hints.ai_family = AF_UNSPEC;
 
 		int retval = getaddrinfo(domain, NULL, &hints, &result);
-		if (retval != NO_ERROR) {
+		if (retval != 0) {
 			return NetAddr4();
 		}
 

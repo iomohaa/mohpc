@@ -46,3 +46,4 @@ public:
 		}
 	}
 };
+static CTikiTest unitTest;

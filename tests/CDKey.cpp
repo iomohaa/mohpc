@@ -5,7 +5,7 @@
 #include <time.h>
 #include <string.h>
 
-class CCDKeyUnitTest : public IUnitTest, public TAutoInst<CCDKeyUnitTest>
+class CCDKeyUnitTest : public IUnitTest
 {
 public:
 	virtual const char* name() override
@@ -84,3 +84,4 @@ public:
 		free(buf);
 	}
 };
+static CCDKeyUnitTest unitTest;

@@ -12,6 +12,8 @@ ExternalProject_Add(
 	BINARY_DIR "./jpeg-9d"
 	PATCH_COMMAND ${CMAKE_COMMAND} -E copy jconfig.txt jconfig.h && ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/jpeg9d.cmake ${CMAKE_CURRENT_SOURCE_DIR}/jpeg-9d/CMakeLists.txt
 	INSTALL_COMMAND ""
+	CONFIGURE_COMMAND  ""
+	BUILD_COMMAND ""
 )
 
 ExternalProject_Add(
@@ -23,6 +25,8 @@ ExternalProject_Add(
 	BINARY_DIR "./libmad"
 	PATCH_COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/libmad.cmake ${CMAKE_CURRENT_SOURCE_DIR}/libmad/CMakeLists.txt
 	INSTALL_COMMAND ""
+	CONFIGURE_COMMAND  ""
+	BUILD_COMMAND ""
 )
 
 ExternalProject_Add(
@@ -34,24 +38,31 @@ ExternalProject_Add(
 	BINARY_DIR "./zlib"
 	PATCH_COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/zlib.cmake ${CMAKE_CURRENT_SOURCE_DIR}/zlib/CMakeLists.txt
 	INSTALL_COMMAND ""
+	CONFIGURE_COMMAND  ""
+	BUILD_COMMAND ""
 )
 
-#ExternalProject_Add(
-#	proj_gcd
-#	CMAKE_ARGS -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER} -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER} -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-#	SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/GameSpy"
-#	BINARY_DIR "./GameSpy"
-#	PATCH_COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/gcd.cmake ${CMAKE_CURRENT_SOURCE_DIR}/GameSpy/CMakeLists.txt
-#	INSTALL_COMMAND ""
-#)
+ExternalProject_Add(
+	proj_gcd
+	URL "https://github.com/nitrocaster/GameSpy/archive/master.zip"
+	CMAKE_ARGS -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER} -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER} -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+	SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/GameSpy"
+	BINARY_DIR "./GameSpy"
+	PATCH_COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/gcd.cmake ${CMAKE_CURRENT_SOURCE_DIR}/GameSpy/CMakeLists.txt
+	INSTALL_COMMAND ""
+	CONFIGURE_COMMAND  ""
+	BUILD_COMMAND ""
+)
 
 include("gcd.cmake")
+include("jpeg9d.cmake")
+include("libmad.cmake")
+include("zlib.cmake")
 
 SET(TP_DIR ${CMAKE_BINARY_DIR}/thirdparty)
 
 add_library(MOHPC-3PT INTERFACE)
 add_dependencies(MOHPC-3PT proj_jpeg9d proj_libmad proj_zlib proj_gcd)
-#add_subdirectory(EASTL)
 
 target_link_directories(MOHPC-3PT INTERFACE ${TP_DIR}/jpeg-9d ${TP_DIR}/libmad ${TP_DIR}/zlib ${TP_DIR}/GameSpy)
 target_link_libraries(MOHPC-3PT INTERFACE jpeg9d mad zlib gcd)

@@ -30,7 +30,7 @@ void SkeletonChannelNameTable::PrintContents()
 			continue;
 		}
 
-		channelList += str( "c" ) + str(m_Channels[ i ].channelNum) + str(":") + str( m_Channels[ i ].name ) + "\n";
+		channelList += str("c") + str(m_Channels[i].channelNum) + str(":") + str(m_Channels[i].name) + "\n";
 	}
 }
 

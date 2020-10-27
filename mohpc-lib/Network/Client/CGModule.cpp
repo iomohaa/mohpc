@@ -418,7 +418,7 @@ void CGameModuleBase::setInitialSnapshot(SnapshotInfo* newSnap)
 		entInfo.currentValid = true;
 
 		// This is the first snapshot, notify about each entities
-		handlers().notify<CGameHandlers::EntityAdded>(entInfo);
+		handlers().entityAddedHandler.broadcast(entInfo);
 	}
 }
 
@@ -443,7 +443,7 @@ void CGameModuleBase::transitionSnapshot(bool differentServer)
 
 			const entityState_t* foundEnt = from->getEntityStateByNumber(es.number);
 			if (!foundEnt) {
-				handlers().notify<CGameHandlers::EntityAdded>(entInfo);
+				handlers().entityAddedHandler.broadcast(entInfo);
 			}
 		}
 	}
@@ -453,7 +453,7 @@ void CGameModuleBase::transitionSnapshot(bool differentServer)
 		for (size_t i = 0; i < target->numEntities; ++i)
 		{
 			EntityInfo& entInfo = clientEnts[target->entities[i].number];
-			handlers().notify<CGameHandlers::EntityAdded>(entInfo);
+			handlers().entityAddedHandler.broadcast(entInfo);
 		}
 	}
 
@@ -467,7 +467,7 @@ void CGameModuleBase::transitionSnapshot(bool differentServer)
 			&& memcmp(&entInfo.currentState, &entInfo.nextState, sizeof(entityState_t)))
 		{
 			// notify about modification
-			handlers().notify<CGameHandlers::EntityModified>(entInfo);
+			handlers().entityModifiedHandler.broadcast(entInfo);
 		}
 	}
 
@@ -488,7 +488,7 @@ void CGameModuleBase::transitionSnapshot(bool differentServer)
 
 			const entityState_t* foundEnt = target->getEntityStateByNumber(es.number);
 			if (!foundEnt) {
-				handlers().notify<CGameHandlers::EntityRemoved>(entInfo);
+				handlers().entityRemovedHandler.broadcast(entInfo);
 			}
 		}
 	}
@@ -821,7 +821,7 @@ void CGameModuleBase::processServerCommand(TokenParser& tokenized)
 	}
 
 	tokenized.RestorePosition(&mark);
-	handlers().notify<CGameHandlers::ServerCommand>(command, tokenized);
+	handlers().scmdHandler.broadcast(command, tokenized);
 }
 
 void CGameModuleBase::trace(CollisionWorld& cm, trace_t& tr, const Vector& start, const Vector& mins, const Vector& maxs, const Vector& end, uint16_t skipNumber, uint32_t mask, bool cylinder, bool cliptoentities)
@@ -1027,7 +1027,7 @@ void CGameModuleBase::extendMove(Pmove& pmove, uint32_t msec)
 	// let the callee replay/predict other events that are not present in the original pm code
 	// the event could be called inside the PM code, but it's not what the server expect (no sub-ticking)
 	// and PM must remain identical to the server PM code
-	handlers().notify<CGameHandlers::ReplayMove>(pm.cmd, *pm.ps, frametime);
+	handlers().replayCmdHandler.broadcast(pm.cmd, *pm.ps, frametime);
 }
 
 void CGameModuleBase::physicsNoclip(Pmove& pmove, float frametime)
@@ -1395,19 +1395,19 @@ void CGameModuleBase::SCmd_Print(TokenParser& args)
 	if(*text < (uint8_t)hudMessage_e::Max)
 	{
 		const hudMessage_e type = (hudMessage_e) * (text++);
-		handlers().notify<CGameHandlers::Print>(type, text);
+		handlers().printHandler.broadcast(type, text);
 	}
 	else
 	{
 		// should print in console if unspecified
-		handlers().notify<CGameHandlers::Print>(hudMessage_e::Console, text);
+		handlers().printHandler.broadcast(hudMessage_e::Console, text);
 	}
 }
 
 void CGameModuleBase::SCmd_HudPrint(TokenParser& args)
 {
 	const char* text = args.GetString(true, false);
-	handlers().notify<CGameHandlers::HudPrint>(text);
+	handlers().hudPrintHandler.broadcast(text);
 }
 
 void CGameModuleBase::SCmd_Scores(TokenParser& args)
@@ -1415,7 +1415,7 @@ void CGameModuleBase::SCmd_Scores(TokenParser& args)
 	Scoreboard scoreboard(cgs.gameType);
 	scoreboard.parse(args);
 	// Pass the parsed scoreboard
-	handlers().notify<CGameHandlers::ServerCommand_Scores>(scoreboard);
+	handlers().scmdScoresHandler.broadcast(scoreboard);
 }
 
 void CGameModuleBase::SCmd_Stats(TokenParser& args)
@@ -1444,25 +1444,25 @@ void CGameModuleBase::SCmd_Stats(TokenParser& args)
 	stats.failed				= args.GetInteger(false);
 
 	// Notify about stats
-	handlers().notify<CGameHandlers::ServerCommand_Stats, const stats_t&>(stats);
+	handlers().scmdStatsHandler.broadcast(stats);
 }
 
 void CGameModuleBase::SCmd_Stopwatch(TokenParser& args)
 {
 	const uint64_t startTime = args.GetInteger64(false);
 	const uint64_t endTime = args.GetInteger64(false);
-	handlers().notify<CGameHandlers::ServerCommand_Stopwatch>(startTime, endTime);
+	handlers().scmdStopwatchHandler.broadcast(startTime, endTime);
 }
 
 void CGameModuleBase::SCmd_ServerLag(TokenParser& args)
 {
 	cgs.serverLagTime = getTime();
-	handlers().notify<CGameHandlers::ServerCommand_ServerLag>();
+	handlers().scmdServerLagHandler.broadcast();
 }
 
 void CGameModuleBase::SCmd_Stufftext(TokenParser& args)
 {
-	handlers().notify<CGameHandlers::ServerCommand_Stufftext>(args);
+	handlers().scmdStufftextHandler.broadcast(args);
 }
 
 CGameModuleBase::HandlerListCGame& CGameModuleBase::getHandlerList()
@@ -1495,7 +1495,7 @@ void CGameModuleBase::SCmd_PrintDeathMsg(TokenParser& args)
 	// suicide
 	case 's':
 	case 'w':
-		handlers().notify<CGameHandlers::Print>(
+		handlers().printHandler.broadcast(
 			hudMessage,
 			str::printf("%s %s", attackerName.c_str(), deathMessage1.c_str()).c_str()
 			);
@@ -1504,14 +1504,14 @@ void CGameModuleBase::SCmd_PrintDeathMsg(TokenParser& args)
 	case 'p':
 		if (*deathMessage2 != 'x')
 		{
-			handlers().notify<CGameHandlers::Print>(
+			handlers().printHandler.broadcast(
 				hudMessage,
 				str::printf("%s %s %s %s", attackerName.c_str(), deathMessage1.c_str(), victimName.c_str(), deathMessage2.c_str()).c_str()
 			);
 		}
 		else
 		{
-			handlers().notify<CGameHandlers::Print>(
+			handlers().printHandler.broadcast(
 				hudMessage,
 				str::printf("%s %s %s", attackerName.c_str(), deathMessage1.c_str(), victimName.c_str()).c_str()
 			);
@@ -1519,7 +1519,7 @@ void CGameModuleBase::SCmd_PrintDeathMsg(TokenParser& args)
 		break;
 	// raw message
 	default:
-		handlers().notify<CGameHandlers::Print>(hudMessage, deathMessage1.c_str());
+		handlers().printHandler.broadcast(hudMessage, deathMessage1.c_str());
 		break;
 	}
 }
@@ -1558,7 +1558,7 @@ clientSettings_t& CGameModuleBase::getSettings()
 void CGameModuleBase::voteModified()
 {
 	cgs.voteInfo.modified = false;
-	handlers().notify<CGameHandlers::VoteModified>(cgs.voteInfo);
+	handlers().voteModifiedHandler.broadcast(cgs.voteInfo);
 }
 
 void CGameModuleBase::parseVoteOptions(const char* options, size_t len)
@@ -1591,7 +1591,7 @@ void CGameModuleBase::parseVoteOptions(const char* options, size_t len)
 		MOHPC_LOG(Error, "Vote exception -- %s. Line %ul", e.what(), e.getLineNumber());
 	}
 
-	handlers().notify<CGameHandlers::ReceivedVoteOptions>(voteOptions);
+	handlers().receivedVoteOptionsHandler.broadcast(voteOptions);
 }
 
 CGameModule6::CGameModule6(const ClientImports& inImports)
@@ -1668,7 +1668,7 @@ void CGameModule6::handleCGMessage(MSG& msg, uint8_t msgId)
 
 		if (msgType == cgmessage_e::bullet1 || msgType == cgmessage_e::bullet2)
 		{
-			handlers().notify<CGameHandlers::MakeBulletTracer>(
+			handlers().makeBulletTracerHandler.broadcast(
 				const_cast<const Vector&>(vecStart),
 				const_cast<const Vector&>(vecTmp),
 				const_cast<const Vector&>(vecArray[0]),
@@ -1680,7 +1680,7 @@ void CGameModule6::handleCGMessage(MSG& msg, uint8_t msgId)
 		}
 		else
 		{
-			handlers().notify<CGameHandlers::MakeBubbleTrail>(
+			handlers().makeBubbleTrailHandler.broadcast(
 				const_cast<const Vector&>(vecStart),
 				const_cast<const Vector&>(vecEnd),
 				large,
@@ -1705,7 +1705,7 @@ void CGameModule6::handleCGMessage(MSG& msg, uint8_t msgId)
 			vecArray[i] = msgHelper.ReadVectorCoord();
 		}
 
-		handlers().notify<CGameHandlers::MakeBulletTracer>(
+		handlers().makeBulletTracerHandler.broadcast(
 			const_cast<const Vector&>(vecTmp),
 			const_cast<const Vector&>(vecTmp),
 			const_cast<const Vector&>(vecArray[0]),
@@ -1725,7 +1725,7 @@ void CGameModule6::handleCGMessage(MSG& msg, uint8_t msgId)
 		vecEnd = msgHelper.ReadDir();
 		large = msg.ReadBool();
 
-		handlers().notify<CGameHandlers::Impact>(
+		handlers().impactHandler.broadcast(
 			const_cast<const Vector&>(vecStart),
 			const_cast<const Vector&>(vecEnd),
 			large
@@ -1735,7 +1735,7 @@ void CGameModule6::handleCGMessage(MSG& msg, uint8_t msgId)
 		vecStart = msgHelper.ReadVectorCoord();
 		vecEnd = msgHelper.ReadVectorCoord();
 
-		handlers().notify<CGameHandlers::MeleeImpact>(
+		handlers().meleeImpactHandler.broadcast(
 			const_cast<const Vector&>(vecStart),
 			const_cast<const Vector&>(vecEnd)
 			);
@@ -1746,7 +1746,7 @@ void CGameModule6::handleCGMessage(MSG& msg, uint8_t msgId)
 		uint32_t effectId = msgId == 12 || msgId != 13 ? 63 : 64;
 		vecStart = msgHelper.ReadVectorCoord();
 
-		handlers().notify<CGameHandlers::MakeExplosionEffect>(
+		handlers().makeExplosionEffectHandler.broadcast(
 			const_cast<const Vector&>(vecStart),
 			getEffectId(effectId)
 			);
@@ -1763,7 +1763,7 @@ void CGameModule6::handleCGMessage(MSG& msg, uint8_t msgId)
 		vecStart = msgHelper.ReadVectorCoord();
 		vecEnd = msgHelper.ReadDir();
 
-		handlers().notify<CGameHandlers::MakeEffect>(
+		handlers().makeEffectHandler.broadcast(
 			const_cast<const Vector&>(vecStart),
 			const_cast<const Vector&>(vecEnd),
 			getEffectId(msgId + 67)
@@ -1775,7 +1775,7 @@ void CGameModule6::handleCGMessage(MSG& msg, uint8_t msgId)
 		temp = msg.ReadByte();
 		if (msgType == cgmessage_e::debris_crate)
 		{
-			handlers().notify<CGameHandlers::SpawnDebris>(
+			handlers().spawnDebrisHandler.broadcast(
 				CGameHandlers::debrisType_e::crate,
 				const_cast<const Vector&>(vecStart),
 				temp
@@ -1783,7 +1783,7 @@ void CGameModule6::handleCGMessage(MSG& msg, uint8_t msgId)
 		}
 		else
 		{
-			handlers().notify<CGameHandlers::SpawnDebris>(
+			handlers().spawnDebrisHandler.broadcast(
 				CGameHandlers::debrisType_e::window,
 				const_cast<const Vector&>(vecStart),
 				temp
@@ -1796,7 +1796,7 @@ void CGameModule6::handleCGMessage(MSG& msg, uint8_t msgId)
 		vecArray[0] = msgHelper.ReadVectorCoord();
 		large = msg.ReadBool();
 
-		handlers().notify<CGameHandlers::MakeBulletTracer>(
+		handlers().makeBulletTracerHandler.broadcast(
 			const_cast<const Vector&>(vecTmp),
 			const_cast<const Vector&>(vecStart),
 			const_cast<const Vector&>(vecArray[0]),
@@ -1812,7 +1812,7 @@ void CGameModule6::handleCGMessage(MSG& msg, uint8_t msgId)
 		vecArray[0] = msgHelper.ReadVectorCoord();
 		large = msg.ReadBool();
 		
-		handlers().notify<CGameHandlers::MakeBulletTracer>(
+		handlers().makeBulletTracerHandler.broadcast(
 			const_cast<const Vector&>(vecTmp),
 			const_cast<const Vector&>(vecStart),
 			const_cast<const Vector&>(vecArray[0]),
@@ -1826,7 +1826,7 @@ void CGameModule6::handleCGMessage(MSG& msg, uint8_t msgId)
 		index = msg.ReadByte();
 		strVal = msg.ReadString();
 		
-		handlers().notify<CGameHandlers::HudDraw_Shader>(index, (const char*)strVal);
+		handlers().huddrawShaderHandler.broadcast(index, (const char*)strVal);
 		break;
 	case cgmessage_e::huddraw_align:
 	{
@@ -1836,7 +1836,7 @@ void CGameModule6::handleCGMessage(MSG& msg, uint8_t msgId)
 		msg.ReadBits(&vAlign, 2);
 
 		using namespace CGameHandlers;
-		handlers().notify<CGameHandlers::HudDraw_Align>(index, horizontalAlign_e(hAlign), verticalAlign_e(vAlign));
+		handlers().huddrawAlignHandler.broadcast(index, horizontalAlign_e(hAlign), verticalAlign_e(vAlign));
 		break;
 	}
 	case cgmessage_e::huddraw_rect:
@@ -1848,7 +1848,7 @@ void CGameModule6::handleCGMessage(MSG& msg, uint8_t msgId)
 		const uint16_t width = msg.ReadUShort();
 		const uint16_t height = msg.ReadUShort();
 
-		handlers().notify<CGameHandlers::HudDraw_Rect>(index, x, y, width, height);
+		handlers().huddrawRectHandler.broadcast(index, x, y, width, height);
 		break;
 	}
 	case cgmessage_e::huddraw_virtualscreen:
@@ -1856,7 +1856,7 @@ void CGameModule6::handleCGMessage(MSG& msg, uint8_t msgId)
 		index = msg.ReadByte();
 		const bool virtualScreen = msg.ReadBool();
 
-		handlers().notify<CGameHandlers::HudDraw_VirtualScreen>(index, virtualScreen);
+		handlers().huddrawVSHandler.broadcast(index, virtualScreen);
 		break;
 	}
 	case cgmessage_e::huddraw_color:
@@ -1870,7 +1870,7 @@ void CGameModule6::handleCGMessage(MSG& msg, uint8_t msgId)
 		};
 
 		// Divide by 255 to get float color
-		handlers().notify<CGameHandlers::HudDraw_Color>(index, col);
+		handlers().huddrawColorHandler.broadcast(index, col);
 		break;
 	}
 	case cgmessage_e::huddraw_alpha:
@@ -1878,7 +1878,7 @@ void CGameModule6::handleCGMessage(MSG& msg, uint8_t msgId)
 		index = msg.ReadByte();
 		const float alpha = (float)msg.ReadByte() / 255.f;
 
-		handlers().notify<CGameHandlers::HudDraw_Alpha>(index, alpha);
+		handlers().huddrawAlphaHandler.broadcast(index, alpha);
 		break;
 	}
 	case cgmessage_e::huddraw_string:
@@ -1886,7 +1886,7 @@ void CGameModule6::handleCGMessage(MSG& msg, uint8_t msgId)
 		index = msg.ReadByte();
 		strVal = msg.ReadString();
 
-		handlers().notify<CGameHandlers::HudDraw_String>(index, (const char*)strVal);
+		handlers().huddrawStringHandler.broadcast(index, (const char*)strVal);
 		break;
 	}
 	case cgmessage_e::huddraw_font:
@@ -1894,14 +1894,14 @@ void CGameModule6::handleCGMessage(MSG& msg, uint8_t msgId)
 		index = msg.ReadByte();
 		strVal = msg.ReadString();
 
-		handlers().notify<CGameHandlers::HudDraw_Font>(index, (const char*)strVal);
+		handlers().huddrawFontHandler.broadcast(index, (const char*)strVal);
 		break;
 	}
 	case cgmessage_e::notify_hit:
-		handlers().notify<CGameHandlers::HitNotify>();
+		handlers().hitNotifyHandler.broadcast();
 		break;
 	case cgmessage_e::notify_kill:
-		handlers().notify<CGameHandlers::KillNotify>();
+		handlers().killNotifyHandler.broadcast();
 		break;
 	case cgmessage_e::playsound_entity:
 		vecStart = msgHelper.ReadVectorCoord();
@@ -1910,7 +1910,7 @@ void CGameModule6::handleCGMessage(MSG& msg, uint8_t msgId)
 		msg.ReadBits(&index, 6);
 		strVal = msg.ReadString();
 
-		handlers().notify<CGameHandlers::VoiceMessage>(
+		handlers().voiceMessageHandler.broadcast(
 			const_cast<const Vector&>(vecStart),
 			(bool)temp,
 			(uint8_t)index,
@@ -2204,7 +2204,7 @@ void CGameModule15::handleCGMessage(MSG& msg, uint8_t msgId)
 
 		if (msgType == cgmessage_e::bullet1 || msgType == cgmessage_e::bullet2)
 		{
-			handlers().notify<CGameHandlers::MakeBulletTracer>(
+			handlers().makeBulletTracerHandler.broadcast(
 				const_cast<const Vector&>(vecStart),
 				const_cast<const Vector&>(vecTmp),
 				const_cast<const Vector&>(vecArray[0]),
@@ -2216,7 +2216,7 @@ void CGameModule15::handleCGMessage(MSG& msg, uint8_t msgId)
 		}
 		else
 		{
-			handlers().notify<CGameHandlers::MakeBubbleTrail>(
+			handlers().makeBubbleTrailHandler.broadcast(
 				const_cast<const Vector&>(vecStart),
 				const_cast<const Vector&>(vecEnd),
 				large,
@@ -2254,7 +2254,7 @@ void CGameModule15::handleCGMessage(MSG& msg, uint8_t msgId)
 
 		if (count)
 		{
-			handlers().notify<CGameHandlers::MakeBulletTracer>(
+			handlers().makeBulletTracerHandler.broadcast(
 				const_cast<const Vector&>(vecStart),
 				const_cast<const Vector&>(vecTmp),
 				const_cast<const Vector&>(vecArray[0]),
@@ -2278,7 +2278,7 @@ void CGameModule15::handleCGMessage(MSG& msg, uint8_t msgId)
 		uint8_t iLarge = 0;
 		msg.ReadBits(&iLarge, 2);
 
-		handlers().notify<CGameHandlers::Impact>(
+		handlers().impactHandler.broadcast(
 			const_cast<const Vector&>(vecStart),
 			const_cast<const Vector&>(vecEnd),
 			large
@@ -2289,7 +2289,7 @@ void CGameModule15::handleCGMessage(MSG& msg, uint8_t msgId)
 		vecStart = msgHelper.ReadVectorCoord();
 		vecEnd = msgHelper.ReadVectorCoord();
 
-		handlers().notify<CGameHandlers::MeleeImpact>(
+		handlers().meleeImpactHandler.broadcast(
 			const_cast<const Vector&>(vecStart),
 			const_cast<const Vector&>(vecEnd)
 		);
@@ -2318,7 +2318,7 @@ void CGameModule15::handleCGMessage(MSG& msg, uint8_t msgId)
 			effectId = 63;
 		}
 
-		handlers().notify<CGameHandlers::MakeExplosionEffect>(
+		handlers().makeExplosionEffectHandler.broadcast(
 			const_cast<const Vector&>(vecStart),
 			getEffectId(effectId)
 		);
@@ -2334,7 +2334,7 @@ void CGameModule15::handleCGMessage(MSG& msg, uint8_t msgId)
 		vecStart = msgHelper.ReadVectorCoord();
 		vecEnd = msgHelper.ReadDir();
 
-		handlers().notify<CGameHandlers::MakeEffect>(
+		handlers().makeEffectHandler.broadcast(
 			const_cast<const Vector&>(vecStart),
 			const_cast<const Vector&>(vecEnd),
 			getEffectId(msgId + 75)
@@ -2347,7 +2347,7 @@ void CGameModule15::handleCGMessage(MSG& msg, uint8_t msgId)
 
 		if (msgType == cgmessage_e::debris_crate)
 		{
-			handlers().notify<CGameHandlers::SpawnDebris>(
+			handlers().spawnDebrisHandler.broadcast(
 				CGameHandlers::debrisType_e::crate,
 				const_cast<const Vector&>(vecStart),
 				temp
@@ -2355,7 +2355,7 @@ void CGameModule15::handleCGMessage(MSG& msg, uint8_t msgId)
 		}
 		else
 		{
-			handlers().notify<CGameHandlers::SpawnDebris>(
+			handlers().spawnDebrisHandler.broadcast(
 				CGameHandlers::debrisType_e::window,
 				const_cast<const Vector&>(vecStart),
 				temp
@@ -2372,7 +2372,7 @@ void CGameModule15::handleCGMessage(MSG& msg, uint8_t msgId)
 		msg.ReadBits(&iLarge, 2);
 		const float bulletSize = utils.readBulletSize(msg);
 
-		handlers().notify<CGameHandlers::MakeBulletTracer>(
+		handlers().makeBulletTracerHandler.broadcast(
 			const_cast<const Vector&>(vecTmp),
 			const_cast<const Vector&>(vecStart),
 			const_cast<const Vector&>(vecArray[0]),
@@ -2393,7 +2393,7 @@ void CGameModule15::handleCGMessage(MSG& msg, uint8_t msgId)
 		msg.ReadBits(&iLarge, 2);
 		const float bulletSize = utils.readBulletSize(msg);
 
-		handlers().notify<CGameHandlers::MakeBulletTracer>(
+		handlers().makeBulletTracerHandler.broadcast(
 			const_cast<const Vector&>(vecTmp),
 			const_cast<const Vector&>(vecStart),
 			const_cast<const Vector&>(vecArray[0]),
@@ -2408,7 +2408,7 @@ void CGameModule15::handleCGMessage(MSG& msg, uint8_t msgId)
 		index = msg.ReadByte();
 		strVal = msg.ReadString();
 
-		handlers().notify<CGameHandlers::HudDraw_Shader>(index, (const char*)strVal);
+		handlers().huddrawShaderHandler.broadcast(index, (const char*)strVal);
 		break;
 	case cgmessage_e::huddraw_align:
 	{
@@ -2418,7 +2418,7 @@ void CGameModule15::handleCGMessage(MSG& msg, uint8_t msgId)
 		msg.ReadBits(&vAlign, 2);
 
 		using namespace CGameHandlers;
-		handlers().notify<CGameHandlers::HudDraw_Align>(index, horizontalAlign_e(hAlign), verticalAlign_e(vAlign));
+		handlers().huddrawAlignHandler.broadcast(index, horizontalAlign_e(hAlign), verticalAlign_e(vAlign));
 		break;
 	}
 	case cgmessage_e::huddraw_rect:
@@ -2430,7 +2430,7 @@ void CGameModule15::handleCGMessage(MSG& msg, uint8_t msgId)
 		const uint16_t width = msg.ReadUShort();
 		const uint16_t height = msg.ReadUShort();
 
-		handlers().notify<CGameHandlers::HudDraw_Rect>(index, x, y, width, height);
+		handlers().huddrawRectHandler.broadcast(index, x, y, width, height);
 		break;
 	}
 	case cgmessage_e::huddraw_virtualscreen:
@@ -2438,7 +2438,7 @@ void CGameModule15::handleCGMessage(MSG& msg, uint8_t msgId)
 		index = msg.ReadByte();
 		const bool virtualScreen = msg.ReadBool();
 
-		handlers().notify<CGameHandlers::HudDraw_VirtualScreen>(index, virtualScreen);
+		handlers().huddrawVSHandler.broadcast(index, virtualScreen);
 		break;
 	}
 	case cgmessage_e::huddraw_color:
@@ -2452,7 +2452,7 @@ void CGameModule15::handleCGMessage(MSG& msg, uint8_t msgId)
 		};
 
 		// Divide by 255 to get float color
-		handlers().notify<CGameHandlers::HudDraw_Color>(index, col);
+		handlers().huddrawColorHandler.broadcast(index, col);
 		break;
 	}
 	case cgmessage_e::huddraw_alpha:
@@ -2460,7 +2460,7 @@ void CGameModule15::handleCGMessage(MSG& msg, uint8_t msgId)
 		index = msg.ReadByte();
 		const float alpha = (float)msg.ReadByte() / 255.f;
 
-		handlers().notify<CGameHandlers::HudDraw_Alpha>(index, alpha);
+		handlers().huddrawAlphaHandler.broadcast(index, alpha);
 		break;
 	}
 	case cgmessage_e::huddraw_string:
@@ -2468,7 +2468,7 @@ void CGameModule15::handleCGMessage(MSG& msg, uint8_t msgId)
 		index = msg.ReadByte();
 		strVal = msg.ReadString();
 
-		handlers().notify<CGameHandlers::HudDraw_String>(index, (const char*)strVal);
+		handlers().huddrawStringHandler.broadcast(index, (const char*)strVal);
 		break;
 	}
 	case cgmessage_e::huddraw_font:
@@ -2476,14 +2476,14 @@ void CGameModule15::handleCGMessage(MSG& msg, uint8_t msgId)
 		index = msg.ReadByte();
 		strVal = msg.ReadString();
 
-		handlers().notify<CGameHandlers::HudDraw_Font>(index, (const char*)strVal);
+		handlers().huddrawFontHandler.broadcast(index, (const char*)strVal);
 		break;
 	}
 	case cgmessage_e::notify_hit:
-		handlers().notify<CGameHandlers::HitNotify>();
+		handlers().hitNotifyHandler.broadcast();
 		break;
 	case cgmessage_e::notify_kill:
-		handlers().notify<CGameHandlers::KillNotify>();
+		handlers().killNotifyHandler.broadcast();
 		break;
 	case cgmessage_e::playsound_entity:
 		vecStart = msgHelper.ReadVectorCoord();
@@ -2492,7 +2492,7 @@ void CGameModule15::handleCGMessage(MSG& msg, uint8_t msgId)
 		msg.ReadBits(&index, 6);
 		strVal = msg.ReadString();
 
-		handlers().notify<CGameHandlers::VoiceMessage>(
+		handlers().voiceMessageHandler.broadcast(
 			const_cast<const Vector&>(vecStart),
 			(bool)temp,
 			(uint8_t)index,

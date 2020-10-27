@@ -268,7 +268,10 @@ namespace MOHPC
 			}
 		}
 
-		IMessageCodec& Bit = CBitCodec();
-		IMessageCodec& OOB = COOBCodec();
+		CBitCodec InternalBitCodec;
+		COOBCodec InternalOOBCodec;
+
+		IMessageCodec& Bit = InternalBitCodec;
+		IMessageCodec& OOB = InternalOOBCodec;
 	}
 }

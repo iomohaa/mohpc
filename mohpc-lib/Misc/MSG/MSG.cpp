@@ -6,7 +6,7 @@
 #include <MOHPC/Misc/MSG/HuffmanTree.h>
 #include <MOHPC/Network/InfoTypes.h>
 #include "../Endian.h"
-#include <string.h>
+#include <cstring>
 #include <cassert>
 #include <algorithm>
 

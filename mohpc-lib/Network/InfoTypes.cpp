@@ -161,7 +161,7 @@ usercmd_t::buttons_t usercmd_t::getButtons() const
 
 void usercmd_t::setWeaponCommand(weaponCommand_e weaponCommand)
 {
-	buttons.bitflags.weaponFlags = 1 << (uint8_t)weaponCommand;
+	buttons.flags |= ((uint16_t)weaponCommand & WEAPONCOMMAND_MASK) << 7;
 }
 
 void usercmd_t::setAngles(float pitch, float yaw, float roll)
@@ -201,6 +201,16 @@ void usercmd_t::jump()
 void usercmd_t::crouch()
 {
 	upmove = -128;
+}
+
+void usercmd_t::setButtonFlags(uint32_t flags)
+{
+	buttons.flags |= flags;
+}
+
+void usercmd_t::removeButtonFlags(uint32_t flags)
+{
+	buttons.flags &= ~flags;
 }
 
 usereyes_t::usereyes_t()
@@ -906,6 +916,11 @@ serverType_e protocolType_c::getServerType() const
 protocolVersion_e protocolType_c::getProtocolVersion() const
 {
 	return protocolVersion;
+}
+
+unsigned int protocolType_c::getProtocolVersionNumber() const
+{
+	return ::getProtocolVersionNumber(protocolVersion);
 }
 
 size_t SnapshotInfo::getNumEntities() const

@@ -187,7 +187,7 @@ Archive& operator>>(Archive& ar, const T& obj)
 }
 */
 
-class CLevelTest : public IUnitTest, public TAutoInst<CLevelTest>
+class CLevelTest : public IUnitTest
 {
 public:
 	virtual const char* name() override
@@ -204,12 +204,16 @@ public:
 	{
 		//MOHPC::BSPPtr Level = AM->LoadAsset<MOHPC::BSP>("/maps/lib/mp_anzio_lib.bsp");
 		MOHPC::BSPPtr Asset = AM->LoadAsset<MOHPC::BSP>("/maps/dm/mohdm6.bsp");
-		traceTest(Asset);
-		leafTesting(Asset);
-		MOHPC::DCLPtr DCL = AM->LoadAsset<MOHPC::DCL>("/maps/dm/mohdm4.dcl");
+		if(Asset)
+		{
+			traceTest(Asset);
+			leafTesting(Asset);
 
-		MOHPC::BSP::TerrainCollide collision;
-		Asset->GenerateTerrainCollide(Asset->GetTerrainPatch(0), collision);
+			MOHPC::BSP::TerrainCollide collision;
+			Asset->GenerateTerrainCollide(Asset->GetTerrainPatch(0), collision);
+		}
+
+		MOHPC::DCLPtr DCL = AM->LoadAsset<MOHPC::DCL>("/maps/dm/mohdm4.dcl");
 	}
 
 	void traceTest(MOHPC::BSPPtr Asset)
@@ -292,3 +296,4 @@ public:
 		}
 	}
 };
+static CLevelTest unitTest;

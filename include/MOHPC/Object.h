@@ -8,10 +8,7 @@
 namespace MOHPC
 {
 	class AssetManager;
-}
 
-namespace MOHPC
-{
 #define MOHPC_OBJECT_DECLARATION(c) \
 	public: \
 	template<typename...Args> static SharedPtr<c> create(Args&&...args) { return makePtr(new (allocate()) c(std::forward<Args>(args)...)); } \
@@ -59,13 +56,22 @@ namespace MOHPC
 
 		/** Wrapper to AssetManager::GetManager */
 		template<class T>
-		SharedPtr<T> GetManager() const
-		{
-			SharedPtr<AssetManager> AssetManager = GetAssetManager();
-			return AssetManager ? AssetManager->GetManager<T>() : nullptr;
-		}
+		SharedPtr<T> GetManager() const;
 
 		MOHPC_EXPORTS SharedPtr<AssetManager> GetAssetManager() const;
 		MOHPC_EXPORTS class FileManager* GetFileManager() const;
 	};
+
+	template<class T>
+	SharedPtr<T> Object::GetManager() const
+	{
+		const SharedPtr<AssetManager> AssetManager = GetAssetManager();
+		if (AssetManager)
+		{
+			// return the owning asset manager
+			return AssetManager->template GetManager<T>();
+		}
+
+		return nullptr;
+	}
 }

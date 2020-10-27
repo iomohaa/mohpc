@@ -1,6 +1,7 @@
 #pragma once
 
-#include <stdint.h>
+#include <cstdint>
+#include <cstdlib>
 #include <cassert>
 #include <utility>
 #include <exception>

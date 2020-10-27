@@ -15,69 +15,21 @@
 #include <MOHPC/Collision/Collision.h>
 #include <MOHPC/Log.h>
 #include "UnitTest.h"
-#include <winsock2.h>
-#include <ws2tcpip.h>
+#include "platform.h"
+
+#include <ctime>
+#include <cstdarg>
 #include <iostream>
 #include <vector>
-#include <conio.h>
-#include <ctime>
 #include <locale>
+#include <thread>
+#include <mutex>
+#include <string>
 
 #define MOHPC_LOG_NAMESPACE "testnet"
 
-class CNetworkUnitTest : public IUnitTest, public TAutoInst<CNetworkUnitTest>
+class CNetworkUnitTest : public IUnitTest
 {
-private:
-	class Logger : public MOHPC::Log::ILog
-	{
-	public:
-		virtual void log(MOHPC::Log::logType_e type, const char* serviceName, const char* fmt, ...) override
-		{
-			using namespace MOHPC::Log;
-
-			char mbstr[100];
-			time_t t = std::time(nullptr);
-			std::strftime(mbstr, sizeof(mbstr), "%H:%M:%S", std::localtime(&t));
-
-			const char* typeStr;
-			switch (type)
-			{
-			case logType_e::VeryVerbose:
-				typeStr = "dbg";
-				break;
-			case logType_e::Verbose:
-				typeStr = "verb";
-				break;
-			case logType_e::Log:
-				typeStr = "info";
-				break;
-			case logType_e::Warning:
-				typeStr = "warn";
-				break;
-			case logType_e::Error:
-				typeStr = "err";
-				break;
-			case logType_e::Disconnect:
-				typeStr = "fatal";
-				break;
-			default:
-				typeStr = "";
-				break;
-			}
-
-			printf("[%s] (%s) @_%s => ", mbstr, serviceName, typeStr);
-
-			va_list va;
-			va_start(va, fmt);
-			vprintf(fmt, va);
-			va_end(va);
-
-			printf("\n");
-			// Immediately print
-			fflush(stdout);
-		}
-	};
-
 public:
 	virtual unsigned int priority()
 	{
@@ -93,6 +45,10 @@ public:
 	{
 		using namespace MOHPC;
 		using namespace MOHPC::Network;
+
+		memset(buf, 0, sizeof(buf));
+		count = 0;
+		wantsDisconnect = false;
 
 		{
 			Info info;
@@ -114,18 +70,14 @@ public:
 
 		NetworkManagerPtr manager = AM->GetManager<NetworkManager>();
 
-		// Set new log
-		using namespace Log;
-		ILogPtr logPtr = std::make_shared<Logger>();
-		ILog::set(logPtr);
-
 		NetAddr4Ptr adr = NetAddr4::create();
-		adr->setIp(127, 0, 0, 1);
+		//adr->setIp(127, 0, 0, 1);
+		adr->setIp(192, 168, 1, 85);
 		adr->setPort(12203);
 
 		// Send remote command
 		RemoteConsolePtr RCon = RemoteConsole::create(manager, adr, "12345");
-		RCon->getHandlerList().set<RConHandlers::Print>([](const char* text)
+		RCon->getHandlerList().printHandler.add([](const char* text)
 		{
 			MOHPC_LOG(Log, "Remote console \"%s\"", text);
 		});
@@ -162,12 +114,18 @@ public:
 	#endif
 
 		Network::ClientGameConnectionPtr connection;
-		bool wantsDisconnect = false;
 
 		float forwardValue = 0.f;
 		float rightValue = 0.f;
 		float angle = 0.f;
-		bool shouldJump = false;
+		struct {
+			weaponCommand_e weaponCommand;
+			bool shouldJump;
+			bool attackPrimary;
+			bool attackSecondary;
+			bool use;
+		} buttons;
+		memset(&buttons, 0, sizeof(buttons));
 
 		str mapfilename;
 
@@ -176,9 +134,6 @@ public:
 		Network::ClientInfoPtr clientInfo = Network::ClientInfo::create();
 		clientInfo->setName("mohpc_test");
 		clientInfo->setRate(25000);
-
-		srand((unsigned int)time(NULL));
-
 		Network::ConnectSettingsPtr connectSettings = Network::ConnectSettings::create();
 		connectSettings->setQport(rand() % 45536 + 20000);
 		connectSettings->setCDKey("12345");
@@ -196,12 +151,12 @@ public:
 
 				CGameModuleBase* cgame = connection->getCGModule();
 
-				connection->setCallback<ClientHandlers::Error>([](const Network::NetworkException& exception)
+				connection->getHandlerList().errorHandler.add([](const Network::NetworkException& exception)
 					{
 						MOHPC_LOG(Log, "Exception of type \"%s\": \"%s\"", typeid(exception).name(), exception.what().c_str());
 					});
 
-				connection->setCallback<ClientHandlers::GameStateParsed>([&AM, &connection, cgame, &cm, &mapfilename](const Network::gameState_t& gameState, bool differentLevel)
+				connection->getHandlerList().gameStateParsedHandler.add([&AM, &connection, cgame, &cm, &mapfilename](const Network::gameState_t& gameState, bool differentLevel)
 					{
 						const cgsInfo& cgs = cgame->getServerInfo();
 						const str& loadedMap = cgs.getMapFilenameStr();
@@ -221,87 +176,87 @@ public:
 						connection->markReady();
 					});
 
-				connection->setCallback<ClientHandlers::ServerRestarted>([]()
+				connection->getHandlerList().serverRestartedHandler.add([]()
 					{
 						MOHPC_LOG(Log, "server restarted");
 					});
 
-				fnHandle_t cb = cgame->setCallback<CGameHandlers::EntityAdded>([&connection](const EntityInfo& entity)
+				fnHandle_t cb = cgame->getHandlerList().entityAddedHandler.add([&connection](const EntityInfo& entity)
 					{
 						const char* modelName = connection->getGameState().getConfigString(CS_MODELS + entity.nextState.modelindex);
 						MOHPC_LOG(VeryVerbose, "new entity %d, model \"%s\"", entity.nextState.number, modelName);
 					});
 
-				cgame->setCallback<CGameHandlers::EntityRemoved>([&connection](const EntityInfo& entity)
+				cgame->getHandlerList().entityRemovedHandler.add([&connection](const EntityInfo& entity)
 					{
 						const char* modelName = connection->getGameState().getConfigString(CS_MODELS + entity.currentState.modelindex);
 						MOHPC_LOG(VeryVerbose, "entity %d deleted (was model \"%s\")", entity.currentState.number, modelName);
 					});
 
-				cgame->setCallback<CGameHandlers::MakeBulletTracer>([&logPtr](const Vector& barrel, const Vector& start, const Vector& end, uint32_t numBullets, uint32_t iLarge, uint32_t numTracersVisible, float bulletSize)
+				cgame->getHandlerList().makeBulletTracerHandler.add([](const Vector& barrel, const Vector& start, const Vector& end, uint32_t numBullets, uint32_t iLarge, uint32_t numTracersVisible, float bulletSize)
 					{
 						static size_t num = 0;
 						//MOHPC_LOG(VeryVerbose, "bullet %zu", num++);
 					});
 
-				cgame->setCallback<CGameHandlers::Impact>([&logPtr](const Vector& origin, const Vector& normal, uint32_t large)
+				cgame->getHandlerList().impactHandler.add([](const Vector& origin, const Vector& normal, uint32_t large)
 					{
 						static size_t num = 0;
 						//MOHPC_LOG(VeryVerbose, "impact %zu", num++);
 					});
 
-				cgame->setCallback<CGameHandlers::MakeExplosionEffect>([&logPtr](const Vector& origin, effects_e type)
+				cgame->getHandlerList().makeExplosionEffectHandler.add([](const Vector& origin, effects_e type)
 					{
 						static size_t num = 0;
 						//MOHPC_LOG(VeryVerbose, "explosionfx %zu: type \"%s\"", num++, getEffectName(type));
 					});
 
-				cgame->setCallback<CGameHandlers::MakeEffect>([&logPtr](const Vector& origin, const Vector& normal, effects_e type)
+				cgame->getHandlerList().makeEffectHandler.add([](const Vector& origin, const Vector& normal, effects_e type)
 					{
 						static size_t num = 0;
 						//MOHPC_LOG(VeryVerbose, "effect %zu: type \"%s\"", num++, getEffectName(type));
 					});
 
-				cgame->setCallback<CGameHandlers::SpawnDebris>([&logPtr](CGameHandlers::debrisType_e debrisType, const Vector& origin, uint32_t numDebris)
+				cgame->getHandlerList().spawnDebrisHandler.add([](CGameHandlers::debrisType_e debrisType, const Vector& origin, uint32_t numDebris)
 					{
 						static size_t num = 0;
 						//MOHPC_LOG(VeryVerbose, "debris %zu: type %d", num++, debrisType);
 					});
 
-				cgame->setCallback<CGameHandlers::HitNotify>([&logPtr]()
+				cgame->getHandlerList().hitNotifyHandler.add([]()
 					{
 						static size_t num = 0;
 						//MOHPC_LOG(VeryVerbose, "hit %zu", num++);
 					});
 
-				cgame->setCallback<CGameHandlers::KillNotify>([&logPtr]()
+				cgame->getHandlerList().killNotifyHandler.add([]()
 					{
 						static size_t num = 0;
 						//MOHPC_LOG(VeryVerbose, "kill %zu", num++);
 					});
 
-				cgame->setCallback<CGameHandlers::VoiceMessage>([&logPtr](const Vector& origin, bool local, uint8_t clientNum, const char* soundName)
+				cgame->getHandlerList().voiceMessageHandler.add([](const Vector& origin, bool local, uint8_t clientNum, const char* soundName)
 					{
 						static size_t num = 0;
 						//MOHPC_LOG(VeryVerbose, "voice %d: sound \"%s\"", num++, soundName);
 					});
 
-				cgame->setCallback<CGameHandlers::Print>([&logPtr](hudMessage_e hudMessage, const char* text)
+				cgame->getHandlerList().printHandler.add([](hudMessage_e hudMessage, const char* text)
 					{
 						MOHPC_LOG(VeryVerbose, "server print (%d): \"%s\"", hudMessage, text);
 					});
 
-				cgame->setCallback<CGameHandlers::HudPrint>([&logPtr](const char* text)
+				cgame->getHandlerList().hudPrintHandler.add([](const char* text)
 					{
 						MOHPC_LOG(VeryVerbose, "server print \"%s\"", text);
 					});
 
-				cgame->setCallback<CGameHandlers::HudDraw_Shader>([&logPtr](uint8_t index, const char* shaderName)
+				cgame->getHandlerList().huddrawShaderHandler.add([](uint8_t index, const char* shaderName)
 					{
 						MOHPC_LOG(Verbose, "huddraw_shader : %d \"%s\"", index, shaderName);
 					});
 
-				cgame->setCallback<CGameHandlers::VoteModified>([](const voteInfo_t& voteInfo)
+				cgame->getHandlerList().voteModifiedHandler.add([](const voteInfo_t& voteInfo)
 					{
 						if(voteInfo.getVoteTime())
 						{
@@ -319,46 +274,54 @@ public:
 						}
 					});
 
-				connection->setCallback<ClientHandlers::Disconnect>([&wantsDisconnect](const char* reason)
+				connection->getHandlerList().disconnectHandler.add([this](const char* reason)
 					{
 						MOHPC_LOG(VeryVerbose, "Requested disconnect. Reason -> \"%s\"", reason ? reason : "");
 						wantsDisconnect = true;
 					});
 
-				connection->setCallback<ClientHandlers::Timeout>([]()
+				connection->getHandlerList().timeoutHandler.add([]()
 					{
 						MOHPC_LOG(VeryVerbose, "Server connection timed out");
 					});
 
-				connection->setCallback<ClientHandlers::UserInput>(
-				[&forwardValue, &rightValue, &angle, &shouldJump, cgame, &connection, &cm](usercmd_t& ucmd, usereyes_t& eyeinfo)
+				connection->getHandlerList().userInputHandler.add(
+				[&forwardValue, &rightValue, &angle, &buttons, cgame, &connection, &cm](usercmd_t& ucmd, usereyes_t& eyeinfo)
 					{
 						const uint32_t seq = connection->getCurrentServerMessageSequence();
 
 						eyeinfo.setAngles(30.f, angle);
-						ucmd.buttons.fields.button.run = true;
+						ucmd.setButtonFlags(BUTTON_RUN);
 						ucmd.moveForward((int8_t)(forwardValue * 127.f));
 						ucmd.moveRight((int8_t)(rightValue * 127.f));
 						ucmd.setAngles(30.f, angle, 0.f);
-						if (shouldJump)
+						if (buttons.shouldJump)
 						{
 							ucmd.jump();
 						}
+
+						if (buttons.attackPrimary) ucmd.setButtonFlags(BUTTON_ATTACK_PRIMARY);
+						if (buttons.attackSecondary) ucmd.setButtonFlags(BUTTON_ATTACK_SECONDARY);
+						if (buttons.use) ucmd.setButtonFlags(BUTTON_USE);
+						if (buttons.weaponCommand != weaponCommand_e::none) ucmd.setWeaponCommand(buttons.weaponCommand);
 					});
 
-				connection->setCallback<ClientHandlers::PreWritePacket>([&shouldJump]()
+				connection->getHandlerList().preWritePacketHandler.add([&buttons]()
 				{
-					shouldJump = false;
+					buttons.shouldJump = false;
+					buttons.attackPrimary = false;
+					buttons.attackSecondary = false;
+					buttons.use = false;
+					buttons.weaponCommand = weaponCommand_e::none;
 				});
 			},
-			[&wantsDisconnect]()
+			[this]()
 			{
 				MOHPC_LOG(Error, "connect to server timed out");
 				wantsDisconnect = true;
 			});
 
-		char buf[512];
-		size_t count = 0;
+		std::thread inputThread(&CNetworkUnitTest::readCommandThread, this);
 
 		while(!wantsDisconnect)
 		{
@@ -374,117 +337,180 @@ public:
 			}
 			*/
 
-			if (kbhit())
+			if (count)
 			{
-				const char c = _getch();
-				if (c == '\n' || c == '\r')
+				std::scoped_lock(bufLock);
+
+				TokenParser parser;
+				parser.Parse(buf, count);
+
+				const char* cmd = parser.GetToken(false);
+
+				if (!strcmp(cmd, "forward")) {
+					forwardValue = 1.f;
+				}
+				else if(!strcmp(cmd, "backward")) {
+					forwardValue = -1.f;
+				}
+				else if (!strcmp(cmd, "right")) {
+					rightValue = 1.f;
+				}
+				else if (!strcmp(cmd, "left")) {
+					rightValue = -1.f;
+				}
+				else if (!strcmp(cmd, "stop"))
 				{
-					if(!count) buf[0] = 0;
-					printf("\n");
-					count = 0;
-
-					TokenParser parser;
-					parser.Parse(buf, strlen(buf));
-
-					const char* cmd = parser.GetToken(false);
-
-					if (!strcmp(cmd, "forward")) {
-						forwardValue = 1.f;
-					}
-					else if(!strcmp(cmd, "backward")) {
-						forwardValue = -1.f;
-					}
-					else if (!strcmp(cmd, "right")) {
-						rightValue = 1.f;
-					}
-					else if (!strcmp(cmd, "left")) {
-						rightValue = -1.f;
-					}
-					else if (!strcmp(cmd, "stop"))
+					forwardValue = 0.f;
+					rightValue = 0.f;
+				}
+				else if (!strcmp(cmd, "turnleft")) {
+					angle += 20.f;
+				}
+				else if (!strcmp(cmd, "turnright")) {
+					angle -= 20.f;
+				}
+				else if (!strcmp(cmd, "jump")) {
+					buttons.shouldJump = true;
+				}
+				else if (!strcmp(cmd, "attackprimary")) {
+					buttons.attackPrimary = true;
+				}
+				else if (!strcmp(cmd, "attacksecondary")) {
+					buttons.attackSecondary = true;
+				}
+				else if (!strcmp(cmd, "use")) {
+					buttons.use = true;
+				}
+				else if (!strcmp(cmd, "testuinfo"))
+				{
+					if (connection)
 					{
-						forwardValue = 0.f;
-						rightValue = 0.f;
+						const ClientInfoPtr& userInfo = connection->getUserInfo();
+						userInfo->setRate(30000);
+						userInfo->setName("modified");
+						userInfo->setSnaps(1);
+						connection->updateUserInfo();
 					}
-					else if (!strcmp(cmd, "turnleft")) {
-						angle += 20.f;
+				}
+				else if (!strcmp(cmd, "useweaponclass"))
+				{
+					const char* wpClass = parser.GetToken(false);
+					if(!strcmp(wpClass, "pistol")) {
+						buttons.weaponCommand = weaponCommand_e::usePistol;
 					}
-					else if (!strcmp(cmd, "turnright")) {
-						angle -= 20.f;
+					else if (!strcmp(wpClass, "rifle")) {
+						buttons.weaponCommand = weaponCommand_e::useRifle;
 					}
-					else if (!strcmp(cmd, "jump")) {
-						shouldJump = true;
+					else if (!strcmp(wpClass, "smg")) {
+						buttons.weaponCommand = weaponCommand_e::useSmg;
 					}
-					else if (!strcmp(cmd, "testuinfo"))
+					else if (!strcmp(wpClass, "mg")) {
+						buttons.weaponCommand = weaponCommand_e::useMg;
+					}
+					else if (!strcmp(wpClass, "grenade")) {
+						buttons.weaponCommand = weaponCommand_e::useGrenade;
+					}
+					else if (!strcmp(wpClass, "heavy")) {
+						buttons.weaponCommand = weaponCommand_e::useHeavy;
+					}
+					else if (!strcmp(wpClass, "item")) {
+						buttons.weaponCommand = weaponCommand_e::useItem;
+					}
+					else if (!strcmp(wpClass, "item2")) {
+						buttons.weaponCommand = weaponCommand_e::useItem2;
+					}
+					else if (!strcmp(wpClass, "item3")) {
+						buttons.weaponCommand = weaponCommand_e::useItem3;
+					}
+					else if (!strcmp(wpClass, "item4")) {
+						buttons.weaponCommand = weaponCommand_e::useItem4;
+					}
+				}
+				else if (!strcmp(cmd, "weapnext")) {
+					buttons.weaponCommand = weaponCommand_e::nextWeapon;
+				}
+				else if (!strcmp(cmd, "weapprev")) {
+					buttons.weaponCommand = weaponCommand_e::prevWeapon;
+				}
+				else if (!strcmp(cmd, "useLast")) {
+					buttons.weaponCommand = weaponCommand_e::useLast;
+				}
+				else if (!strcmp(cmd, "holster")) {
+					buttons.weaponCommand = weaponCommand_e::holster;
+				}
+				else if (!strcmp(cmd, "set"))
+				{
+					const char* key = parser.GetToken(false);
+					if (!strcmp(key, "rate"))
 					{
-						if (connection)
+						const uint32_t rate = parser.GetInteger(false);
+						if(connection)
 						{
 							const ClientInfoPtr& userInfo = connection->getUserInfo();
-							userInfo->setRate(30000);
-							userInfo->setName("modified");
-							userInfo->setSnaps(1);
+							userInfo->setRate(rate);
 							connection->updateUserInfo();
 						}
 					}
-					else if (!strcmp(cmd, "set"))
+					else if (!strcmp(key, "snaps"))
 					{
-						const char* key = parser.GetToken(false);
-						if (!strcmp(key, "rate"))
+						const uint32_t snaps = parser.GetInteger(false);
+						if (connection)
 						{
-							const uint32_t rate = parser.GetInteger(false);
-							if(connection)
-							{
-								const ClientInfoPtr& userInfo = connection->getUserInfo();
-								userInfo->setRate(rate);
-								connection->updateUserInfo();
-							}
-						}
-						else if (!strcmp(key, "snaps"))
-						{
-							const uint32_t snaps = parser.GetInteger(false);
-							if (connection)
-							{
-								const ClientInfoPtr& userInfo = connection->getUserInfo();
-								userInfo->setSnaps(snaps);
-								connection->updateUserInfo();
-							}
-						}
-						else if (!strcmp(key, "maxpackets"))
-						{
-							const uint32_t maxPackets = parser.GetInteger(false);
-							if (connection) {
-								connection->getSettings().setMaxPackets(maxPackets);
-							}
+							const ClientInfoPtr& userInfo = connection->getUserInfo();
+							userInfo->setSnaps(snaps);
+							connection->updateUserInfo();
 						}
 					}
-					else if (!strcmp(cmd, "disconnect") || !strcmp(cmd, "quit") || !strcmp(cmd, "exit"))
+					else if (!strcmp(key, "maxpackets"))
 					{
+						const uint32_t maxPackets = parser.GetInteger(false);
 						if (connection) {
-							connection->disconnect();
-						}
-					}
-					else
-					{
-						if (connection) {
-							connection->sendCommand(buf);
+							connection->getSettings().setMaxPackets(maxPackets);
 						}
 					}
 				}
-				else if (c == '\b')
+				else if (!strcmp(cmd, "disconnect") || !strcmp(cmd, "quit") || !strcmp(cmd, "exit"))
 				{
-					if(count > 0) count--;
-					buf[count] = 0;
+					if (connection) {
+						connection->disconnect();
+					}
 				}
 				else
 				{
-					buf[count++] = c;
-					buf[count] = 0;
+					if (connection) {
+						connection->sendCommand(buf);
+					}
 				}
 
-				printf("%c", c);
+				count = 0;
 			}
 
 			manager->processTicks();
-			Sleep(15);
+			std::this_thread::sleep_for(std::chrono::milliseconds(10));
+		}
+
+		inputThread.detach();
+	}
+
+	void readCommandThread()
+	{
+		while(!wantsDisconnect)
+		{
+			std::string str;
+			std::getline(std::cin, str);
+
+			{
+				std::scoped_lock(bufLock);
+				strncpy(buf, str.c_str(), sizeof(buf));
+				count = std::min(sizeof(buf), str.length());
+			}
 		}
 	}
+
+private:
+	std::mutex bufLock;
+	bool wantsDisconnect;
+	size_t count = 0;
+	char buf[512];
 };
+static CNetworkUnitTest unitTest;

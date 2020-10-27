@@ -30,12 +30,10 @@ namespace MOHPC
 			MOHPC_OBJECT_DECLARATION(RemoteConsole);
 
 		private:
-			struct RConHandlerList : public HandlerList
+			struct RConHandlerList
 			{
 			public:
-				MOHPC_HANDLERLIST_DEFINITIONS();
-
-				MOHPC_HANDLERLIST_HANDLER1(RConHandlers::Print, printHandler, const char*);
+				FunctionList<RConHandlers::Print> printHandler;
 			};
 
 		private:

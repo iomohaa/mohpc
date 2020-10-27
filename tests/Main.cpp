@@ -1,16 +1,62 @@
 #include <MOHPC/Managers/AssetManager.h>
 #include <MOHPC/Managers/FileManager.h>
 #include <MOHPC/Managers/ShaderManager.h>
+#include <MOHPC/Log.h>
+#include <MOHPC/Utilities/SharedPtr.h>
 #include "UnitTest.h"
 
-extern void TestMSG();
-extern void TestAnimRendering(MOHPC::AssetManager& AM);
-extern void TestCDKey();
-extern void TestEmitter(MOHPC::AssetManager& AM);
-extern void TestLevel(MOHPC::AssetManager& AM);
-extern void TestShader(MOHPC::AssetManager& AM);
-extern void TestSoundAlias(MOHPC::AssetManager& AM);
-extern void TestTiki(MOHPC::AssetManager& AM);
+#include <cstdarg>
+#include <ctime>
+
+class Logger : public MOHPC::Log::ILog
+{
+public:
+	virtual void log(MOHPC::Log::logType_e type, const char* serviceName, const char* fmt, ...) override
+	{
+		using namespace MOHPC::Log;
+
+		char mbstr[100];
+		time_t t = std::time(nullptr);
+		std::strftime(mbstr, sizeof(mbstr), "%H:%M:%S", std::localtime(&t));
+
+		const char* typeStr;
+		switch (type)
+		{
+		case logType_e::VeryVerbose:
+			typeStr = "dbg";
+			break;
+		case logType_e::Verbose:
+			typeStr = "verb";
+			break;
+		case logType_e::Log:
+			typeStr = "info";
+			break;
+		case logType_e::Warning:
+			typeStr = "warn";
+			break;
+		case logType_e::Error:
+			typeStr = "err";
+			break;
+		case logType_e::Disconnect:
+			typeStr = "fatal";
+			break;
+		default:
+			typeStr = "";
+			break;
+		}
+
+		printf("[%s] (%s) @_%s => ", mbstr, serviceName, typeStr);
+
+		va_list va;
+		va_start(va, fmt);
+		vprintf(fmt, va);
+		va_end(va);
+
+		printf("\n");
+		// Immediately print
+		fflush(stdout);
+	}
+};
 
 int main(int argc, char *argv[])
 {
@@ -33,6 +79,14 @@ int main(int argc, char *argv[])
 	// Set flag to the new value.
 	_CrtSetDbgFlag(tmpFlag);
 #endif
+
+	srand(time(NULL));
+
+
+	// Set new log
+	using namespace MOHPC::Log;
+	ILogPtr logPtr = MOHPC::makeShared<Logger>();
+	ILog::set(logPtr);
 
 	// Test if it destroys well
 	{

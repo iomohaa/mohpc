@@ -38,6 +38,6 @@ namespace MOHPC
 			static void reset();
 		};
 
-#define MOHPC_LOG(type, fmt, ...) MOHPC::Log::ILog::get().log(MOHPC::Log::logType_e::type, MOHPC_LOG_NAMESPACE, fmt, __VA_ARGS__)
+#define MOHPC_LOG(type, fmt, ...) MOHPC::Log::ILog::get().log(MOHPC::Log::logType_e::type, MOHPC_LOG_NAMESPACE, fmt, ##__VA_ARGS__)
 	}
 }

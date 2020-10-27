@@ -1,8 +1,9 @@
 #pragma once
 
 #include "../../Global.h"
-#include <stdint.h>
-#include <stddef.h>
+#include <cstdint>
+#include <cstddef>
+#include <algorithm>
 #include <exception>
 
 namespace MOHPC

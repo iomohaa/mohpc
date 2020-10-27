@@ -12,6 +12,7 @@
 #include <filesystem>
 #include <fstream>
 #include <chrono>
+#include <cstring>
 
 using namespace MOHPC;
 using namespace MOHPC::Network;
@@ -412,7 +413,7 @@ void ClientGameConnection::tick(uint64_t deltaTime, uint64_t currentTime)
 		if (clockTime >= nextTimeoutTime)
 		{
 			// The server or the client has timed out
-			handlerList.notify<ClientHandlers::Timeout>();
+			handlerList.timeoutHandler.broadcast();
 
 			// Disconnect from server
 			serverDisconnected(nullptr);
@@ -469,7 +470,7 @@ void ClientGameConnection::tick(uint64_t deltaTime, uint64_t currentTime)
 	catch (NetworkException& e)
 	{
 		// call the handler
-		handlerList.notify<ClientHandlers::Error>(e);
+		handlerList.errorHandler.broadcast(e);
 	}
 }
 
@@ -523,7 +524,7 @@ void ClientGameConnection::receive(const NetAddrPtr& from, MSG& msg, uint64_t cu
 	catch (NetworkException& e)
 	{
 		// call the handler
-		handlerList.notify<ClientHandlers::Error>(e);
+		handlerList.errorHandler.broadcast(e);
 	}
 	catch (StreamMessageException&)
 	{
@@ -716,7 +717,7 @@ void ClientGameConnection::parseGameState(MSG& msg)
 	}
 
 	// notify about the new game state
-	getHandlerList().notify<ClientHandlers::GameStateParsed>(getGameState(), isDiff);
+	getHandlerList().gameStateParsedHandler.broadcast(getGameState(), isDiff);
 }
 
 void ClientGameConnection::parseSnapshot(MSG& msg, uint64_t currentTime)
@@ -740,7 +741,7 @@ void ClientGameConnection::parseSnapshot(MSG& msg, uint64_t currentTime)
 	// Read player state
 	const playerState_t* oldps = old ? &old->ps : nullptr;
 	readDeltaPlayerstate(msg, oldps, &newSnap.ps);
-	handlerList.notify<ClientHandlers::PlayerstateRead>(const_cast<const playerState_t*>(oldps), const_cast<const playerState_t*>(&newSnap.ps));
+	handlerList.playerStateReadHandler.broadcast(const_cast<const playerState_t*>(oldps), const_cast<const playerState_t*>(&newSnap.ps));
 
 	// Read all entities in this snap
 	parsePacketEntities(msg, old, &newSnap);
@@ -765,7 +766,7 @@ void ClientGameConnection::parseSnapshot(MSG& msg, uint64_t currentTime)
 	// read and unpack radar info on SH/BT
 	readNonPVSClient(currentSnap.ps.getRadarInfo());
 
-	getHandlerList().notify<ClientHandlers::SnapReceived>(currentSnap);
+	getHandlerList().snapshotReceivedHandler.broadcast(currentSnap);
 }
 
 void ClientGameConnection::parsePacketEntities(MSG& msg, const ClientSnapshot* oldFrame, ClientSnapshot* newFrame)
@@ -967,7 +968,7 @@ void ClientGameConnection::parseSounds(MSG& msg, ClientSnapshot* newFrame)
 			sound.maxDist = msg.ReadFloat();
 		}
 
-		handlerList.notify<ClientHandlers::Sound>(sound);
+		handlerList.soundHandler.broadcast(sound);
 	}
 }
 
@@ -1159,7 +1160,7 @@ void ClientGameConnection::parseCommandString(MSG& msg)
 #endif
 
 	// notify about the new command
-	handlerList.notify<ClientHandlers::ServerCommand>(commandName.c_str(), ev);
+	handlerList.serverCommandHandler.broadcast(commandName.c_str(), ev);
 
 	if (!str::icmp(commandName, "disconnect"))
 	{
@@ -1175,7 +1176,7 @@ void ClientGameConnection::parseCommandString(MSG& msg)
 void ClientGameConnection::parseCenterprint(MSG& msg)
 {
 	const StringMessage s = readStringMessage(msg);
-	handlerList.notify<ClientHandlers::CenterPrint>(const_cast<const char*>(s.getData()));
+	handlerList.centerPrintHandler.broadcast(const_cast<const char*>(s.getData()));
 }
 
 void ClientGameConnection::parseLocprint(MSG& msg)
@@ -1184,7 +1185,7 @@ void ClientGameConnection::parseLocprint(MSG& msg)
 	const uint16_t y = msg.ReadUShort();
 
 	const StringMessage string = readStringMessage(msg);
-	handlerList.notify<ClientHandlers::LocationPrint>(x, y, const_cast<const char*>(string.getData()));
+	handlerList.locationPrintHandler.broadcast(x, y, const_cast<const char*>(string.getData()));
 }
 
 void ClientGameConnection::parseCGMessage(MSG& msg)
@@ -1229,7 +1230,7 @@ void ClientGameConnection::createNewCommands()
 
 	// all movement will happen through the event notification
 	// the callee is responsible for making user input
-	handlerList.notify<ClientHandlers::UserInput>(cmd, userEyes);
+	handlerList.userInputHandler.broadcast(cmd, userEyes);
 }
 
 void ClientGameConnection::createCmd(usercmd_t& outcmd)
@@ -1286,7 +1287,7 @@ uint8_t ClientGameConnection::getNumCommandsToWrite(uint32_t oldPacketNum) const
 
 void ClientGameConnection::writePacket(uint64_t currentTime)
 {
-	handlerList.notify<ClientHandlers::PreWritePacket>();
+	handlerList.preWritePacketHandler.broadcast();
 
 	DynamicDataMessageStream stream;
 	MSG msg(stream, msgMode_e::Writing);
@@ -1358,7 +1359,9 @@ void ClientGameConnection::writeUserInput(MSG& msg, uint64_t currentTime)
 		// write the number of commands
 		msg.WriteByte(count);
 		// write delta eyes
-		msg.WriteDeltaClass(&SerializableUserEyes(outPackets[oldPacketNum].p_eyeinfo), &SerializableUserEyes(userEyes));
+		SerializableUserEyes oldEyeInfo(outPackets[oldPacketNum].p_eyeinfo);
+		SerializableUserEyes userEyesWrite(userEyes);
+		msg.WriteDeltaClass(&oldEyeInfo, &userEyesWrite);
 
 		// get the key used to xor user command data
 		const uint32_t key = getCommandHashKey();
@@ -1382,11 +1385,9 @@ void ClientGameConnection::writeAllCommands(MSG& msg, const usercmd_t*& oldcmd, 
 		const size_t j = (cmdNumber - count + i + 1) & CMD_MASK;
 		const usercmd_t* cmd = &cmds[j];
 		// write a delta of the command by using the old
-		msg.WriteDeltaClass(
-			&SerializableUsercmd(*const_cast<usercmd_t*>(oldcmd)),
-			&SerializableUsercmd(*const_cast<usercmd_t*>(cmd)),
-			key
-		);
+		SerializableUsercmd oldCmdRead(*const_cast<usercmd_t*>(oldcmd));
+		SerializableUsercmd inputCmd(*const_cast<usercmd_t*>(cmd));
+		msg.WriteDeltaClass(&oldCmdRead, &inputCmd, key);
 
 		oldcmd = cmd;
 	}
@@ -1583,22 +1584,62 @@ void ClientGameConnection::parseGameState_ver15(MSG& msg)
 
 void ClientGameConnection::readDeltaPlayerstate_ver6(MSG& msg, const playerState_t* from, playerState_t* to)
 {
-	msg.ReadDeltaClass(from ? &SerializablePlayerState(*const_cast<playerState_t*>(from)) : nullptr, &SerializablePlayerState(*to));
+	SerializablePlayerState toSerialize(*to);
+	if(from)
+	{
+		SerializablePlayerState fromSerialize(*const_cast<playerState_t*>(from));
+		msg.ReadDeltaClass(&fromSerialize, &toSerialize);
+	}
+	else
+	{
+		// no delta
+		msg.ReadDeltaClass(nullptr, &toSerialize);
+	}
 }
 
 void ClientGameConnection::readDeltaPlayerstate_ver15(MSG& msg, const playerState_t* from, playerState_t* to)
 {
-	msg.ReadDeltaClass(from ? &SerializablePlayerState_ver15(*const_cast<playerState_t*>(from)) : nullptr, &SerializablePlayerState_ver15(*to));
+	SerializablePlayerState_ver15 toSerialize(*to);
+	if (from)
+	{
+		SerializablePlayerState_ver15 fromSerialize(*const_cast<playerState_t*>(from));
+		msg.ReadDeltaClass(&fromSerialize, &toSerialize);
+	}
+	else
+	{
+		// no delta
+		msg.ReadDeltaClass(nullptr, &toSerialize);
+	}
 }
 
 void ClientGameConnection::readDeltaEntity_ver6(MSG& msg, const entityState_t* from, entityState_t* to, entityNum_t newNum)
 {
-	msg.ReadDeltaClass(from ? &SerializableEntityState(*const_cast<entityState_t*>(from), newNum) : nullptr, &SerializableEntityState(*to, newNum));
+	SerializableEntityState toSerialize(*to, newNum);
+	if (from)
+	{
+		SerializableEntityState fromSerialize(*const_cast<entityState_t*>(from), newNum);
+		msg.ReadDeltaClass(&fromSerialize, &toSerialize);
+	}
+	else
+	{
+		// no delta
+		msg.ReadDeltaClass(nullptr, &toSerialize);
+	}
 }
 
 void ClientGameConnection::readDeltaEntity_ver15(MSG& msg, const entityState_t* from, entityState_t* to, entityNum_t newNum)
 {
-	msg.ReadDeltaClass(from ? &SerializableEntityState_ver15(*const_cast<entityState_t*>(from), newNum) : nullptr, &SerializableEntityState_ver15(*to, newNum));
+	SerializableEntityState_ver15 toSerialize(*to, newNum);
+	if (from)
+	{
+		SerializableEntityState_ver15 fromSerialize(*const_cast<entityState_t*>(from), newNum);
+		msg.ReadDeltaClass(&fromSerialize, &toSerialize);
+	}
+	else
+	{
+		// no delta
+		msg.ReadDeltaClass(nullptr, &toSerialize);
+	}
 }
 
 csNum_t ClientGameConnection::getNormalizedConfigstring_ver6(csNum_t num)
@@ -1640,7 +1681,7 @@ void ClientGameConnection::readNonPVSClient_ver15(radarInfo_t radarInfo)
 		unpacked.x += origin[0];
 		unpacked.y += origin[1];
 
-		handlerList.notify<ClientHandlers::ReadNonPVSClient>(unpacked);
+		handlerList.readNonPVSClientHandler.broadcast(unpacked);
 	}
 }
 
@@ -1892,7 +1933,7 @@ void ClientGameConnection::terminateConnection(const char* reason)
 
 	if (cgameModule)
 	{
-		handlerList.notify<ClientHandlers::Disconnect>(reason);
+		handlerList.disconnectHandler.broadcast(reason);
 
 		// Delete the CG module
 		delete cgameModule;
@@ -1918,7 +1959,7 @@ void ClientGameConnection::notifyConfigStringChange(csNum_t num, const char* new
 	if (cgameModule) cgameModule->configStringModified(num, newString);
 
 	// notify about the change
-	handlerList.notify<ClientHandlers::Configstring>(num, newString);
+	handlerList.configStringHandler.broadcast(num, newString);
 }
 
 void ClientGameConnection::wipeChannel()
@@ -2077,7 +2118,7 @@ void ClientGameConnection::firstSnapshot(uint64_t currentTime)
 	cgameModule->init(serverMessageSequence, serverCommandSequence);
 
 	// Notify about the snapshot
-	getHandlerList().notify<ClientHandlers::FirstSnapshot>(currentSnap);
+	getHandlerList().firstSnapshotHandler.broadcast(currentSnap);
 
 	// update the userinfo to not let the server hold garbage fields like the challenge
 	updateUserInfo();
@@ -2087,7 +2128,7 @@ void ClientGameConnection::serverRestarted()
 {
 	updateSnapFlags();
 
-	handlerList.notify<ClientHandlers::ServerRestarted>();
+	handlerList.serverRestartedHandler.broadcast();
 }
 
 void ClientGameConnection::updateSnapFlags()

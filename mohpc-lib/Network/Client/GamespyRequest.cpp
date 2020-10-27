@@ -87,7 +87,7 @@ size_t GamespyUDPRequestParam::receive(uint8_t* buf, size_t size)
 
 bool GamespyUDPRequestParam::hasData() const
 {
-	return socket && socket->wait(0);
+	return socket && socket->dataAvailable();
 }
 
 size_t GamespyUDPRequestParam::receiveSize() const

@@ -70,7 +70,8 @@ void MOHPC::Network::RemoteConsole::tick(uint64_t deltaTime, uint64_t currentTim
 		{
 			// Print text
 			const char* text = parser.GetCurrentScript();
-			handlerList.notify<RConHandlers::Print>(text);
+			//handlerList.notify<RConHandlers::Print>(text);
+			handlerList.printHandler.broadcast(text);
 		}
 		else {
 			MOHPC_LOG(Warning, "Unexpected rcon result command: \"%s\" (arguments \"%s\")", token, parser.GetCurrentScript());
