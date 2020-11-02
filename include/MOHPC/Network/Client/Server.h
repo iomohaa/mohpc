@@ -203,9 +203,9 @@ namespace MOHPC
 				virtual str generateRequest();
 				virtual bool supportsEvent(const char* name) override;
 				virtual IRequestPtr handleResponse(const char* name, TokenParser& parser) override;
-				virtual size_t overrideTimeoutTime(bool& overriden) override;
+				virtual uint64_t overrideTimeoutTime(bool& overriden) override;
 				virtual IRequestPtr timedOut() override;
-				virtual size_t deferredTime() override;
+				virtual uint64_t deferredTime() override;
 			};
 
 			class AuthorizeRequest : public IEngineRequest, public std::enable_shared_from_this<AuthorizeRequest>
@@ -221,7 +221,7 @@ namespace MOHPC
 				virtual str generateRequest();
 				virtual bool supportsEvent(const char* name) override;
 				virtual IRequestPtr handleResponse(const char* name, TokenParser& parser) override;
-				virtual size_t overrideTimeoutTime(bool& overriden) override;
+				virtual uint64_t overrideTimeoutTime(bool& overriden) override;
 				virtual IRequestPtr timedOut() override;
 			};
 
@@ -240,9 +240,9 @@ namespace MOHPC
 				virtual bool shouldCompressRequest(size_t& offset);
 				virtual bool supportsEvent(const char* name) override;
 				virtual IRequestPtr handleResponse(const char* name, TokenParser& parser) override;
-				virtual size_t overrideTimeoutTime(bool& overriden) override;
+				virtual uint64_t overrideTimeoutTime(bool& overriden) override;
 				virtual IRequestPtr timedOut() override;
-				virtual size_t deferredTime() override;
+				virtual uint64_t deferredTime() override;
 			};
 
 			class StatusRequest : public IEngineRequest

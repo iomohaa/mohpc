@@ -5,7 +5,7 @@
 #include <libmad/mad.h>
 #include <sstream>
 #include <fstream>
-#include "../../Misc/Endian.h"
+#include <MOHPC/Misc/Endian.h>
 #include <string.h>
 
 using namespace MOHPC;
@@ -130,13 +130,13 @@ enum mad_flow output(void *data,
 
 				sample = scale(*left_ch++);
 
-				unsigned short value = LittleLong(sample);
+				unsigned short value = Endian.LittleLong(sample);
 				*(short*)datap = value;
 				datap += sizeof(short);
 
 				sample = scale(*right_ch++);
 
-				value = LittleLong(sample);
+				value = Endian.LittleLong(sample);
 				*(short*)datap = value;
 				datap += sizeof(short);
 			}
@@ -151,7 +151,7 @@ enum mad_flow output(void *data,
 
 				sample = scale(*left_ch++);
 
-				unsigned short value = LittleLong(sample);
+				unsigned short value = Endian.LittleLong(sample);
 				*(short*)datap = value;
 				datap += sizeof(short);
 			}
@@ -415,11 +415,6 @@ bool Sound::DecodeLAME(void *buf, std::streamsize len)
 			dataLen = (size_t)buffer.stream.tellp();
 			data = new uint8_t[dataLen];
 			buffer.stream.read((char*)data, dataLen);
-
-			//std::ofstream ofs;
-			//ofs.open("test.wav", std::ofstream::out | std::ofstream::binary);
-			//ofs.write((const char*)data, dataLen);
-			//ofs.close();
 		}
 	}
 #endif

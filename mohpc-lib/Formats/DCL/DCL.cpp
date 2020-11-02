@@ -4,25 +4,29 @@
 #include <MOHPC/Managers/AssetManager.h>
 #include <MOHPC/Managers/ShaderManager.h>
 #include <MOHPC/Math.h>
+#include <MOHPC/Misc/Endian.h>
+#include <MOHPC/Misc/EndianHelpers.h>
+
+#include <cstring>
 
 using namespace MOHPC;
 
 namespace MOHPC
 {
-#define DCL_SIGNATURE 0x204C4344
+static constexpr char DCL_SIGNATURE[] = { 'D', 'C', 'L', ' ' };
 
-	enum dclVersion_e
+	enum class dclVersion_e
 	{
-		DCL_VERSION_BETA = 1,
-		DCL_VERSION_AA
+		Beta = 1,
+		Final_100
 	};
 
 	typedef struct {
-		int32_t ident;
-		int32_t version;
-		int32_t checksum;
-		int32_t iNumDecals;
-		int32_t iNumFragments;
+		char ident[4];
+		uint32_t version;
+		uint32_t checksum;
+		uint32_t iNumDecals;
+		uint32_t iNumFragments;
 	} dclHeader_t;
 
 	typedef struct {
@@ -63,27 +67,25 @@ DCL::~DCL()
 bool DCL::Load()
 {
 	FilePtr File = GetFileManager()->OpenFile(GetFilename().c_str());
-	if (!File)
-	{
-		return false;
+	if (!File) {
+		throw AssetError::AssetNotFound(GetFilename());
 	}
 
 	dclHeader_t dclHeader;
 	File->GetStream()->read((char*)&dclHeader, sizeof(dclHeader_t));
 
-	if (dclHeader.ident != DCL_SIGNATURE)
-	{
-		return false;
+	if (memcmp(dclHeader.ident, DCL_SIGNATURE, sizeof(dclHeader.ident))) {
+		throw DCLError::BadHeader((const uint8_t*)dclHeader.ident);
 	}
 
-	if (dclHeader.version != DCL_VERSION_BETA && dclHeader.version != DCL_VERSION_AA)
-	{
-		return false;
+	const dclVersion_e version = dclVersion_e(Endian.LittleInteger(dclHeader.version));
+	if (version != dclVersion_e::Beta && version != dclVersion_e::Final_100) {
+		throw DCLError::WrongVersion((uint32_t)version);
 	}
 
 	char mapTime[33];
 
-	if (dclHeader.version == DCL_VERSION_BETA)
+	if (version == dclVersion_e::Beta)
 	{
 		mapTime[0] = '\0';
 	}
@@ -95,26 +97,36 @@ bool DCL::Load()
 
 	char lastShaderName[64] = { 0 };
 
-	numDecals = dclHeader.iNumDecals;
+	numDecals = Endian.LittleInteger(dclHeader.iNumDecals);
+	numFragments = Endian.LittleInteger(dclHeader.iNumFragments);
+
 	dclDecals = new DCLMarkDef[numDecals];
+
+	const ShaderManagerPtr shaderManager = GetManager<ShaderManager>();
 
 	for (size_t i = 0; i < numDecals; i++)
 	{
-		dclSavedMarkDef_t saveMark;
+		dclSavedMarkDef_t saveMark{0};
 
+		// read each decals one by one
 		File->GetStream()->read((char*)&saveMark, sizeof(dclSavedMarkDef_t));
 
-		DCLMarkDef* pPoly = &dclDecals[i];
-		pPoly->shader = GetManager<ShaderManager>()->GetShader(saveMark.shader);
-		pPoly->position = saveMark.vPos;
-		pPoly->projection = saveMark.vProjection;
-		pPoly->radius = saveMark.fRadius;
-		pPoly->heightScale = saveMark.fHeightScale;
-		pPoly->widthScale = saveMark.fWidthScale;
-		pPoly->rotation = saveMark.fRotation;
-		Vec4Copy(saveMark.color, pPoly->color);
+		DCLMarkDef* const pPoly = &dclDecals[i];
+		pPoly->shader = shaderManager->GetShader(saveMark.shader);
+		pPoly->position = EndianHelpers::LittleVector(Endian, saveMark.vPos);
+		pPoly->projection = EndianHelpers::LittleVector(Endian, saveMark.vProjection);
+		pPoly->radius = Endian.LittleFloat(saveMark.fRadius);
+		pPoly->heightScale = Endian.LittleFloat(saveMark.fHeightScale);
+		pPoly->widthScale = Endian.LittleFloat(saveMark.fWidthScale);
+		pPoly->rotation = Endian.LittleFloat(saveMark.fRotation);
+		saveMark.color[0] = Endian.LittleFloat(pPoly->color[0]);
+		saveMark.color[1] = Endian.LittleFloat(pPoly->color[1]);
+		saveMark.color[2] = Endian.LittleFloat(pPoly->color[2]);
+		saveMark.color[3] = Endian.LittleFloat(pPoly->color[3]);
 		pPoly->bDoLighting = saveMark.bDoLighting;
 	}
+
+	// FIXME: Should it process numFragments?
 
 	return true;
 }
@@ -134,4 +146,24 @@ const DCLMarkDef* DCL::GetDecal(size_t index) const
 	{
 		return nullptr;
 	}
+}
+
+DCLError::BadHeader::BadHeader(const uint8_t inHeader[4])
+	: foundHeader{ inHeader[0], inHeader[1], inHeader[2], inHeader[3] }
+{
+}
+
+const uint8_t* DCLError::BadHeader::getHeader() const
+{
+	return foundHeader;
+}
+
+DCLError::WrongVersion::WrongVersion(uint32_t inVersion)
+	: version(inVersion)
+{
+}
+
+uint32_t DCLError::WrongVersion::getVersion() const
+{
+	return version;
 }

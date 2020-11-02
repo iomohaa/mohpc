@@ -4,54 +4,58 @@
 #include "../Asset.h"
 #include "../Managers/FileManager.h"
 #include "../Managers/ShaderManager.h"
-#include <stdint.h>
 #include "../Common/Container.h"
 #include "../Common/str.h"
 #include "../Vector.h"
 #include "../Utilities/SharedPtr.h"
 
+#include <exception>
+#include <cstdint>
+
 namespace MOHPC
 {
 	struct worknode_t;
 
+	class BSP;
 	class File;
 	class Shader;
 	class CollisionWorld;
 	struct patchWork_t;
 
-	class BSP : public Asset
+	using terraInt = int32_t;
+
+	namespace BSPFile
 	{
-		CLASS_BODY(BSP);
-
-	private:
-		struct File_Lump;
 		struct GameLump;
-		struct File_Header;
-		struct File_Shader;
-		struct File_Surface;
-		struct File_Vertice;
-		struct File_Plane;
-		struct File_SideEquation;
-		struct File_BrushSide;
-		struct File_Brush;
-		struct File_BrushModel;
-		struct File_SphereLight;
-		struct File_StaticModel;
-		struct File_TerrainPatch;
-		struct File_Node;
-		struct File_Leaf;
-		struct File_Leaf_Ver17;
+		struct flump_t;
+		struct fheader_t;
+		struct fshader_t;
+		struct fsurface_t;
+		struct fvertice_t;
+		struct fplane_t;
+		struct fsideequation_t;
+		struct fbrushSide_t;
+		struct fbrush_t;
+		struct fbmodel_t;
+		struct fsphereLight_t;
+		struct fstaticModel_t;
+		struct fterrainPatch_t;
+		struct fnode_t;
+		struct fleaf_t;
+		struct fleaf_ver17_t;
+	}
 
-	public:
-		static const int32_t lightmapSize = 128;
-		static const int32_t lightmapMemSize = lightmapSize * lightmapSize * sizeof(uint8_t) * 3;
-		static const float lightmapTerrainLength;
+	namespace BSPData
+	{
+		static constexpr size_t lightmapSize = 128;
+		static constexpr size_t lightmapMemSize = lightmapSize * lightmapSize * sizeof(uint8_t) * 3;
+		static constexpr float lightmapTerrainLength = 16.f / lightmapSize;
 
 		struct Shader
 		{
 			str shaderName;
-			int32_t surfaceFlags;
-			int32_t contentFlags;
+			uint32_t surfaceFlags;
+			uint32_t contentFlags;
 			uint32_t subdivisions;
 			str fenceMaskImage;
 
@@ -79,7 +83,7 @@ namespace MOHPC
 		{
 			float plane[4];
 			uint8_t signbits;
-		} ;
+		};
 
 		struct Facet
 		{
@@ -94,9 +98,9 @@ namespace MOHPC
 		{
 			Vector bounds[2];
 			int32_t numPlanes;
-			PatchPlane *planes;
+			PatchPlane* planes;
 			int32_t numFacets;
-			Facet *facets;
+			Facet* facets;
 
 		public:
 			~PatchCollide();
@@ -129,7 +133,7 @@ namespace MOHPC
 			MOHPC_EXPORTS size_t GetHeight() const;
 
 			/** Returns the RGB color of the specified pixel. */
-			MOHPC_EXPORTS void GetColor(size_t pixelNum, uint8_t (&out)[3]) const;
+			MOHPC_EXPORTS void GetColor(size_t pixelNum, uint8_t(&out)[3]) const;
 		};
 
 		class Surface
@@ -175,7 +179,7 @@ namespace MOHPC
 			MOHPC_EXPORTS const Shader* GetShader() const;
 
 			MOHPC_EXPORTS size_t GetNumVertices() const;
-			MOHPC_EXPORTS const Vertice *GetVertice(size_t index) const;
+			MOHPC_EXPORTS const Vertice* GetVertice(size_t index) const;
 
 			MOHPC_EXPORTS size_t GetNumIndexes() const;
 			MOHPC_EXPORTS size_t GetIndice(size_t index) const;
@@ -218,7 +222,7 @@ namespace MOHPC
 			size_t numsides;
 			BrushSide* sides;
 			Brush* parent;
-			Container<const Surface *> surfaces;
+			Container<const Surface*> surfaces;
 
 		public:
 			MOHPC_EXPORTS const char* GetName() const;
@@ -262,17 +266,17 @@ namespace MOHPC
 
 		private:
 			str name;
-			Container<const Surface *> surfaces;
-			Container<const Brush *> brushes;
+			Container<const Surface*> surfaces;
+			Container<const Brush*> brushes;
 			Vector bounds[2];
 			Vector origin;
 
 		public:
 			MOHPC_EXPORTS const str& GetGroupName() const;
 			MOHPC_EXPORTS size_t GetNumSurfaces() const;
-			MOHPC_EXPORTS const Surface *GetSurface(size_t index) const;
+			MOHPC_EXPORTS const Surface* GetSurface(size_t index) const;
 			MOHPC_EXPORTS size_t GetNumBrushes() const;
-			MOHPC_EXPORTS const Brush *GetBrush(size_t index) const;
+			MOHPC_EXPORTS const Brush* GetBrush(size_t index) const;
 			MOHPC_EXPORTS const Surface* const* GetSurfaces() const;
 			MOHPC_EXPORTS const Brush* const* GetBrushes() const;
 			MOHPC_EXPORTS const Vector& GetMinBound() const;
@@ -313,8 +317,6 @@ namespace MOHPC
 			//int numdlights;
 			float radius;
 		};
-
-		typedef int32_t terraInt;
 
 		union Varnode {
 			float variance;
@@ -376,9 +378,9 @@ namespace MOHPC
 			float fHgtAvg;
 			float fHgtAdd;
 			unsigned int uiDistRecalc;
-			terraInt nRef; 
+			terraInt nRef;
 			terraInt iVertArray;
-			uint8_t *pHgt;
+			uint8_t* pHgt;
 			terraInt iNext;
 			terraInt iPrev;
 
@@ -390,8 +392,8 @@ namespace MOHPC
 			terraInt iPt[3];
 			terraInt nSplit;
 			unsigned int uiDistRecalc;
-			TerrainPatch *patch;
-			Varnode *varnode;
+			TerrainPatch* patch;
+			Varnode* varnode;
 			terraInt index;
 			uint8_t lod;
 			uint8_t byConstChecks;
@@ -431,11 +433,15 @@ namespace MOHPC
 			}
 		};
 
-	private:
 		struct varnodeIndex {
 			short unsigned int iTreeAndMask;
 			short unsigned int iNode;
 		};
+	}
+
+	class BSP : public Asset
+	{
+		CLASS_BODY(BSP);
 
 	public:
 		MOHPC_EXPORTS BSP();
@@ -444,56 +450,56 @@ namespace MOHPC
 		/** Returns the number of shaders. */
 		MOHPC_EXPORTS size_t GetNumShaders() const;
 
-		/** Returns the shader at the specified number. */
-		MOHPC_EXPORTS const Shader *GetShader(size_t shaderNum) const;
+		/** Returns the BSPData::Shader at the specified number. */
+		MOHPC_EXPORTS const BSPData::Shader *GetShader(size_t shaderNum) const;
 
 		/** Returns the number of lightmaps. */
 		MOHPC_EXPORTS size_t GetNumLightmaps() const;
 
 		/** Returns the lightmap at the specified number. */
-		MOHPC_EXPORTS const Lightmap* GetLightmap(size_t lightmapNum) const;
+		MOHPC_EXPORTS const BSPData::Lightmap* GetLightmap(size_t lightmapNum) const;
 
 		/** Returns the number of surfaces. */
 		MOHPC_EXPORTS size_t GetNumSurfaces() const;
 
 		/** Returns the surface at the specified number. */
-		MOHPC_EXPORTS const Surface *GetSurface(size_t surfaceNum);
+		MOHPC_EXPORTS const BSPData::Surface *GetSurface(size_t surfaceNum);
 
 		/** Returns the number of planes. */
 		MOHPC_EXPORTS size_t GetNumPlanes() const;
 
 		/** Returns the plane at the specified number. */
-		MOHPC_EXPORTS const Plane *GetPlane(size_t planeNum);
+		MOHPC_EXPORTS const BSPData::Plane *GetPlane(size_t planeNum);
 
 		/** Returns the number of side equations. */
 		MOHPC_EXPORTS size_t GetNumSideEquations() const;
 
 		/** Returns the side equation at the specified number. */
-		MOHPC_EXPORTS const SideEquation *GetSideEquation(size_t equationNum);
+		MOHPC_EXPORTS const BSPData::SideEquation *GetSideEquation(size_t equationNum);
 
 		/** Returns the number of brush sides. */
 		MOHPC_EXPORTS size_t GetNumBrushSides() const;
 
 		/** Returns the brush side at the specified number. */
-		MOHPC_EXPORTS const BrushSide *GetBrushSide(size_t brushSideNum);
+		MOHPC_EXPORTS const BSPData::BrushSide *GetBrushSide(size_t brushSideNum);
 
 		/** Returns the number of brushes. */
 		MOHPC_EXPORTS size_t GetNumBrushes() const;
 
 		/** Returns the brush at the specified number. */
-		MOHPC_EXPORTS const Brush* GetBrush(size_t brushNum) const;
+		MOHPC_EXPORTS const BSPData::Brush* GetBrush(size_t brushNum) const;
 
 		/** Returns the number of leafs. */
 		MOHPC_EXPORTS size_t GetNumLeafs() const;
 
 		/** Returns the leaf at the specified number. */
-		MOHPC_EXPORTS const Leaf* GetLeaf(size_t leafNum) const;
+		MOHPC_EXPORTS const BSPData::Leaf* GetLeaf(size_t leafNum) const;
 
 		/** Returns the number of nodes. */
 		MOHPC_EXPORTS size_t GetNumNodes() const;
 
 		/** Returns the node at the specified number. */
-		MOHPC_EXPORTS const Node* GetNode(size_t nodeNum) const;
+		MOHPC_EXPORTS const BSPData::Node* GetNode(size_t nodeNum) const;
 
 		/** Returns the number of leaf brushes. */
 		MOHPC_EXPORTS size_t GetNumLeafBrushes() const;
@@ -511,34 +517,34 @@ namespace MOHPC
 		MOHPC_EXPORTS size_t GetNumSubmodels() const;
 
 		/** Returns the submodel at the specified number. */
-		MOHPC_EXPORTS const Model *GetSubmodel(size_t submodelNum) const;
+		MOHPC_EXPORTS const BSPData::Model *GetSubmodel(size_t submodelNum) const;
 
 		/** Returns the submodel by name (in the format '*x'). */
-		MOHPC_EXPORTS const Model *GetSubmodel(const str& submodelName) const;
+		MOHPC_EXPORTS const BSPData::Model *GetSubmodel(const str& submodelName) const;
 
 		/** Returns the number of sphere lights. */
 		MOHPC_EXPORTS size_t GetNumLights() const;
 
 		/** Returns the light at the specified number. */
-		MOHPC_EXPORTS const SphereLight *GetLight(size_t lightNum) const;
+		MOHPC_EXPORTS const BSPData::SphereLight *GetLight(size_t lightNum) const;
 
 		/** Returns the number of static models. */
 		MOHPC_EXPORTS size_t GetNumStaticModels() const;
 
 		/** Returns the static model at the specified number. */
-		MOHPC_EXPORTS const StaticModel *GetStaticModel(size_t staticModelNum) const;
+		MOHPC_EXPORTS const BSPData::StaticModel *GetStaticModel(size_t staticModelNum) const;
 
 		/** Returns the number of terrain patches. */
 		MOHPC_EXPORTS size_t GetNumTerrainPatches() const;
 
 		/** Returns the terrain patch at the specified number. */
-		MOHPC_EXPORTS const TerrainPatch *GetTerrainPatch(size_t terrainPatchNum) const;
+		MOHPC_EXPORTS const BSPData::TerrainPatch *GetTerrainPatch(size_t terrainPatchNum) const;
 
 		/** Returns the number of terrain surfaces. */
 		MOHPC_EXPORTS size_t GetNumTerrainSurfaces() const;
 
 		/** Returns the terrain surface at the specified number. */
-		MOHPC_EXPORTS const Surface *GetTerrainSurface(size_t terrainSurfaceNum) const;
+		MOHPC_EXPORTS const BSPData::Surface *GetTerrainSurface(size_t terrainSurfaceNum) const;
 
 		/** Returns the number of entities in this level (static models are not counted). */
 		MOHPC_EXPORTS size_t GetNumEntities() const;
@@ -556,10 +562,10 @@ namespace MOHPC
 		MOHPC_EXPORTS size_t GetNumSurfacesGroup() const;
 
 		/** Returns the grouped surface at the specified number. */
-		MOHPC_EXPORTS const SurfacesGroup *GetSurfacesGroup(size_t surfsGroupNum) const;
+		MOHPC_EXPORTS const BSPData::SurfacesGroup *GetSurfacesGroup(size_t surfsGroupNum) const;
 
 		/** Generate planes of collision from a terrain patch. */
-		MOHPC_EXPORTS void GenerateTerrainCollide(const TerrainPatch* patch, TerrainCollide& collision);
+		MOHPC_EXPORTS void GenerateTerrainCollide(const BSPData::TerrainPatch* patch, BSPData::TerrainCollide& collision);
 
 		/** Return the leaf number of the point at the specified location. */
 		MOHPC_EXPORTS uintptr_t PointLeafNum(const MOHPC::Vector p);
@@ -573,56 +579,56 @@ namespace MOHPC
 		bool Load() override;
 
 	private:
-		Plane::PlaneType PlaneTypeForNormal(const Vector& Normal);
+		BSPData::Plane::PlaneType PlaneTypeForNormal(const Vector& Normal);
 		uintptr_t PointLeafNum_r(const MOHPC::Vector p, intptr_t num);
 
 		//void PreAllocateLevelData(const File_Header *Header);
-		void LoadShaders(const GameLump* GameLump);
-		void LoadLightmaps(const GameLump* GameLump);
+		void LoadShaders(const BSPFile::GameLump* GameLump);
+		void LoadLightmaps(const BSPFile::GameLump* GameLump);
 
-		void CreateSurfaceGridMesh(int32_t width, int32_t height, BSP::Vertice *ctrl, int32_t numIndexes, int32_t *indexes, BSP::Surface* grid);
-		void SubdividePatchToGrid(patchWork_t& pw, int32_t Width, int32_t Height, const Vertice* Points, Surface* Out);
-		PatchCollide* GeneratePatchCollide(patchWork_t& pw, int32_t width, int32_t height, const Vertice *points, float subdivisions);
-		void ParseMesh(const File_Surface* InSurface, const File_Vertice* InVertices, Surface* Out, patchWork_t& pw);
-		void ParseFace(const File_Surface* InSurface, const File_Vertice* InVertices, const int32_t* InIndices, Surface* Out);
-		void ParseTriSurf(const File_Surface* InSurface, const File_Vertice* InVertices, const int32_t* InIndices, Surface* Out);
-		void LoadSurfaces(const GameLump* Surfaces, const GameLump* Vertices, const GameLump* Indices);
+		void CreateSurfaceGridMesh(int32_t width, int32_t height, BSPData::Vertice *ctrl, int32_t numIndexes, int32_t *indexes, BSPData::Surface* grid);
+		void SubdividePatchToGrid(int32_t Width, int32_t Height, const BSPData::Vertice* Points, BSPData::Surface* Out);
+		BSPData::PatchCollide* GeneratePatchCollide(int32_t width, int32_t height, const BSPData::Vertice *points, float subdivisions);
+		void ParseMesh(const BSPFile::fsurface_t* InSurface, const BSPFile::fvertice_t* InVertices, BSPData::Surface* Out);
+		void ParseFace(const BSPFile::fsurface_t* InSurface, const BSPFile::fvertice_t* InVertices, const int32_t* InIndices, BSPData::Surface* Out);
+		void ParseTriSurf(const BSPFile::fsurface_t* InSurface, const BSPFile::fvertice_t* InVertices, const int32_t* InIndices, BSPData::Surface* Out);
+		void LoadSurfaces(const BSPFile::GameLump* Surfaces, const BSPFile::GameLump* Vertices, const BSPFile::GameLump* Indices);
 
-		void LoadPlanes(const GameLump* GameLump);
-		void LoadSideEquations(const GameLump* GameLump);
-		void LoadBrushSides(const GameLump* GameLump);
-		void LoadBrushes(const GameLump* GameLump);
-		void LoadLeafs(const GameLump* GameLump);
-		void LoadLeafsOld(const GameLump* GameLump);
-		void LoadLeafsBrushes(const GameLump* GameLump);
-		void LoadLeafSurfaces(const GameLump* GameLump);
-		void LoadNodes(const GameLump* GameLump);
-		void LoadVisibility(const GameLump* GameLump);
-		void LoadSubmodels(const GameLump* GameLump);
-		void LoadEntityString(const GameLump* GameLump);
-		void LoadSphereLights(const GameLump* GameLump);
-		void LoadStaticModelDefs(const GameLump* GameLump);
-		void LoadTerrain(const GameLump* GameLump);
-		void LoadTerrainIndexes(const GameLump* GameLump);
+		void LoadPlanes(const BSPFile::GameLump* GameLump);
+		void LoadSideEquations(const BSPFile::GameLump* GameLump);
+		void LoadBrushSides(const BSPFile::GameLump* GameLump);
+		void LoadBrushes(const BSPFile::GameLump* GameLump);
+		void LoadLeafs(const BSPFile::GameLump* GameLump);
+		void LoadLeafsOld(const BSPFile::GameLump* GameLump);
+		void LoadLeafsBrushes(const BSPFile::GameLump* GameLump);
+		void LoadLeafSurfaces(const BSPFile::GameLump* GameLump);
+		void LoadNodes(const BSPFile::GameLump* GameLump);
+		void LoadVisibility(const BSPFile::GameLump* GameLump);
+		void LoadSubmodels(const BSPFile::GameLump* GameLump);
+		void LoadEntityString(const BSPFile::GameLump* GameLump);
+		void LoadSphereLights(const BSPFile::GameLump* GameLump);
+		void LoadStaticModelDefs(const BSPFile::GameLump* GameLump);
+		void LoadTerrain(const BSPFile::GameLump* GameLump);
+		void LoadTerrainIndexes(const BSPFile::GameLump* GameLump);
 		void FloodArea(size_t areaNum, uint32_t floodNum, uint32_t& floodValid);
 		void FloodAreaConnections();
 
 		// terrain
-		terraInt TR_AllocateVert(TerrainPatch *patch);
-		void TR_InterpolateVert(TerrainTri *pTri, TerrainVert *pVert);
-		void TR_ReleaseVert(TerrainPatch *patch, terraInt iVert);
-		terraInt TR_AllocateTri(TerrainPatch *patch, uint8_t byConstChecks = 4);
-		void TR_FixTriHeight(TerrainTri* pTri);
-		void TR_SetTriConstChecks(TerrainTri* pTri);
-		void TR_ReleaseTri(TerrainPatch *patch, terraInt iTri);
-		void TR_DemoteInAncestry(TerrainPatch *patch, terraInt iTri);
+		terraInt TR_AllocateVert(BSPData::TerrainPatch *patch);
+		void TR_InterpolateVert(BSPData::TerrainTri *pTri, BSPData::TerrainVert *pVert);
+		void TR_ReleaseVert(BSPData::TerrainPatch *patch, terraInt iVert);
+		terraInt TR_AllocateTri(BSPData::TerrainPatch *patch, uint8_t byConstChecks = 4);
+		void TR_FixTriHeight(BSPData::TerrainTri* pTri);
+		void TR_SetTriConstChecks(BSPData::TerrainTri* pTri);
+		void TR_ReleaseTri(BSPData::TerrainPatch *patch, terraInt iTri);
+		void TR_DemoteInAncestry(BSPData::TerrainPatch *patch, terraInt iTri);
 		void TR_TerrainHeapInit();
 		void TR_SplitTri(terraInt iSplit, terraInt iNewPt, terraInt iLeft, terraInt iRight, terraInt iRightOfLeft, terraInt iLeftOfRight);
 		void TR_ForceSplit(terraInt iTri);
 		void TR_ForceMerge(terraInt iTri);
-		int TR_TerraTriNeighbor(TerrainPatch *terraPatches, int iPatch, int dir);
+		int TR_TerraTriNeighbor(BSPData::TerrainPatch *terraPatches, int iPatch, int dir);
 		void TR_PreTessellateTerrain();
-		bool TR_NeedSplitTri(TerrainTri *pTri);
+		bool TR_NeedSplitTri(BSPData::TerrainTri *pTri);
 		void TR_DoTriSplitting();
 		void TR_DoGeomorphs();
 		bool TR_MergeInternalAggressive();
@@ -633,13 +639,13 @@ namespace MOHPC
 		// terrain collision
 		void TR_CalculateTerrainIndices(worknode_t* worknode, int iDiagonal, int iTree);
 		void TR_PrepareGerrainCollide();
-		void TR_PickTerrainSquareMode(TerrainCollideSquare* square, const MOHPC::Vector& vTest, terraInt i, terraInt j, const TerrainPatch* patch);
+		void TR_PickTerrainSquareMode(BSPData::TerrainCollideSquare* square, const MOHPC::Vector& vTest, terraInt i, terraInt j, const BSPData::TerrainPatch* patch);
 
-		void GenerateTerrainPatch(const TerrainPatch* Patch, Surface* Out);
-		void GenerateTerrainPatch2(const TerrainPatch* Patch, Surface* Out);
-		void UnpackTerraPatch(const File_TerrainPatch* Packed, TerrainPatch* Unpacked) const;
+		void GenerateTerrainPatch(const BSPData::TerrainPatch* Patch, BSPData::Surface* Out);
+		void GenerateTerrainPatch2(const BSPData::TerrainPatch* Patch, BSPData::Surface* Out);
+		void UnpackTerraPatch(const BSPFile::fterrainPatch_t* Packed, BSPData::TerrainPatch* Unpacked) const;
 
-		void BoundBrush(Brush* Brush);
+		void BoundBrush(BSPData::Brush* Brush);
 		void ColorShiftLightingFloats(float in[4], float out[4], float scale);
 		void ColorShiftLightingFloats3(vec3_t in, vec3_t out, float scale);
 
@@ -647,44 +653,43 @@ namespace MOHPC
 		void CreateEntities();
 		void MapBrushes();
 
-		int32_t LoadLump(FilePtr file, File_Lump* Lump, GameLump* GameLump, size_t Size = 0);
-		void FreeLump(GameLump *lump);
+		uint32_t LoadLump(const FilePtr& file, BSPFile::flump_t* lump, BSPFile::GameLump* gameLump, size_t size = 0);
 
 	private:
-		Container<Shader> shaders;
-		Container<Lightmap> lightmaps;
-		Container<Surface> surfaces;
-		Container<Plane> planes;
-		Container<SideEquation> sideEquations;
-		Container<BrushSide> brushSides;
-		Container<Brush> brushes;
-		Container<Node> nodes;
-		Container<Leaf> leafs;
+		Container<BSPData::Shader> shaders;
+		Container<BSPData::Lightmap> lightmaps;
+		Container<BSPData::Surface> surfaces;
+		Container<BSPData::Plane> planes;
+		Container<BSPData::SideEquation> sideEquations;
+		Container<BSPData::BrushSide> brushSides;
+		Container<BSPData::Brush> brushes;
+		Container<BSPData::Node> nodes;
+		Container<BSPData::Leaf> leafs;
 		Container<uintptr_t> leafBrushes;
 		Container<uintptr_t> leafSurfaces;
-		Container<TerrainPatch*> leafTerrains;
-		Container<Area> areas;
+		Container<BSPData::TerrainPatch*> leafTerrains;
+		Container<BSPData::Area> areas;
 		Container<uintptr_t> areaPortals;
-		Container<Model> brushModels;
-		Container<SphereLight> lights;
-		Container<StaticModel> staticModels;
-		Container<TerrainPatch> terrainPatches;
-		Container<Surface> terrainSurfaces;
+		Container<BSPData::Model> brushModels;
+		Container<BSPData::SphereLight> lights;
+		Container<BSPData::StaticModel> staticModels;
+		Container<BSPData::TerrainPatch> terrainPatches;
+		Container<BSPData::Surface> terrainSurfaces;
 		Container<class LevelEntity*> entities;
 		con_set<str, Container<class LevelEntity*>> targetList;
-		Container<SurfacesGroup*> surfacesGroups;
-		size_t numClusters;
-		size_t numAreas;
-		size_t clusterBytes;
+		Container<BSPData::SurfacesGroup*> surfacesGroups;
+		uint32_t numClusters;
+		uint32_t numAreas;
+		uint32_t clusterBytes;
 		Container<uint8_t> visibility;
 		char* entityString;
 		size_t entityStringLength;
 
-		Container<TerrainVert> trVerts;
-		Container<TerrainTri> trTris;
-		PoolInfo trpiTri;
-		PoolInfo trpiVert;
-		varnodeIndex varnodeIndexes[2][8][8][2];
+		Container<BSPData::TerrainVert> trVerts;
+		Container<BSPData::TerrainTri> trTris;
+		BSPData::PoolInfo trpiTri;
+		BSPData::PoolInfo trpiVert;
+		BSPData::varnodeIndex varnodeIndexes[2][8][8][2];
 	};
 	using BSPPtr = SharedPtr<BSP>;
 
@@ -692,7 +697,45 @@ namespace MOHPC
 	{
 		uint32_t numPlanes;
 		uint32_t numFacets;
-		BSP::PatchPlane planes[4096];
-		BSP::Facet facets[1024];
+		BSPData::PatchPlane planes[4096];
+		BSPData::Facet facets[1024];
 	};
+
+	namespace BSPError
+	{
+		class Base : public std::exception {};
+
+		class BadHeader : public Base
+		{
+		public:
+			BadHeader(const uint8_t foundHeader[4]);
+
+			MOHPC_EXPORTS const uint8_t* getHeader() const;
+
+		private:
+			uint8_t foundHeader[4];
+		};
+
+		class WrongVersion : public Base
+		{
+		public:
+			WrongVersion(uint32_t inVersion);
+
+			MOHPC_EXPORTS uint32_t getVersion() const;
+
+		private:
+			uint32_t version;
+		};
+
+		class FunnyLumpSize : public Base
+		{
+		public:
+			FunnyLumpSize(const char* inLumpName);
+
+			MOHPC_EXPORTS const char* getLumpName() const;
+
+		private:
+			const char* lumpName;
+		};
+	}
 }

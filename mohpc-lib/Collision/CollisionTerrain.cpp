@@ -12,7 +12,7 @@ bool ter_usesphere = true;
 CollisionWorld::CM_CheckTerrainPlane
 ====================
 */
-float CollisionWorld::CM_CheckTerrainPlane(vec4_t plane)
+float CollisionWorld::CM_CheckTerrainPlane(const vec4_t plane)
 {
 	float	d1, d2;
 	float	f;
@@ -53,7 +53,7 @@ float CollisionWorld::CM_CheckTerrainPlane(vec4_t plane)
 CollisionWorld::CM_CheckTerrainTriSpherePoint
 ====================
 */
-float CollisionWorld::CM_CheckTerrainTriSpherePoint(vec3_t v)
+float CollisionWorld::CM_CheckTerrainTriSpherePoint(const vec3_t v)
 {
 	vec3_t	vDelta, vDir;
 	float	fLenSq;
@@ -122,7 +122,7 @@ float CollisionWorld::CM_CheckTerrainTriSpherePoint(vec3_t v)
 CollisionWorld::CM_CheckTerrainTriSphereCorner
 ====================
 */
-float CollisionWorld::CM_CheckTerrainTriSphereCorner(vec4_t plane, float x0, float y0, int i, int j)
+float CollisionWorld::CM_CheckTerrainTriSphereCorner(const vec4_t plane, float x0, float y0, int i, int j)
 {
 	vec3_t	v;
 
@@ -138,7 +138,7 @@ float CollisionWorld::CM_CheckTerrainTriSphereCorner(vec4_t plane, float x0, flo
 CollisionWorld::CM_CheckTerrainTriSphereEdge
 ====================
 */
-float CollisionWorld::CM_CheckTerrainTriSphereEdge(float* plane, float x0, float y0, int i0, int j0, int i1, int j1)
+float CollisionWorld::CM_CheckTerrainTriSphereEdge(const float* plane, float x0, float y0, int i0, int j0, int i1, int j1)
 {
 	vec3_t	v0, v1;
 	float	fScale;
@@ -234,7 +234,6 @@ CollisionWorld::CM_CheckTerrainTriSphere
 */
 float CollisionWorld::CM_CheckTerrainTriSphere(float x0, float y0, int iPlane)
 {
-	float* plane;
 	float	fMaxFraction;
 	float	d1, d2;
 	float	fSpherePlane;
@@ -244,7 +243,7 @@ float CollisionWorld::CM_CheckTerrainTriSphere(float x0, float y0, int iPlane)
 	int		iX[3];
 	int		iY[3];
 
-	plane = this->g_trace.tc->squares[this->g_trace.i][this->g_trace.j].plane[iPlane];
+	const float* plane = this->g_trace.tc->squares[this->g_trace.i][this->g_trace.j].plane[iPlane];
 	d1 = DotProduct(this->g_trace.vStart, plane) - plane[3];
 	d2 = DotProduct(this->g_trace.vEnd, plane) - plane[3];
 
@@ -528,7 +527,6 @@ CollisionWorld::CM_TestTerrainCollideSquare
 */
 bool CollisionWorld::CM_TestTerrainCollideSquare(void)
 {
-	float* plane;
 	float	frac0;
 	float	enterFrac;
 	int		eMode;
@@ -543,7 +541,7 @@ bool CollisionWorld::CM_TestTerrainCollideSquare(void)
 	{
 		enterFrac = CollisionWorld::CM_CheckTerrainPlane(this->g_trace.tc->squares[this->g_trace.i][this->g_trace.j].plane[0]);
 
-		plane = this->g_trace.tc->squares[this->g_trace.i][this->g_trace.j].plane[1];
+		const float* plane = this->g_trace.tc->squares[this->g_trace.i][this->g_trace.j].plane[1];
 		frac0 = CollisionWorld::CM_CheckTerrainPlane(plane);
 
 		if (eMode == 2)
@@ -569,7 +567,7 @@ bool CollisionWorld::CM_TestTerrainCollideSquare(void)
 	}
 	else
 	{
-		plane = this->g_trace.tc->squares[this->g_trace.i][this->g_trace.j].plane[0];
+		const float* plane = this->g_trace.tc->squares[this->g_trace.i][this->g_trace.j].plane[0];
 		enterFrac = CollisionWorld::CM_CheckTerrainPlane(plane);
 
 		if (enterFrac < this->g_trace.tw->trace.fraction
@@ -592,7 +590,7 @@ CollisionWorld::CM_CheckStartInsideTerrain
 */
 bool CollisionWorld::CM_CheckStartInsideTerrain(int i, int j, float fx, float fy)
 {
-	float* plane;
+	const float* plane;
 	float	fDot;
 
 	if (i < 0 || i > 7) {
@@ -937,7 +935,7 @@ void CollisionWorld::CM_TraceCylinderThroughTerrainCollide(traceWork_t* tw, cons
 CollisionWorld::CM_TraceThroughTerrainCollide
 ====================
 */
-void CollisionWorld::CM_TraceThroughTerrainCollide(traceWork_t* tw, terrainCollide_t* tc) {
+void CollisionWorld::CM_TraceThroughTerrainCollide(traceWork_t* tw, const terrainCollide_t* tc) {
 	int i;
 
 	if (tw->bounds[0][0] >= tc->vBounds[1][0] ||
@@ -1003,7 +1001,7 @@ void CollisionWorld::CM_TraceThroughTerrainCollide(traceWork_t* tw, terrainColli
 CollisionWorld::CM_PositionTestInTerrainCollide
 ====================
 */
-bool CollisionWorld::CM_PositionTestInTerrainCollide(traceWork_t* tw, terrainCollide_t* tc) {
+bool CollisionWorld::CM_PositionTestInTerrainCollide(traceWork_t* tw, const terrainCollide_t* tc) {
 	int i;
 
 	if (tw->bounds[0][0] >= tc->vBounds[1][0] ||
@@ -1244,7 +1242,7 @@ bool CollisionWorld::CM_SightTracePointThroughTerrainCollide(void)
 CollisionWorld::CM_SightTraceThroughTerrainCollide
 ====================
 */
-bool CollisionWorld::CM_SightTraceThroughTerrainCollide(traceWork_t* tw, terrainCollide_t* tc)
+bool CollisionWorld::CM_SightTraceThroughTerrainCollide(traceWork_t* tw, const terrainCollide_t* tc)
 {
 	int i;
 

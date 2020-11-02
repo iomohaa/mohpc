@@ -1,55 +1,10 @@
 #include <MOHPC/Network/InfoTypes.h>
 #include <MOHPC/Network/SerializableTypes.h>
 #include <MOHPC/Misc/MSG/MSG.h>
+#include <MOHPC/Misc/Endian.h>
 #include <cstring>
 
 using namespace MOHPC;
-
-BadEntityNumberException::BadEntityNumberException(size_t inBadNumber)
-	: badNumber(inBadNumber)
-{}
-
-size_t BadEntityNumberException::getNumber() const
-{
-	return badNumber;
-}
-str BadEntityNumberException::what() const
-{
-	return str(badNumber);
-}
-
-BadEntityFieldException::BadEntityFieldException(uint8_t inFieldType, const char* inFieldName)
-	: fieldType(inFieldType)
-	, fieldName(inFieldName)
-{}
-
-uint8_t BadEntityFieldException::getFieldType() const
-{
-	return fieldType;
-}
-
-const char* BadEntityFieldException::getFieldName() const
-{
-	return fieldName;
-}
-
-str BadEntityFieldException::what() const
-{
-	return str::printf("%s: %d", getFieldName(), getFieldType());
-}
-
-BadEntityFieldCountException::BadEntityFieldCountException(uint8_t inCount)
-	: count(inCount)
-{}
-
-uint8_t BadEntityFieldCountException::getCount() const
-{
-	return count;
-}
-str BadEntityFieldCountException::what() const
-{
-	return str((int)getCount());
-}
 
 void MOHPC::SerializableUsercmd::LoadDelta(MSG& msg, const ISerializableMessage* from, intptr_t key)
 {
@@ -618,11 +573,12 @@ void MOHPC::SerializablePlayerState::SaveDelta(MSG& msg, const ISerializableMess
 
 	for (i = 0, field = playerStateFields; i < lc; ++i, ++field)
 	{
-		const uint8_t* fromF = (uint8_t*)((uint8_t*)fromPS + field->offset);
-		uint8_t* toF = (uint8_t*)((uint8_t*)GetState() + field->offset);
-		bool hasChange = memcmp(fromF, toF, field->size);
+		const uint8_t* fromF = (const uint8_t*)((const uint8_t*)fromPS + field->offset);
+		const uint8_t* toF = (const uint8_t*)((const uint8_t*)GetState() + field->offset);
 
-		msg.SerializeBool(hasChange);
+		const bool hasChange = memcmp(fromF, toF, field->size);
+
+		msg.WriteBool(hasChange);
 		if (!hasChange) {
 			continue;
 		}
@@ -630,7 +586,7 @@ void MOHPC::SerializablePlayerState::SaveDelta(MSG& msg, const ISerializableMess
 		switch (fieldType_ver6_e(field->type))
 		{
 		case fieldType_ver6_e::number:
-			EntityField::WriteNumberPlayerStateField(msg, field->bits, toF);
+			EntityField::WriteNumberPlayerStateField(msg, field->bits, toF, field->size);
 			break;
 		case fieldType_ver6_e::angle:
 			EntityField::WriteAngleField(msg, field->bits, *(float*)toF);
@@ -964,8 +920,7 @@ void MOHPC::SerializablePlayerState_ver15::LoadDelta(MSG& msg, const ISerializab
 			EntityField::ReadRegular2(msg, field->bits, toF, field->size);
 			break;
 		case fieldType_ver15_e::angle: // anglestmp = 1.0f;
-			result = 0;
-			msg.ReadBits(&result, field->bits < 0 ? -field->bits : field->bits);
+			result = msg.ReadNumber<int>(field->bits < 0 ? -field->bits : field->bits);
 			*(float*)toF = EntityField::UnpackAngle(result, field->bits, field->bits < 0);
 			break;
 		case fieldType_ver15_e::mediumCoord: // changed in SH/BT
@@ -1153,7 +1108,7 @@ void MOHPC::SerializableEntityState::SaveDelta(MSG& msg, const ISerializableMess
 			bits = intptr_t((tmp * 255.0f) + 0.5f);
 			if (bits < 0) bits = 0;
 			else if (bits > 255) bits = 255;
-			msg.WriteBits(&bits, 8);
+			msg.WriteNumber(bits, 8);
 			break;
 		case fieldType_ver6_e::scale:
 			EntityField::WriteSmallTimeField(msg, *(float*)toF);
@@ -1164,7 +1119,7 @@ void MOHPC::SerializableEntityState::SaveDelta(MSG& msg, const ISerializableMess
 			bits = intptr_t((tmp * 255.0f) + 0.5f);
 			if (bits < 0) bits = 0;
 			else if (bits > 255) bits = 255;
-			msg.WriteBits(&bits, 8);
+			msg.WriteNumber(bits, 8);
 			break;
 		case fieldType_ver6_e::largeCoord:
 			msgHelper.WriteCoord(*(float*)toF);
@@ -1241,16 +1196,14 @@ void MOHPC::SerializableEntityState::LoadDelta(MSG& msg, const ISerializableMess
 			*(float*)toF = EntityField::ReadTimeField(msg, field->bits);
 			break;
 		case fieldType_ver6_e::animWeight:
-			result = 0;
-			msg.ReadBits(&result, 8);
+			result = msg.ReadByte();
 			*(float*)toF = EntityField::UnpackAnimWeight(result, 8);
 			break;
 		case fieldType_ver6_e::scale:
 			*(float*)toF = EntityField::ReadSmallTimeField(msg, field->bits);
 			break;
 		case fieldType_ver6_e::alpha:
-			result = 0;
-			msg.ReadBits(&result, 8);
+			result = msg.ReadByte();
 			*(float*)toF = EntityField::UnpackAnimWeight(result, 8);
 			break;
 		case fieldType_ver6_e::largeCoord:
@@ -1334,15 +1287,14 @@ void MOHPC::SerializableEntityState_ver15::LoadDelta(MSG& msg, const ISerializab
 			EntityField::ReadRegular2(msg, field->bits, toF, field->size);
 			break;
 		case fieldType_ver15_e::angle:
-			result = 0;
-			msg.ReadBits(&result, field->bits < 0 ? -field->bits : field->bits);
+			result = msg.ReadNumber<int>(field->bits < 0 ? -field->bits : field->bits);
 			*(float*)toF = EntityField::UnpackAngle(result, field->bits, field->bits < 0);
 			break;
 		case fieldType_ver15_e::animTime: // time
 			result = 0;
 			if (msg.ReadBool())
 			{
-				msg.ReadBits(&result, field->bits);
+				result = msg.ReadNumber<int>(field->bits);
 				*(float*)toF = EntityField::UnpackAnimTime(result);
 			}
 			else {
@@ -1351,18 +1303,15 @@ void MOHPC::SerializableEntityState_ver15::LoadDelta(MSG& msg, const ISerializab
 			}
 			break;
 		case fieldType_ver15_e::animWeight:
-			result = 0;
-			msg.ReadBits(&result, field->bits);
+			result = msg.ReadNumber<int>(field->bits);
 			*(float*)toF = EntityField::UnpackAnimWeight(result, field->bits);
 			break;
 		case fieldType_ver15_e::scale:
-			result = 0;
-			msg.ReadBits(&result, field->bits);
+			result = msg.ReadNumber<int>(field->bits);
 			*(float*)toF = EntityField::UnpackScale(result);
 			break;
 		case fieldType_ver15_e::alpha:
-			result = 0;
-			msg.ReadBits(&result, field->bits);
+			result = msg.ReadNumber<int>(field->bits);
 			*(float*)toF = EntityField::UnpackAlpha(result, field->bits);
 			break;
 		case fieldType_ver15_e::mediumCoord: // changed in SH/BT
@@ -1387,18 +1336,16 @@ void MOHPC::SerializableEntityState_ver15::LoadDelta(MSG& msg, const ISerializab
 	EntityField::CopyFields(fromEnt, GetState(), lc, numFields, entityStateFields_ver15);
 }
 
-void MOHPC::EntityField::ReadNumberPlayerStateField(MSG& msg, size_t bits, void* toF, size_t size)
+void MOHPC::EntityField::ReadNumberPlayerStateField(MSG& msg, intptr_t bits, void* toF, size_t size)
 {
 	if (bits == 0)
 	{
 		// float
-		bool isFullFloat;
-		msg.SerializeBool(isFullFloat);
+		const bool isFullFloat = msg.ReadBool();
 		if (!isFullFloat)
 		{
 			// integral float
-			int32_t truncFloat = 0;
-			msg.SerializeBits(&truncFloat, FLOAT_INT_BITS);
+			int32_t truncFloat = msg.ReadNumber<int32_t>(FLOAT_INT_BITS);
 			// bias to allow equal parts positive and negative
 			truncFloat -= FLOAT_INT_BIAS;
 			*(float*)toF = (float)truncFloat;
@@ -1406,25 +1353,26 @@ void MOHPC::EntityField::ReadNumberPlayerStateField(MSG& msg, size_t bits, void*
 		else
 		{
 			// full floating point value
-			msg.SerializeFloat(*(float*)toF);
+			*(float*)toF = msg.ReadFloat();
 		}
 	}
 	else
 	{
 		// integer
 		std::memset(toF, 0, size);
-		msg.SerializeBits(toF, bits);
+		msg.ReadBits(toF, bits);
+		Endian.LittlePointer(toF, size);
 	}
 }
 
-void MOHPC::EntityField::WriteNumberPlayerStateField(MSG& msg, size_t bits, void* toF)
+void MOHPC::EntityField::WriteNumberPlayerStateField(MSG& msg, intptr_t bits, const void* toF, size_t size)
 {
 	if (bits == 0)
 	{
 		float floatVal = *(float*)toF;
 		int truncFloat = (int)floatVal;
 
-		bool isFullFloat =
+		const bool isFullFloat =
 			truncFloat == floatVal && truncFloat + FLOAT_INT_BIAS >= 0 &&
 			truncFloat + FLOAT_INT_BIAS < (1 << FLOAT_INT_BITS);
 
@@ -1433,7 +1381,7 @@ void MOHPC::EntityField::WriteNumberPlayerStateField(MSG& msg, size_t bits, void
 		if (!isFullFloat)
 		{
 			int truncated = truncFloat + FLOAT_INT_BIAS;
-			msg.WriteBits(&truncated, FLOAT_INT_BITS);
+			msg.WriteNumber(truncated, FLOAT_INT_BITS);
 		}
 		else
 		{
@@ -1444,7 +1392,11 @@ void MOHPC::EntityField::WriteNumberPlayerStateField(MSG& msg, size_t bits, void
 	else
 	{
 		// Integer
-		msg.WriteBits(toF, bits);
+		uint32_t tmp = 0;
+		std::memcpy(&tmp, toF, size);
+		Endian.LittlePointer(&tmp, size);
+
+		msg.WriteBits(&tmp, bits);
 	}
 }
 
@@ -1464,8 +1416,7 @@ void MOHPC::EntityField::ReadRegular(MSG& msg, intptr_t bits, void* toF, size_t 
 			if (!isFullFloat)
 			{
 				// integral float
-				int32_t truncFloat = 0;
-				msg.ReadBits(&truncFloat, FLOAT_INT_BITS);
+				int32_t truncFloat = msg.ReadNumber<int32_t>(FLOAT_INT_BITS);
 				// bias to allow equal parts positive and negative
 				truncFloat -= FLOAT_INT_BIAS;
 				*(float*)toF = (float)truncFloat;
@@ -1486,6 +1437,7 @@ void MOHPC::EntityField::ReadRegular(MSG& msg, intptr_t bits, void* toF, size_t 
 		{
 			// integer
 			msg.ReadBits(toF, bits);
+			Endian.LittlePointer(toF, size);
 		}
 	}
 }
@@ -1506,7 +1458,7 @@ void MOHPC::EntityField::ReadRegular2(MSG& msg, intptr_t bits, void* toF, size_t
 	if (bits == 0)
 	{
 		// float
-		bool hasValue = msg.ReadBool();
+		const bool hasValue = msg.ReadBool();
 
 		if (!hasValue) {
 			*(float*)toF = 0.0f;
@@ -1517,8 +1469,7 @@ void MOHPC::EntityField::ReadRegular2(MSG& msg, intptr_t bits, void* toF, size_t
 			if (!isFullFloat)
 			{
 				// integral float
-				int32_t truncFloat = 0;
-				msg.ReadBits(&truncFloat, -FLOAT_INT_BITS);
+				int32_t truncFloat = msg.ReadNumber<int32_t>(-FLOAT_INT_BITS);
 				shiftType(truncFloat);
 
 				*(float*)toF = (float)truncFloat;
@@ -1539,6 +1490,7 @@ void MOHPC::EntityField::ReadRegular2(MSG& msg, intptr_t bits, void* toF, size_t
 		{
 			// integer
 			msg.ReadBits(toF, bits);
+			Endian.LittlePointer(toF, size);
 		}
 
 		if (bits < 0)
@@ -1565,20 +1517,20 @@ void MOHPC::EntityField::ReadRegular2(MSG& msg, intptr_t bits, void* toF, size_t
 	}
 }
 
-void MOHPC::EntityField::WriteNumberEntityField(MSG& msg, size_t bits, void* toF, size_t size)
+void MOHPC::EntityField::WriteNumberEntityField(MSG& msg, intptr_t bits, const void* toF, size_t size)
 {
 	if (bits == 0)
 	{
 		// float
-		float floatVal = *(float*)toF;
-		int32_t truncFloat = (int)floatVal;
+		const float floatVal = *(float*)toF;
+		const int32_t truncFloat = (int)floatVal;
 
 		const bool hasValue = floatVal != 0.f;
 		msg.WriteBool(hasValue);
 
 		if (hasValue)
 		{
-			bool isFullFloat = truncFloat == floatVal && truncFloat + FLOAT_INT_BIAS >= 0 &&
+			const bool isFullFloat = truncFloat == floatVal && truncFloat + FLOAT_INT_BIAS >= 0 &&
 				truncFloat + FLOAT_INT_BIAS < (1 << FLOAT_INT_BITS);
 
 			msg.WriteBool(isFullFloat);
@@ -1586,7 +1538,7 @@ void MOHPC::EntityField::WriteNumberEntityField(MSG& msg, size_t bits, void* toF
 			if (!isFullFloat) {
 				// send as small integer
 				int newVal = truncFloat + FLOAT_INT_BIAS;
-				msg.WriteBits(&newVal, FLOAT_INT_BITS);
+				msg.WriteNumber(newVal, FLOAT_INT_BITS);
 			}
 			else
 			{
@@ -1597,13 +1549,16 @@ void MOHPC::EntityField::WriteNumberEntityField(MSG& msg, size_t bits, void* toF
 	}
 	else
 	{
-		bool hasValue = memcmp(toF, "", size);
+		const bool hasValue = memcmp(toF, "", size);
 		msg.WriteBool(hasValue);
 
 		if (hasValue)
 		{
+			uint32_t tmp = 0;
+			std::memcpy(&tmp, toF, size);
+			Endian.LittlePointer(&tmp, size);
 			// integer
-			msg.WriteBits(toF, bits);
+			msg.WriteBits(&tmp, bits);
 		}
 	}
 }
@@ -1623,8 +1578,7 @@ float MOHPC::EntityField::ReadAngleField(MSG& msg, size_t bits)
 		bits = bits;
 	}
 
-	int result = 0;
-	msg.SerializeBits(&result, bits);
+	int result = msg.ReadNumber<int>(bits);
 	return EntityField::UnpackAngle(result, bits, isNeg);
 }
 
@@ -1645,29 +1599,28 @@ void MOHPC::EntityField::WriteAngleField(MSG& msg, size_t bits, float angle)
 	if (bits == 12) {
 		tmp = tmp * 4096.0f / 360.0f;
 		int32_t truncFloat = (int)tmp & 4095;
-		msg.WriteBits(&truncFloat, 12);
+		msg.WriteNumber(truncFloat, 12);
 	}
 	else if (bits == 8) {
 		tmp = tmp * 256.0f / 360.0f;
 		int32_t truncFloat = (int)tmp & 255;
-		msg.WriteBits(&truncFloat, 8);
+		msg.WriteNumber(truncFloat, 8);
 	}
 	else if (bits == 16) {
 		tmp = tmp * 65536.0f / 360.0f;
 		int32_t truncFloat = (int)tmp & 65535;
-		msg.WriteBits(&truncFloat, 16);
+		msg.WriteNumber(truncFloat, 16);
 	}
 	else {
 		tmp = tmp * (1 << (uint8_t)bits) / 360.0f;
 		int32_t truncFloat = ((int)tmp) & ((1 << (uint8_t)bits) - 1);
-		msg.WriteBits(&truncFloat, bits);
+		msg.WriteNumber(truncFloat, bits);
 	}
 }
 
 float MOHPC::EntityField::ReadTimeField(MSG& msg, size_t bits)
 {
-	int result = 0;
-	msg.SerializeBits(&result, 15);
+	int result = msg.ReadNumber<int>(15);
 	return EntityField::UnpackAnimTime(result);
 }
 
@@ -1682,13 +1635,12 @@ void MOHPC::EntityField::WriteTimeField(MSG& msg, float time)
 		value = 32767;
 	}
 
-	msg.WriteBits(&value, 15);
+	msg.WriteNumber(value, 15);
 }
 
 float MOHPC::EntityField::ReadSmallTimeField(MSG& msg, size_t bits)
 {
-	int result = 0;
-	msg.SerializeBits(&result, 10);
+	int result = msg.ReadNumber<int>(10);
 	return EntityField::UnpackAnimTime(result);
 }
 
@@ -1699,7 +1651,7 @@ void MOHPC::EntityField::WriteSmallTimeField(MSG& msg, float time)
 	if (value < 0) value = 0;
 	else if (value > 1023) value = 1023;
 
-	msg.WriteBits(&value, 10);
+	msg.WriteNumber(value, 10);
 }
 
 void MOHPC::EntityField::CopyFields(entityState_t* other, entityState_t* target, size_t from, size_t to, const netField_t* fieldlist)
@@ -1774,4 +1726,57 @@ float MOHPC::EntityField::UnpackAngle(int result, intptr_t bits, bool isNeg)
 float MOHPC::EntityField::UnpackAnimTime(int result)
 {
 	return result / 100.f;
+}
+
+BadEntityNumberException::BadEntityNumberException(const char* inName, size_t inBadNumber)
+	: name(inName)
+	, badNumber(inBadNumber)
+{}
+
+const char* BadEntityNumberException::getName() const
+{
+	return name;
+}
+
+size_t BadEntityNumberException::getNumber() const
+{
+	return badNumber;
+}
+str BadEntityNumberException::what() const
+{
+	return str(badNumber);
+}
+
+BadEntityFieldException::BadEntityFieldException(uint8_t inFieldType, const char* inFieldName)
+	: fieldType(inFieldType)
+	, fieldName(inFieldName)
+{}
+
+uint8_t BadEntityFieldException::getFieldType() const
+{
+	return fieldType;
+}
+
+const char* BadEntityFieldException::getFieldName() const
+{
+	return fieldName;
+}
+
+str BadEntityFieldException::what() const
+{
+	return str::printf("%s: %d", getFieldName(), getFieldType());
+}
+
+BadEntityFieldCountException::BadEntityFieldCountException(uint8_t inCount)
+	: count(inCount)
+{}
+
+uint8_t BadEntityFieldCountException::getCount() const
+{
+	return count;
+}
+
+str BadEntityFieldCountException::what() const
+{
+	return str((int)getCount());
 }

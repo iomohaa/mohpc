@@ -42,13 +42,13 @@ namespace MOHPC
 		virtual SharedPtr<IRequestBase> process(RequestData& data) = 0;
 
 		/** Delay added to the base timeout time. */
-		virtual size_t timeOutDelay() { return 0; }
+		virtual uint64_t timeOutDelay() { return 0; }
 
 		/** Delay the time at which to start the request. */
-		virtual size_t deferredTime() { return 0; }
+		virtual uint64_t deferredTime() { return 0; }
 
 		/** Override the timeout time. */
-		virtual size_t overrideTimeoutTime(bool& overriden) { return 0; }
+		virtual uint64_t overrideTimeoutTime(bool& overriden) { return 0; }
 
 		/** Called when the timeout time has reached, giving a chance the request to retry, skip to another one or abort. */
 		virtual SharedPtr<IRequestBase> timedOut() { return nullptr; };
@@ -75,9 +75,9 @@ namespace MOHPC
 		{
 			IRequestPtr request;
 			Param param;
-			size_t timeout;
+			uint64_t timeout;
 
-			PendingRequest(IRequestPtr&& inRequest, Param&& inParam, size_t timeout);
+			PendingRequest(IRequestPtr&& inRequest, Param&& inParam, uint64_t timeout);
 		};
 
 		template<typename TimeType>
@@ -109,7 +109,7 @@ namespace MOHPC
 		 * @param	param		The way the data will be sent.
 		 * @param	timeout		Timeout in ms.
 		 */
-		void sendRequest(IRequestPtr&& newRequest, Param&& param, size_t timeout = 0);
+		void sendRequest(IRequestPtr&& newRequest, Param&& param, uint64_t timeout = 0);
 
 		/** Return true if a request is waiting a response. */
 		bool isRequesting() const;
@@ -117,9 +117,9 @@ namespace MOHPC
 	private:
 		bool processDeferred();
 		void handleNewRequest(IRequestPtr&& newRequest, bool shouldResend);
-		void startRequest(const IRequestPtr& newRequest, size_t timeout);
+		void startRequest(const IRequestPtr& newRequest, uint64_t timeout);
 		void setDeferredStart(const IRequestPtr& newRequest);
-		void setRequestTimeout(const IRequestPtr& newRequest, size_t timeout);
+		void setRequestTimeout(const IRequestPtr& newRequest, uint64_t timeout);
 		void sendData(const IRequestPtr& newRequest);
 		void dequeRequest();
 		void clearRequest();

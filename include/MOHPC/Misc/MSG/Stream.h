@@ -97,7 +97,7 @@ namespace MOHPC
 
 		virtual void Read(void* data, size_t length) override;
 		virtual void Write(const void* data, size_t length) override;
-		virtual void Seek(size_t offset, SeekPos from) noexcept override;
+		virtual void Seek(size_t offset, SeekPos from = IMessageStream::SeekPos::Begin) noexcept override;
 		virtual size_t GetPosition() const noexcept override;
 		virtual size_t GetLength() const noexcept override;
 	};

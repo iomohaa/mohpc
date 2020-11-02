@@ -1,7 +1,10 @@
 #include <MOHPC/Formats/Image.h>
 #include <MOHPC/Managers/AssetManager.h>
 #include <MOHPC/Managers/ShaderManager.h>
+#include <MOHPC/Log.h>
 #include "UnitTest.h"
+
+#define MOHPC_LOG_NAMESPACE "test_shader"
 
 class CShaderTest : public IUnitTest
 {
@@ -18,7 +21,7 @@ public:
 
 	virtual void run(const MOHPC::AssetManagerPtr& AM) override
 	{
-		printf("Loading shaders...\n");
+		MOHPC_LOG(Log, "Loading shaders...");
 
 		MOHPC::ShaderManagerPtr SM = AM->GetManager<MOHPC::ShaderManager>();
 

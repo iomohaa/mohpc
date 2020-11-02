@@ -9,6 +9,7 @@ collisionBrush_t* box_brush;
 
 static constexpr float SURFACE_CLIP_EPSILON = 0.125f;
 static constexpr clipHandle_t BOX_MODEL_HANDLE = 1023;
+
 MOHPC::sphere_t::sphere_t()
 	: use(false)
 	, radius(0.f)
@@ -771,7 +772,7 @@ CollisionWorld::CM_TestBoxInBrush
 ================
 */
 void CollisionWorld::CM_TestBoxInBrush(traceWork_t* tw, collisionBrush_t* brush) {
-	int			i;
+	uint32_t	i;
 	const collisionPlane_t* plane;
 	float		dist;
 	float		d1;
@@ -845,18 +846,17 @@ void CollisionWorld::CM_TestBoxInBrush(traceWork_t* tw, collisionBrush_t* brush)
 CollisionWorld::CM_TestInLeaf
 ================
 */
-void CollisionWorld::CM_TestInLeaf(traceWork_t* tw, collisionLeaf_t* leaf) {
-	uintptr_t brushnum;
-	collisionBrush_t* b;
-	collisionPatch_t* patch;
-	collisionTerrain_t* terrain;
-
+void CollisionWorld::CM_TestInLeaf(traceWork_t* tw, collisionLeaf_t* leaf)
+{
 	// test box position against all brushes in the leaf
-	for (uintptr_t k = 0; k < leaf->numLeafBrushes; k++) {
-		brushnum = this->leafbrushes[leaf->firstLeafBrush + k];
-		b = &this->brushes[brushnum];
-		if (b->checkcount == this->checkcount) {
-			continue;	// already checked this brush in another leaf
+	for (uintptr_t k = 0; k < leaf->numLeafBrushes; k++)
+	{
+		const uintptr_t brushnum = this->leafbrushes[leaf->firstLeafBrush + k];
+		collisionBrush_t* b = &this->brushes[brushnum];
+		if (b->checkcount == this->checkcount)
+		{
+			// already checked this brush in another leaf
+			continue;
 		}
 		b->checkcount = this->checkcount;
 
@@ -871,13 +871,17 @@ void CollisionWorld::CM_TestInLeaf(traceWork_t* tw, collisionLeaf_t* leaf) {
 	}
 
 	// test against all patches
-	for (uintptr_t k = 0; k < leaf->numLeafSurfaces; k++) {
-		patch = this->surfaces[this->leafsurfaces[leaf->firstLeafSurface + k]];
+	for (uintptr_t k = 0; k < leaf->numLeafSurfaces; k++)
+	{
+		const uintptr_t patchnum = this->leafsurfaces[leaf->firstLeafSurface + k];
+		collisionPatch_t* patch = this->surfaces[patchnum];
 		if (!patch) {
 			continue;
 		}
-		if (patch->checkcount == this->checkcount) {
-			continue;	// already checked this brush in another leaf
+		if (patch->checkcount == this->checkcount)
+		{
+			// already checked this brush in another leaf
+			continue;
 		}
 		patch->checkcount = this->checkcount;
 
@@ -885,24 +889,29 @@ void CollisionWorld::CM_TestInLeaf(traceWork_t* tw, collisionLeaf_t* leaf) {
 			continue;
 		}
 
-		if (CollisionWorld::CM_PositionTestInPatchCollide(tw, &patch->pc)) {
+		if (CollisionWorld::CM_PositionTestInPatchCollide(tw, &patch->pc))
+		{
 			tw->trace.fraction = 0;
 			tw->trace.startsolid = tw->trace.allsolid = true;
 			return;
 		}
 	}
 
-	for (uintptr_t k = 0; k < leaf->numLeafTerrains; k++) {
-		terrain = this->leafterrains[leaf->firstLeafTerrain + k];
+	for (uintptr_t k = 0; k < leaf->numLeafTerrains; k++)
+	{
+		collisionTerrain_t* terrain = this->leafterrains[leaf->firstLeafTerrain + k];
 		if (!terrain) {
 			continue;
 		}
-		if (terrain->checkcount == this->checkcount) {
+		if (terrain->checkcount == this->checkcount)
+		{
+			// already checked this brush in another leaf
 			continue;
 		}
 		terrain->checkcount = this->checkcount;
 
-		if (CollisionWorld::CM_PositionTestInTerrainCollide(tw, &terrain->tc)) {
+		if (CollisionWorld::CM_PositionTestInTerrainCollide(tw, &terrain->tc))
+		{
 			tw->trace.fraction = 0;
 			tw->trace.startsolid = tw->trace.allsolid = true;
 			return;
@@ -1024,8 +1033,8 @@ CollisionWorld::CM_PositionTest
 */
 #define	MAX_POSITION_LEAFS	1024
 void CollisionWorld::CM_PositionTest(traceWork_t * tw) {
-	int		leafs[MAX_POSITION_LEAFS];
-	int		i;
+	int			leafs[MAX_POSITION_LEAFS];
+	uint32_t	i;
 	leafList_t	ll;
 
 	// identify the leafs we are touching
@@ -1074,7 +1083,7 @@ CollisionWorld::CM_TraceThroughPatch
 ================
 */
 
-void CollisionWorld::CM_TraceThroughPatch(traceWork_t * tw, collisionPatch_t * patch) {
+void CollisionWorld::CM_TraceThroughPatch(traceWork_t * tw, const collisionPatch_t * patch) {
 	float		oldFrac;
 
 	c_patch_traces++;
@@ -1095,7 +1104,7 @@ void CollisionWorld::CM_TraceThroughPatch(traceWork_t * tw, collisionPatch_t * p
 CollisionWorld::CM_TraceThroughTerrain
 ================
 */
-void CollisionWorld::CM_TraceThroughTerrain(traceWork_t * tw, collisionTerrain_t * terrain) {
+void CollisionWorld::CM_TraceThroughTerrain(traceWork_t * tw, const collisionTerrain_t* terrain) {
 	float		oldFrac;
 
 	oldFrac = tw->trace.fraction;
@@ -1115,8 +1124,8 @@ void CollisionWorld::CM_TraceThroughTerrain(traceWork_t * tw, collisionTerrain_t
 CollisionWorld::CM_TraceThroughBrush
 ================
 */
-void CollisionWorld::CM_TraceThroughBrush(traceWork_t * tw, collisionBrush_t * brush) {
-	int			i;
+void CollisionWorld::CM_TraceThroughBrush(traceWork_t * tw, const collisionBrush_t * brush) {
+	uint32_t	i;
 	const collisionPlane_t* plane, * clipplane, * clipplane2;
 	float		dist;
 	float		enterFrac, leaveFrac, leaveFrac2;
@@ -1387,19 +1396,19 @@ CollisionWorld::CM_TraceToLeaf
 */
 void CollisionWorld::CM_TraceToLeaf(traceWork_t * tw, collisionLeaf_t * leaf)
 {
-	collisionBrush_t* b;
-	collisionPatch_t* patch;
-	collisionTerrain_t* terrain;
-
 	if(leaf->numLeafBrushes != -1)
 	{
 		// test box position against all brushes in the leaf
-		for (uintptr_t k = 0; k < leaf->numLeafBrushes; k++) {
-			b = &this->brushes[this->leafbrushes[leaf->firstLeafBrush + k]];
-			if (b->checkcount == this->checkcount) {
-				continue;	// already checked this brush in another leaf
+		for (uintptr_t k = 0; k < leaf->numLeafBrushes; k++)
+		{
+			const intptr_t leafNum = leafbrushes[leaf->firstLeafBrush + k];
+			collisionBrush_t* b = &brushes[leafNum];
+			if (b->checkcount == checkcount)
+			{
+				// already checked this brush in another leaf
+				continue;
 			}
-			b->checkcount = this->checkcount;
+			b->checkcount = checkcount;
 
 			if (!(b->contents & tw->contents)) {
 				continue;
@@ -1415,15 +1424,19 @@ void CollisionWorld::CM_TraceToLeaf(traceWork_t * tw, collisionLeaf_t * leaf)
 	if (leaf->numLeafSurfaces != -1)
 	{
 		// test against all patches
-		for (uintptr_t k = 0; k < leaf->numLeafSurfaces; k++) {
-			patch = this->surfaces[this->leafsurfaces[leaf->firstLeafSurface + k]];
+		for (uintptr_t k = 0; k < leaf->numLeafSurfaces; k++)
+		{
+			const intptr_t leafNum = leafsurfaces[leaf->firstLeafSurface + k];
+			collisionPatch_t* patch = surfaces[leafNum];
 			if (!patch) {
 				continue;
 			}
-			if (patch->checkcount == this->checkcount) {
-				continue;	// already checked this brush in another leaf
+			if (patch->checkcount == checkcount)
+			{
+				// already checked this brush in another leaf
+				continue;
 			}
-			patch->checkcount = this->checkcount;
+			patch->checkcount = checkcount;
 
 			if (!(patch->contents & tw->contents)) {
 				continue;
@@ -1439,15 +1452,18 @@ void CollisionWorld::CM_TraceToLeaf(traceWork_t * tw, collisionLeaf_t * leaf)
 	if (leaf->numLeafTerrains != -1)
 	{
 		// test against all terrains
-		for (uintptr_t k = 0; k < leaf->numLeafTerrains; k++) {
-			terrain = this->leafterrains[leaf->firstLeafTerrain + k];
+		for (uintptr_t k = 0; k < leaf->numLeafTerrains; k++)
+		{
+			collisionTerrain_t* terrain = this->leafterrains[leaf->firstLeafTerrain + k];
 			if (!terrain) {
 				continue;
 			}
-			if (terrain->checkcount == this->checkcount) {
+			if (terrain->checkcount == checkcount)
+			{
+				// already checked this brush in another leaf
 				continue;
 			}
-			terrain->checkcount = this->checkcount;
+			terrain->checkcount = checkcount;
 
 			CollisionWorld::CM_TraceThroughTerrain(tw, terrain);
 			if (!tw->trace.fraction) {
@@ -2591,13 +2607,17 @@ int CollisionWorld::CM_PointLeafnum_r(const Vector& p, int num) {
 			num = node->children[0];
 	}
 
-	c_pointcontents++;		// optimize counter
+	// optimize counter
+	c_pointcontents++;
 
 	return -1 - num;
 }
 
-int CollisionWorld::CM_PointLeafnum(const Vector& p) {
-	if (!this->nodes.NumObjects()) {	// map not loaded
+int CollisionWorld::CM_PointLeafnum(const Vector& p)
+{
+	if (!this->nodes.NumObjects())
+	{
+		// collision data not loaded
 		return 0;
 	}
 	return CollisionWorld::CM_PointLeafnum_r(p, 0);
@@ -2643,9 +2663,12 @@ void CollisionWorld::CM_StoreBrushes(leafList_t* ll, int nodenum) {
 	for (uintptr_t k = 0; k < leaf->numLeafBrushes; k++) {
 		brushnum = this->leafbrushes[leaf->firstLeafBrush + k];
 		b = &this->brushes[brushnum];
-		if (b->checkcount == this->checkcount) {
-			continue;	// already checked this brush in another leaf
+		if (b->checkcount == this->checkcount)
+		{
+			// already checked this brush in another leaf
+			continue;
 		}
+
 		b->checkcount = this->checkcount;
 		int i;
 		for (i = 0; i < 3; i++) {
@@ -2656,7 +2679,8 @@ void CollisionWorld::CM_StoreBrushes(leafList_t* ll, int nodenum) {
 		if (i != 3) {
 			continue;
 		}
-		if (ll->count >= ll->maxcount) {
+		if (ll->count >= ll->maxcount)
+		{
 			ll->overflowed = true;
 			return;
 		}
@@ -2946,7 +2970,7 @@ bool CollisionWorld::CM_BoundsIntersectPoint(const Vector& mins, const Vector& m
 CM_TraceThroughFence
 ====================
 */
-bool CollisionWorld::CM_TraceThroughFence(traceWork_t* tw, const collisionBrush_t* brush, const collisionBrushSide_t* side, float fTraceFraction)
+bool CollisionWorld::CM_TraceThroughFence(const traceWork_t* tw, const collisionBrush_t* brush, const collisionBrushSide_t* side, float fTraceFraction)
 {
 	int				i;
 	int				iMaskPos;

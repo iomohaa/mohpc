@@ -109,6 +109,8 @@ namespace MOHPC
 	};
 };
 
+using namespace MOHPC;
+
 double MOHPC::vrsqrt(double number)
 {
 	union {
@@ -145,17 +147,17 @@ float MOHPC::vrsqrtf(float number)
 	return y;
 }
 
-MOHPC::vec_t MOHPC::DotProduct(const MOHPC::vec3_t vec1, const MOHPC::vec3_t vec2)
+vec_t MOHPC::DotProduct(const vec3_t vec1, const vec3_t vec2)
 {
 	return vec1[0] * vec2[0] + vec1[1] * vec2[1] + vec1[2] * vec2[2];
 }
 
-MOHPC::vec_t MOHPC::DotProduct2D(const vec2_t vec1, const vec2_t vec2)
+vec_t MOHPC::DotProduct2D(const vec2_t vec1, const vec2_t vec2)
 {
 	return ((vec1)[0] * (vec2)[0] + (vec1)[1] * (vec2)[1]);
 }
 
-MOHPC::vec_t MOHPC::DotProduct4(const MOHPC::vec4_t vec1, const MOHPC::vec4_t vec2)
+vec_t MOHPC::DotProduct4(const vec4_t vec1, const vec4_t vec2)
 {
 	return vec1[0] * vec2[0] + vec1[1] * vec2[1] + vec1[2] * vec2[2] + vec1[3] * vec2[3];
 }
@@ -194,7 +196,7 @@ float MOHPC::AngleSubtract(float a1, float a2) {
 }
 
 
-void MOHPC::AnglesSubtract(MOHPC::vec3_t v1, MOHPC::vec3_t v2, MOHPC::vec3_t v3) {
+void MOHPC::AnglesSubtract(vec3_t v1, vec3_t v2, vec3_t v3) {
 	v3[0] = AngleSubtract(v1[0], v2[0]);
 	v3[1] = AngleSubtract(v1[1], v2[1]);
 	v3[2] = AngleSubtract(v1[2], v2[2]);
@@ -214,7 +216,7 @@ float MOHPC::LerpAngle(float from, float to, float frac) {
 	return a;
 }
 
-void MOHPC::AngleVectors(const MOHPC::vec3_t angles, MOHPC::vec3_t forward, MOHPC::vec3_t right, MOHPC::vec3_t up)
+void MOHPC::AngleVectors(const vec3_t angles, vec3_t forward, vec3_t right, vec3_t up)
 {
 	float		angle;
 	static float		sr, sp, sy, cr, cp, cy;
@@ -250,7 +252,7 @@ void MOHPC::AngleVectors(const MOHPC::vec3_t angles, MOHPC::vec3_t forward, MOHP
 	}
 }
 
-void MOHPC::AngleVectorsLeft(const MOHPC::vec3_t angles, MOHPC::vec3_t forward, MOHPC::vec3_t left, MOHPC::vec3_t up)
+void MOHPC::AngleVectorsLeft(const vec3_t angles, vec3_t forward, vec3_t left, vec3_t up)
 {
 	float		angle;
 	static float		sr, sp, sy, cr, cp, cy;
@@ -682,17 +684,17 @@ MOHPC_EXPORTS bool MOHPC::Vec4Compare(const vec4_t veca, const vec4_t vecb, floa
 		&& (veca[3] >= vecb[3] - tolerance && veca[3] <= vecb[3] + tolerance);
 }
 
-MOHPC::vec_t MOHPC::VectorLength(const MOHPC::vec3_t vec)
+vec_t MOHPC::VectorLength(const vec3_t vec)
 {
-	return (vec_t)sqrt(vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2]);
+	return (vec_t)sqrtf(vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2]);
 }
 
-MOHPC::vec_t MOHPC::VectorLengthSquared(const MOHPC::vec3_t vec)
+vec_t MOHPC::VectorLengthSquared(const vec3_t vec)
 {
 	return (vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2]);
 }
 
-MOHPC::vec_t MOHPC::VectorNormalize(MOHPC::vec3_t vec)
+vec_t MOHPC::VectorNormalize(vec3_t vec)
 {
 	float length;
 	float ilength;
@@ -709,7 +711,7 @@ MOHPC::vec_t MOHPC::VectorNormalize(MOHPC::vec3_t vec)
 	return length;
 }
 
-MOHPC::vec_t MOHPC::VectorNormalize2(const vec3_t v, vec3_t out) {
+vec_t MOHPC::VectorNormalize2(const vec3_t v, vec3_t out) {
 	float	length, ilength;
 
 	length = v[0] * v[0] + v[1] * v[1] + v[2] * v[2];
@@ -729,7 +731,7 @@ MOHPC::vec_t MOHPC::VectorNormalize2(const vec3_t v, vec3_t out) {
 	return length;
 }
 
-void MOHPC::VectorNormalizeFast(MOHPC::vec3_t vec)
+void MOHPC::VectorNormalizeFast(vec3_t vec)
 {
 	float ilength = vrsqrtf(DotProduct(vec, vec));
 
@@ -738,7 +740,7 @@ void MOHPC::VectorNormalizeFast(MOHPC::vec3_t vec)
 	vec[2] *= ilength;
 }
 
-void MOHPC::VectorMA(const MOHPC::vec3_t veca, float scale, const MOHPC::vec3_t vecb, MOHPC::vec3_t vecc)
+void MOHPC::VectorMA(const vec3_t veca, float scale, const vec3_t vecb, vec3_t vecc)
 {
 	vecc[0] = veca[0] + scale * vecb[0];
 	vecc[1] = veca[1] + scale * vecb[1];
@@ -951,7 +953,7 @@ float MOHPC::ShortToAngle(uint16_t v)
 #define BBOX_REALMAX_BOTTOM_Z ( 1 << BBOX_ZBOTTOMBITS )
 #define BBOX_MAX_TOP_Z ( 1 << BBOX_ZTOPBITS )
 
-int MOHPC::BoundingBoxToInteger(MOHPC::vec3_t mins, MOHPC::vec3_t maxs)
+int MOHPC::BoundingBoxToInteger(vec3_t mins, vec3_t maxs)
 {
 	int x, y, zd, zu, result;
 
@@ -991,7 +993,7 @@ int MOHPC::BoundingBoxToInteger(MOHPC::vec3_t mins, MOHPC::vec3_t maxs)
 	return result;
 }
 
-void MOHPC::IntegerToBoundingBox(int num, MOHPC::vec3_t mins, MOHPC::vec3_t maxs)
+void MOHPC::IntegerToBoundingBox(int num, vec3_t mins, vec3_t maxs)
 {
 	int x, y, zd, zu;
 

@@ -3,21 +3,21 @@
 
 using namespace MOHPC;
 
-void SkeletonChannelNameTable::CopyChannel(SkeletonChannelName *dest, const SkeletonChannelName *source )
-{
-	*dest = *source;
-}
-
-void SkeletonChannelNameTable::SetChannelName(SkeletonChannelName *channel, const char *newName )
-{
-	channel->name = newName;
-}
-
 SkeletonChannelNameTable::SkeletonChannelNameTable()
 {
 }
 
-void SkeletonChannelNameTable::PrintContents()
+void SkeletonChannelNameTable::CopyChannel(SkeletonChannelName *dest, const SkeletonChannelName *source ) const
+{
+	*dest = *source;
+}
+
+void SkeletonChannelNameTable::SetChannelName(SkeletonChannelName *channel, const char *newName ) const
+{
+	channel->name = newName;
+}
+
+void SkeletonChannelNameTable::PrintContents() const
 {
 	str channelList;
 	int i;
@@ -34,7 +34,7 @@ void SkeletonChannelNameTable::PrintContents()
 	}
 }
 
-bool SkeletonChannelNameTable::FindIndexFromName( const char *name, intptr_t *indexPtr )
+bool SkeletonChannelNameTable::FindIndexFromName( const char *name, intptr_t *indexPtr ) const
 {
 	int sortValue;
 	intptr_t lowerBound;
@@ -70,7 +70,7 @@ bool SkeletonChannelNameTable::FindIndexFromName( const char *name, intptr_t *in
 	return false;
 }
 
-intptr_t SkeletonChannelNameTable::FindNameLookup( const char *name )
+intptr_t SkeletonChannelNameTable::FindNameLookup( const char *name ) const
 {
 	intptr_t index;
 
@@ -85,7 +85,7 @@ intptr_t SkeletonChannelNameTable::FindNameLookup( const char *name )
 }
 
 
-const char *SkeletonChannelNameTable::FindName(intptr_t index )
+const char *SkeletonChannelNameTable::FindName(intptr_t index ) const
 {
 	return FindNameFromLookup( m_lookup[ index ] );
 }
@@ -318,7 +318,7 @@ intptr_t SkeletonChannelNameTable::RegisterChannel( const char *name )
 	return numChannels;
 }
 
-const char *SkeletonChannelNameTable::FindNameFromLookup( intptr_t index )
+const char *SkeletonChannelNameTable::FindNameFromLookup( intptr_t index ) const
 {
 	if (index < (intptr_t)m_Channels.NumObjects())
 	{

@@ -3,6 +3,7 @@
 #include "Polylib.h"
 
 using namespace MOHPC;
+using namespace BSPData;
 
 #define	MAX_FACETS			1024
 #define	MAX_PATCH_PLANES	4096
@@ -24,7 +25,7 @@ struct cGrid_t {
 	vec3_t points[MAX_GRID_SIZE][MAX_GRID_SIZE];	// [width][height]
 };
 
-static bool ValidateFacet(patchWork_t& pw, BSP::Facet *facet) {
+static bool ValidateFacet(patchWork_t& pw, BSPData::Facet *facet) {
 	float		plane[4];
 	int			j;
 	winding_t	*w;
@@ -86,7 +87,7 @@ static int SignbitsForNormal(vec3_t normal) {
 #define	NORMAL_EPSILON	0.0001
 #define	DIST_EPSILON	0.02
 
-int PlaneEqual(BSP::PatchPlane *p, float plane[4], int *flipped) {
+int PlaneEqual(BSPData::PatchPlane *p, float plane[4], int *flipped) {
 	float invplane[4];
 
 	if (
@@ -500,7 +501,7 @@ static int EdgePlaneNum(patchWork_t& pw, cGrid_t *grid, int gridPlanes[MAX_GRID_
 	return -1;
 }
 
-static void SetBorderInward(patchWork_t& pw, BSP::Facet *facet, cGrid_t *grid, int gridPlanes[MAX_GRID_SIZE][MAX_GRID_SIZE][2],
+static void SetBorderInward(patchWork_t& pw, BSPData::Facet *facet, cGrid_t *grid, int gridPlanes[MAX_GRID_SIZE][MAX_GRID_SIZE][2],
 	int i, int j, int which) {
 	int		k, l;
 	float	*points[4];
@@ -565,7 +566,7 @@ static void SetBorderInward(patchWork_t& pw, BSP::Facet *facet, cGrid_t *grid, i
 	}
 }
 
-void AddFacetBevels(patchWork_t& pw, BSP::Facet *facet) {
+void AddFacetBevels(patchWork_t& pw, BSPData::Facet *facet) {
 
 	int i, j, k, l;
 	int axis, dir, order, flipped;
@@ -735,11 +736,11 @@ typedef enum {
 	EN_LEFT
 } edgeName_t;
 
-static void PatchCollideFromGrid(patchWork_t& pw, cGrid_t *grid, BSP::PatchCollide *pf) {
+static void PatchCollideFromGrid(patchWork_t& pw, cGrid_t *grid, BSPData::PatchCollide *pf) {
 	int				i, j;
 	float			*p1, *p2, *p3;
 	int				gridPlanes[MAX_GRID_SIZE][MAX_GRID_SIZE][2];
-	BSP::Facet		*facet;
+	BSPData::Facet		*facet;
 	int				borders[4];
 	int				noAdjust[4];
 
@@ -892,13 +893,13 @@ static void PatchCollideFromGrid(patchWork_t& pw, cGrid_t *grid, BSP::PatchColli
 	// copy the results out
 	pf->numPlanes = pw.numPlanes;
 	pf->numFacets = pw.numFacets;
-	pf->facets = new BSP::Facet[pw.numFacets];
+	pf->facets = new BSPData::Facet[pw.numFacets];
 	memcpy(pf->facets, pw.facets, pw.numFacets * sizeof(*pf->facets));
-	pf->planes = new BSP::PatchPlane[pw.numPlanes];
+	pf->planes = new BSPData::PatchPlane[pw.numPlanes];
 	memcpy(pf->planes, pw.planes, pw.numPlanes * sizeof(*pf->planes));
 }
 
-BSP::PatchCollide* BSP::GeneratePatchCollide(patchWork_t& pw, int32_t width, int32_t height, const Vertice *points, float subdivisions)
+BSPData::PatchCollide* BSP::GeneratePatchCollide(int32_t width, int32_t height, const Vertice *points, float subdivisions)
 {
 	PatchCollide	*pf;
 	cGrid_t			grid;
@@ -916,6 +917,7 @@ BSP::PatchCollide* BSP::GeneratePatchCollide(patchWork_t& pw, int32_t width, int
 		return nullptr;
 	}
 
+	patchWork_t pw;
 	// build a grid
 	grid.width = width;
 	grid.height = height;

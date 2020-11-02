@@ -26,14 +26,14 @@
 #include <mutex>
 #include <string>
 
-#define MOHPC_LOG_NAMESPACE "testnet"
+#define MOHPC_LOG_NAMESPACE "test_net"
 
 class CNetworkUnitTest : public IUnitTest
 {
 public:
 	virtual unsigned int priority()
 	{
-		return 2;
+		return 1;
 	}
 
 	virtual const char* name() override

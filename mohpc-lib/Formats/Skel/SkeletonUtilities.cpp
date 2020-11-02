@@ -142,7 +142,7 @@ intptr_t SkeletonChannelList::AddChannel(intptr_t newGlobalChannelNum )
 	return iLocalChannel;
 }
 
-bool SkeletonChannelList::HasChannel(SkeletonChannelNameTable *nameTable, const char *channelName) const
+bool SkeletonChannelList::HasChannel(const SkeletonChannelNameTable *nameTable, const char *channelName) const
 {
 	intptr_t iGlobalChannel = nameTable->FindNameLookup( channelName );
 
@@ -158,7 +158,7 @@ bool SkeletonChannelList::HasChannel(SkeletonChannelNameTable *nameTable, const 
 }
 
 
-const char *SkeletonChannelList::ChannelName(SkeletonChannelNameTable *nameTable, intptr_t localChannelNum) const
+const char *SkeletonChannelList::ChannelName(const SkeletonChannelNameTable *nameTable, intptr_t localChannelNum) const
 {
 	if (localChannelNum >= 0 && localChannelNum < (intptr_t)m_chanGlobalFromLocal.NumObjects())
 	{

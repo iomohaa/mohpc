@@ -1,13 +1,21 @@
 #include <Shared.h>
-#include "SkelPrivate.h"
-#include "../TIKI/TIKI_Private.h"
 #include <MOHPC/Misc/MSG/MSG.h>
 #include <MOHPC/Misc/MSG/Stream.h>
 #include <MOHPC/Managers/FileManager.h>
+#include <MOHPC/Misc/Endian.h>
+#include "SkelPrivate.h"
+#include "../TIKI/TIKI_Private.h"
 
 using namespace MOHPC;
 
-con_set<str, WeakPtr<SkeletonAnimation>> SkeletonAnimation::g_skelAnimCache;
+static SkelVec3 LittleSkelVec(const SkelVec3& inVec)
+{
+	SkelVec3 result;
+	result[0] = Endian.LittleFloat(inVec[0]);
+	result[1] = Endian.LittleFloat(inVec[1]);
+	result[2] = Endian.LittleFloat(inVec[2]);
+	return result;
+}
 
 SkeletonAnimation::AnimFrame::AnimFrame()
 {
@@ -51,21 +59,23 @@ bool SkeletonAnimation::Load()
 		file = GetFileManager()->OpenFile(Fname);
 		if (!file)
 		{
+			// not a valid file
 			return false;
 		}
 
-		File_AnimDataHeader* pHeader;
+		const File_AnimDataHeader* pHeader;
 		length = file->ReadBuffer((void**)&buf);
 		if (length > 0)
 		{
-			pHeader = (File_AnimDataHeader*)buf;
+			pHeader = (const File_AnimDataHeader*)buf;
 
-			if (pHeader->ident != *(int*)TIKI_SKC_HEADER_IDENT || (pHeader->version != TIKI_SKC_HEADER_OLD_VERSION && pHeader->version != TIKI_SKC_HEADER_VERSION))
+			const uint32_t version = Endian.LittleInteger(pHeader->version);
+			if (memcmp(pHeader->ident, TIKI_SKC_HEADER_IDENT, sizeof(pHeader->ident)) || (version != TIKI_SKC_HEADER_OLD_VERSION && version != TIKI_SKC_HEADER_VERSION))
 			{
 				return false;
 			}
 
-			if (pHeader->version == TIKI_SKC_HEADER_OLD_VERSION)
+			if (version == TIKI_SKC_HEADER_OLD_VERSION)
 			{
 				//Com_Printf("WARNING- DOWNGRADING TO OLD ANIMATION FORMAT FOR FILE: %s\n", path);
 				ConvertSkelFileToGame(pHeader, (size_t)length, Fname);
@@ -94,7 +104,7 @@ bool SkeletonAnimation::Load()
 	return true;
 }
 
-bool Compress( SkeletonAnimation::AnimFrame *current, SkeletonAnimation::AnimFrame *last, size_t channelIndex, SkeletonChannelList *channelList, SkeletonChannelNameTable *channelNames )
+bool Compress( SkeletonAnimation::AnimFrame *current, SkeletonAnimation::AnimFrame *last, size_t channelIndex, const SkeletonChannelList *channelList, const SkeletonChannelNameTable *channelNames )
 {
 	// high-end PCs don't need to compress...
 	return false;
@@ -143,12 +153,12 @@ bool Compress( SkeletonAnimation::AnimFrame *current, SkeletonAnimation::AnimFra
 	{
 		return false;
 	}
-
+	
 	return true;
 	*/
 }
 
-void SkeletonAnimation::EncodeFrames(SkeletonChannelList *channelList, SkeletonChannelNameTable *channelNames )
+void SkeletonAnimation::EncodeFrames(const SkeletonChannelList *channelList, const SkeletonChannelNameTable *channelNames )
 {
 	int frameCnt;
 	AnimFrame *pCurrFrame;
@@ -156,11 +166,11 @@ void SkeletonAnimation::EncodeFrames(SkeletonChannelList *channelList, SkeletonC
 	SkanGameFrame *pFrame;
 	int indexLastFrameAdded;
 
-	size_t numFrames = m_frame.size();
-	size_t nTotalChannels = ary_channels.size();
+	const size_t numFrames = m_frame.size();
+	const size_t nTotalChannels = ary_channels.size();
 
 	SkanChannelHdr* pChannel = &ary_channels[0];
-	size_t endFrameCap = numFrames - 2;
+	const size_t endFrameCap = numFrames - 2;
 
 	for (size_t i = 0; i < nTotalChannels; i++, pChannel++)
 	{
@@ -211,62 +221,67 @@ void SkeletonAnimation::EncodeFrames(SkeletonChannelList *channelList, SkeletonC
 	}
 }
 
-void SkeletonAnimation::ConvertSkelFileToGame(File_AnimDataHeader *pHeader, size_t iBuffLength, const char *path)
+void SkeletonAnimation::ConvertSkelFileToGame(const File_AnimDataHeader *pHeader, size_t iBuffLength, const char *path)
 {
-	if( pHeader->numFrames <= 0 )
+	const uint32_t numFrames = Endian.LittleInteger(pHeader->numFrames);
+	if( numFrames <= 0 )
 	{
+		// no frame to process
 		return;
 	}
 
-	m_frame.resize(pHeader->numFrames);
+	m_frame.SetNumObjects(numFrames);
 
+	const uint32_t numChannels = Endian.LittleInteger(pHeader->numChannels);
 	AnimFrame* pGameFrame = &m_frame[0];
-	File_AnimFrame* pFileFrame = pHeader->frame;
+	const File_AnimFrame* pFileFrame = pHeader->frame;
 	AnimFrame* newFrame = pGameFrame;
 
-	for(int32_t i = 0; i < pHeader->numFrames; i++)
+	for(uint32_t i = 0; i < numFrames; i++)
 	{
-		newFrame->bounds[ 0 ] = pFileFrame->bounds[ 0 ];
-		newFrame->bounds[ 1 ] = pFileFrame->bounds[ 1 ];
-		newFrame->delta = pFileFrame->delta;
-		newFrame->angleDelta = pFileFrame->angleDelta;
-		newFrame->pChannels = new vec4_t[pHeader->numChannels];
+		newFrame->bounds[0] = LittleSkelVec(pFileFrame->bounds[0]);
+		newFrame->bounds[1] = LittleSkelVec(pFileFrame->bounds[1]);
+		newFrame->delta = LittleSkelVec(pFileFrame->delta);
+		newFrame->angleDelta = Endian.LittleFloat(pFileFrame->angleDelta);
+		newFrame->pChannels = new vec4_t[numChannels];
 
-		for (int j = 0; j < pHeader->numChannels; j++)
+		for (uint32_t j = 0; j < numChannels; j++)
 		{
-			vec4_t* pChannels = (vec4_t*)((uint8_t*)pHeader + pFileFrame->iOfsChannels);
-			Vec4Copy(pChannels[j], newFrame->pChannels[j]);
+			vec4_t* const pChannels = (vec4_t*)((uint8_t*)pHeader + Endian.LittleInteger(pFileFrame->iOfsChannels));
+			pChannels[j][0] = Endian.LittleFloat(newFrame->pChannels[j][0]);
+			pChannels[j][1] = Endian.LittleFloat(newFrame->pChannels[j][1]);
+			pChannels[j][2] = Endian.LittleFloat(newFrame->pChannels[j][2]);
+			pChannels[j][3] = Endian.LittleFloat(newFrame->pChannels[j][3]);
 		}
-
-		AddToBounds( newFrame->bounds, pFileFrame->bounds );
 
 		pFileFrame++;
 		newFrame++;
 	}
 
-	flags = pHeader->flags;
-	frameTime = pHeader->frameTime;
-	totalDelta = pHeader->totalDelta;
-	totalAngleDelta = pHeader->totalAngleDelta;
-	ary_channels.resize(pHeader->numChannels);
+	flags = Endian.LittleInteger(pHeader->flags);
+	frameTime = Endian.LittleFloat(pHeader->frameTime);
+	totalDelta = LittleSkelVec(pHeader->totalDelta);
+	totalAngleDelta = Endian.LittleFloat(pHeader->totalAngleDelta);
+	ary_channels.resize(numChannels);
 
 	channelList.ZeroChannels();
 
-	skelChannelName_t *pChannelNames = (skelChannelName_t *)((char *)pHeader + pHeader->ofsChannelNames);
+	SkeletonChannelNameTable* channelNameTable = GetAssetManager()->GetManager<SkeletorManager>()->GetChannelNamesTable();
+	const skelChannelName_t* pChannelNames = (const skelChannelName_t*)((char*)pHeader + Endian.LittleInteger(pHeader->ofsChannelNames));
 
-	for(int32_t i = 0; i < pHeader->numChannels; i++)
+	for (uint32_t i = 0; i < numChannels; i++)
 	{
-		size_t channelIndex = GetAssetManager()->GetManager<SkeletorManager>()->GetChannelNamesTable()->RegisterChannel( *pChannelNames );
-		channelList.AddChannel( channelIndex );
+		const size_t channelIndex = channelNameTable->RegisterChannel(*pChannelNames);
+		channelList.AddChannel(channelIndex);
 		pChannelNames++;
 	}
 
 	channelList.PackChannels();
-	EncodeFrames(&channelList, GetManager<SkeletorManager>()->GetChannelNamesTable());
+	EncodeFrames(&channelList, channelNameTable);
 
-	if (channelList.HasChannel(GetManager<SkeletorManager>()->GetChannelNamesTable(), "Bip01 pos") &&
-		channelList.HasChannel(GetManager<SkeletorManager>()->GetChannelNamesTable(), "Bip01 R Foot pos") &&
-		channelList.HasChannel(GetManager<SkeletorManager>()->GetChannelNamesTable(), "Bip01 L Foot pos"))
+	if (channelList.HasChannel(channelNameTable, "Bip01 pos") &&
+		channelList.HasChannel(channelNameTable, "Bip01 R Foot pos") &&
+		channelList.HasChannel(channelNameTable, "Bip01 L Foot pos"))
 	{
 		bHasDelta = true;
 	}
@@ -275,8 +290,8 @@ void SkeletonAnimation::ConvertSkelFileToGame(File_AnimDataHeader *pHeader, size
 		bHasDelta = false;
 	}
 
-	if (channelList.HasChannel(GetManager<SkeletorManager>()->GetChannelNamesTable(), "Bip01 Spine rot") &&
-		channelList.HasChannel(GetManager<SkeletorManager>()->GetChannelNamesTable(), "Bip01 Spine1 rot"))
+	if (channelList.HasChannel(channelNameTable, "Bip01 Spine rot") &&
+		channelList.HasChannel(channelNameTable, "Bip01 Spine1 rot"))
 	{
 		bHasUpper = true;
 	}
@@ -285,43 +300,43 @@ void SkeletonAnimation::ConvertSkelFileToGame(File_AnimDataHeader *pHeader, size
 		bHasUpper = false;
 	}
 
-	if (channelList.HasChannel(GetManager<SkeletorManager>()->GetChannelNamesTable(), "VISEME_Bump")
-		|| channelList.HasChannel(GetManager<SkeletorManager>()->GetChannelNamesTable(), "VISME_Cage_")
-		|| channelList.HasChannel(GetManager<SkeletorManager>()->GetChannelNamesTable(), "VISME_Earth")
-		|| channelList.HasChannel(GetManager<SkeletorManager>()->GetChannelNamesTable(), "VISME_Fave")
-		|| channelList.HasChannel(GetManager<SkeletorManager>()->GetChannelNamesTable(), "VISME_If")
-		|| channelList.HasChannel(GetManager<SkeletorManager>()->GetChannelNamesTable(), "VISME_New")
-		|| channelList.HasChannel(GetManager<SkeletorManager>()->GetChannelNamesTable(), "VISME_Ox")
-		|| channelList.HasChannel(GetManager<SkeletorManager>()->GetChannelNamesTable(), "VISME_Roar")
-		|| channelList.HasChannel(GetManager<SkeletorManager>()->GetChannelNamesTable(), "VISME_Size")
-		|| channelList.HasChannel(GetManager<SkeletorManager>()->GetChannelNamesTable(), "VISME_Though")
-		|| channelList.HasChannel(GetManager<SkeletorManager>()->GetChannelNamesTable(), "VISME_Told")
-		|| channelList.HasChannel(GetManager<SkeletorManager>()->GetChannelNamesTable(), "VISME_Wet")
-		|| channelList.HasChannel(GetManager<SkeletorManager>()->GetChannelNamesTable(), "BROW_frown")
-		|| channelList.HasChannel(GetManager<SkeletorManager>()->GetChannelNamesTable(), "BROW_R_lift")
-		|| channelList.HasChannel(GetManager<SkeletorManager>()->GetChannelNamesTable(), "BROW_lift")
-		|| channelList.HasChannel(GetManager<SkeletorManager>()->GetChannelNamesTable(), "BROW_worry")
-		|| channelList.HasChannel(GetManager<SkeletorManager>()->GetChannelNamesTable(), "EYE_blink")
-		|| channelList.HasChannel(GetManager<SkeletorManager>()->GetChannelNamesTable(), "EYES_Excited__")
-		|| channelList.HasChannel(GetManager<SkeletorManager>()->GetChannelNamesTable(), "EYES_L_squint")
-		|| channelList.HasChannel(GetManager<SkeletorManager>()->GetChannelNamesTable(), "EYES_narrow__")
-		|| channelList.HasChannel(GetManager<SkeletorManager>()->GetChannelNamesTable(), "EYES_down")
-		|| channelList.HasChannel(GetManager<SkeletorManager>()->GetChannelNamesTable(), "EYES_left")
-		|| channelList.HasChannel(GetManager<SkeletorManager>()->GetChannelNamesTable(), "EYES_right")
-		|| channelList.HasChannel(GetManager<SkeletorManager>()->GetChannelNamesTable(), "EYES_smile")
-		|| channelList.HasChannel(GetManager<SkeletorManager>()->GetChannelNamesTable(), "EYES_up__")
-		|| channelList.HasChannel(GetManager<SkeletorManager>()->GetChannelNamesTable(), "JAW_open-closed")
-		|| channelList.HasChannel(GetManager<SkeletorManager>()->GetChannelNamesTable(), "JAW_open-open")
-		|| channelList.HasChannel(GetManager<SkeletorManager>()->GetChannelNamesTable(), "LIPS_compressed")
-		|| channelList.HasChannel(GetManager<SkeletorManager>()->GetChannelNamesTable(), "MOUTH_L_smile_closed")
-		|| channelList.HasChannel(GetManager<SkeletorManager>()->GetChannelNamesTable(), "MOUTH_L_smile_open")
-		|| channelList.HasChannel(GetManager<SkeletorManager>()->GetChannelNamesTable(), "MOUTH_L_snarl_closed_")
-		|| channelList.HasChannel(GetManager<SkeletorManager>()->GetChannelNamesTable(), "MOUTH_L_snarl_open")
-		|| channelList.HasChannel(GetManager<SkeletorManager>()->GetChannelNamesTable(), "MOUTH_grimace")
-		|| channelList.HasChannel(GetManager<SkeletorManager>()->GetChannelNamesTable(), "MOUTH_smile_closed")
-		|| channelList.HasChannel(GetManager<SkeletorManager>()->GetChannelNamesTable(), "MOUTH_smile_open")
-		|| channelList.HasChannel(GetManager<SkeletorManager>()->GetChannelNamesTable(), "MOUTH_Snarl_closed")
-		|| channelList.HasChannel(GetManager<SkeletorManager>()->GetChannelNamesTable(), "MOUTH_Snarl_open"))
+	if (channelList.HasChannel(channelNameTable, "VISEME_Bump")
+		|| channelList.HasChannel(channelNameTable, "VISME_Cage_")
+		|| channelList.HasChannel(channelNameTable, "VISME_Earth")
+		|| channelList.HasChannel(channelNameTable, "VISME_Fave")
+		|| channelList.HasChannel(channelNameTable, "VISME_If")
+		|| channelList.HasChannel(channelNameTable, "VISME_New")
+		|| channelList.HasChannel(channelNameTable, "VISME_Ox")
+		|| channelList.HasChannel(channelNameTable, "VISME_Roar")
+		|| channelList.HasChannel(channelNameTable, "VISME_Size")
+		|| channelList.HasChannel(channelNameTable, "VISME_Though")
+		|| channelList.HasChannel(channelNameTable, "VISME_Told")
+		|| channelList.HasChannel(channelNameTable, "VISME_Wet")
+		|| channelList.HasChannel(channelNameTable, "BROW_frown")
+		|| channelList.HasChannel(channelNameTable, "BROW_R_lift")
+		|| channelList.HasChannel(channelNameTable, "BROW_lift")
+		|| channelList.HasChannel(channelNameTable, "BROW_worry")
+		|| channelList.HasChannel(channelNameTable, "EYE_blink")
+		|| channelList.HasChannel(channelNameTable, "EYES_Excited__")
+		|| channelList.HasChannel(channelNameTable, "EYES_L_squint")
+		|| channelList.HasChannel(channelNameTable, "EYES_narrow__")
+		|| channelList.HasChannel(channelNameTable, "EYES_down")
+		|| channelList.HasChannel(channelNameTable, "EYES_left")
+		|| channelList.HasChannel(channelNameTable, "EYES_right")
+		|| channelList.HasChannel(channelNameTable, "EYES_smile")
+		|| channelList.HasChannel(channelNameTable, "EYES_up__")
+		|| channelList.HasChannel(channelNameTable, "JAW_open-closed")
+		|| channelList.HasChannel(channelNameTable, "JAW_open-open")
+		|| channelList.HasChannel(channelNameTable, "LIPS_compressed")
+		|| channelList.HasChannel(channelNameTable, "MOUTH_L_smile_closed")
+		|| channelList.HasChannel(channelNameTable, "MOUTH_L_smile_open")
+		|| channelList.HasChannel(channelNameTable, "MOUTH_L_snarl_closed_")
+		|| channelList.HasChannel(channelNameTable, "MOUTH_L_snarl_open")
+		|| channelList.HasChannel(channelNameTable, "MOUTH_grimace")
+		|| channelList.HasChannel(channelNameTable, "MOUTH_smile_closed")
+		|| channelList.HasChannel(channelNameTable, "MOUTH_smile_open")
+		|| channelList.HasChannel(channelNameTable, "MOUTH_Snarl_closed")
+		|| channelList.HasChannel(channelNameTable, "MOUTH_Snarl_open"))
 	{
 		bHasMorph = true;
 	}
@@ -331,63 +346,56 @@ void SkeletonAnimation::ConvertSkelFileToGame(File_AnimDataHeader *pHeader, size
 	}
 }
 
-void MOHPC::SkeletonAnimation::WriteEncodedFrames(class MSG* msg)
+void MOHPC::SkeletonAnimation::WriteEncodedFrames(MSG& msg)
 {
-	SkanChannelHdr* pChannel;
-	SkanGameFrame* pFrame;
+	const uint32_t numFrames = (uint32_t)m_frame.size();
+	const uint16_t numChannels = (uint16_t)ary_channels.size();
 
-	uint32_t numFrames = (uint32_t)m_frame.size();
-	uint16_t numChannels = (uint16_t)ary_channels.size();
+	msg.WriteUInteger(numFrames);
+	msg.WriteUShort(numChannels);
 
-	msg->SerializeUInteger(numFrames);
-	msg->SerializeUShort(numChannels);
-
-	size_t nTotalChannels = ary_channels.size();
-
-	for (size_t i = 0; i < nTotalChannels; i++)
+	for (uint16_t i = 0; i < numChannels; i++)
 	{
-		pChannel = &ary_channels[i];
-		uint16_t nFramesInChannel = (uint16_t)pChannel->ary_frames.size();
-		msg->SerializeUShort(nFramesInChannel);
+		const SkanChannelHdr* const pChannel = &ary_channels[i];
+		const uint16_t nFramesInChannel = (uint16_t)pChannel->ary_frames.size();
+		msg.WriteUShort(nFramesInChannel);
 
-		for (size_t j = 0; j < nFramesInChannel; j++)
+		for (uint16_t j = 0; j < nFramesInChannel; j++)
 		{
-			pFrame = &pChannel->ary_frames[i];
+			const SkanGameFrame* const pFrame = &pChannel->ary_frames[i];
 
-			uint16_t frameNum = (uint16_t)pFrame->nFrameNum;
-			uint16_t prevFrameIndex = (uint16_t)pFrame->nPrevFrameIndex;
-			msg->SerializeUShort(frameNum);
-			msg->SerializeUShort(prevFrameIndex);
-			msg->Serialize(pFrame->pChannelData, sizeof(vec4_t));
+			msg.WriteUShort((uint16_t)pFrame->nFrameNum);
+			msg.WriteUShort((uint16_t)pFrame->nPrevFrameIndex);
+			msg.WriteData(pFrame->pChannelData, sizeof(vec4_t));
 		}
 	}
 
-	uint32_t nBytesUsed = sizeof(int32_t) + sizeof(int32_t);
-	nBytesUsed += sizeof(bool) + sizeof(bool) + sizeof(bool);
-	nBytesUsed += sizeof(SkelVec3);
-	nBytesUsed += sizeof(float) + sizeof(float);
-	nBytesUsed += sizeof(SkeletonChannelList);
-	nBytesUsed += sizeof(SkelVec3) * 2;
-	nBytesUsed += sizeof(AnimFrame) * (uint32_t)m_frame.size();
-	nBytesUsed += sizeof(SkanChannelHdr) * (uint32_t)ary_channels.size();
+	const uint32_t nBytesUsed = sizeof(int32_t) + sizeof(int32_t)
+		+ sizeof(bool) + sizeof(bool) + sizeof(bool)
+		+ sizeof(SkelVec3)
+		+ sizeof(float) + sizeof(float)
+		+ sizeof(SkeletonChannelList)
+		+ sizeof(SkelVec3) * 2
+		+ sizeof(AnimFrame) * (uint32_t)m_frame.size()
+		+ sizeof(SkanChannelHdr) * (uint32_t)ary_channels.size();
 
-	msg->SerializeUInteger(nBytesUsed);
+	msg.WriteUInteger(nBytesUsed);
 }
 
-void MOHPC::SkeletonAnimation::WriteEncodedFramesEx(class MSG* msg)
+void MOHPC::SkeletonAnimation::WriteEncodedFramesEx(MSG& msg)
 {
 	size_t nTotalChannels = ary_channels.size();
-	SkeletorManagerPtr skeletorManager = GetManager<SkeletorManager>();
+	const SkeletorManagerPtr skeletorManager = GetManager<SkeletorManager>();
 	for (size_t i = 0; i < nTotalChannels; i++)
 	{
-		SkanChannelHdr* pChannel = &ary_channels[i];
+		const SkanChannelHdr* const pChannel = &ary_channels[i];
 
 		const char* name = channelList.ChannelName(skeletorManager->GetChannelNamesTable(), i);
-		int32_t type = SkeletonChannelNameTable::GetChannelTypeFromName(name);
-		uint16_t frameCnt = (uint16_t)pChannel->ary_frames.size();
-		msg->SerializeUShort(frameCnt);
+		const int32_t type = SkeletonChannelNameTable::GetChannelTypeFromName(name);
+		const uint16_t frameCnt = (uint16_t)pChannel->ary_frames.size();
+		msg.WriteUShort(frameCnt);
 
-		SkanGameFrame* ary_frames = pChannel->ary_frames.data();
+		const SkanGameFrame* const ary_frames = pChannel->ary_frames.data();
 
 		if (type)
 		{
@@ -396,16 +404,12 @@ void MOHPC::SkeletonAnimation::WriteEncodedFramesEx(class MSG* msg)
 				for (uint16_t j = 0; j < frameCnt; j++)
 				{
 					const SkanGameFrame* pFrame = &ary_frames[j];
+					msg.WriteUShort((uint16_t)pFrame->nFrameNum);
+					msg.WriteUShort((uint16_t)pFrame->nPrevFrameIndex);
 
-					uint16_t nFrameNum = (uint16_t)pFrame->nFrameNum;
-					uint16_t nPrevFrameIndex = (uint16_t)pFrame->nPrevFrameIndex;
-					msg->SerializeUShort(nFrameNum);
-					msg->SerializeUShort(nPrevFrameIndex);
-
-					float channelData[] = { pFrame->pChannelData[0],  pFrame->pChannelData[1], pFrame->pChannelData[2] };
-					msg->SerializeFloat(channelData[0]);
-					msg->SerializeFloat(channelData[1]);
-					msg->SerializeFloat(channelData[2]);
+					msg.WriteFloat(pFrame->pChannelData[0]);
+					msg.WriteFloat(pFrame->pChannelData[1]);
+					msg.WriteFloat(pFrame->pChannelData[2]);
 				}
 			}
 			else if (type == 3)
@@ -413,14 +417,10 @@ void MOHPC::SkeletonAnimation::WriteEncodedFramesEx(class MSG* msg)
 				for (uint16_t j = 0; j < frameCnt; j++)
 				{
 					const SkanGameFrame* pFrame = &ary_frames[j];
+					msg.WriteUShort((uint16_t)pFrame->nFrameNum);
+					msg.WriteUShort((uint16_t)pFrame->nPrevFrameIndex);
 
-					uint16_t nFrameNum = (uint16_t)pFrame->nFrameNum;
-					uint16_t nPrevFrameIndex = (uint16_t)pFrame->nPrevFrameIndex;
-					msg->SerializeUShort(nFrameNum);
-					msg->SerializeUShort(nPrevFrameIndex);
-
-					float channelData[] = { pFrame->pChannelData[0] };
-					msg->SerializeFloat(channelData[0]);
+					msg.WriteFloat(pFrame->pChannelData[0]);
 				}
 			}
 		}
@@ -429,61 +429,49 @@ void MOHPC::SkeletonAnimation::WriteEncodedFramesEx(class MSG* msg)
 			for (uint16_t j = 0; j < frameCnt; j++)
 			{
 				const SkanGameFrame* pFrame = &ary_frames[j];
+				msg.WriteUShort((uint16_t)pFrame->nFrameNum);
+				msg.WriteUShort((uint16_t)pFrame->nPrevFrameIndex);
 
-				uint16_t nFrameNum = (uint16_t)pFrame->nFrameNum;
-				uint16_t nPrevFrameIndex = (uint16_t)pFrame->nPrevFrameIndex;
-				msg->SerializeUShort(nFrameNum);
-				msg->SerializeUShort(nPrevFrameIndex);
-
-				float channelData[] = { pFrame->pChannelData[0],  pFrame->pChannelData[1], pFrame->pChannelData[2], pFrame->pChannelData[3] };
-				msg->SerializeFloat(channelData[0]);
-				msg->SerializeFloat(channelData[1]);
-				msg->SerializeFloat(channelData[2]);
-				msg->SerializeFloat(channelData[3]);
+				msg.WriteFloat(pFrame->pChannelData[0]);
+				msg.WriteFloat(pFrame->pChannelData[1]);
+				msg.WriteFloat(pFrame->pChannelData[2]);
+				msg.WriteFloat(pFrame->pChannelData[3]);
 			}
 		}
 	}
 }
 
-void SkeletonAnimation::ReadEncodedFrames(class MSG* msg)
+void SkeletonAnimation::ReadEncodedFrames(MSG& msg)
 {
-	uint32_t numFrames;
-	uint16_t nTotalChannels;
-	msg->SerializeUInteger(numFrames);
-	msg->SerializeUShort(nTotalChannels);
+	const uint32_t numFrames = msg.ReadUInteger();
+	const uint16_t nTotalChannels = msg.ReadUShort();
 
 	m_frame.resize(numFrames);
 	ary_channels.resize(nTotalChannels);
 
-	for (int32_t i = 0; i < nTotalChannels; i++)
+	for (uint16_t i = 0; i < nTotalChannels; i++)
 	{
 		SkanChannelHdr *pChannel = &ary_channels[ i ];
-		uint16_t frameCnt;
-		msg->SerializeUShort(frameCnt);
+		const uint16_t frameCnt = msg.ReadUShort();
 
 		pChannel->ary_frames.resize(frameCnt);
 
-		for (int32_t j = 0; j < frameCnt; j++)
+		for (uint32_t j = 0; j < frameCnt; j++)
 		{
 			SkanGameFrame* pFrame = &pChannel->ary_frames[j];
-
-			uint16_t frameNum;
-			uint16_t prevFrameIndex;
-
-			msg->SerializeUShort(frameNum);
-			msg->SerializeUShort(prevFrameIndex);
+			const uint16_t frameNum = msg.ReadUShort();
+			const uint16_t prevFrameIndex = msg.ReadUShort();
 
 			pFrame->nFrameNum = frameNum;
 			pFrame->nPrevFrameIndex = prevFrameIndex;
-			msg->Serialize(pFrame->pChannelData, sizeof(vec4_t));
+			msg.ReadData(pFrame->pChannelData, sizeof(vec4_t));
 		}
 	}
 
-	uint32_t nBytesUsed;
-	msg->SerializeUInteger(nBytesUsed);
+	const uint32_t nBytesUsed = msg.ReadUInteger();
 }
 
-void SkeletonAnimation::ReadEncodedFramesEx(class MSG* msg)
+void SkeletonAnimation::ReadEncodedFramesEx(MSG& msg)
 {
 	size_t nTotalChannels = ary_channels.size();
 	SkeletorManagerPtr skeletorManager = GetManager<SkeletorManager>();
@@ -493,8 +481,7 @@ void SkeletonAnimation::ReadEncodedFramesEx(class MSG* msg)
 
 		const char* name = channelList.ChannelName(skeletorManager->GetChannelNamesTable(), i);
 		int32_t type = SkeletonChannelNameTable::GetChannelTypeFromName(name);
-		uint16_t frameCnt;
-		msg->SerializeUShort(frameCnt);
+		const uint16_t frameCnt = msg.ReadUShort();
 
 		pChannel->ary_frames.resize(frameCnt);
 		SkanGameFrame* ary_frames = pChannel->ary_frames.data();
@@ -506,16 +493,14 @@ void SkeletonAnimation::ReadEncodedFramesEx(class MSG* msg)
 				for (uint16_t j = 0; j < frameCnt; j++)
 				{
 					SkanGameFrame *pFrame = &ary_frames[j];
-
-					uint16_t nFrameNum, nPrevFrameIndex;
-					msg->SerializeUShort(nFrameNum);
-					msg->SerializeUShort(nPrevFrameIndex);
+					const uint16_t nFrameNum = msg.ReadUShort();
+					const uint16_t nPrevFrameIndex = msg.ReadUShort();
 
 					pFrame->nFrameNum = nFrameNum;
 					pFrame->nPrevFrameIndex = nPrevFrameIndex;
-					msg->SerializeFloat(pFrame->pChannelData[0]);
-					msg->SerializeFloat(pFrame->pChannelData[1]);
-					msg->SerializeFloat(pFrame->pChannelData[2]);
+					pFrame->pChannelData[0] = msg.ReadFloat();
+					pFrame->pChannelData[1] = msg.ReadFloat();
+					pFrame->pChannelData[2] = msg.ReadFloat();
 					pFrame->pChannelData[3] = 0;
 				}
 			}
@@ -523,15 +508,13 @@ void SkeletonAnimation::ReadEncodedFramesEx(class MSG* msg)
 			{
 				for (uint16_t j = 0; j < frameCnt; j++)
 				{
-					SkanGameFrame *pFrame = &ary_frames[j];
-
-					uint16_t nFrameNum, nPrevFrameIndex;
-					msg->SerializeUShort(nFrameNum);
-					msg->SerializeUShort(nPrevFrameIndex);
+					SkanGameFrame* pFrame = &ary_frames[j];
+					const uint16_t nFrameNum = msg.ReadUShort();
+					const uint16_t nPrevFrameIndex = msg.ReadUShort();
 
 					pFrame->nFrameNum = nFrameNum;
 					pFrame->nPrevFrameIndex = nPrevFrameIndex;
-					msg->SerializeFloat(pFrame->pChannelData[0]);
+					pFrame->pChannelData[0] = msg.ReadFloat();
 					pFrame->pChannelData[1] = 0;
 					pFrame->pChannelData[2] = 0;
 					pFrame->pChannelData[3] = 0;
@@ -543,16 +526,15 @@ void SkeletonAnimation::ReadEncodedFramesEx(class MSG* msg)
 			for (uint16_t j = 0; j < frameCnt; j++)
 			{
 				SkanGameFrame* pFrame = &ary_frames[j];
-				uint16_t nFrameNum, nPrevFrameIndex;
-				msg->SerializeUShort(nFrameNum);
-				msg->SerializeUShort(nPrevFrameIndex);
+				const uint16_t nFrameNum = msg.ReadUShort();
+				const uint16_t nPrevFrameIndex = msg.ReadUShort();
 
 				pFrame->nFrameNum = nFrameNum;
 				pFrame->nPrevFrameIndex = nPrevFrameIndex;
-				msg->SerializeFloat(pFrame->pChannelData[0]);
-				msg->SerializeFloat(pFrame->pChannelData[1]);
-				msg->SerializeFloat(pFrame->pChannelData[2]);
-				msg->SerializeFloat(pFrame->pChannelData[3]);
+				pFrame->pChannelData[0] = msg.ReadFloat();
+				pFrame->pChannelData[1] = msg.ReadFloat();
+				pFrame->pChannelData[2] = msg.ReadFloat();
+				pFrame->pChannelData[3] = msg.ReadFloat();
 			}
 		}
 	}
@@ -563,7 +545,7 @@ void SkeletonAnimation::SaveProcessedAnim(const char* path, File_AnimDataHeader*
 	/*
 		int i;
 		skelChannelName_t *pChannelNames;
-		msg->t msg;
+		msg.t msg;
 		skelAnimGameFrame_t *newFrame;
 		char npath[ 128 ];
 		unsigned char buf[ 2000000 ];
@@ -579,22 +561,21 @@ void SkeletonAnimation::LoadProcessedAnim(const char *path, void *buffer, size_t
 
 	MSG msg(stream, MOHPC::msgMode_e::Reading);
 
-	uint32_t numChannels;
-	msg.SerializeUInteger(numChannels);
+	// number of channels
+	// but useless as it will be used later
+	msg.ReadUInteger();
 
-	msg.SerializeInteger(flags);
-	msg.SerializeFloat(frameTime);
-	msg.SerializeFloat(totalDelta[0]);
-	msg.SerializeFloat(totalDelta[1]);
-	msg.SerializeFloat(totalDelta[2]);
-	msg.SerializeFloat(totalAngleDelta);
-	uint32_t numFrames;
-	uint16_t nTotalChannels;
-	msg.SerializeUInteger(numFrames);
-	msg.SerializeUShort(nTotalChannels);
-	msg.SerializeByteBool(bHasDelta);
-	msg.SerializeByteBool(bHasUpper);
-	msg.SerializeByteBool(bHasMorph);
+	flags = msg.ReadInteger();
+	frameTime = msg.ReadFloat();
+	totalDelta[0] = msg.ReadFloat();
+	totalDelta[1] = msg.ReadFloat();
+	totalDelta[2] = msg.ReadFloat();
+	totalAngleDelta = msg.ReadFloat();
+	const uint32_t numFrames = msg.ReadUInteger();
+	const uint16_t nTotalChannels = msg.ReadUShort();
+	bHasDelta = msg.ReadByteBool();
+	bHasUpper = msg.ReadByteBool();
+	bHasMorph = msg.ReadByteBool();
 
 	m_frame.resize(numFrames);
 	ary_channels.resize(nTotalChannels);
@@ -603,38 +584,38 @@ void SkeletonAnimation::LoadProcessedAnim(const char *path, void *buffer, size_t
 
 	for(uint32_t i = 0; i < numFrames; i++)
 	{
-		msg.SerializeFloat(newFrame->bounds[0][0]);
-		msg.SerializeFloat(newFrame->bounds[0][1]);
-		msg.SerializeFloat(newFrame->bounds[0][2]);
-		msg.SerializeFloat(newFrame->bounds[1][0]);
-		msg.SerializeFloat(newFrame->bounds[1][2]);
-		msg.SerializeFloat(newFrame->bounds[1][2]);
-		msg.SerializeFloat(newFrame->radius);
-		msg.SerializeFloat(newFrame->delta[0]);
-		msg.SerializeFloat(newFrame->delta[1]);
-		msg.SerializeFloat(newFrame->delta[2]);
-		msg.SerializeFloat(newFrame->angleDelta);
+		newFrame->bounds[0][0] = msg.ReadFloat();
+		newFrame->bounds[0][1] = msg.ReadFloat();
+		newFrame->bounds[0][2] = msg.ReadFloat();
+		newFrame->bounds[1][0] = msg.ReadFloat();
+		newFrame->bounds[1][2] = msg.ReadFloat();
+		newFrame->bounds[1][2] = msg.ReadFloat();
+		newFrame->radius = msg.ReadFloat();
+		newFrame->delta[0] = msg.ReadFloat();
+		newFrame->delta[1] = msg.ReadFloat();
+		newFrame->delta[2] = msg.ReadFloat();
+		newFrame->angleDelta = msg.ReadFloat();
 		newFrame->pChannels = NULL;
 		newFrame++;
 	}
 
-	msg.SerializeFloat(bounds[0][0]);
-	msg.SerializeFloat(bounds[0][1]);
-	msg.SerializeFloat(bounds[0][2]);
-	msg.SerializeFloat(bounds[1][0]);
-	msg.SerializeFloat(bounds[1][2]);
-	msg.SerializeFloat(bounds[1][2]);
-	ReadEncodedFrames(&msg);
+	bounds[0][0] = msg.ReadFloat();
+	bounds[0][1] = msg.ReadFloat();
+	bounds[0][2] = msg.ReadFloat();
+	bounds[1][0] = msg.ReadFloat();
+	bounds[1][2] = msg.ReadFloat();
+	bounds[1][2] = msg.ReadFloat();
+	ReadEncodedFrames(msg);
 
-	msg.SerializeUInteger(numChannels);
+	const uint32_t numChannels = msg.ReadUInteger();
 	channelList.ZeroChannels();
+
+	SkeletonChannelNameTable* const channelNamesTable = GetAssetManager()->GetManager<SkeletorManager>()->GetChannelNamesTable();
 
 	for (uint32_t i = 0; i < numChannels; i++)
 	{
-		MOHPC::StringMessage channelName;
-		msg.SerializeString(channelName);
-
-		channelList.AddChannel(GetAssetManager()->GetManager<SkeletorManager>()->GetChannelNamesTable()->RegisterChannel(channelName));
+		const MOHPC::StringMessage channelName = msg.ReadString();
+		channelList.AddChannel(channelNamesTable->RegisterChannel(channelName));
 	}
 
 	channelList.PackChannels();
@@ -646,32 +627,27 @@ void SkeletonAnimation::LoadProcessedAnimEx(const char *path, void *buffer, size
 
 	MSG msg(stream, MOHPC::msgMode_e::Reading);
 
-	uint16_t numChannels;
-	msg.SerializeUShort(numChannels);
+	const uint16_t numChannels = msg.ReadUShort();
 
 	channelList.ZeroChannels();
-	msg.SerializeInteger(flags);
-	msg.SerializeFloat(frameTime);
-	msg.SerializeFloat(totalDelta[0]);
-	msg.SerializeFloat(totalDelta[1]);
-	msg.SerializeFloat(totalDelta[2]);
-	msg.SerializeFloat(totalAngleDelta);
+	flags = msg.ReadInteger();
+	frameTime = msg.ReadFloat();
+	totalDelta[0] = msg.ReadFloat();
+	totalDelta[1] = msg.ReadFloat();
+	totalDelta[2] = msg.ReadFloat();
+	totalAngleDelta = msg.ReadFloat();
+	const uint32_t numFrames = msg.ReadUInteger();
+	bHasDelta = msg.ReadByteBool();
+	bHasUpper = msg.ReadByteBool();
+	bHasMorph = msg.ReadByteBool();
 
-	uint32_t numFrames;
-	msg.SerializeUInteger(numFrames);
-	
-	msg.SerializeByteBool(bHasDelta);
-	msg.SerializeByteBool(bHasUpper);
-	msg.SerializeByteBool(bHasMorph);
+	SkeletonChannelNameTable* const channelNamesTable = GetAssetManager()->GetManager<SkeletorManager>()->GetChannelNamesTable();
 
 	ary_channels.resize(numChannels);
-	int32_t nTotalChannels = numChannels;
-	for (int32_t i = 0; i < nTotalChannels; i++)
+	for (int32_t i = 0; i < numChannels; i++)
 	{
-		MOHPC::StringMessage channelName;
-		msg.SerializeString(channelName);
-
-		channelList.AddChannel(GetAssetManager()->GetManager<SkeletorManager>()->GetChannelNamesTable()->RegisterChannel(channelName));
+		const MOHPC::StringMessage channelName = msg.ReadString();
+		channelList.AddChannel(channelNamesTable->RegisterChannel(channelName));
 	}
 
 	channelList.PackChannels();
@@ -681,28 +657,28 @@ void SkeletonAnimation::LoadProcessedAnimEx(const char *path, void *buffer, size
 
 	for (uint32_t i = 0; i < numFrames; i++)
 	{
-		msg.SerializeFloat(newFrame->bounds[0][0]);
-		msg.SerializeFloat(newFrame->bounds[0][1]);
-		msg.SerializeFloat(newFrame->bounds[0][2]);
-		msg.SerializeFloat(newFrame->bounds[1][0]);
-		msg.SerializeFloat(newFrame->bounds[1][2]);
-		msg.SerializeFloat(newFrame->bounds[1][2]);
-		msg.SerializeFloat(newFrame->radius);
-		msg.SerializeFloat(newFrame->delta[0]);
-		msg.SerializeFloat(newFrame->delta[1]);
-		msg.SerializeFloat(newFrame->delta[2]);
-		msg.SerializeFloat(newFrame->angleDelta);
+		newFrame->bounds[0][0] = msg.ReadFloat();
+		newFrame->bounds[0][1] = msg.ReadFloat();
+		newFrame->bounds[0][2] = msg.ReadFloat();
+		newFrame->bounds[1][0] = msg.ReadFloat();
+		newFrame->bounds[1][2] = msg.ReadFloat();
+		newFrame->bounds[1][2] = msg.ReadFloat();
+		newFrame->radius = msg.ReadFloat();
+		newFrame->delta[0] = msg.ReadFloat();
+		newFrame->delta[1] = msg.ReadFloat();
+		newFrame->delta[2] = msg.ReadFloat();
+		newFrame->angleDelta = msg.ReadFloat();
 		newFrame->pChannels = NULL;
 		newFrame++;
 	}
 
-	msg.SerializeFloat(bounds[0][0]);
-	msg.SerializeFloat(bounds[0][1]);
-	msg.SerializeFloat(bounds[0][2]);
-	msg.SerializeFloat(bounds[1][0]);
-	msg.SerializeFloat(bounds[1][2]);
-	msg.SerializeFloat(bounds[1][2]);
-	ReadEncodedFramesEx(&msg);
+	bounds[0][0] = msg.ReadFloat();
+	bounds[0][1] = msg.ReadFloat();
+	bounds[0][2] = msg.ReadFloat();
+	bounds[1][0] = msg.ReadFloat();
+	bounds[1][2] = msg.ReadFloat();
+	bounds[1][2] = msg.ReadFloat();
+	ReadEncodedFramesEx(msg);
 }
 
 

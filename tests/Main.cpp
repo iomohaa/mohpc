@@ -80,7 +80,7 @@ int main(int argc, char *argv[])
 	_CrtSetDbgFlag(tmpFlag);
 #endif
 
-	srand(time(NULL));
+	srand((unsigned int)time(NULL));
 
 
 	// Set new log

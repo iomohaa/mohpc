@@ -135,7 +135,7 @@ namespace MOHPC
 		str name;
 		Container<BoneData> Bones;
 		Container<Surface> Surfaces;
-		int32_t lodIndex[10];
+		uint32_t lodIndex[10];
 		Container<int32_t> Boxes;
 		LodControl* pLOD;
 		Container<str> MorphTargets;
@@ -143,42 +143,66 @@ namespace MOHPC
 		MOHPC_EXPORTS Skeleton();
 		virtual bool Load() override;
 
-		MOHPC_EXPORTS bool LoadModel(const char* path);
-
+		/** Return the model name. */
 		MOHPC_EXPORTS const char* GetName() const;
 
+		/** Return the number of surfaces. */
 		MOHPC_EXPORTS size_t GetNumSurfaces() const;
+		/**
+		 * Return the surface at the specified index.
+		 *
+		 * @param index The index to get the surface from.
+		 */
 		MOHPC_EXPORTS const Surface* GetSurface(size_t index) const;
 
+		/** Return the number of bones. */
 		MOHPC_EXPORTS size_t GetNumBones() const;
+		/**
+		 * Return the bone at the specified index.
+		 *
+		 * @param index The index to get the bone from.
+		 */
 		MOHPC_EXPORTS const BoneData* GetBone(size_t index) const;
 
+		/** Return the number of morph targets. */
 		MOHPC_EXPORTS size_t GetNumMorphTargets() const;
+		/**
+		 * Return the morph target at the specified index.
+		 *
+		 * @param index The index to get the morph target from.
+		 */
 		MOHPC_EXPORTS const char* GetMorphTarget(size_t index) const;
 
-		MOHPC_EXPORTS void LoadBoneFromBuffer(const SkeletonChannelList *boneList, const BoneData *boneData, class skelBone_Base **bone) const;
-		MOHPC_EXPORTS void LoadBonesFromBuffer(const SkeletonChannelList *boneList, class skelBone_Base **bone) const;
-		MOHPC_EXPORTS void LoadBoneFromBuffer2(const BoneFileData *fileData, BoneData *boneData) const;
+		/**
+		 * Gather bones from this mesh.
+		 *
+		 * @boneList Channel list used to load specific bones.
+		 * @bone List of bone to read to. The list must be the size of the number of channels.
+		 */
+		MOHPC_EXPORTS void LoadBonesFromBuffer(const SkeletonChannelList* boneList, class skelBone_Base** bone) const;
 
 	private:
-		int32_t CreateRotationBoneFileData(const char *newBoneName, const char *newBoneParentName, SkelVec3 basePos, Skeleton::BoneFileData *fileData);
-		int32_t CreatePosRotBoneFileData(char *newBoneName, char *newBoneParentName, Skeleton::BoneFileData *fileData);
-		void CreatePosRotBoneData(const char *newBoneName, const char *newBoneParentName, Skeleton::BoneData *boneData);
-		int32_t CreateIKShoulderBoneFileData(const char *newBoneName, const char *newBoneParentName, SkelQuat baseOrient, SkelVec3 basePos, Skeleton::BoneData *boneData);
-		int32_t CreateIKElbowBoneFileData(const char *newBoneName, const char *newBoneParentName, SkelVec3 basePos, Skeleton::BoneData *boneData);
-		int32_t CreateIKWristBoneFileData(const char *newBoneName, const char *newBoneParentName, const char *shoulderBoneName, SkelVec3 basePos, Skeleton::BoneFileData *fileData);
-		int32_t CreateHoseRotBoneFileData(char *newBoneName, char *newBoneParentName, char *targetBoneName, float bendRatio, float bendMax, float spinRatio,
+		void LoadBoneFromBuffer(const SkeletonChannelList* boneList, const BoneData* boneData, class skelBone_Base** bone) const;
+		void LoadBoneFromBuffer2(const BoneFileData* fileData, BoneData* boneData) const;
+		void CreatePosRotBoneData(const char* newBoneName, const char* newBoneParentName, Skeleton::BoneData* boneData);
+		uint32_t CreateRotationBoneFileData(const char* newBoneName, const char* newBoneParentName, SkelVec3 basePos, Skeleton::BoneFileData* fileData);
+		uint32_t CreatePosRotBoneFileData(char* newBoneName, char* newBoneParentName, Skeleton::BoneFileData* fileData);
+		uint32_t CreateIKShoulderBoneFileData(const char* newBoneName, const char* newBoneParentName, SkelQuat baseOrient, SkelVec3 basePos, Skeleton::BoneData* boneData);
+		uint32_t CreateIKElbowBoneFileData(const char* newBoneName, const char* newBoneParentName, SkelVec3 basePos, Skeleton::BoneData* boneData);
+		uint32_t CreateIKWristBoneFileData(const char* newBoneName, const char* newBoneParentName, const char* shoulderBoneName, SkelVec3 basePos, Skeleton::BoneFileData* fileData);
+		uint32_t CreateHoseRotBoneFileData(char* newBoneName, char* newBoneParentName, char* targetBoneName, float bendRatio, float bendMax, float spinRatio,
 			Skeleton::HoseRotType hoseRotType, SkelVec3 basePos, Skeleton::BoneFileData *fileData);
-		int32_t CreateAvRotBoneFileData(char *newBoneName, char *newBoneParentName, char *baseBoneName, char *targetBoneName, float rotRatio,
+		uint32_t CreateAvRotBoneFileData(char *newBoneName, char *newBoneParentName, char *baseBoneName, char *targetBoneName, float rotRatio,
 				SkelVec3 basePos, Skeleton::BoneFileData *fileData);
 
-		void LoadCollapses(File_SkelHeader* pHeader, size_t length);
-		void LoadSKBBones(File_SkelHeader* pHeader, size_t length);
-		void LoadSKDBones(File_SkelHeader* pHeader, size_t length);
-		void LoadBoxes(File_SkelHeader* pHeader, size_t length);
-		void LoadMorphs(File_SkelHeader* pHeader, size_t length);
-		void LoadSKBSurfaces(File_SkelHeader* pHeader, size_t length);
-		void LoadSKDSurfaces(File_SkelHeader* pHeader, size_t length);
+		bool LoadModel(const char* path);
+		void LoadCollapses(const File_SkelHeader* pHeader, size_t length);
+		void LoadSKBBones(const File_SkelHeader* pHeader, size_t length);
+		void LoadSKDBones(const File_SkelHeader* pHeader, size_t length);
+		void LoadBoxes(const File_SkelHeader* pHeader, size_t length);
+		void LoadMorphs(const File_SkelHeader* pHeader, size_t length);
+		void LoadSKBSurfaces(const File_SkelHeader* pHeader, size_t length);
+		void LoadSKDSurfaces(const File_SkelHeader* pHeader, size_t length);
 	};
 };
 

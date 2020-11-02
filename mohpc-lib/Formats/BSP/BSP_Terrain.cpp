@@ -16,10 +16,9 @@ namespace MOHPC
 }
 
 using namespace MOHPC;
+using namespace BSPData;
 
 #define MAX_TERRAIN_LOD 6
-
-const float BSP::lightmapTerrainLength = (16.f / lightmapSize);
 
 static int modeTable[] =
 {
@@ -33,7 +32,7 @@ static int modeTable[] =
 	0
 };
 
-BSP::TerrainVert::TerrainVert()
+BSPData::TerrainVert::TerrainVert()
 {
 	VectorClear(xyz);
 	texCoords[0][0] = 0;
@@ -51,7 +50,7 @@ BSP::TerrainVert::TerrainVert()
 	iPrev = 0;
 }
 
-BSP::TerrainTri::TerrainTri()
+BSPData::TerrainTri::TerrainTri()
 {
 	iPt[0] = iPt[1] = iPt[2] = 0;
 	nSplit = 0;
@@ -294,7 +293,7 @@ void BSP::CreateTerrainSurfaces()
 ///////////   Disassembly   /////////////
 /////////////////////////////////////////
 
-BSP::terraInt BSP::TR_AllocateVert(TerrainPatch *patch)
+terraInt BSP::TR_AllocateVert(TerrainPatch *patch)
 {
 	terraInt iVert = trpiVert.iFreeHead;
 
@@ -360,7 +359,7 @@ void BSP::TR_ReleaseVert(TerrainPatch *patch, terraInt iVert)
 	trpiVert.nFree++;
 }
 
-BSP::terraInt BSP::TR_AllocateTri(TerrainPatch *patch, uint8_t byConstChecks)
+terraInt BSP::TR_AllocateTri(TerrainPatch *patch, uint8_t byConstChecks)
 {
 	terraInt iTri = trpiTri.iFreeHead;
 
@@ -1259,7 +1258,7 @@ void BSP::TR_DoTriMerging()
 {
 	for (size_t n = 0; n < terrainPatches.size(); n++)
 	{
-		BSP::TerrainPatch *patch = &terrainPatches[n];
+		BSPData::TerrainPatch *patch = &terrainPatches[n];
 
 		trpiTri.iCur = patch->drawInfo.mergeHead;
 		while (trpiTri.iCur)

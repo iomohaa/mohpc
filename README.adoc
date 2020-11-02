@@ -30,18 +30,19 @@ Unix::
 - stdc++fs library on Unix
 
 Third-party components should be downloaded and compiled automatically.
-This library relies on STL as it's part of C++ standard.
+This library relies between STL and custom containers.
 
 == Compatibility
 
 This library can be built on Windows and Unix systems, for any architecture.
+It is also endian-portable, which means this library can be used on both Little-Endian and Big-Endian processors.
 
 .Compatibility list
 |===
-| Platform | x86     | x64      | ARM
-| Windows  | Best    | Best     | Best
-| Linux    | Good    | Good     | Unknown 
-| Mac      | Unknown | Unknown  | Unknown
+| Platform | x86     | x64      | ARM       |
+| Windows  | Best    | Best     | Best      |
+| Linux    | Good    | Good     | Unknown   |
+| Mac      | Unknown | Unknown  | Unknown   |
 |===
 
 [horizontal]

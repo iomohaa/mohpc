@@ -1,6 +1,6 @@
 #include <Shared.h>
 #include <MOHPC/Formats/Image.h>
-#include "../../Misc/Endian.h"
+#include <MOHPC/Misc/Endian.h>
 #include "ImagePrivate.h"
 #include <string.h>
 
@@ -19,18 +19,15 @@ void Image::LoadTGA(const char *name, void *buf, std::streamsize len)
 	int32_t columns, rows, numPixels;
 	uint8_t *pixbuf;
 	int32_t row, column;
-	uint8_t *buf_p;
-	uint8_t *end;
 	TargaHeader	targa_header;
 	uint8_t *targa_rgba;
 
-	if (len < 18)
-	{
+	if (len < 18) {
 		throw ImageException("LoadTGA: header too short (%s)", name);
 	}
 
-	buf_p = (uint8_t*)buf;
-	end = (uint8_t*)buf + len;
+	const uint8_t* buf_p = (uint8_t*)buf;
+	const uint8_t* end = (uint8_t*)buf + len;
 
 	targa_header.id_length = buf_p[0];
 	targa_header.colormap_type = buf_p[1];
@@ -46,12 +43,12 @@ void Image::LoadTGA(const char *name, void *buf, std::streamsize len)
 	targa_header.pixel_size = buf_p[16];
 	targa_header.attributes = buf_p[17];
 
-	targa_header.colormap_index = LittleShort(targa_header.colormap_index);
-	targa_header.colormap_length = LittleShort(targa_header.colormap_length);
-	targa_header.x_origin = LittleShort(targa_header.x_origin);
-	targa_header.y_origin = LittleShort(targa_header.y_origin);
-	targa_header.width = LittleShort(targa_header.width);
-	targa_header.height = LittleShort(targa_header.height);
+	targa_header.colormap_index = Endian.LittleShort(targa_header.colormap_index);
+	targa_header.colormap_length = Endian.LittleShort(targa_header.colormap_length);
+	targa_header.x_origin = Endian.LittleShort(targa_header.x_origin);
+	targa_header.y_origin = Endian.LittleShort(targa_header.y_origin);
+	targa_header.width = Endian.LittleShort(targa_header.width);
+	targa_header.height = Endian.LittleShort(targa_header.height);
 
 	buf_p += 18;
 

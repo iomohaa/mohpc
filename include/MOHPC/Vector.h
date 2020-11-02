@@ -2,10 +2,11 @@
 
 #include "Global.h"
 #define _USE_MATH_DEFINES
-#include <math.h>
-#include <float.h>
-#include <stdio.h>
-#include <assert.h>
+#include <cmath>
+#include <cfloat>
+#include <cstdio>
+#include <cassert>
+#include <cstddef>
 #include "Math.h"
 
 #define VECTOR_FABS ::fabsf
@@ -27,16 +28,16 @@ namespace MOHPC
 		//Vector(const float x, const float y, const float z);
 		constexpr Vector(const float x, const float y, const float z);
 		Vector(const float xyz[3]);
-		explicit	Vector(const char *text);
+		explicit Vector(const char *text);
 
-		operator float * ();
-		operator float const * () const;
+		operator float* ();
+		operator float const* () const;
 
 		float					pitch(void) const;
 		float					yaw(void) const;
 		float					roll(void) const;
-		float					operator[](const int index) const;
-		float &					operator[](const int index);
+		//float					operator[](const size_t index) const;
+		//float &					operator[](const size_t index);
 		void					setPitch(const float x);
 		void 					setYaw(const float y);
 		void 					setRoll(const float z);
@@ -111,17 +112,19 @@ namespace MOHPC
 	inline void  Vector::setYaw(float yaw) { y = yaw; }
 	inline void  Vector::setRoll(float roll) { z = roll; }
 
-	inline float Vector::operator[](const int index) const
+	/*
+	inline float Vector::operator[](const size_t index) const
 	{
 		assert((index >= 0) && (index < 3));
 		return (&x)[index];
 	}
 
-	inline float& Vector::operator[](const int index)
+	inline float& Vector::operator[](const size_t index)
 	{
 		assert((index >= 0) && (index < 3));
 		return (&x)[index];
 	}
+	*/
 
 	inline void Vector::setXYZ(const float new_x, const float new_y, const float new_z)
 	{
@@ -855,8 +858,8 @@ namespace MOHPC
 		Quat(const float x, const float y, const float z, const float w);
 
 		float *			vec4(void);
-		float			operator[](const int index) const;
-		float &			operator[](const int index);
+		float			operator[](const size_t index) const;
+		float &			operator[](const size_t index);
 		void 			set(const float x, const float y, const float z, const float w);
 		const Quat &	operator=(const Quat &a);
 		friend Quat		operator+(const Quat &a, const Quat &b);
@@ -893,13 +896,13 @@ namespace MOHPC
 	{
 	}
 
-	inline float Quat::operator[](const int index) const
+	inline float Quat::operator[](const size_t index) const
 	{
 		assert((index >= 0) && (index < 4));
 		return (&x)[index];
 	}
 
-	inline float & Quat::operator[](const int index)
+	inline float & Quat::operator[](const size_t index)
 	{
 		assert((index >= 0) && (index < 4));
 		return (&x)[index];

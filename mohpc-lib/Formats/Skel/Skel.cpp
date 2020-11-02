@@ -1,10 +1,12 @@
 #include <Shared.h>
 #include <MOHPC/Formats/Skel.h>
-#include "SkelPrivate.h"
-#include "../TIKI/TIKI_Private.h"
 #include <MOHPC/Utilities/SharedPtr.h>
 #include <MOHPC/Managers/FileManager.h>
 #include <MOHPC/Log.h>
+#include "SkelPrivate.h"
+#include "../TIKI/TIKI_Private.h"
+#include <MOHPC/Misc/Endian.h>
+#include <MOHPC/Misc/EndianHelpers.h>
 
 #define MOHPC_LOG_NAMESPACE "skeleton"
 
@@ -33,65 +35,66 @@ Skeleton::Skeleton()
 
 void Skeleton::LoadBoneFromBuffer2(const BoneFileData *fileData, BoneData *boneData) const
 {
-	const char *newChannelName;
-	const char *newBoneRefName;
-	int i;
+	SkeletonChannelNameTable* const boneNamesTable = GetAssetManager()->GetManager<SkeletorManager>()->GetBoneNamesTable();
 
-	boneData->channel = GetAssetManager()->GetManager<SkeletorManager>()->GetBoneNamesTable()->RegisterChannel(fileData->name);
-	boneData->boneType = fileData->boneType;
+	boneData->channel = boneNamesTable->RegisterChannel(fileData->name);
+	boneData->boneType = (BoneType)fileData->boneType;
 
 	if (boneData->boneType == Skeleton::SKELBONE_HOSEROT)
 	{
-		i = *(int *)&fileData->parent[fileData->ofsBaseData + 4];
+		uint32_t parentId = Endian.LittleInteger(*(const unsigned int*)&fileData->parent[Endian.LittleInteger(fileData->ofsBaseData) + 4]);
 
-		if (i == 1)
+		if (parentId == 1)
 		{
 			boneData->boneType = Skeleton::SKELBONE_HOSEROTPARENT;
 		}
-		else if (i == 2)
+		else if (parentId == 2)
 		{
 			boneData->boneType = Skeleton::SKELBONE_HOSEROTBOTH;
 		}
 	}
 
-	newChannelName = (char *)fileData + fileData->ofsChannelNames;
+	const char* newChannelName = (const char *)fileData + Endian.LittleInteger(fileData->ofsChannelNames);
 	boneData->numChannels = skelBone_Base::GetNumChannels(boneData->boneType);
 
-	for (i = 0; i < boneData->numChannels; i++)
+	for (uint16_t i = 0; i < boneData->numChannels; i++)
 	{
-		boneData->channelIndex[i] = GetAssetManager()->GetManager<SkeletorManager>()->GetChannelNamesTable()->RegisterChannel(newChannelName);
+		boneData->channelIndex[i] = boneNamesTable->RegisterChannel(newChannelName);
 		if (boneData->channelIndex[i] < 0)
 		{
-			//SKEL_Warning("Channel named %s not added. (Bone will not work without it)\n", newChannelName);
+			MOHPC_LOG(Warning, "Channel named %s not added. (Bone will not work without it)", newChannelName);
 			boneData->boneType = Skeleton::SKELBONE_ZERO;
 		}
 
 		newChannelName += strlen(newChannelName) + 1;
 	}
 
-	newBoneRefName = (char *)fileData + fileData->ofsBoneNames;
+	const char* newBoneRefName = (const char *)fileData + Endian.LittleInteger(fileData->ofsBoneNames);
 	boneData->numRefs = skelBone_Base::GetNumBoneRefs(boneData->boneType);
 
-	for (i = 0; i < boneData->numRefs; i++)
+	for (uint16_t i = 0; i < boneData->numRefs; i++)
 	{
-		boneData->refIndex[i] = GetAssetManager()->GetManager<SkeletorManager>()->GetBoneNamesTable()->RegisterChannel(newBoneRefName);
+		boneData->refIndex[i] = boneNamesTable->RegisterChannel(newBoneRefName);
 		newBoneRefName += strlen(newBoneRefName) + 1;
 	}
 
 	if (!strcmp(fileData->parent, SKEL_BONENAME_WORLD))
 	{
+		// no parent if it's the worldBone in the file
 		boneData->parent = -1;
 	}
 	else
 	{
-		boneData->parent = GetAssetManager()->GetManager<SkeletorManager>()->GetBoneNamesTable()->RegisterChannel(fileData->parent);
+		boneData->parent = boneNamesTable->RegisterChannel(fileData->parent);
 	}
+
+	float baseData[7];
 
 	switch (boneData->boneType)
 	{
 	case Skeleton::SKELBONE_ROTATION:
 	{
-		float *baseData = (float *)((char *)fileData + fileData->ofsBaseData);
+		fileData->getBaseData(baseData, 3);
 		boneData->offset[0] = baseData[0];
 		boneData->offset[1] = baseData[1];
 		boneData->offset[2] = baseData[2];
@@ -99,7 +102,7 @@ void Skeleton::LoadBoneFromBuffer2(const BoneFileData *fileData, BoneData *boneD
 	}
 	case Skeleton::SKELBONE_IKSHOULDER:
 	{
-		float *baseData = (float *)((char *)fileData + fileData->ofsBaseData);
+		fileData->getBaseData(baseData, 3, 4);
 		boneData->offset[0] = baseData[4];
 		boneData->offset[1] = baseData[5];
 		boneData->offset[2] = baseData[6];
@@ -108,13 +111,13 @@ void Skeleton::LoadBoneFromBuffer2(const BoneFileData *fileData, BoneData *boneD
 	case Skeleton::SKELBONE_IKELBOW:
 	case Skeleton::SKELBONE_IKWRIST:
 	{
-		float *baseData = (float *)((char *)fileData + fileData->ofsBaseData);
+		fileData->getBaseData(baseData, 3);
 		boneData->length = VectorLength(baseData);
 		break;
 	}
 	case Skeleton::SKELBONE_AVROT:
 	{
-		float *baseData = (float *)((char *)fileData + fileData->ofsBaseData);
+		fileData->getBaseData(baseData, 4);
 		boneData->length = baseData[0];
 		boneData->offset[0] = baseData[1];
 		boneData->offset[1] = baseData[2];
@@ -125,7 +128,7 @@ void Skeleton::LoadBoneFromBuffer2(const BoneFileData *fileData, BoneData *boneD
 	case Skeleton::SKELBONE_HOSEROTBOTH:
 	case Skeleton::SKELBONE_HOSEROTPARENT:
 	{
-		float *baseData = (float *)((char *)fileData + fileData->ofsBaseData);
+		fileData->getBaseData(baseData, 6);
 		boneData->offset[0] = baseData[3];
 		boneData->offset[1] = baseData[4];
 		boneData->offset[2] = baseData[5];
@@ -141,8 +144,6 @@ void Skeleton::LoadBoneFromBuffer2(const BoneFileData *fileData, BoneData *boneD
 
 bool Skeleton::LoadModel(const char *path)
 {
-	File_SkelHeader *pHeader;
-
 	// Load file
 	FilePtr file = GetFileManager()->OpenFile(path);
 	if (!file)
@@ -151,18 +152,19 @@ bool Skeleton::LoadModel(const char *path)
 		return false;
 	}
 
+	const File_SkelHeader* pHeader;
+	// Read the header
 	std::streamoff length = file->ReadBuffer((void**)&pHeader);
 
 	// Check if the header matches
-	const uint32_t header = pHeader->ident;
-	if (header != *(int*)TIKI_SKB_HEADER_IDENT && header != *(int*)TIKI_SKD_HEADER_IDENT)
+	if (memcmp(pHeader->ident, TIKI_SKB_HEADER_IDENT, sizeof(pHeader->ident)) && memcmp(pHeader->ident, TIKI_SKD_HEADER_IDENT, sizeof(pHeader->ident)))
 	{
 		MOHPC_LOG(Error, "Tried to load '%s' as a skeletal base frame (File has invalid header)", path);
 		return false;
 	}
 
 	// Check if the version matches
-	const uint32_t version = pHeader->version;
+	const uint32_t version = Endian.LittleInteger(pHeader->version);
 	if (version < TIKI_SKB_HEADER_VER_3 || version > TIKI_SKD_HEADER_VERSION)
 	{
 		MOHPC_LOG(Error, "%s has wrong version (%i should be %i or %i)\n", path, version, TIKI_SKB_HEADER_VER_3, TIKI_SKB_HEADER_VERSION);
@@ -170,11 +172,12 @@ bool Skeleton::LoadModel(const char *path)
 	}
 
 	name = pHeader->name;
-	pLOD = NULL;
+	pLOD = nullptr;
 
 	// Import LODs
-	for (int32_t i = 0; i < sizeof(pHeader->lodIndex) / sizeof(pHeader->lodIndex[0]); i++) {
-		lodIndex[i] = pHeader->lodIndex[i];
+	constexpr size_t numLodIndexes = sizeof(pHeader->lodIndex) / sizeof(pHeader->lodIndex[0]);
+	for (uintptr_t i = 0; i < numLodIndexes; i++) {
+		lodIndex[i] = Endian.LittleInteger(pHeader->lodIndex[i]);
 	}
 
 	// Import surfaces
@@ -191,26 +194,26 @@ bool Skeleton::LoadModel(const char *path)
 	}
 
 	// Create bones
-	if (pHeader->version > TIKI_SKB_HEADER_VERSION) {
+	if (version > TIKI_SKB_HEADER_VERSION) {
 		LoadSKDBones(pHeader, length);
 	}
 	else {
 		LoadSKBBones(pHeader, length);
 	}
 
-	if (pHeader->version > TIKI_SKB_HEADER_VER_3)
+	if (version > TIKI_SKB_HEADER_VER_3)
 	{
 		// Import box data for SKB version 4
 		LoadBoxes(pHeader, length);
 
-		if (pHeader->version > TIKI_SKB_HEADER_VERSION)
+		if (version > TIKI_SKB_HEADER_VERSION)
 		{
 			// Import morph data for SKD
 			LoadMorphs(pHeader, length);
 		}
 	}
 
-	HashUpdate((uint8_t*)pHeader, (size_t)length);
+	HashUpdate((const uint8_t*)pHeader, (size_t)length);
 
 	return true;
 }
@@ -278,161 +281,176 @@ const char* MOHPC::Skeleton::GetName() const
 	return name.c_str();
 }
 
-void MOHPC::Skeleton::LoadSKBSurfaces(File_SkelHeader* pHeader, size_t length)
+void MOHPC::Skeleton::LoadSKBSurfaces(const File_SkelHeader* pHeader, size_t length)
 {
-	File_Surface* oldSurf = (File_Surface*)((uint8_t*)pHeader + pHeader->ofsSurfaces);
+	const uint32_t numSurfaces = Endian.LittleInteger(pHeader->numSurfaces);
+	const File_Surface* oldSurf = (const File_Surface*)((const uint8_t*)pHeader + Endian.LittleInteger(pHeader->ofsSurfaces));
 
 	// Setup surfaces
-	Surfaces.reserve(pHeader->numSurfaces);
+	Surfaces.reserve(numSurfaces);
 
-	for (uint32_t i = 0; i < pHeader->numSurfaces; i++)
+	for (uint32_t i = 0; i < numSurfaces; i++)
 	{
 		Surface* surf = new(Surfaces) Surface();
+		const uint32_t numTriangles = Endian.LittleInteger(oldSurf->numTriangles);
+		const uint32_t numVerts = Endian.LittleInteger(oldSurf->numVerts);
 
 		surf->name = oldSurf->name;
-		surf->Triangles.resize(oldSurf->numTriangles * 3);
-		surf->Vertices.reserve(oldSurf->numVerts);
+		surf->Triangles.resize(numTriangles * 3);
+		surf->Vertices.reserve(numVerts);
 
-		File_SKB_Vertex* oldVerts = (File_SKB_Vertex*)((uint8_t*)oldSurf + oldSurf->ofsVerts);
+		const File_SKB_Vertex* oldVerts = (const File_SKB_Vertex*)((const uint8_t*)oldSurf + Endian.LittleInteger(oldSurf->ofsVerts));
 
-		for (int32_t j = 0; j < oldSurf->numVerts; j++)
+		for (uint32_t j = 0; j < numVerts; j++)
 		{
 			SkeletorVertex* newVert = new(surf->Vertices) SkeletorVertex();
-			newVert->normal = oldVerts->normal;
-			newVert->textureCoords[0] = oldVerts->texCoords[0];
-			newVert->textureCoords[1] = oldVerts->texCoords[1];
-			newVert->Weights.reserve(oldVerts->numWeights);
+			const uint32_t numWeights = Endian.LittleInteger(oldVerts->numWeights);
 
-			for (int32_t k = 0; k < oldVerts->numWeights; k++)
+			newVert->normal = EndianHelpers::LittleVector(Endian, oldVerts->normal);
+			newVert->textureCoords[0] = Endian.LittleFloat(oldVerts->texCoords[0]);
+			newVert->textureCoords[1] = Endian.LittleFloat(oldVerts->texCoords[1]);
+			newVert->Weights.reserve(numWeights);
+
+			for (uint32_t k = 0; k < numWeights; k++)
 			{
 				SkeletorWeight* newWeight = new (newVert->Weights) SkeletorWeight();
-				newWeight->boneIndex = oldVerts->weights[k].boneIndex;
-				newWeight->boneWeight = oldVerts->weights[k].boneWeight;
-				newWeight->offset = oldVerts->weights[k].offset;
+				newWeight->boneIndex = Endian.LittleInteger(oldVerts->weights[k].boneIndex);
+				newWeight->boneWeight = Endian.LittleFloat(oldVerts->weights[k].boneWeight);
+				newWeight->offset = EndianHelpers::LittleVector(Endian, oldVerts->weights[k].offset);
 			}
 
-			oldVerts = (File_SKB_Vertex*)((uint8_t*)oldVerts + sizeof(File_Weight) * oldVerts->numWeights + (sizeof(File_SKB_Vertex) - sizeof(File_Weight)));
+			oldVerts = (const File_SKB_Vertex*)((const uint8_t*)oldVerts + sizeof(File_Weight) * numWeights + (sizeof(File_SKB_Vertex) - sizeof(File_Weight)));
 		}
 
-		int32_t* oldTriangles = (int32_t*)((uint8_t*)oldSurf + oldSurf->ofsTriangles);
+		const uint32_t* oldTriangles = (const uint32_t*)((const uint8_t*)oldSurf + Endian.LittleInteger(oldSurf->ofsTriangles));
 
-		for (int32_t j = 0; j < oldSurf->numTriangles * 3; j++)
+		for (uint32_t j = 0; j < numTriangles * 3; j++)
 		{
 			surf->Triangles[j] = *oldTriangles;
 			oldTriangles++;
 		}
 
-		oldSurf = (File_Surface*)((uint8_t*)oldSurf + oldSurf->ofsEnd);
+		oldSurf = (const File_Surface*)((const uint8_t*)oldSurf + Endian.LittleInteger(oldSurf->ofsEnd));
 	}
 }
 
-void MOHPC::Skeleton::LoadSKDSurfaces(File_SkelHeader* pHeader, size_t length)
+void MOHPC::Skeleton::LoadSKDSurfaces(const File_SkelHeader* pHeader, size_t length)
 {
-	File_Surface* oldSurf = (File_Surface*)((uint8_t*)pHeader + pHeader->ofsSurfaces);
+	const uint32_t numSurfaces = Endian.LittleInteger(pHeader->numSurfaces);
+	const File_Surface* oldSurf = (const File_Surface*)((const uint8_t*)pHeader + Endian.LittleInteger(pHeader->ofsSurfaces));
 
 	// Setup surfaces
-	Surfaces.reserve(pHeader->numSurfaces);
+	Surfaces.reserve(numSurfaces);
 
-	for (uint32_t i = 0; i < pHeader->numSurfaces; i++)
+	for (uint32_t i = 0; i < numSurfaces; i++)
 	{
 		Surface* surf = new(Surfaces) Surface();
+		const uint32_t numTriangles = Endian.LittleInteger(oldSurf->numTriangles);
+		const uint32_t numVerts = Endian.LittleInteger(oldSurf->numVerts);
 
 		surf->name = oldSurf->name;
-		surf->Triangles.resize(oldSurf->numTriangles * 3);
-		surf->Vertices.reserve(oldSurf->numVerts);
+		surf->Triangles.resize(numTriangles * 3);
+		surf->Vertices.reserve(numVerts);
 
-		File_SKD_Vertex* oldVerts = (File_SKD_Vertex*)((uint8_t*)oldSurf + oldSurf->ofsVerts);
+		const File_SKD_Vertex* oldVerts = (const File_SKD_Vertex*)((const uint8_t*)oldSurf + Endian.LittleInteger(oldSurf->ofsVerts));
 
-		for (int32_t j = 0; j < oldSurf->numVerts; j++)
+		for (uint32_t j = 0; j < numVerts; j++)
 		{
 			SkeletorVertex* newVert = new(surf->Vertices) SkeletorVertex();
-			newVert->normal = oldVerts->normal;
-			newVert->textureCoords[0] = oldVerts->texCoords[0];
-			newVert->textureCoords[1] = oldVerts->texCoords[1];
-			newVert->Morphs.reserve(oldVerts->numMorphs);
-			newVert->Weights.reserve(oldVerts->numWeights);
+			const uint32_t numWeights = Endian.LittleInteger(oldVerts->numWeights);
+			const uint32_t numMorphs = Endian.LittleInteger(oldVerts->numMorphs);
 
-			File_Morph* morph = (File_Morph*)((uint8_t*)oldVerts + sizeof(File_SKD_Vertex));
+			newVert->normal = EndianHelpers::LittleVector(Endian, oldVerts->normal);
+			newVert->textureCoords[0] = Endian.LittleFloat(oldVerts->texCoords[0]);
+			newVert->textureCoords[1] = Endian.LittleFloat(oldVerts->texCoords[1]);
+			newVert->Weights.reserve(numWeights);
+			newVert->Morphs.reserve(numMorphs);
 
-			for (int32_t k = 0; k < oldVerts->numMorphs; k++)
+			const File_Morph* morph = (const File_Morph*)((const uint8_t*)oldVerts + sizeof(File_SKD_Vertex));
+
+			for (uint32_t k = 0; k < numMorphs; k++)
 			{
 				SkeletorMorph* newMorph = new(newVert->Morphs) SkeletorMorph();
-				newMorph->morphIndex = morph->morphIndex;
-				newMorph->offset = morph->offset;
+				newMorph->morphIndex = Endian.LittleInteger(morph->morphIndex);
+				newMorph->offset = EndianHelpers::LittleVector(Endian, morph->offset);
 				++morph;
 			}
 
-			File_Weight* weight = (File_Weight*)((uint8_t*)oldVerts + sizeof(File_SKD_Vertex) + sizeof(File_Morph) * oldVerts->numMorphs);
+			const File_Weight* weight = (const File_Weight*)((const uint8_t*)oldVerts + sizeof(File_SKD_Vertex) + sizeof(File_Morph) * numMorphs);
 
-			for (int32_t k = 0; k < oldVerts->numWeights; k++)
+			for (uint32_t k = 0; k < numWeights; k++)
 			{
 				SkeletorWeight* newWeight = new(newVert->Weights) SkeletorWeight();
-				newWeight->boneIndex = weight->boneIndex;
-				newWeight->boneWeight = weight->boneWeight;
-				newWeight->offset = weight->offset;
+				newWeight->boneIndex = Endian.LittleInteger(weight->boneIndex);
+				newWeight->boneWeight = Endian.LittleFloat(weight->boneWeight);
+				newWeight->offset = EndianHelpers::LittleVector(Endian, weight->offset);
 				++weight;
 			}
 
-			oldVerts = (File_SKD_Vertex*)((uint8_t*)oldVerts + sizeof(File_SKD_Vertex) + sizeof(File_Morph) * oldVerts->numMorphs + sizeof(File_Weight) * oldVerts->numWeights);
+			oldVerts = (const File_SKD_Vertex*)((const uint8_t*)oldVerts + sizeof(File_SKD_Vertex) + sizeof(File_Morph) * numMorphs + sizeof(File_Weight) * numWeights);
 		}
 
-		int32_t* oldTriangles = (int32_t*)((uint8_t*)oldSurf + oldSurf->ofsTriangles);
+		const uint32_t* oldTriangles = (const uint32_t*)((const uint8_t*)oldSurf + Endian.LittleInteger(oldSurf->ofsTriangles));
 
-		for (int32_t j = 0; j < oldSurf->numTriangles * 3; j++)
+		for (uint32_t j = 0; j < numTriangles * 3; j++)
 		{
-			surf->Triangles[j] = *oldTriangles;
+			surf->Triangles[j] = Endian.LittleInteger(*oldTriangles);
 			oldTriangles++;
 		}
 
-		oldSurf = (File_Surface*)((uint8_t*)oldSurf + oldSurf->ofsEnd);
+		oldSurf = (const File_Surface*)((const uint8_t*)oldSurf + Endian.LittleInteger(oldSurf->ofsEnd));
 	}
 }
 
-void MOHPC::Skeleton::LoadCollapses(File_SkelHeader* pHeader, size_t length)
+void MOHPC::Skeleton::LoadCollapses(const File_SkelHeader* pHeader, size_t length)
 {
-	File_Surface* oldSurf = (File_Surface*)((uint8_t*)pHeader + pHeader->ofsSurfaces);
+	const uint32_t numSurfaces = Endian.LittleInteger(pHeader->numSurfaces);
+	const File_Surface* oldSurf = (const File_Surface*)((const uint8_t*)pHeader + Endian.LittleInteger(pHeader->ofsSurfaces));
 
-	for (uint32_t i = 0; i < pHeader->numSurfaces; i++)
+	for (uint32_t i = 0; i < numSurfaces; i++)
 	{
 		Surface& surf = Surfaces[i];
+		const uint32_t numVerts = Endian.LittleInteger(oldSurf->numVerts);
 
-		surf.Collapse.resize(oldSurf->numVerts);
-		surf.CollapseIndex.resize(oldSurf->numVerts);
+		surf.Collapse.resize(numVerts);
+		surf.CollapseIndex.resize(numVerts);
 
-		int32_t* oldCollapse = (int32_t*)((uint8_t*)oldSurf + oldSurf->ofsCollapse);
-		for (int32_t j = 0; j < oldSurf->numVerts; j++)
+		const uint32_t* oldCollapse = (const uint32_t*)((const uint8_t*)oldSurf + Endian.LittleInteger(oldSurf->ofsCollapse));
+		for (uint32_t j = 0; j < numVerts; j++)
 		{
 			surf.Collapse[j] = *oldCollapse;
 			oldCollapse++;
 		}
 
-		int32_t* oldCollapseIndex = (int32_t*)((uint8_t*)oldSurf + oldSurf->ofsCollapseIndex);
-		for (int32_t j = 0; j < oldSurf->numVerts; j++)
+		const uint32_t* oldCollapseIndex = (const uint32_t*)((const uint8_t*)oldSurf + Endian.LittleInteger(oldSurf->ofsCollapseIndex));
+		for (uint32_t j = 0; j < numVerts; j++)
 		{
 			surf.CollapseIndex[j] = *oldCollapseIndex;
 			oldCollapseIndex++;
 		}
 
-		oldSurf = (File_Surface*)((uint8_t*)oldSurf + oldSurf->ofsEnd);
+		oldSurf = (const File_Surface*)((const uint8_t*)oldSurf + Endian.LittleInteger(oldSurf->ofsEnd));
 	}
 }
 
-void MOHPC::Skeleton::LoadSKBBones(File_SkelHeader* pHeader, size_t length)
+void MOHPC::Skeleton::LoadSKBBones(const File_SkelHeader* pHeader, size_t length)
 {
-	Bones.resize(pHeader->numBones);
+	const uint32_t numBones = Endian.LittleInteger(pHeader->numBones);
+	Bones.resize(numBones);
 
 	MOHPC_LOG(Verbose, "Old skeleton (SKB), creating bone data");
 
-	File_SkelBoneName* TIKI_bones = (File_SkelBoneName*)((uint8_t*)pHeader + pHeader->ofsBones);
-	for (uint32_t i = 0; i < pHeader->numBones; i++)
+	const File_SkelBoneName* TIKI_bones = (const File_SkelBoneName*)((const uint8_t*)pHeader + Endian.LittleInteger(pHeader->ofsBones));
+	for (uint32_t i = 0; i < numBones; i++)
 	{
 		const char* boneName;
 
-		if (TIKI_bones->parent == -1) {
+		const uint32_t parent = Endian.LittleInteger(TIKI_bones->parent);
+		if (parent == -1) {
 			boneName = SKEL_BONENAME_WORLD;
 		}
 		else {
-			boneName = TIKI_bones[TIKI_bones->parent].name;
+			boneName = TIKI_bones[parent].name;
 		}
 
 		CreatePosRotBoneData(TIKI_bones->name, boneName, &Bones[i]);
@@ -440,31 +458,33 @@ void MOHPC::Skeleton::LoadSKBBones(File_SkelHeader* pHeader, size_t length)
 	}
 }
 
-void MOHPC::Skeleton::LoadSKDBones(File_SkelHeader* pHeader, size_t length)
+void MOHPC::Skeleton::LoadSKDBones(const File_SkelHeader* pHeader, size_t length)
 {
-	Bones.resize(pHeader->numBones);
+	const uint32_t numBones = Endian.LittleInteger(pHeader->numBones);
+	Bones.resize(numBones);
 
-	BoneFileData* boneBuffer = (BoneFileData*)((uint8_t*)pHeader + pHeader->ofsBones);
-	for (uint32_t i = 0; i < pHeader->numBones; i++)
+	const BoneFileData* boneBuffer = (const BoneFileData*)((const uint8_t*)pHeader + Endian.LittleInteger(pHeader->ofsBones));
+	for (uint32_t i = 0; i < numBones; i++)
 	{
 		LoadBoneFromBuffer2(boneBuffer, &Bones[i]);
-		boneBuffer = (BoneFileData*)((uint8_t*)boneBuffer + boneBuffer->ofsEnd);
+		boneBuffer = (const BoneFileData*)((const uint8_t*)boneBuffer + Endian.LittleInteger(boneBuffer->ofsEnd));
 	}
 }
 
-void MOHPC::Skeleton::LoadBoxes(File_SkelHeader* pHeader, size_t length)
+void MOHPC::Skeleton::LoadBoxes(const File_SkelHeader* pHeader, size_t length)
 {
-	if (pHeader->numBoxes)
+	const uint32_t numBoxes = Endian.LittleInteger(pHeader->numBoxes);
+	if (numBoxes)
 	{
-		if (pHeader->ofsBoxes >= 0 && (uint32_t)(pHeader->ofsBoxes + pHeader->numBoxes * sizeof(uint32_t)) < length)
+		const uint32_t ofsBoxes = Endian.LittleInteger(pHeader->ofsBoxes);
+		if (ofsBoxes >= 0 && (uint32_t)(ofsBoxes + numBoxes * sizeof(uint32_t)) < length)
 		{
-			Boxes.resize(pHeader->numBoxes);
+			Boxes.SetNumObjectsUninitialized(numBoxes);
 
-			int32_t* pBoxes = (int32_t*)((uint8_t*)pHeader + pHeader->ofsBoxes);
-
-			for (uint32_t i = 0; i < pHeader->numBoxes; i++)
+			const int32_t* pBoxes = (const int32_t*)((const uint8_t*)pHeader + ofsBoxes);
+			for (uint32_t i = 0; i < numBoxes; i++)
 			{
-				Boxes[i] = pBoxes[i];
+				Boxes[i] = Endian.LittleInteger(pBoxes[i]);
 			}
 		}
 		else {
@@ -473,17 +493,19 @@ void MOHPC::Skeleton::LoadBoxes(File_SkelHeader* pHeader, size_t length)
 	}
 }
 
-void MOHPC::Skeleton::LoadMorphs(File_SkelHeader* pHeader, size_t length)
+void MOHPC::Skeleton::LoadMorphs(const File_SkelHeader* pHeader, size_t length)
 {
-	if (pHeader->numMorphTargets)
+	const uint32_t numMorphTargets = Endian.LittleInteger(pHeader->numMorphTargets);
+	if (numMorphTargets)
 	{
 		size_t nMorphBytes = 0;
 
-		if (pHeader->ofsMorphTargets > 0 || (pHeader->ofsMorphTargets + pHeader->numMorphTargets) < length)
+		const uint32_t ofsMorphTargets = Endian.LittleInteger(pHeader->ofsMorphTargets);
+		if (ofsMorphTargets > 0 || (ofsMorphTargets + numMorphTargets) < length)
 		{
-			const char* pMorphTargets = (const char*)pHeader + pHeader->ofsMorphTargets;
+			const char* pMorphTargets = (const char*)pHeader + ofsMorphTargets;
 
-			for (uint32_t i = 0; i < pHeader->numMorphTargets; i++)
+			for (uint32_t i = 0; i < numMorphTargets; i++)
 			{
 				size_t nLen = strlen(pMorphTargets) + 1;
 				nMorphBytes += nLen;
@@ -492,16 +514,16 @@ void MOHPC::Skeleton::LoadMorphs(File_SkelHeader* pHeader, size_t length)
 		}
 		else
 		{
-			nMorphBytes = pHeader->numMorphTargets;
+			nMorphBytes = numMorphTargets;
 		}
 
-		if (pHeader->ofsMorphTargets >= 0 && (uint32_t)(pHeader->ofsMorphTargets + nMorphBytes) <= length)
+		if (ofsMorphTargets >= 0 && (uint32_t)(ofsMorphTargets + nMorphBytes) <= length)
 		{
-			MorphTargets.resize(pHeader->numMorphTargets);
+			MorphTargets.SetNumObjectsUninitialized(numMorphTargets);
 
-			const char* pMorphTargets = (const char*)pHeader + pHeader->ofsMorphTargets;
+			const char* pMorphTargets = (const char*)pHeader + ofsMorphTargets;
 
-			for (uint32_t i = 0; i < pHeader->numMorphTargets; i++)
+			for (uint32_t i = 0; i < numMorphTargets; i++)
 			{
 				size_t nLen = strlen(pMorphTargets) + 1;
 				MorphTargets[i] = pMorphTargets;

@@ -1,8 +1,8 @@
 #include <Shared.h>
 #include <MOHPC/Formats/Image.h>
-#include "../../Misc/Endian.h"
+#include <MOHPC/Misc/Endian.h>
+#include <cstring>
 #include "ImagePrivate.h"
-#include <string.h>
 
 using namespace MOHPC;
 
@@ -223,16 +223,15 @@ typedef enum DXGI_FORMAT {
 
 #define GL_RGBA8                          0x8058
 
+static constexpr char DDS_HEADER[] = "DDS ";
+static constexpr char DDS_HEADER_DX10[] = "DX10";
+
 void Image::LoadDDS(const char *name, void *buf, std::streamsize len)
 {
-	ddsHeader_t *ddsHeader = NULL;
-	ddsHeaderDxt10_t *ddsHeaderDxt10 = NULL;
-	uint8_t *ddsData;
-
 	//
 	// reject files that are too small to hold even a header
 	//
-	if (len < 4 + sizeof(*ddsHeader))
+	if (len < 4 + sizeof(ddsHeader_t))
 	{
 		throw ImageException("File %s is too small to be a DDS file.\n", name);
 	}
@@ -240,7 +239,8 @@ void Image::LoadDDS(const char *name, void *buf, std::streamsize len)
 	//
 	// reject files that don't start with "DDS "
 	//
-	if (*((ui32_t *)(buf)) != EncodeFourCC("DDS "))
+	const uint32_t header = Endian.LittleInteger(*(uint32_t*)buf);
+	if (memcmp(&header, DDS_HEADER, sizeof(header)))
 	{
 		throw ImageException("File %s is not a DDS file.\n", name);
 	}
@@ -248,35 +248,41 @@ void Image::LoadDDS(const char *name, void *buf, std::streamsize len)
 	//
 	// parse header and dx10 header if available
 	//
-	ddsHeader = (ddsHeader_t *)((uint8_t*)buf + 4);
-	if ((ddsHeader->pixelFormatFlags & DDSPF_FOURCC) && ddsHeader->fourCC == EncodeFourCC("DX10"))
+	const uint8_t* ddsData;
+	const ddsHeaderDxt10_t* ddsHeaderDxt10 = nullptr;
+	const ddsHeader_t* ddsHeader = (const ddsHeader_t *)((const uint8_t*)buf + 4);
+	const uint32_t pixelFormatFlags = Endian.LittleInteger(ddsHeader->pixelFormatFlags);
+	const uint32_t fourCC = Endian.LittleInteger(ddsHeader->fourCC);
+	if ((pixelFormatFlags & DDSPF_FOURCC) && !memcmp(&fourCC, DDS_HEADER_DX10, sizeof(fourCC)))
 	{
 		if (len < 4 + sizeof(*ddsHeader) + sizeof(*ddsHeaderDxt10))
 		{
 			throw ImageException("File %s indicates a DX10 header it is too small to contain.\n", name);
 		}
 
-		ddsHeaderDxt10 = (ddsHeaderDxt10_t *)((uint8_t*)buf + 4 + sizeof(ddsHeader_t));
-		ddsData = (uint8_t*)buf + 4 + sizeof(*ddsHeader) + sizeof(*ddsHeaderDxt10);
+		ddsHeaderDxt10 = (const ddsHeaderDxt10_t *)((const uint8_t*)buf + 4 + sizeof(ddsHeader_t));
+		ddsData = (const uint8_t*)buf + 4 + sizeof(*ddsHeader) + sizeof(*ddsHeaderDxt10);
 		len -= 4 + sizeof(*ddsHeader) + sizeof(*ddsHeaderDxt10);
 	}
 	else
 	{
-		ddsData = (uint8_t*)buf + 4 + sizeof(*ddsHeader);
+		ddsData = (const uint8_t*)buf + 4 + sizeof(*ddsHeader);
 		len -= 4 + sizeof(*ddsHeader);
 	}
 
-	width = ddsHeader->width;
-	height = ddsHeader->height;
+	width = Endian.LittleInteger(ddsHeader->width);
+	height = Endian.LittleInteger(ddsHeader->height);
 
-	int picFormat = 0;
+	uint32_t picFormat = 0;
 
 	//
 	// Convert DXGI format/FourCC into OpenGL format
 	//
 	if (ddsHeaderDxt10)
 	{
-		switch (ddsHeaderDxt10->dxgiFormat)
+		const uint32_t dxgiFormat = Endian.LittleInteger(ddsHeaderDxt10->dxgiFormat);
+
+		switch (dxgiFormat)
 		{
 		case DXGI_FORMAT_BC1_TYPELESS:
 		case DXGI_FORMAT_BC1_UNORM:
@@ -353,55 +359,55 @@ void Image::LoadDDS(const char *name, void *buf, std::streamsize len)
 			break;
 
 		default:
-			throw ImageException("DDS File %s has unsupported DXGI format %d.", name, ddsHeaderDxt10->dxgiFormat);
-			break;
+			throw ImageException("DDS File %s has unsupported DXGI format %d.", name, dxgiFormat);
 		}
 	}
 	else
 	{
-		if (ddsHeader->pixelFormatFlags & DDSPF_FOURCC)
+		const uint32_t rgbBitCount = Endian.LittleInteger(ddsHeader->rgbBitCount);
+		const uint32_t rBitMask = Endian.LittleInteger(ddsHeader->rBitMask);
+		const uint32_t gBitMask = Endian.LittleInteger(ddsHeader->gBitMask);
+		const uint32_t bBitMask = Endian.LittleInteger(ddsHeader->bBitMask);
+		const uint32_t aBitMask = Endian.LittleInteger(ddsHeader->aBitMask);
+
+		if (pixelFormatFlags & DDSPF_FOURCC)
 		{
-			if (ddsHeader->fourCC == EncodeFourCC("DXT1"))
+			if (fourCC == EncodeFourCC("DXT1"))
 				picFormat = GL_COMPRESSED_RGB_S3TC_DXT1_EXT;
-			else if (ddsHeader->fourCC == EncodeFourCC("DXT2"))
+			else if (fourCC == EncodeFourCC("DXT2"))
 				picFormat = GL_COMPRESSED_RGBA_S3TC_DXT3_EXT;
-			else if (ddsHeader->fourCC == EncodeFourCC("DXT3"))
+			else if (fourCC == EncodeFourCC("DXT3"))
 				picFormat = GL_COMPRESSED_RGBA_S3TC_DXT3_EXT;
-			else if (ddsHeader->fourCC == EncodeFourCC("DXT4"))
+			else if (fourCC == EncodeFourCC("DXT4"))
 				picFormat = GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
-			else if (ddsHeader->fourCC == EncodeFourCC("DXT5"))
+			else if (fourCC == EncodeFourCC("DXT5"))
 				picFormat = GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
-			else if (ddsHeader->fourCC == EncodeFourCC("ATI1"))
+			else if (fourCC == EncodeFourCC("ATI1"))
 				picFormat = GL_COMPRESSED_RED_RGTC1;
-			else if (ddsHeader->fourCC == EncodeFourCC("BC4U"))
+			else if (fourCC == EncodeFourCC("BC4U"))
 				picFormat = GL_COMPRESSED_RED_RGTC1;
-			else if (ddsHeader->fourCC == EncodeFourCC("BC4S"))
+			else if (fourCC == EncodeFourCC("BC4S"))
 				picFormat = GL_COMPRESSED_SIGNED_RED_RGTC1;
-			else if (ddsHeader->fourCC == EncodeFourCC("ATI2"))
+			else if (fourCC == EncodeFourCC("ATI2"))
 				picFormat = GL_COMPRESSED_RG_RGTC2;
-			else if (ddsHeader->fourCC == EncodeFourCC("BC5U"))
+			else if (fourCC == EncodeFourCC("BC5U"))
 				picFormat = GL_COMPRESSED_RG_RGTC2;
-			else if (ddsHeader->fourCC == EncodeFourCC("BC5S"))
+			else if (fourCC == EncodeFourCC("BC5S"))
 				picFormat = GL_COMPRESSED_SIGNED_RG_RGTC2;
 			else
-			{
 				throw ImageException("DDS File %s has unsupported FourCC.", name);
-				return;
-			}
 		}
-		else if (ddsHeader->pixelFormatFlags == (DDSPF_RGB | DDSPF_ALPHAPIXELS)
-			&& ddsHeader->rgbBitCount == 32
-			&& ddsHeader->rBitMask == 0x000000ff
-			&& ddsHeader->gBitMask == 0x0000ff00
-			&& ddsHeader->bBitMask == 0x00ff0000
-			&& ddsHeader->aBitMask == 0xff000000)
+		else if (pixelFormatFlags == (DDSPF_RGB | DDSPF_ALPHAPIXELS)
+			&& rgbBitCount == 32
+			&& rBitMask == 0x000000ff
+			&& gBitMask == 0x0000ff00
+			&& bBitMask == 0x00ff0000
+			&& aBitMask == 0xff000000)
 		{
 			picFormat = GL_RGBA8;
 		}
-		else
-		{
+		else {
 			throw ImageException("DDS File %s has unsupported RGBA format.", name);
-			return;
 		}
 	}
 

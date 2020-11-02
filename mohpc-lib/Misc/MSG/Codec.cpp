@@ -10,6 +10,16 @@
 
 using namespace MOHPC;
 
+BadBitsException::BadBitsException(size_t inBits)
+	: bits(inBits)
+{
+
+}
+size_t BadBitsException::getBits() const
+{
+	return bits;
+}
+
 class COOBCodec : public IMessageCodec
 {
 public:
@@ -24,9 +34,11 @@ public:
 		else if (bits == 32) {
 			stream.Write(data, 4);
 		}
+		else if (bits == 64) {
+			stream.Write(data, 8);
+		}
 		else {
-			throw 0;
-			return;
+			throw BadBitsException(bits);
 		}
 	}
 
@@ -42,9 +54,11 @@ public:
 		else if (bits == 32) {
 			memcpy(data, bitBuffer + n, 4);
 		}
-		else
-		{
-			throw 0;
+		else if (bits == 64) {
+			memcpy(data, bitBuffer + n, 8);
+		}
+		else {
+			throw BadBitsException(bits);
 		}
 
 		bit += bits;
@@ -54,47 +68,9 @@ public:
 
 class CBitCodec : public IMessageCodec
 {
-private:
-	//Huff compressor, decompressor;
-
 public:
 	CBitCodec()
-	{
-		/*
-		for (int i = 0; i < 256; i++)
-		{
-			for (int j = 0; j < msg_hData[i]; j++)
-			{
-				// Do update for each
-				compressor.addRef((uint8_t)i);
-				decompressor.addRef((uint8_t)i);
-			}
-		}
-		*/
-
-
-	}
-
-	/*
-	void test()
-	{
-		uint8_t bitBuffer[8]{ 0 };
-
-		for (size_t i = 0; i < 256; i += 2)
-		{
-			uint8_t value = (uint8_t)i;
-			size_t bit = 0;
-			MessageCodecs::Compression::huff.offsetTransmit(value, bitBuffer, &bit);
-			printf("char %d wrote %d bits >", value, bit);
-			++value;
-			size_t bit2 = 0;
-			size_t startBit = bit;
-			MessageCodecs::Compression::huff.offsetTransmit(value, bitBuffer, &bit);
-			MessageCodecs::Compression::huff.offsetTransmit(value, bitBuffer, &bit2);
-			printf("%d wrote %d bits (%d total bit, %d diff)\n", value, bit2, bit, bit - startBit - bit2);
-		}
-	}
-	*/
+	{}
 
 	virtual void Encode(const void* data, size_t bits, size_t& bit, IMessageStream& stream, uint8_t* bitBuffer, size_t bufsize) override
 	{
@@ -131,12 +107,12 @@ public:
 				{
 					const size_t index = bitNum >> 3;
 					const size_t subBitNum = bitNum - i;
-					//const uint8_t* p1 = buf + index;
-					//const uint8_t* p2 = buf + index + 1;
-					const uint16_t* p = (uint16_t*)(buf + index);
-					//assert(p2 <= buf + (bits >> 3));
-					//const uint8_t value = (*p1 >> subBitNum) | (*p2 << (8 - subBitNum));
-					const uint8_t value = (*p >> subBitNum) | ((*p >> 8) << (8 - subBitNum));
+					const uint8_t* const p1 = buf + index;
+					const uint8_t* const p2 = buf + index + 1;
+					//const uint16_t* p = (uint16_t*)(buf + index);
+					assert(p2 <= buf + (bits >> 3));
+					const uint8_t value = (*p1 >> subBitNum) | (*p2 << (8 - subBitNum));
+					//const uint8_t value = (*p >> subBitNum) | ((*p >> 8) << (8 - subBitNum));
 					MessageCodecs::Compression::huff.offsetTransmit(value, bitBuffer, &bit);
 					MessageCodecs::FlushBits(bit, stream, bitBuffer, bufsize);
 				}
@@ -189,17 +165,17 @@ public:
 				{
 					const size_t index = bitNum >> 3;
 					const size_t subBitNum = bitNum - i;
-					//uint8_t* p1 = buf + index;
-					//uint8_t* p2 = buf + index + 1;
-					uint16_t* p = (uint16_t*)(buf + index);
+					uint8_t* const p1 = buf + index;
+					uint8_t* const p2 = buf + index + 1;
+					//uint16_t* p = (uint16_t*)(buf + index);
 					//assert(p2 <= buf + (bits >> 3));
 
 					MessageCodecs::ReadBits(bit, stream, bitBuffer, bufsize);
 					const uint8_t received = (uint8_t)MessageCodecs::Decompression::huff.offsetReceive(bitBuffer, &bit);
 
-					//*p1 |= received << subBitNum;
-					//*p2 = received >> (8 - subBitNum);
-					*p |= (received << subBitNum) | ((received << 8) >> (8 - subBitNum));
+					*p1 |= received << subBitNum;
+					*p2 = received >> (8 - subBitNum);
+					//*p |= (received << subBitNum) | ((received << 8) >> (8 - subBitNum));
 				}
 			}
 			else

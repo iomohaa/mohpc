@@ -417,7 +417,7 @@ namespace MOHPC
 	{
 		int32_t surfacePlane;
 		// 3 or four + 6 axial bevels + 4 or 3 * 4 edge bevels
-		int32_t numBorders;
+		uint32_t numBorders;
 		int32_t borderPlanes[4 + 6 + 16];
 		bool borderInward[4 + 6 + 16];
 		bool borderNoAdjust[4 + 6 + 16];
@@ -431,15 +431,15 @@ namespace MOHPC
 			ar(surfacePlane);
 			ar(numBorders);
 
-			for (size_t i = 0; i < numBorders; ++i) {
+			for (uint32_t i = 0; i < numBorders; ++i) {
 				ar(borderPlanes[i]);
 			}
 
-			for (size_t i = 0; i < numBorders; ++i) {
+			for (uint32_t i = 0; i < numBorders; ++i) {
 				ar(borderInward[i]);
 			}
 
-			for (size_t i = 0; i < numBorders; ++i) {
+			for (uint32_t i = 0; i < numBorders; ++i) {
 				ar(borderNoAdjust[i]);
 			}
 		}
@@ -449,9 +449,9 @@ namespace MOHPC
 	{
 		Vector bounds[2];
 		// surface planes plus edge planes
-		int32_t numPlanes;
+		uint32_t numPlanes;
 		patchPlane_t* planes;
-		int32_t numFacets;
+		uint32_t numFacets;
 		facet_t* facets;
 
 	public:
@@ -629,7 +629,7 @@ namespace MOHPC
 	struct pointtrace_t
 	{
 		traceWork_t* tw;
-		terrainCollide_t* tc;
+		const terrainCollide_t* tc;
 		Vector vStart;
 		Vector vEnd;
 		int i;
@@ -933,15 +933,15 @@ namespace MOHPC
 		void CM_TestBoundingBoxInCapsule(traceWork_t* tw, clipHandle_t model);
 		void CM_TraceThroughSphere(traceWork_t* tw, vec3_t origin, float radius, vec3_t start, vec3_t end);
 		void CM_PositionTest(traceWork_t* tw);
-		void CM_TraceThroughPatch(traceWork_t* tw, collisionPatch_t* patch);
-		void CM_TraceThroughTerrain(traceWork_t* tw, collisionTerrain_t* terrain);
-		void CM_TraceThroughBrush(traceWork_t* tw, collisionBrush_t* brush);
+		void CM_TraceThroughPatch(traceWork_t* tw, const collisionPatch_t* patch);
+		void CM_TraceThroughTerrain(traceWork_t* tw, const collisionTerrain_t* terrain);
+		void CM_TraceThroughBrush(traceWork_t* tw, const collisionBrush_t* brush);
 		void CM_TraceThroughVerticalCylinder(traceWork_t* tw, vec3_t origin, float radius, float halfheight, vec3_t start, vec3_t end);
 		void CM_TraceCapsuleThroughCapsule(traceWork_t* tw, clipHandle_t model);
 		void CM_TraceBoundingBoxThroughCapsule(traceWork_t* tw, clipHandle_t model);
 		void CM_TraceToLeaf(traceWork_t* tw, collisionLeaf_t* leaf);
 		void CM_TraceThroughTree(traceWork_t* tw, int num, float p1f, float p2f, vec3_t p1, vec3_t p2);
-		bool CM_TraceThroughFence(traceWork_t* tw, const collisionBrush_t* brush, const collisionBrushSide_t* side, float fTraceFraction);
+		bool CM_TraceThroughFence(const traceWork_t* tw, const collisionBrush_t* brush, const collisionBrushSide_t* side, float fTraceFraction);
 		bool CM_SightTraceThroughPatch(traceWork_t* tw, collisionPatch_t* patch);
 		bool CM_SightTraceThroughTerrain(traceWork_t* tw, collisionTerrain_t* terrain);
 		bool CM_SightTraceThroughBrush(traceWork_t* tw, collisionBrush_t* brush);
@@ -966,14 +966,14 @@ namespace MOHPC
 
 	// Terrain
 	private:
-		void CM_TraceThroughTerrainCollide(traceWork_t* tw, terrainCollide_t* tc);
-		bool CM_PositionTestInTerrainCollide(traceWork_t* tw, terrainCollide_t* tc);
+		void CM_TraceThroughTerrainCollide(traceWork_t* tw, const terrainCollide_t* tc);
+		bool CM_PositionTestInTerrainCollide(traceWork_t* tw, const terrainCollide_t* tc);
 		bool CM_SightTracePointThroughTerrainCollide(void);
-		bool CM_SightTraceThroughTerrainCollide(traceWork_t* tw, terrainCollide_t* tc);
-		float CM_CheckTerrainPlane(vec4_t plane);
-		float CM_CheckTerrainTriSpherePoint(vec3_t v);
-		float CM_CheckTerrainTriSphereCorner(vec4_t plane, float x0, float y0, int i, int j);
-		float CM_CheckTerrainTriSphereEdge(float* plane, float x0, float y0, int i0, int j0, int i1, int j1);
+		bool CM_SightTraceThroughTerrainCollide(traceWork_t* tw, const terrainCollide_t* tc);
+		float CM_CheckTerrainPlane(const vec4_t plane);
+		float CM_CheckTerrainTriSpherePoint(const vec3_t v);
+		float CM_CheckTerrainTriSphereCorner(const vec4_t plane, float x0, float y0, int i, int j);
+		float CM_CheckTerrainTriSphereEdge(const float* plane, float x0, float y0, int i0, int j0, int i1, int j1);
 		float CM_CheckTerrainTriSphere(float x0, float y0, int iPlane);
 		bool CM_ValidateTerrainCollidePointSquare(float frac);
 		bool CM_ValidateTerrainCollidePointTri(int eMode, float frac);
@@ -990,7 +990,7 @@ namespace MOHPC
 		bool CM_PositionTestInPatchCollide(traceWork_t* tw, const patchCollide_t* pc);
 		void CM_ClearLevelPatches(void);
 		void CM_TracePointThroughPatchCollide(traceWork_t* tw, const patchCollide_t* pc);
-		int CM_CheckFacetPlane(float* plane, vec3_t start, vec3_t end, float* enterFrac, float* leaveFrac, int* hit);
+		int CM_CheckFacetPlane(float* plane, vec3_t start, vec3_t end, float* enterFrac, float* leaveFrac, uint32_t* hit);
 	};
 
 	using CollisionWorldPtr = SharedPtr<CollisionWorld>;

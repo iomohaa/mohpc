@@ -1,6 +1,8 @@
 #pragma once
 
-typedef float skelAnimChannel_t[ 4 ];
+#include <cstdint>
+
+using skelAnimChannel_t = float[4];
 
 struct SkeletonAnimation::File_AnimFrame
 {
@@ -8,20 +10,20 @@ struct SkeletonAnimation::File_AnimFrame
 	float radius;
 	SkelVec3 delta;
 	float angleDelta;
-	int iOfsChannels; 
+	uint32_t iOfsChannels;
 };
 
 struct SkeletonAnimation::File_AnimDataHeader
 {
-	int ident;
-	int version;
-	int flags;
-	int nBytesUsed;
+	char ident[4];
+	uint32_t version;
+	uint32_t flags;
+	uint32_t nBytesUsed;
 	float frameTime;
 	SkelVec3 totalDelta;
 	float totalAngleDelta;
-	int numChannels;
-	int ofsChannelNames;
-	int numFrames;
-	File_AnimFrame frame[ 1 ];
+	uint32_t numChannels;
+	uint32_t ofsChannelNames;
+	uint32_t numFrames;
+	File_AnimFrame frame[1];
 };

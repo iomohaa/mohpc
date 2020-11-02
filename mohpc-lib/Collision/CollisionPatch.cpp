@@ -28,7 +28,7 @@ void CollisionWorld::CM_TracePointThroughPatchCollide(traceWork_t* tw, const pat
 	float		intersect;
 	const patchPlane_t* planes;
 	const facet_t* facet;
-	int			i, j, k;
+	uint32_t	i, j, k;
 	float		offset;
 	float		d1, d2;
 
@@ -111,7 +111,7 @@ void CollisionWorld::CM_TracePointThroughPatchCollide(traceWork_t* tw, const pat
 CollisionWorld::CM_CheckFacetPlane
 ====================
 */
-int CollisionWorld::CM_CheckFacetPlane(float* plane, vec3_t start, vec3_t end, float* enterFrac, float* leaveFrac, int* hit) {
+int CollisionWorld::CM_CheckFacetPlane(float* plane, vec3_t start, vec3_t end, float* enterFrac, float* leaveFrac, uint32_t* hit) {
 	float d1, d2, f;
 
 	*hit = false;
@@ -159,7 +159,7 @@ CollisionWorld::CM_TraceThroughPatchCollide
 ====================
 */
 void CollisionWorld::CM_TraceThroughPatchCollide(traceWork_t* tw, const patchCollide_t* pc) {
-	int i, j, hit, hitnum;
+	uint32_t i, j, hit, hitnum;
 	float enterFrac, leaveFrac;
 	patchPlane_t* planes;
 	facet_t* facet;
@@ -244,7 +244,7 @@ CollisionWorld::CM_PositionTestInPatchCollide
 */
 // The following code from OpenMOHAA/Quake3 has been slightly modified to adapt to mohaa patch collision
 bool CollisionWorld::CM_PositionTestInPatchCollide(traceWork_t* tw, const patchCollide_t* pc) {
-	int i, j;
+	uint32_t i, j;
 	float offset, d;
 	patchPlane_t* planes;
 	facet_t* facet;

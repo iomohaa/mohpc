@@ -182,151 +182,6 @@ namespace MOHPC
 		};
 
 		/**
-		 * Invalid command while parsing game state.
-		 */
-		class MOHPC_EXPORTS BadCommandByteException : public NetworkException
-		{
-		private:
-			uint8_t cmdNum;
-
-		public:
-			BadCommandByteException(uint8_t inCmdNum);
-
-			uint8_t getLength() const;
-			str what() const override;
-		};
-
-		/**
-		 * The protocol version does not exist.
-		 */
-		class MOHPC_EXPORTS BadProtocolVersionException : public NetworkException
-		{
-		private:
-			uint32_t protocolVersion;
-
-		public:
-			BadProtocolVersionException(uint8_t inProtocolVersion);
-
-			uint32_t getProtocolVersion() const;
-			str what() const override;
-		};
-
-		/**
-		 * Invalid server operation.
-		 */
-		class MOHPC_EXPORTS IllegibleServerMessageException : public NetworkException
-		{
-		private:
-			uint8_t cmdNum;
-
-		public:
-			IllegibleServerMessageException(uint8_t inCmdNum);
-
-			uint8_t getLength() const;
-			str what() const override;
-		};
-
-		/**
-		 * Invalid baseline entity number while parsing gamestate.
-		 */
-		class MOHPC_EXPORTS BaselineOutOfRangeException : public NetworkException
-		{
-		private:
-			uint16_t baselineNum;
-
-		public:
-			BaselineOutOfRangeException(uint16_t inBaselineNum);
-
-			uint16_t getBaselineNum() const;
-			str what() const override;
-		};
-
-		/**
-		 * Bad configstring number.
-		 */
-		class MOHPC_EXPORTS MaxConfigStringException : public NetworkException
-		{
-		private:
-			csNum_t configStringNum;
-
-		public:
-			MaxConfigStringException(csNum_t inConfigStringNum);
-
-			csNum_t GetConfigstringNum() const;
-			str what() const override;
-		};
-
-		/**
-		 * MAX_GAMESTATE_CHARS was reached while parsing a configstring.
-		 */
-		class MOHPC_EXPORTS MaxGameStateCharsException : public NetworkException
-		{
-		private:
-			size_t stringLen;
-
-		public:
-			MaxGameStateCharsException(size_t inStringLen);
-
-			size_t GetStringLength() const;
-			str what() const override;
-		};
-
-		/**
-		 * Bad area mask size while parsing snapshot.
-		 */
-		class MOHPC_EXPORTS AreaMaskBadSize : public NetworkException
-		{
-		private:
-			uint8_t size;
-
-		public:
-			AreaMaskBadSize(uint8_t inSize);
-
-			uint8_t getSize() const;
-			str what() const override;
-		};
-
-		/**
-		 * Server error while downloading.
-		 */
-		class MOHPC_EXPORTS DownloadException : public NetworkException
-		{
-		private:
-			StringMessage error;
-
-		public:
-			DownloadException(StringMessage&& inError);
-
-			const char* getError() const { return error; }
-			str what() const override { return str(getError()); }
-		};
-
-		class MOHPC_EXPORTS DownloadSizeException : public NetworkException
-		{
-		public:
-			DownloadSizeException(uint16_t inSize);
-
-			uint16_t getSize() const;
-
-		private:
-			uint16_t size;
-		};
-
-		class MOHPC_EXPORTS BadDownloadBlockException : public NetworkException
-		{
-		public:
-			BadDownloadBlockException(uint16_t block, uint16_t expectedBlock);
-
-			uint16_t getBlock() const noexcept;
-			uint16_t getExpectedBlock() const noexcept;
-
-		private:
-			uint16_t block;
-			uint16_t expectedBlock;
-
-		};
-
-		/**
 		 * When the server is sending a download but it hasn't been requested by the client
 		 */
 		class MOHPC_EXPORTS UnexpectedDownloadException : public NetworkException
@@ -813,5 +668,167 @@ namespace MOHPC
 		};
 
 		using ClientGameConnectionPtr = SharedPtr<ClientGameConnection>;
+
+		namespace ClientError
+		{
+			class Base : public NetworkException {};
+
+			/**
+			 * Invalid command while parsing game state.
+			 */
+			class BadCommandByteException : public Base
+			{
+			public:
+				BadCommandByteException(uint8_t inCmdNum);
+
+				MOHPC_EXPORTS uint8_t getLength() const;
+				MOHPC_EXPORTS str what() const override;
+
+			private:
+				uint8_t cmdNum;
+			};
+
+			/**
+			 * The protocol version does not exist.
+			 */
+			class BadProtocolVersionException : public Base
+			{
+			public:
+				BadProtocolVersionException(uint8_t inProtocolVersion);
+
+				MOHPC_EXPORTS uint32_t getProtocolVersion() const;
+				MOHPC_EXPORTS str what() const override;
+
+			private:
+				uint32_t protocolVersion;
+			};
+
+			/**
+			 * Invalid server operation.
+			 */
+			class IllegibleServerMessageException : public Base
+			{
+			public:
+				IllegibleServerMessageException(uint8_t inCmdNum);
+
+				MOHPC_EXPORTS uint8_t getLength() const;
+				MOHPC_EXPORTS str what() const override;
+
+			private:
+				uint8_t cmdNum;
+			};
+
+			/**
+			 * Invalid baseline entity number while parsing gamestate.
+			 */
+			class BaselineOutOfRangeException : public Base
+			{
+			public:
+				BaselineOutOfRangeException(uint16_t inBaselineNum);
+
+				MOHPC_EXPORTS uint16_t getBaselineNum() const;
+				MOHPC_EXPORTS str what() const override;
+
+			private:
+				uint16_t baselineNum;
+			};
+
+			/**
+			 * Bad configstring number.
+			 */
+			class MaxConfigStringException : public Base
+			{
+			public:
+				MaxConfigStringException(const char* inName, csNum_t inConfigStringNum);
+
+				/** Return the name of the code that tried to access the config string. */
+				MOHPC_EXPORTS const char* getName() const;
+				/** Return the config string number. */
+				MOHPC_EXPORTS csNum_t getConfigstringNum() const;
+				MOHPC_EXPORTS str what() const override;
+
+			private:
+				const char* name;
+				csNum_t configStringNum;
+			};
+
+			/**
+			 * MAX_GAMESTATE_CHARS was reached while parsing a configstring.
+			 */
+			class MaxGameStateCharsException : public Base
+			{
+			public:
+				MaxGameStateCharsException(size_t inStringLen);
+
+				/** Return the length of the string that was passed. */
+				MOHPC_EXPORTS size_t GetStringLength() const;
+				MOHPC_EXPORTS str what() const override;
+
+			private:
+				size_t stringLen;
+			};
+
+			/**
+			 * Bad area mask size while parsing snapshot.
+			 */
+			class AreaMaskBadSize : public Base
+			{
+			public:
+				AreaMaskBadSize(uint8_t inSize);
+
+				/** Return the size of the area mask. */
+				MOHPC_EXPORTS uint8_t getSize() const;
+				MOHPC_EXPORTS str what() const override;
+
+			private:
+				uint8_t size;
+			};
+
+			/**
+			 * Server error while downloading.
+			 */
+			class DownloadException : public Base
+			{
+			public:
+				DownloadException(StringMessage&& inError);
+
+				/** Return the error the server sent. */
+				MOHPC_EXPORTS const char* getError() const;
+				MOHPC_EXPORTS str what() const override;
+
+			private:
+				StringMessage error;
+			};
+
+			class DownloadSizeException : public Base
+			{
+			public:
+				DownloadSizeException(uint16_t inSize);
+
+				MOHPC_EXPORTS uint16_t getSize() const;
+
+			private:
+				uint16_t size;
+			};
+
+			class BadDownloadBlockException : public Base
+			{
+			public:
+				BadDownloadBlockException(uint16_t block, uint16_t expectedBlock);
+
+				MOHPC_EXPORTS uint16_t getBlock() const noexcept;
+				MOHPC_EXPORTS uint16_t getExpectedBlock() const noexcept;
+
+			private:
+				uint16_t block;
+				uint16_t expectedBlock;
+
+			};
+
+			class BadSoundNumberException : public Base
+			{
+
+			};
+		}
 	}
 }

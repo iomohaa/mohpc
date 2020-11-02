@@ -3,8 +3,9 @@
 #include "BSP_Curve.h"
 
 using namespace MOHPC;
+using namespace BSPData;
 
-static void LerpDrawVert(const BSP::Vertice* a, const BSP::Vertice* b, BSP::Vertice* out)
+static void LerpDrawVert(const BSPData::Vertice* a, const BSPData::Vertice* b, BSPData::Vertice* out)
 {
 	out->xyz[0] = 0.5f * (a->xyz[0] + b->xyz[0]);
 	out->xyz[1] = 0.5f * (a->xyz[1] + b->xyz[1]);
@@ -22,10 +23,10 @@ static void LerpDrawVert(const BSP::Vertice* a, const BSP::Vertice* b, BSP::Vert
 	out->color[3] = (uint8_t)(0.5f * ((float)a->color[3] + (float)b->color[3]));
 }
 
-static void Transpose(int width, int height, BSP::Vertice ctrl[MAX_GRID_SIZE][MAX_GRID_SIZE])
+static void Transpose(int width, int height, BSPData::Vertice ctrl[MAX_GRID_SIZE][MAX_GRID_SIZE])
 {
 	int		i, j;
-	BSP::Vertice temp;
+	BSPData::Vertice temp;
 
 	if (width > height) {
 		for (i = 0; i < height; i++) {
@@ -62,7 +63,7 @@ static void Transpose(int width, int height, BSP::Vertice ctrl[MAX_GRID_SIZE][MA
 
 }
 
-static void MakeMeshNormals(int width, int height, BSP::Vertice ctrl[MAX_GRID_SIZE][MAX_GRID_SIZE]) {
+static void MakeMeshNormals(int width, int height, BSPData::Vertice ctrl[MAX_GRID_SIZE][MAX_GRID_SIZE]) {
 	int		i, j, k, dist;
 	Vector normal;
 	Vector sum;
@@ -70,7 +71,7 @@ static void MakeMeshNormals(int width, int height, BSP::Vertice ctrl[MAX_GRID_SI
 	Vector	base;
 	Vector	delta;
 	int		x, y;
-	BSP::Vertice *dv;
+	BSPData::Vertice *dv;
 	Vector		around[8], temp;
 	bool	good[8];
 	bool	wrapWidth, wrapHeight;
@@ -175,8 +176,8 @@ static int MakeMeshIndexes(int width, int height, int32_t indexes[(MAX_GRID_SIZE
 	int             i, j;
 	int             numIndexes;
 	int             w, h;
-	//BSP::Vertice *dv;
-	//static BSP::Vertice ctrl2[MAX_GRID_SIZE * MAX_GRID_SIZE];
+	//BSPData::Vertice *dv;
+	//static BSPData::Vertice ctrl2[MAX_GRID_SIZE * MAX_GRID_SIZE];
 
 	h = height - 1;
 	w = width - 1;
@@ -218,9 +219,9 @@ static int MakeMeshIndexes(int width, int height, int32_t indexes[(MAX_GRID_SIZE
 	return numIndexes;
 }
 
-static void InvertCtrl(int width, int height, BSP::Vertice ctrl[MAX_GRID_SIZE][MAX_GRID_SIZE]) {
+static void InvertCtrl(int width, int height, BSPData::Vertice ctrl[MAX_GRID_SIZE][MAX_GRID_SIZE]) {
 	int		i, j;
-	BSP::Vertice temp;
+	BSPData::Vertice temp;
 
 	for (i = 0; i < height; i++) {
 		for (j = 0; j < width / 2; j++) {
@@ -247,11 +248,11 @@ static void InvertErrorTable(float errorTable[2][MAX_GRID_SIZE], int width, int 
 
 }
 
-static void PutPointsOnCurve(BSP::Vertice ctrl[MAX_GRID_SIZE][MAX_GRID_SIZE],
+static void PutPointsOnCurve(BSPData::Vertice ctrl[MAX_GRID_SIZE][MAX_GRID_SIZE],
 	int width, int height)
 {
 	int			i, j;
-	BSP::Vertice prev, next;
+	BSPData::Vertice prev, next;
 
 	for (i = 0; i < width; i++) {
 		for (j = 1; j < height; j += 2) {
@@ -271,9 +272,9 @@ static void PutPointsOnCurve(BSP::Vertice ctrl[MAX_GRID_SIZE][MAX_GRID_SIZE],
 	}
 }
 
-void BSP::CreateSurfaceGridMesh(int32_t width, int32_t height, BSP::Vertice *ctrl, int32_t numIndexes, int32_t *indexes, BSP::Surface* grid)
+void BSP::CreateSurfaceGridMesh(int32_t width, int32_t height, BSPData::Vertice *ctrl, int32_t numIndexes, int32_t *indexes, BSPData::Surface* grid)
 {
-	BSP::Vertice *vert;
+	BSPData::Vertice *vert;
 	Vector tmpVec;
 
 	grid->indexes.resize(numIndexes);
@@ -285,7 +286,7 @@ void BSP::CreateSurfaceGridMesh(int32_t width, int32_t height, BSP::Vertice *ctr
 		outIndexes[i] = indexes[i];
 	}
 
-	BSP::Vertice *outVertices = grid->vertices.data();
+	BSPData::Vertice *outVertices = grid->vertices.data();
 
 	ClearBounds(grid->cullInfo.bounds[0], grid->cullInfo.bounds[1]);
 
@@ -304,7 +305,7 @@ void BSP::CreateSurfaceGridMesh(int32_t width, int32_t height, BSP::Vertice *ctr
 	grid->cullInfo.radius = (float)tmpVec.length();
 }
 
-void BSP::SubdividePatchToGrid(patchWork_t& pw, int32_t Width, int32_t Height, const Vertice* Points, Surface* Out)
+void BSP::SubdividePatchToGrid(int32_t Width, int32_t Height, const Vertice* Points, Surface* Out)
 {
 	int32_t i, j, k, l;
 	Vertice prev;
@@ -473,5 +474,5 @@ void BSP::SubdividePatchToGrid(patchWork_t& pw, int32_t Width, int32_t Height, c
 	// calculate normals
 	MakeMeshNormals(Width, Height, ctrl);
 
-	CreateSurfaceGridMesh(Width, Height, reinterpret_cast<MOHPC::BSP::Vertice*>(ctrl), numIndexes, indexes, Out);
+	CreateSurfaceGridMesh(Width, Height, reinterpret_cast<MOHPC::BSPData::Vertice*>(ctrl), numIndexes, indexes, Out);
 }

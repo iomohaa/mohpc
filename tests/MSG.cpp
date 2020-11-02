@@ -4,11 +4,12 @@
 #include <MOHPC/Misc/MSG/Serializable.h>
 #include <MOHPC/Network/InfoTypes.h>
 #include <MOHPC/Network/SerializableTypes.h>
+#include <MOHPC/Misc/Endian.h>
 #include "UnitTest.h"
 #include <vector>
 #include <cassert>
-#include <stdlib.h>
-#include <time.h>
+#include <cstdlib>
+#include <ctime>
 
 class CMSGUnitTest : public IUnitTest
 {
@@ -25,81 +26,70 @@ public:
 
 	virtual void run(const MOHPC::AssetManagerPtr& AM) override
 	{
-		std::vector<uint8_t> msgBuffer(65536, 0);
-		std::vector<uint8_t> msgBuffer2(16, 0);
+		TestMSG();
+		TestCompression();
+		TestPlayerState();
+		TestEntityState();
+	}
+
+	void TestMSG()
+	{
+		using namespace MOHPC;
+
+		uint8_t msgBuffer[65536];
+		uint8_t msgBuffer2[16];
 
 		// Writing data
-		MOHPC::FixedDataMessageStream stream1(msgBuffer.data(), msgBuffer.size());
 		{
+			MOHPC::FixedDataMessageStream stream1(msgBuffer, sizeof(msgBuffer));
 			MOHPC::MSG msg1(stream1, MOHPC::msgMode_e::Writing);
 
-			uint16_t shortVal = 3;
-			uint32_t intVal = 4;
-			float floatVal = 5.f;
-			uint32_t deltaVal1 = 6;
-			uint32_t deltaVal2 = 7;
+			const uint8_t byteVal = 250;
+			const uint16_t shortVal = 3;
+			const uint32_t intVal = 4;
+			const float floatVal = 5.f;
+			const uint32_t deltaVal1 = 6;
+			const uint32_t deltaVal2 = 7;
 
 			for (int i = 0; i < 100; i++)
 			{
-				int32_t bitVal = 1;
-				uint8_t byteVal = 250;
-				msg1.SerializeBits(&bitVal, 1);
-				bitVal = 655;
-				msg1.SerializeBits(&bitVal, 12);
-				msg1.SerializeBits(&bitVal, 13);
-				msg1.SerializeBits(&bitVal, 31);
-				msg1.SerializeByte(byteVal);
-				msg1.SerializeUShort(shortVal);
-				msg1.SerializeUInteger(intVal);
-				msg1.SerializeFloat(floatVal);
+				union {
+					uint32_t bitVal;
+					uint8_t bytes[4];
+				};
 
-				MOHPC::StringMessage strval = "testString";
-				msg1.SerializeString(strval);
+				msg1.WriteNumber(1, 1);
+				msg1.WriteNumber(655u, 12);
+				msg1.WriteNumber(655u, 13);
+				msg1.WriteNumber(655u, 31);
+				msg1.WriteByte(byteVal);
+				msg1.WriteUShort(shortVal);
+				msg1.WriteUInteger(intVal);
+				msg1.WriteFloat(floatVal);
+				msg1.WriteString("testString");
 
-				for (int j = 0; j < 256; ++j)
-				{
-					byteVal = j;
-					msg1.SerializeByte(byteVal);
+				for (int j = 0; j < 256; ++j) {
+					msg1.WriteByte(j);
 				}
 
-				for (int j = 1; j <= 32; ++j)
-				{
-					uint32_t byteVal = 1 << (j - 1);
-					msg1.SerializeBits(&byteVal, j);
+				for (int j = 1; j <= 32; ++j) {
+					msg1.WriteNumber(1 << (j - 1), j);
 				}
 
-				for (int j = 1; j <= 64; ++j)
-				{
-					uint64_t byteVal = 1ull << (j - 1);
-					msg1.SerializeBits(&byteVal, j);
+				for (int j = 1; j <= 64; ++j) {
+					msg1.WriteNumber(1ull << (j - 1), j);
 				}
 
-				MOHPC::SerializableAngle16 serializableAngle(180.f);
-				msg1.SerializeClass(serializableAngle);
-				msg1.SerializeDelta(&deltaVal1, &deltaVal2, 32);
+				const MOHPC::SerializableAngle16 serializableAngle(180.f);
+				msg1.WriteClass(serializableAngle);
+				msg1.WriteDeltaType(deltaVal1, deltaVal2);
 			}
 
-			MOHPC::FixedDataMessageStream stream1bit(msgBuffer2.data(), msgBuffer2.size());
+			MOHPC::FixedDataMessageStream stream1bit(msgBuffer2, sizeof(msgBuffer2));
 			MOHPC::MSG msg1bit(stream1bit, MOHPC::msgMode_e::Writing);
-			uint8_t sb = 1;
-			msg1bit.SerializeBits(&sb, 1);
+			const uint8_t sb = 1;
+			msg1bit.WriteBits(&sb, 1);
 		}
-
-		// Data compression and decompression
-		/*
-		{
-			MOHPC::FixedDataMessageStream instream(msgBuffer.data(), stream1.GetPosition());
-
-			std::vector<uint8_t> compressedBuffer(32768, 0);
-			MOHPC::FixedDataMessageStream outstream(compressedBuffer.data(), compressedBuffer.size());
-
-			MOHPC::CompressedMessage compressed(instream, outstream);
-			compressed.Compress(0);
-
-			MOHPC::CompressedMessage decompressed(outstream, instream);
-			decompressed.Decompress(0);
-		}
-		*/
 
 		// Reading data
 		{
@@ -107,71 +97,99 @@ public:
 			uint16_t shortVal = 0;
 			uint32_t intVal = 0;
 			float floatVal = 0;
-			uint32_t deltaVal1 = 0;
+			uint32_t deltaVal1 = 6;
 			uint32_t deltaVal2 = 0;
 
 			MOHPC::StringMessage testString;
 
-			MOHPC::FixedDataMessageStream stream2(msgBuffer.data(), msgBuffer.size());
+			MOHPC::FixedDataMessageStream stream2(msgBuffer, sizeof(msgBuffer));
 			MOHPC::MSG msg2(stream2, MOHPC::msgMode_e::Reading);
-			//msg2.SetCodec(MOHPC::MessageCodecs::OOB);
 
 			for (int i = 0; i < 100; i++)
 			{
-				int32_t bitVal = 0;
-				msg2.SerializeBits(&bitVal, 1); assert(bitVal == 1);
-				msg2.SerializeBits(&bitVal, 12); assert(bitVal == 655);
-				msg2.SerializeBits(&bitVal, 13); assert(bitVal == 655);
-				msg2.SerializeBits(&bitVal, 31); assert(bitVal == 655);
-				msg2.SerializeByte(byteVal); assert(byteVal == 250);
-				msg2.SerializeUShort(shortVal); assert(shortVal == 3);
-				msg2.SerializeUInteger(intVal); assert(intVal == 4);
-				msg2.SerializeFloat(floatVal); assert(floatVal == 5.f);
-				msg2.SerializeString(testString); assert(!strcmp(testString, "testString"));
+				union {
+					uint32_t bitVal;
+					uint8_t bytes[4];
+				};
+				bitVal = msg2.ReadNumber<uint32_t>(1); assert(bitVal == 1);
+				bitVal = msg2.ReadNumber<uint32_t>(12); assert(bitVal == 655);
+				bitVal = msg2.ReadNumber<uint32_t>(13); assert(bitVal == 655);
+				bitVal = msg2.ReadNumber<uint32_t>(31); assert(bitVal == 655);
+				byteVal = msg2.ReadByte(); assert(byteVal == 250);
+				shortVal = msg2.ReadUShort(); assert(shortVal == 3);
+				intVal = msg2.ReadUInteger(); assert(intVal == 4);
+				floatVal = msg2.ReadFloat(); assert(floatVal == 5.f);
+				testString = msg2.ReadString(); assert(!strcmp(testString, "testString"));
 
 				for (int j = 0; j < 256; ++j)
 				{
-					msg2.SerializeByte(byteVal);
+					byteVal = msg2.ReadByte();
 					assert(byteVal == j);
 				}
 
 				for (int j = 1; j <= 32; ++j)
 				{
-					uint32_t byteVal = 0;
-					msg2.SerializeBits(&byteVal, j);
+					const uint32_t byteVal = msg2.ReadNumber<uint32_t>(j);
 					assert(byteVal == (1 << (j - 1)));
 				}
 
 				for (int j = 1; j <= 64; ++j)
 				{
-					uint64_t byteVal = 0;
-					msg2.SerializeBits(&byteVal, j);
+					const uint64_t byteVal = msg2.ReadNumber<uint64_t>(j);
 					assert(byteVal == (1ull << (j - 1)));
 				}
 
 				MOHPC::SerializableAngle16 ang;
-				msg2.SerializeClass(ang); assert(ang == 180.f);
-				msg2.SerializeDelta(&deltaVal1, &deltaVal2, 32);
+				msg2.ReadClass(ang); assert(ang == 180.f);
+				deltaVal2 = msg2.ReadDeltaType(deltaVal1);
 			}
 
-			MOHPC::FixedDataMessageStream stream2bit(msgBuffer2.data(), msgBuffer2.size());
+			MOHPC::FixedDataMessageStream stream2bit(msgBuffer2, sizeof(msgBuffer2));
 			MOHPC::MSG msg2bit(stream2bit, MOHPC::msgMode_e::Reading);
 			uint8_t sb = 0;
-			msg2bit.SerializeBits(&sb, 1); assert(sb == 1);
+			msg2bit.ReadBits(&sb, 1); assert(sb == 1);
+		}
+	}
+
+	void TestCompression()
+	{
+		// Data compression and decompression
+		uint8_t rawBuffer[32768]{ 0 };
+		uint8_t compressedBuffer[32768]{ 0 };
+		uint8_t decompressedBuffer[32768]{ 0 };
+
+		size_t compressedLen = 0;
+		{
+			MOHPC::FixedDataMessageStream instream(rawBuffer, sizeof(rawBuffer));
+			MOHPC::FixedDataMessageStream outstream(compressedBuffer, sizeof(compressedBuffer));
+
+			instream.Write("Hello, world", 12);
+
+			MOHPC::CompressedMessage compressed(instream, outstream);
+			compressed.Compress(0, 13);
+
+			compressedLen = outstream.GetPosition();
 		}
 
-		TestPlayerState();
-		TestEntityState();
+		{
+			MOHPC::FixedDataMessageStream instream(compressedBuffer, sizeof(compressedBuffer), compressedLen);
+			MOHPC::FixedDataMessageStream outstream(decompressedBuffer, sizeof(decompressedBuffer));
+
+			MOHPC::CompressedMessage decompressed(instream, outstream);
+			decompressed.Decompress(0, instream.GetLength());
+
+			assert(!memcmp(decompressedBuffer, rawBuffer, sizeof(decompressedBuffer)));
+		}
 	}
 
 	void TestPlayerState()
 	{
 		MOHPC::playerState_t ps1, ps2;
-		std::vector<uint8_t> msgBuffer(32768, 0);
+		uint8_t msgBuffer[32768];
 
 		// Writing
 		{
-			MOHPC::FixedDataMessageStream streamWriter(msgBuffer.data(), msgBuffer.size());
+			MOHPC::FixedDataMessageStream streamWriter(msgBuffer, sizeof(msgBuffer));
 			MOHPC::MSG writer(streamWriter, MOHPC::msgMode_e::Writing);
 
 			srand(1000);
@@ -200,19 +218,19 @@ public:
 
 			MOHPC::SerializablePlayerState sps1(ps1);
 			MOHPC::SerializablePlayerState sps2(ps2);
-			writer.SerializeDeltaClass(&sps1, &sps2);
+			writer.WriteDeltaClass(&sps1, &sps2);
 		}
 
 		// Reading
 		{
-			MOHPC::FixedDataMessageStream streamReader(msgBuffer.data(), msgBuffer.size());
+			MOHPC::FixedDataMessageStream streamReader(msgBuffer, sizeof(msgBuffer));
 			MOHPC::MSG reader(streamReader, MOHPC::msgMode_e::Reading);
 
 			MOHPC::playerState_t serializedPS;
 
 			MOHPC::SerializablePlayerState sps1(ps1);
 			MOHPC::SerializablePlayerState sps2(serializedPS);
-			reader.SerializeDeltaClass(&sps1, &sps2);
+			reader.ReadDeltaClass(&sps1, &sps2);
 
 			assert(serializedPS.origin == ps2.origin);
 			assert(serializedPS.pm_time == ps2.pm_time);
@@ -235,11 +253,11 @@ public:
 	void TestEntityState()
 	{
 		MOHPC::entityState_t en1, en2;
-		std::vector<uint8_t> msgBuffer(32768, 0);
+		uint8_t msgBuffer[32768];
 
 		// Writing
 		{
-			MOHPC::FixedDataMessageStream streamWriter(msgBuffer.data(), msgBuffer.size());
+			MOHPC::FixedDataMessageStream streamWriter(msgBuffer, sizeof(msgBuffer));
 			MOHPC::MSG writer(streamWriter, MOHPC::msgMode_e::Writing);
 
 			srand(2000);
@@ -268,18 +286,18 @@ public:
 
 			MOHPC::SerializableEntityState sen1(en1, 0);
 			MOHPC::SerializableEntityState sen2(en2, 0);
-			writer.SerializeDeltaClass(&sen1, &sen2);
+			writer.WriteDeltaClass(&sen1, &sen2);
 		}
 
 		// Reading
 		{
-			MOHPC::FixedDataMessageStream streamReader(msgBuffer.data(), msgBuffer.size());
+			MOHPC::FixedDataMessageStream streamReader(msgBuffer, sizeof(msgBuffer));
 			MOHPC::MSG reader(streamReader, MOHPC::msgMode_e::Reading);
 
 			MOHPC::entityState_t sEnt;
 			MOHPC::SerializableEntityState sen1(en1, 0);
 			MOHPC::SerializableEntityState sen2(sEnt, 0);
-			reader.SerializeDeltaClass(&sen1, &sen2);
+			reader.ReadDeltaClass(&sen1, &sen2);
 
 			assert(sEnt.alpha >= en2.alpha - 0.01f && sEnt.alpha <= en2.alpha + 0.01f);
 			assert(sEnt.netorigin == en2.netorigin);

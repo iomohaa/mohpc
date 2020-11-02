@@ -90,7 +90,7 @@ IRequestPtr MOHPC::Network::EngineServer::ChallengeRequest::handleResponse(const
 	return makeShared<ConnectRequest>(protocol, std::move(data), challengeResponse, std::move(timeoutCallback));
 }
 
-size_t MOHPC::Network::EngineServer::ChallengeRequest::overrideTimeoutTime(bool& overriden)
+uint64_t MOHPC::Network::EngineServer::ChallengeRequest::overrideTimeoutTime(bool& overriden)
 {
 	overriden = true;
 	return 3000;
@@ -107,7 +107,7 @@ MOHPC::IRequestPtr EngineServer::ChallengeRequest::timedOut()
 	return shared_from_this();
 }
 
-size_t EngineServer::ChallengeRequest::deferredTime()
+uint64_t EngineServer::ChallengeRequest::deferredTime()
 {
 	return data.settings ? data.settings->getDeferredChallengeTime() : 100;
 }
@@ -153,7 +153,7 @@ IRequestPtr MOHPC::Network::EngineServer::AuthorizeRequest::handleResponse(const
 	return nullptr;
 }
 
-size_t MOHPC::Network::EngineServer::AuthorizeRequest::overrideTimeoutTime(bool& overriden)
+uint64_t MOHPC::Network::EngineServer::AuthorizeRequest::overrideTimeoutTime(bool& overriden)
 {
 	overriden = true;
 	// 5000 is the timeout time for the server to authorize
@@ -275,7 +275,7 @@ IRequestPtr MOHPC::Network::EngineServer::ConnectRequest::handleResponse(const c
 	return nullptr;
 }
 
-size_t MOHPC::Network::EngineServer::ConnectRequest::overrideTimeoutTime(bool& overriden)
+uint64_t MOHPC::Network::EngineServer::ConnectRequest::overrideTimeoutTime(bool& overriden)
 {
 	overriden = true;
 	return 3000;
@@ -291,7 +291,7 @@ MOHPC::IRequestPtr MOHPC::Network::EngineServer::ConnectRequest::timedOut()
 	return shared_from_this();
 }
 
-size_t EngineServer::ConnectRequest::deferredTime()
+uint64_t EngineServer::ConnectRequest::deferredTime()
 {
 	return data.settings ? data.settings->getDeferredConnectTime() : 100;
 }

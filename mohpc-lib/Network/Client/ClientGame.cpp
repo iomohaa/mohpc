@@ -94,133 +94,6 @@ outPacket_t::outPacket_t()
 
 }
 
-BadCommandByteException::BadCommandByteException(uint8_t inCmdNum)
-	: cmdNum(inCmdNum)
-{}
-
-uint8_t BadCommandByteException::getLength() const
-{
-	return cmdNum;
-}
-
-str BadCommandByteException::what() const
-{
-	return str((int)getLength());
-}
-
-BadProtocolVersionException::BadProtocolVersionException(uint8_t inProtocolVersion)
-	: protocolVersion(inProtocolVersion)
-{}
-
-uint32_t BadProtocolVersionException::getProtocolVersion() const
-{
-	return protocolVersion;
-}
-
-str BadProtocolVersionException::what() const
-{
-	return str((int)getProtocolVersion());
-}
-
-IllegibleServerMessageException::IllegibleServerMessageException(uint8_t inCmdNum)
-	: cmdNum(inCmdNum)
-{}
-
-uint8_t IllegibleServerMessageException::getLength() const
-{
-	return cmdNum;
-}
-
-str IllegibleServerMessageException::what() const
-{
-	return str((int)getLength());
-}
-
-BaselineOutOfRangeException::BaselineOutOfRangeException(uint16_t inBaselineNum)
-	: baselineNum(inBaselineNum)
-{}
-
-uint16_t BaselineOutOfRangeException::getBaselineNum() const
-{
-	return baselineNum;
-}
-
-str BaselineOutOfRangeException::what() const
-{
-	return str((int)getBaselineNum());
-}
-
-MaxConfigStringException::MaxConfigStringException(csNum_t inConfigStringNum)
-	: configStringNum(inConfigStringNum)
-{}
-
-csNum_t MaxConfigStringException::GetConfigstringNum() const
-{
-	return configStringNum;
-}
-
-str MaxConfigStringException::what() const
-{
-	return str((int)GetConfigstringNum());
-}
-
-MaxGameStateCharsException::MaxGameStateCharsException(size_t inStringLen)
-	: stringLen(inStringLen)
-{}
-
-size_t MaxGameStateCharsException::GetStringLength() const
-{
-	return stringLen;
-}
-
-str MaxGameStateCharsException::what() const
-{
-	return str((int)GetStringLength());
-}
-
-AreaMaskBadSize::AreaMaskBadSize(uint8_t inSize)
-	: size(inSize)
-{}
-
-uint8_t AreaMaskBadSize::getSize() const
-{
-	return size;
-}
-
-str AreaMaskBadSize::what() const
-{
-	return str((int)getSize());
-}
-
-DownloadException::DownloadException(StringMessage&& inError)
-	: error(std::move(inError))
-{}
-
-DownloadSizeException::DownloadSizeException(uint16_t inSize)
-	: size(inSize)
-{}
-
-uint16_t DownloadSizeException::getSize() const
-{
-	return size;
-}
-
-BadDownloadBlockException::BadDownloadBlockException(uint16_t inBlock, uint16_t inExpectedBlock)
-	: block(inBlock)
-	, expectedBlock(inExpectedBlock)
-{
-}
-
-uint16_t BadDownloadBlockException::getBlock() const noexcept
-{
-	return block;
-}
-
-uint16_t BadDownloadBlockException::getExpectedBlock() const noexcept
-{
-	return expectedBlock;
-}
-
 gameState_t::gameState_t()
 	: stringOffsets{ 0 }
 	, stringData{ 0 }
@@ -245,7 +118,7 @@ void gameState_t::setConfigString(csNum_t num, const char* configString, size_t 
 {
 	const size_t newSz = dataCount + len;
 	if (num > MAX_CONFIGSTRINGS) {
-		throw MaxConfigStringException(num);
+		throw ClientError::MaxConfigStringException("gameState_t::setConfigString", num);
 	}
 
 	// going to  
@@ -276,7 +149,7 @@ void gameState_t::setConfigString(csNum_t num, const char* configString, size_t 
 		len = strlen(dup);
 
 		if (len + dataCount >= MAX_GAMESTATE_CHARS) {
-			throw MaxGameStateCharsException(newSz);
+			throw ClientError::MaxGameStateCharsException(newSz);
 		}
 
 		// the string is correct, append it to the gameState string buffer
@@ -374,7 +247,7 @@ ClientGameConnection::ClientGameConnection(const NetworkManagerPtr& inNetworkMan
 		cgameModule = new CGameModule15(imports);
 		break;
 	default:
-		throw BadProtocolVersionException((uint8_t)protoType.getProtocolVersion());
+		throw ClientError::BadProtocolVersionException((uint8_t)protoType.getProtocolVersion());
 		break;
 	}
 
@@ -576,7 +449,7 @@ void ClientGameConnection::addReliableCommand(const char* cmd)
 {
 	if (reliableAcknowledge + MAX_RELIABLE_COMMANDS < reliableSequence)
 	{
-		// FIXME: throw
+		// FIXME: throw?
 		return;
 	}
 
@@ -623,7 +496,7 @@ void ClientGameConnection::parseServerMessage(MSG& msg, uint64_t currentTime)
 			parseCGMessage(msg);
 			break;
 		default:
-			throw IllegibleServerMessageException((uint8_t)cmd);
+			throw ClientError::IllegibleServerMessageException((uint8_t)cmd);
 		}
 	}
 }
@@ -667,7 +540,7 @@ void ClientGameConnection::parseGameState(MSG& msg)
 			const csNum_t stringNum = msg.ReadUShort();
 
 			if (stringNum > MAX_CONFIGSTRINGS) {
-				throw MaxConfigStringException(stringNum);
+				throw ClientError::MaxConfigStringException("gameStateParsing", stringNum);
 			}
 
 			const StringMessage stringValue = readStringMessage(msg);
@@ -680,7 +553,7 @@ void ClientGameConnection::parseGameState(MSG& msg)
 		{
 			const entityNum_t newNum = readEntityNum(msgHelper);
 			if (newNum >= MAX_GENTITIES) {
-				throw BaselineOutOfRangeException(newNum);
+				throw ClientError::BaselineOutOfRangeException(newNum);
 			}
 
 			entityState_t nullState;
@@ -691,7 +564,7 @@ void ClientGameConnection::parseGameState(MSG& msg)
 		}
 		break;
 		default:
-			throw BadCommandByteException((uint8_t)cmd);
+			throw ClientError::BadCommandByteException((uint8_t)cmd);
 		}
 	}
 
@@ -883,8 +756,7 @@ void ClientGameConnection::parseSounds(MSG& msg, ClientSnapshot* newFrame)
 		return;
 	}
 
-	uint8_t numSounds = 0;
-	msg.ReadBits(&numSounds, 7);
+	const uint8_t numSounds = msg.ReadNumber<uint8_t>(7);
 	if (numSounds > MAX_SERVER_SOUNDS) {
 		return;
 	}
@@ -903,8 +775,7 @@ void ClientGameConnection::parseSounds(MSG& msg, ClientSnapshot* newFrame)
 			const uint16_t entityNum = readEntityNum(msgHelper);
 			sound.entity = &entityBaselines[entityNum];
 
-			uint8_t channel;
-			msg.ReadBits(&channel, 7);
+			const uint8_t channel = msg.ReadNumber<uint8_t>(7);
 			sound.channel = channel;
 		}
 		else
@@ -916,20 +787,17 @@ void ClientGameConnection::parseSounds(MSG& msg, ClientSnapshot* newFrame)
 				sound.origin = msgHelper.ReadVectorFloat();
 			}
 
-			uint16_t entityNum = 0;
-			msg.ReadBits(&entityNum, 11);
+			const uint16_t entityNum = msg.ReadNumber<uint16_t>(11);
 			sound.entity = &entityBaselines[entityNum];
 
 			if (entityNum >= MAX_GENTITIES) {
-				throw BadEntityNumberException(entityNum);
+				throw BadEntityNumberException("sound", entityNum);
 			}
 
-			uint8_t channel = 0;
-			msg.ReadBits(&channel, 7);
+			const uint8_t channel = msg.ReadNumber<uint8_t>(7);
 			sound.channel = channel;
 
-			uint16_t soundIndex = 0;
-			msg.ReadBits(&soundIndex, 9);
+			const uint16_t soundIndex = msg.ReadNumber<uint16_t>(9);
 
 			if (soundIndex < MAX_SOUNDS)
 			{
@@ -1003,7 +871,7 @@ void DownloadManager::processDownload(MSG& msg)
 		if (!fileSize || fileSize == -1)
 		{
 			// not a valid file size
-			throw DownloadException(imports.readStringMessage(msg));
+			throw ClientError::DownloadException(imports.readStringMessage(msg));
 		}
 
 		downloadBlock = 0;
@@ -1016,13 +884,13 @@ void DownloadManager::processDownload(MSG& msg)
 	if (size > sizeof(data))
 	{
 		// invalid size
-		throw DownloadSizeException(size);
+		throw ClientError::DownloadSizeException(size);
 	}
 
 	if (downloadBlock != block)
 	{
 		// unexpected block
-		throw BadDownloadBlockException(block, downloadBlock);
+		throw ClientError::BadDownloadBlockException(block, downloadBlock);
 	}
 
 	if (size > 0)
@@ -1457,7 +1325,7 @@ csNum_t ClientGameConnection::getNormalizedConfigstring(csNum_t num)
 	return (this->*getNormalizedConfigstring_pf)(num);
 }
 
-size_t Network::ClientGameConnection::getMaxCommandSize() const
+size_t ClientGameConnection::getMaxCommandSize() const
 {
 	return (this->*getMaxCommandSize_pf)();
 }
@@ -1512,7 +1380,7 @@ void ClientGameConnection::readAreaMask(MSG& msg, ClientSnapshot& snap)
 	const uint8_t areaLen = msg.ReadByte();
 
 	if (areaLen > sizeof(snap.areamask)) {
-		throw AreaMaskBadSize(areaLen);
+		throw ClientError::AreaMaskBadSize(areaLen);
 	}
 
 	// Read the area mask
@@ -1656,12 +1524,12 @@ csNum_t ClientGameConnection::getNormalizedConfigstring_ver15(csNum_t num)
 	return num;
 }
 
-size_t Network::ClientGameConnection::getMaxCommandSize_ver6() const
+size_t ClientGameConnection::getMaxCommandSize_ver6() const
 {
 	return 1024;
 }
 
-size_t Network::ClientGameConnection::getMaxCommandSize_ver15() const
+size_t ClientGameConnection::getMaxCommandSize_ver15() const
 {
 	return MAX_STRING_CHARS;
 }
@@ -2371,4 +2239,146 @@ void clientGameSettings_t::setTimeNudge(uint32_t value)
 uint32_t clientGameSettings_t::getTimeNudge() const
 {
 	return timeNudge;
+}
+
+ClientError::BadCommandByteException::BadCommandByteException(uint8_t inCmdNum)
+	: cmdNum(inCmdNum)
+{}
+
+uint8_t ClientError::BadCommandByteException::getLength() const
+{
+	return cmdNum;
+}
+
+str ClientError::BadCommandByteException::what() const
+{
+	return str((int)getLength());
+}
+
+ClientError::BadProtocolVersionException::BadProtocolVersionException(uint8_t inProtocolVersion)
+	: protocolVersion(inProtocolVersion)
+{}
+
+uint32_t ClientError::BadProtocolVersionException::getProtocolVersion() const
+{
+	return protocolVersion;
+}
+
+str ClientError::BadProtocolVersionException::what() const
+{
+	return str((int)getProtocolVersion());
+}
+
+ClientError::IllegibleServerMessageException::IllegibleServerMessageException(uint8_t inCmdNum)
+	: cmdNum(inCmdNum)
+{}
+
+uint8_t ClientError::IllegibleServerMessageException::getLength() const
+{
+	return cmdNum;
+}
+
+str ClientError::IllegibleServerMessageException::what() const
+{
+	return str((int)getLength());
+}
+
+ClientError::BaselineOutOfRangeException::BaselineOutOfRangeException(uint16_t inBaselineNum)
+	: baselineNum(inBaselineNum)
+{}
+
+uint16_t ClientError::BaselineOutOfRangeException::getBaselineNum() const
+{
+	return baselineNum;
+}
+
+str ClientError::BaselineOutOfRangeException::what() const
+{
+	return str((int)getBaselineNum());
+}
+
+ClientError::MaxConfigStringException::MaxConfigStringException(const char* inName, csNum_t inConfigStringNum)
+	: name(inName)
+	, configStringNum(inConfigStringNum)
+{}
+
+const char* ClientError::MaxConfigStringException::getName() const
+{
+	return name;
+}
+
+csNum_t ClientError::MaxConfigStringException::getConfigstringNum() const
+{
+	return configStringNum;
+}
+
+str ClientError::MaxConfigStringException::what() const
+{
+	return str((int)getConfigstringNum());
+}
+
+ClientError::MaxGameStateCharsException::MaxGameStateCharsException(size_t inStringLen)
+	: stringLen(inStringLen)
+{}
+
+size_t ClientError::MaxGameStateCharsException::GetStringLength() const
+{
+	return stringLen;
+}
+
+str ClientError::MaxGameStateCharsException::what() const
+{
+	return str((int)GetStringLength());
+}
+
+ClientError::AreaMaskBadSize::AreaMaskBadSize(uint8_t inSize)
+	: size(inSize)
+{}
+
+uint8_t ClientError::AreaMaskBadSize::getSize() const
+{
+	return size;
+}
+
+str ClientError::AreaMaskBadSize::what() const
+{
+	return str((int)getSize());
+}
+
+ClientError::DownloadException::DownloadException(StringMessage&& inError)
+	: error(std::move(inError))
+{}
+
+ClientError::DownloadSizeException::DownloadSizeException(uint16_t inSize)
+	: size(inSize)
+{}
+
+const char* ClientError::DownloadException::getError() const
+{
+	return error;
+}
+str ClientError::DownloadException::what() const
+{
+	return str(getError());
+}
+
+uint16_t ClientError::DownloadSizeException::getSize() const
+{
+	return size;
+}
+
+ClientError::BadDownloadBlockException::BadDownloadBlockException(uint16_t inBlock, uint16_t inExpectedBlock)
+	: block(inBlock)
+	, expectedBlock(inExpectedBlock)
+{
+}
+
+uint16_t ClientError::BadDownloadBlockException::getBlock() const noexcept
+{
+	return block;
+}
+
+uint16_t ClientError::BadDownloadBlockException::getExpectedBlock() const noexcept
+{
+	return expectedBlock;
 }

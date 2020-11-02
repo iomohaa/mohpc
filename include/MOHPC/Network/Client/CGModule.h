@@ -3,6 +3,7 @@
 #include <cstdint>
 #include "../Configstring.h"
 #include "../InfoTypes.h"
+#include "../Types.h"
 #include "../pm/bg_public.h"
 #include "../../Utilities/HandlerList.h"
 #include "../../Utilities/PropertyMap.h"
@@ -43,22 +44,27 @@ namespace MOHPC
 		static constexpr unsigned int DF_NO_FOOTSTEPS			= (1 << 17);
 
 		/**
-		 * New flags since SH
+		 * protocol version >= 15
+		 * (SH)
 		 */
+
 		/** Allow leaning while in movement. */
 		static constexpr unsigned int DF_ALLOW_LEAN				= (1 << 18);
 		/** Specify that G43 is replaced with Kar98. */
 		static constexpr unsigned int DF_OLD_SNIPERRIFLE		= (1 << 19);
 
 		/**
-		 * New flags since BT
+		 * protocol version >= 17
+		 * (BT)
 		 */
+
 		/** Axis use a shotgun rather than kar98 mortar. */
 		static constexpr unsigned int DF_GERMAN_SHOTGUN			= (1 << 20);
 		/** Allow landmine to be used on AA maps. */
 		static constexpr unsigned int DF_ALLOW_OLDMAP_MINES		= (1 << 21);
 
 		/**
+		 * [BT]
 		 * Weapon type filtering
 		 */
 		/** Disallow the usage of rifles. */
@@ -86,10 +92,14 @@ namespace MOHPC
 
 		static constexpr size_t MAX_ACTIVE_SNAPSHOTS = 2;
 
-		// Valid effects
-		enum class effects_e : unsigned char
+		/**
+		 * This is the list of effects.
+		 *
+		 * To get the full model path, use getEffectName().
+		 */
+		enum class effects_e
 		{
-			barrel_oil_leak_big,
+			barrel_oil_leak_big = 0,
 			barrel_oil_leak_medium,
 			barrel_oil_leak_small,
 			barrel_oil_leak_splat,
@@ -166,28 +176,42 @@ namespace MOHPC
 			max
 		};
 
+		/**
+		 * Return the model path from an effect.
+		 *
+		 * @param effect The client game module effect.
+		 * @return the model path, i.e "/models/fx/grenexp_mud.tik".
+		 */
 		MOHPC_EXPORTS const char* getEffectName(effects_e effect);
 
+		/**
+		 * List of valid game types.
+		 */
 		enum class gameType_e : unsigned char
 		{
-			SinglePlayer,
+			SinglePlayer = 0,
 			FreeForAll,
 			TeamDeathmatch,
 			RoundBasedMatch,
-			Objective
-			// FIXME: add others
+			Objective,
+			TugOfWar,
+			Liberation
 		};
 
 		enum class hudMessage_e : unsigned char
 		{
 			Yellow = 1,
+			/** White message, shown top center with death messages. */
 			ChatWhite,
+			/** White message, shown top left, below compass. */
 			White,
+			/** Red message, shown top center with death messages. */
 			ChatRed,
-			// Since SH
+			/** (protocol version 15) Green message, shown top center with death messages. */
 			ChatGreen,
+			/** Maximum number of valid message type that can be sent by the server. */
 			Max,
-			// not in HUD
+			/** Message printed in console instead of the HUD. */
 			Console,
 		};
 
@@ -243,7 +267,7 @@ namespace MOHPC
 			 * Called when an explosion occurs.
 			 *
 			 * @param	origin	Location of the explosion.
-			 * @param	type	(FIXME) Explosion type.
+			 * @param	type	Explosion type.
 			 */
 			struct MakeExplosionEffect : public HandlerNotifyBase<void(const Vector& origin, effects_e type)> {};
 
@@ -252,7 +276,7 @@ namespace MOHPC
 			 *
 			 * @param	origin	Location of the effect.
 			 * @param	normal	Explosion's normal direction.
-			 * @param	type	(FIXME) Type of the effect.
+			 * @param	type	Type of the effect.
 			 */
 			struct MakeEffect : public HandlerNotifyBase<void(const Vector& origin, const Vector& normal, effects_e type)> {};
 
@@ -906,7 +930,7 @@ namespace MOHPC
 		 */
 		class CGameModuleBase
 		{
-		private:
+		public:
 			class HandlerListCGame : public HandlerList
 			{
 			public:
@@ -1097,13 +1121,6 @@ namespace MOHPC
 			//====
 
 			/**
-			 * Client entities
-			 */
-			void addPacketEntities();
-			void addEntity(EntityInfo& entInfo);
-			//====
-
-			/**
 			 * Player state calculation
 			 */
 			void predictPlayerState(uint64_t deltaTime);
@@ -1238,5 +1255,58 @@ namespace MOHPC
 		private:
 			Pmove_ver15 pmove;
 		};
+
+		class CommonMessageHandler
+		{
+		public:
+			CommonMessageHandler(MSG& inMsg, const CGameModuleBase::HandlerListCGame& inHandlerList);
+
+			void impactMelee();
+			void debrisCrate();
+			void debrisWindow();
+			void huddrawShader();
+			void huddrawAlign();
+			void huddrawRect();
+			void huddrawVirtualScreen();
+			void huddrawColor();
+			void huddrawAlpha();
+			void huddrawString();
+			void huddrawFont();
+			void notifyHit();
+			void notifyKill();
+			void playSoundEntity();
+
+		private:
+			MSG& msg;
+			const CGameModuleBase::HandlerListCGame& handlerList;
+		};
+
+		namespace CGError
+		{
+			class Base : public NetworkException {};
+
+			/**
+			 * The next snap time is backward of the client time.
+			 */
+			class NextSnapTimeWentBackward : public Base
+			{
+			public:
+				NextSnapTimeWentBackward(uint64_t inPrevTime, uint64_t inTime);
+
+				/** Return the client time. */
+				MOHPC_EXPORTS uint64_t getClientTime() const;
+				/** Return the time of the snap. */
+				MOHPC_EXPORTS uint64_t getSnapTime() const;
+
+			private:
+				uint64_t oldTime;
+				uint64_t time;
+			};
+
+			/**
+			 * Null snapshot when processing snapshots.
+			 */
+			class NullSnapshot : public Base {};
+		}
 	}
 }

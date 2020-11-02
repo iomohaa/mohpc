@@ -79,12 +79,12 @@ namespace MOHPC
 
 	namespace EntityField
 	{
-		void ReadNumberPlayerStateField(MSG& msg, size_t bits, void* toF, size_t size);
-		void WriteNumberPlayerStateField(MSG& msg, size_t bits, void* toF);
+		void ReadNumberPlayerStateField(MSG& msg, intptr_t bits, void* toF, size_t size);
+		void WriteNumberPlayerStateField(MSG& msg, intptr_t bits, const void* toF, size_t size);
 
 		void ReadRegular(MSG& msg, intptr_t bits, void* toF, size_t size);
 		void ReadRegular2(MSG& msg, intptr_t bits, void* toF, size_t size);
-		void WriteNumberEntityField(MSG& msg, size_t bits, void* toF, size_t size);
+		void WriteNumberEntityField(MSG& msg, intptr_t bits, const void* toF, size_t size);
 
 		float ReadAngleField(MSG& msg, size_t bits);
 		void WriteAngleField(MSG& msg, size_t bits, float angle);
@@ -106,46 +106,6 @@ namespace MOHPC
 		float UnpackCoord(int32_t val);
 		float UnpackCoordExtra(int32_t val);
 	}
-
-	class MOHPC_EXPORTS EntityException : public Network::NetworkException {};
-
-	class MOHPC_EXPORTS BadEntityNumberException : public EntityException
-	{
-	private:
-		size_t badNumber;
-
-	public:
-		BadEntityNumberException(size_t inBadNumber);
-
-		size_t getNumber() const;
-		str what() const override;
-	};
-
-	class MOHPC_EXPORTS BadEntityFieldException : public EntityException
-	{
-	private:
-		uint8_t fieldType;
-		const char* fieldName;
-
-	public:
-		BadEntityFieldException(uint8_t inFieldType, const char* inFieldName);
-
-		uint8_t getFieldType() const;
-		const char* getFieldName() const;
-		str what() const override;
-	};
-
-	class MOHPC_EXPORTS BadEntityFieldCountException : public EntityException
-	{
-	private:
-		uint8_t count;
-
-	public:
-		BadEntityFieldCountException(uint8_t inCount);
-
-		uint8_t getCount() const;
-		str what() const override;
-	};
 
 	class MOHPC_EXPORTS SerializableUsercmd : public ISerializableMessage
 	{
@@ -228,8 +188,47 @@ namespace MOHPC
 
 		virtual void SaveDelta(MSG& msg, const ISerializableMessage* from) const override;
 		virtual void LoadDelta(MSG& msg, const ISerializableMessage* from) override;
+	};
+
+	class MOHPC_EXPORTS EntityException : public Network::NetworkException {};
+
+	class MOHPC_EXPORTS BadEntityNumberException : public EntityException
+	{
+	public:
+		BadEntityNumberException(const char* name, size_t inBadNumber);
+
+		const char* getName() const;
+		size_t getNumber() const;
+		str what() const override;
 
 	private:
+		const char* name;
+		size_t badNumber;
+	};
 
+	class MOHPC_EXPORTS BadEntityFieldException : public EntityException
+	{
+	private:
+		uint8_t fieldType;
+		const char* fieldName;
+
+	public:
+		BadEntityFieldException(uint8_t inFieldType, const char* inFieldName);
+
+		uint8_t getFieldType() const;
+		const char* getFieldName() const;
+		str what() const override;
+	};
+
+	class MOHPC_EXPORTS BadEntityFieldCountException : public EntityException
+	{
+	private:
+		uint8_t count;
+
+	public:
+		BadEntityFieldCountException(uint8_t inCount);
+
+		uint8_t getCount() const;
+		str what() const override;
 	};
 }

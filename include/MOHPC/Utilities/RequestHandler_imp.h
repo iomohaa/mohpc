@@ -16,7 +16,7 @@ namespace MOHPC
 	}
 
 	template<class T, class Param>
-	RequestHandler<T, Param>::PendingRequest::PendingRequest(IRequestPtr&& inRequest, Param&& inParam, size_t inTimeout)
+	RequestHandler<T, Param>::PendingRequest::PendingRequest(IRequestPtr&& inRequest, Param&& inParam, uint64_t inTimeout)
 		: request(std::forward<IRequestPtr>(inRequest))
 		, param(std::forward<Param>(inParam))
 		, timeout(inTimeout)
@@ -24,7 +24,7 @@ namespace MOHPC
 	}
 
 	template<class T, class Param>
-	void RequestHandler<T, Param>::sendRequest(IRequestPtr&& newRequest, Param&& inParam, size_t timeout)
+	void RequestHandler<T, Param>::sendRequest(IRequestPtr&& newRequest, Param&& inParam, uint64_t timeout)
 	{
 		if (isRequesting())
 		{
@@ -48,7 +48,7 @@ namespace MOHPC
 	}
 
 	template<class T, class Param>
-	void MOHPC::RequestHandler<T, Param>::startRequest(const IRequestPtr& newRequest, size_t timeout)
+	void MOHPC::RequestHandler<T, Param>::startRequest(const IRequestPtr& newRequest, uint64_t timeout)
 	{
 		startTime = std::chrono::steady_clock::now();
 
@@ -61,7 +61,7 @@ namespace MOHPC
 	{
 		using namespace std::chrono;
 
-		const size_t time = newRequest->deferredTime();
+		const uint64_t time = newRequest->deferredTime();
 		if (time > 0) {
 			deferTime = startTime + milliseconds(time);
 		}
@@ -74,12 +74,12 @@ namespace MOHPC
 	}
 
 	template<class T, class Param>
-	void MOHPC::RequestHandler<T, Param>::setRequestTimeout(const IRequestPtr& newRequest, size_t timeout)
+	void MOHPC::RequestHandler<T, Param>::setRequestTimeout(const IRequestPtr& newRequest, uint64_t timeout)
 	{
 		using namespace std::chrono;
 
 		bool overriden = false;
-		size_t time = newRequest->overrideTimeoutTime(overriden);
+		uint64_t time = newRequest->overrideTimeoutTime(overriden);
 		if (!overriden) {
 			time = timeout + newRequest->timeOutDelay();
 		}
@@ -118,7 +118,7 @@ namespace MOHPC
 			if (newRequest)
 			{
 				param = std::move(pendingReq.param);
-				const size_t timeout = pendingReq.timeout;
+				const uint64_t timeout = pendingReq.timeout;
 				pendingRequests.pop();
 				return sendRequest(std::move(newRequest), std::move(param), timeout);
 			}
@@ -218,7 +218,7 @@ namespace MOHPC
 				using namespace std::chrono;
 				milliseconds tm = duration_cast<milliseconds>(timeoutTime - startTime);
 
-				const size_t timeout = tm.count();
+				const uint64_t timeout = tm.count();
 				sendRequest(std::forward<IRequestPtr>(newRequest), std::move(param), timeout);
 			}
 			else if(shouldResend)
@@ -227,7 +227,7 @@ namespace MOHPC
 				milliseconds tm = duration_cast<milliseconds>(timeoutTime - startTime);
 
 				// refresh the timeout time
-				const size_t timeout = tm.count();
+				const uint64_t timeout = tm.count();
 				startRequest(newRequest, timeout);
 			}
 		}

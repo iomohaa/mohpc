@@ -7,8 +7,10 @@
 
 namespace MOHPC
 {
-	typedef SharedPtr<class SkeletonAnimation> SkeletonAnimationPtr;
-	typedef SharedPtr<const class SkeletonAnimation> ConstSkeletonAnimationPtr;
+	class MSG;
+
+	using SkeletonAnimationPtr = SharedPtr<class SkeletonAnimation>;
+	using ConstSkeletonAnimationPtr =  SharedPtr<const class SkeletonAnimation>;
 
 	static constexpr unsigned int MAX_ANIM_POSES = 64;
 	static constexpr unsigned int MAX_ANIM_MOVEMENTS_POSES = (MAX_ANIM_POSES >> 1);
@@ -120,16 +122,14 @@ namespace MOHPC
 		MOHPC_EXPORTS bool IsDynamic() const;
 
 	private:
-		void EncodeFrames(SkeletonChannelList *channelList, SkeletonChannelNameTable *channelNames);
-		void ConvertSkelFileToGame(File_AnimDataHeader *pHeader, size_t iBuffLength, const char *path);
-		void WriteEncodedFrames(class MSG* msg);
-		void WriteEncodedFramesEx(class MSG* msg);
+		void EncodeFrames(const SkeletonChannelList *channelList, const SkeletonChannelNameTable *channelNames);
+		void ConvertSkelFileToGame(const File_AnimDataHeader *pHeader, size_t iBuffLength, const char *path);
+		void WriteEncodedFrames(MSG& msg);
+		void WriteEncodedFramesEx(MSG& msg);
 		void SaveProcessedAnim(const char *path, File_AnimDataHeader *pHeader);
-		void ReadEncodedFrames(class MSG* msg);
-		void ReadEncodedFramesEx(class MSG* msg);
+		void ReadEncodedFrames(MSG& msg);
+		void ReadEncodedFramesEx(MSG& msg);
 		void LoadProcessedAnim(const char *path, void *buffer, size_t len, const char *name);
 		void LoadProcessedAnimEx(const char *path, void *buffer, size_t len, const char *name);
-
-		static con_set<str, WeakPtr<SkeletonAnimation>> g_skelAnimCache;
 	};
 };

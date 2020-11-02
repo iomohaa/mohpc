@@ -2,6 +2,7 @@
 
 namespace MOHPC
 {
+
 /**
  * Base interface for encoding/decoding bits
  */
@@ -25,4 +26,22 @@ namespace MessageCodecs
 	extern MOHPC_EXPORTS IMessageCodec& Bit;
 	extern MOHPC_EXPORTS IMessageCodec& OOB;
 }
+
+
+class CodecException : public std::exception {};
+
+/**
+ * Bad number of bits. For OOB, bits must be 8, 16, 32 or 64.
+ */
+class BadBitsException : public CodecException
+{
+public:
+	BadBitsException(size_t inBits);
+
+	size_t getBits() const;
+
+private:
+	size_t bits;
+};
+
 }

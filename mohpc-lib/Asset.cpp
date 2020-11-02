@@ -265,3 +265,13 @@ void Asset::HashFinalize()
 		SHA1->Final();
 	}
 }
+
+AssetError::AssetNotFound::AssetNotFound(const str& inFileName)
+	: fileName(inFileName)
+{
+}
+
+const char* AssetError::AssetNotFound::getFileName() const
+{
+	return fileName.c_str();
+}

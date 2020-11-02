@@ -7,9 +7,11 @@
 #include "../Utilities/WeakPtr.h"
 #include "../Common/con_set.h"
 #include "Manager.h"
+#include "../Class.h"
+
 #include <typeinfo>
 #include <typeindex>
-#include "../Class.h"
+#include <exception>
 
 namespace MOHPC
 {
@@ -86,4 +88,20 @@ namespace MOHPC
 		con_set<str, WeakPtr<Asset>> m_assetCache;
 	};
 	using AssetManagerPtr = SharedPtr<AssetManager>;
+
+	namespace AssetError
+	{
+		class Base : public std::exception {};
+
+		class AssetNotFound : public Base
+		{
+		public:
+			AssetNotFound(const str& inFileName);
+
+			MOHPC_EXPORTS const char* getFileName() const;
+
+		private:
+			str fileName;
+		};
+	}
 }

@@ -39,6 +39,7 @@ namespace MOHPC
 
 		char* getData() noexcept;
 		char* getData() const noexcept;
+		const char* c_str() const noexcept;
 		void preAlloc(size_t len) noexcept;
 		void writeChar(char c, size_t i) noexcept;
 		operator const char* () const noexcept;
@@ -263,22 +264,30 @@ namespace MOHPC
 		StringMessage ReadScrambledString(const char* byteCharMapping);
 
 		template<typename T>
+		T ReadNumber(size_t bits = sizeof(T) << 3);
+
+		template<typename T>
 		T ReadByteEnum()
 		{
 			return T(ReadByte());
 		}
 
+		MSG& ReadClass(ISerializableMessage& value);
+
 		template<typename T>
 		T ReadDeltaType(const T& a)
+		{
+			return ReadDeltaType(a, sizeof(T) << 3);
+		}
+
+		template<typename T>
+		T ReadDeltaType(const T& a, size_t bits)
 		{
 			static_assert(std::is_arithmetic<T>::value, "Type must be an arithmetic type");
 
 			const bool isDiff = ReadBool();
-			if (isDiff)
-			{
-				T val;
-				ReadBits(&val, sizeof(T) << 3);
-				return val;
+			if (isDiff) {
+				return ReadNumber<T>(bits);
 			}
 
 			return a;
@@ -287,13 +296,18 @@ namespace MOHPC
 		template<typename T>
 		T ReadDeltaTypeKey(const T& a, intptr_t key)
 		{
+			return ReadDeltaTypeKey(a, key, sizeof(T) << 3);
+		}
+
+		template<typename T>
+		T ReadDeltaTypeKey(const T& a, intptr_t key, size_t bits)
+		{
 			static_assert(std::is_arithmetic<T>::value, "Type must be an arithmetic type");
 
 			const bool isDiff = ReadBool();
 			if (isDiff)
 			{
-				T val;
-				ReadBits(&val, sizeof(T) << 3);
+				T val = ReadNumber<T>(bits);
 				XORType(val, key);
 				return val;
 			}
@@ -346,24 +360,41 @@ namespace MOHPC
 		MSG& WriteScrambledString(const StringMessage& s, const uint8_t* charByteMapping);
 
 		template<typename T>
+		MSG& WriteNumber(T value, size_t bits = sizeof(T) << 3);
+
+		template<typename T>
 		void WriteByteEnum(T value)
 		{
 			WriteByte((unsigned char)value);
 		}
 
+		MSG& WriteClass(const ISerializableMessage& value);
+
 		template<typename T>
-		MSG& WriteDeltaType(const T& a, T& b)
+		MSG& WriteDeltaType(const T& a, const T& b)
+		{
+			return WriteDeltaType(a, b, sizeof(T) << 3);
+		}
+
+		template<typename T>
+		MSG& WriteDeltaType(const T& a, const T& b, size_t bits)
 		{
 			static_assert(std::is_arithmetic<T>::value, "Type must be an arithmetic type");
 
 			const bool isDiff = a != b;
 			WriteBool(isDiff);
-			if (isDiff) WriteBits(&b, sizeof(T) << 3);
+			if (isDiff) WriteNumber(b, bits);
 			return *this;
 		}
 
 		template<typename T>
-		MSG& WriteDeltaTypeKey(const T& a, T& b, intptr_t key, size_t bits = sizeof(T) << 3)
+		MSG& WriteDeltaTypeKey(const T& a, const T& b, intptr_t key)
+		{
+			return WriteDeltaTypeKey(a, b, key, sizeof(T) << 3);
+		}
+
+		template<typename T>
+		MSG& WriteDeltaTypeKey(const T& a, const T& b, intptr_t key, size_t bits)
 		{
 			static_assert(std::is_arithmetic<T>::value, "Type must be an arithmetic type");
 
@@ -374,7 +405,7 @@ namespace MOHPC
 			if (isDiff)
 			{
 				const T newB = XORType(b, key);
-				WriteBits(&newB, bits);
+				WriteNumber(newB, bits);
 			}
 			return *this;
 		}
@@ -416,6 +447,27 @@ namespace MOHPC
 public:
 	};
 
+
+	template<> MOHPC_EXPORTS uint8_t	MSG::ReadNumber(size_t bits);
+	template<> MOHPC_EXPORTS uint16_t	MSG::ReadNumber(size_t bits);
+	template<> MOHPC_EXPORTS uint32_t	MSG::ReadNumber(size_t bits);
+	template<> MOHPC_EXPORTS uint64_t	MSG::ReadNumber(size_t bits);
+	template<> MOHPC_EXPORTS int8_t		MSG::ReadNumber(size_t bits);
+	template<> MOHPC_EXPORTS int16_t	MSG::ReadNumber(size_t bits);
+	template<> MOHPC_EXPORTS int32_t	MSG::ReadNumber(size_t bits);
+	template<> MOHPC_EXPORTS int64_t	MSG::ReadNumber(size_t bits);
+	template<> MOHPC_EXPORTS float		MSG::ReadNumber(size_t bits);
+
+	template<> MOHPC_EXPORTS MSG&		MSG::WriteNumber(uint8_t value, size_t bits);
+	template<> MOHPC_EXPORTS MSG&		MSG::WriteNumber(uint16_t value, size_t bits);
+	template<> MOHPC_EXPORTS MSG&		MSG::WriteNumber(uint32_t value, size_t bits);
+	template<> MOHPC_EXPORTS MSG&		MSG::WriteNumber(uint64_t value, size_t bits);
+	template<> MOHPC_EXPORTS MSG&		MSG::WriteNumber(int8_t value, size_t bits);
+	template<> MOHPC_EXPORTS MSG&		MSG::WriteNumber(int16_t value, size_t bits);
+	template<> MOHPC_EXPORTS MSG&		MSG::WriteNumber(int32_t value, size_t bits);
+	template<> MOHPC_EXPORTS MSG&		MSG::WriteNumber(int64_t value, size_t bits);
+	template<> MOHPC_EXPORTS MSG&		MSG::WriteNumber(float value, size_t bits);
+	
 	class MOHPC_EXPORTS MsgBaseHelper
 	{
 	protected:
