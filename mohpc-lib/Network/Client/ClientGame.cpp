@@ -344,6 +344,8 @@ void ClientGameConnection::tick(uint64_t deltaTime, uint64_t currentTime)
 	{
 		// call the handler
 		handlerList.errorHandler.broadcast(e);
+
+		MOHPC_LOG(Error, "ClientGameModule exception: %s", e.what().c_str());
 	}
 }
 
@@ -398,6 +400,8 @@ void ClientGameConnection::receive(const NetAddrPtr& from, MSG& msg, uint64_t cu
 	{
 		// call the handler
 		handlerList.errorHandler.broadcast(e);
+
+		MOHPC_LOG(Error, "Network error: %s", e.what().c_str());
 	}
 	catch (StreamMessageException&)
 	{

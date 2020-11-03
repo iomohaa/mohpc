@@ -6,51 +6,55 @@ Author Ludovic
 :toc:
 :sectnums:
 
+== Donations
+
+The library is widely used in link:https://moh-rises.com/[mohue] for importing and converting assets, and also for network compatibility between MOHAA PC and mohue. If you feel like this project is helpful, you can make a donation to the maintainer:
+
+[horizontal]
+Bitcoin (BTC):: 3Em1F2QzMGQttohXopn8eSni4Y3DXFzDxE
+Etherum (ETH):: 0x4a40bb8e021f8E0eaa1fB6e41cadf789034BdD81
+Monero (XMR):: 87M4Jdiw41iVCVCeQr7QhYbJWGoLrvjPZYxFrSc3CnssVrDi3iRvmm4Pk2dPhE7qvb8cfBYHFPBnihhLCVcRmEiU77qJon4
+
 == Introduction
 
-This library helps you to read Medal of Honor: Allied Assault (all versions) assets using C++. It's working fine on a big project (link:https://moh-rises.com/[MOHUE]) and is considered stable.
+This C++ library permits reading Medal of Honor: Allied Assault (all versions) assets. It's working fine on a big project (link:https://moh-rises.com/[MOHUE]) and is considered stable.
 
 Some info about abbreviations:
 
 [horizontal]
-MOHAA:: Medal of Honor Allied Assault
-MOHAAS:: Medal of Honor Allied Assault: Spearhead
-MOHAAB:: Medal of Honor Allied Assault: Breakthrough
+MOHAA / AA:: Medal of Honor Allied Assault
+MOHAAS / SH:: Medal of Honor Allied Assault: Spearhead
+MOHAAB / BT:: Medal of Honor Allied Assault: Breakthrough
+
+The name of the library come from the fact that, in mohaa win32 binaries, the path for debugging symbols points to *z:\mohpc\*. As a consequence, it is assumed for the codename of the game to be _mohpc_.
 
 == Requirements
 
 All::
-- CMake 3.1 or higher
+- CMake 3.10 or higher
 
 Windows::
-- A compiler, like Visual Studio, that support C++17
+- A compiler, like Visual Studio, that has full support for C++17
 
 Unix::
 - GCC 8.x or higher (C++17 compiler)
 - stdc++fs library on Unix
 
-Third-party components should be downloaded and compiled automatically.
 This library relies between STL and custom containers.
+Third-party components are downloaded and compiled automatically.
+
+For any issue about missing thirdparty libraries:
+
+- jpegsr9d (used for reading JPEG image files) can be downloaded from link:https://www.ijg.org/files/[here].
+- libmad, used for reading mp3 files, can be downloaded from link:ftp://ftp.mars.org/pub/mpeg/[here], version *0.15.1b*.
+- zlib, important for reading compressed archives, like pk3 files, can be cloned with git from link:https://github.com/madler/zlib.git[here] by using the *v1.2.11* branch/tag.
+- GameSpy SDK, used to query the server list from master server and to send an authorize request to SH/BT servers, can be cloned from link:https://github.com/nitrocaster/GameSpy[here].
 
 == Compatibility
 
-This library can be built on Windows and Unix systems, for any architecture.
-It is also endian-portable, which means this library can be used on both Little-Endian and Big-Endian processors.
+This library can be built on Windows and Unix systems, for any architecture. It is also endian-portable, which means this library can be used on both Little-Endian and Big-Endian processors.
 
-.Compatibility list
-|===
-| Platform | x86     | x64      | ARM       |
-| Windows  | Best    | Best     | Best      |
-| Linux    | Good    | Good     | Unknown   |
-| Mac      | Unknown | Unknown  | Unknown   |
-|===
-
-[horizontal]
-Best:: Fully working with no encountered crashes or bugs.
-
-Good:: Starts and load some assets, but was not tested enough.
-
-Unknown:: Absence of testing, but this does not mean the library will not work.
+It works well on Windows but there is no reason it shouldn't work as well as on Windows on Unix systems.
 
 == Features
 
@@ -59,46 +63,47 @@ Unknown:: Absence of testing, but this does not mean the library will not work.
 * Model renderer.
 * Networking / Player movement.
 
-=== Supported assets
+=== Supported asset types
 
 * BSP (map)
-* DCL (decals)
-* Models and animations
+* DCL (decal)
+* Model and animation
 ** SKB (model)
 ** SKD from all expansions (model)
 ** SKC from all expansions (animation)
-** TIKI files / Emitters
+** TIKI files
 * Images
 ** JPEG
 ** TGA
 ** DDS
 * Sounds
-* Shaders
+** .wav
+** .mp3
+* Shaders parsing
 
 === Networking
 
 * Connect to server.
-** Supports AA 1.0-1.11 | SH 2.0-2.15 | BT 2.30-2.40.
 * Query server list from master server.
 * Query LAN server list.
 * Query server status/info.
 * Handlers for monitoring events.
 
-==== Supported protocols versions
+==== Supported protocols versions and versions
 
-The client can connect to any server that is using one of the following protocols:
+The client can connect to any server running on one of the following protocols:
 
 [horizontal]
 5:: MOHAA Demo 0.05 (SP version).
 6:: MOHAA 1.0.
-8:: MOHAA 1.1.
+8:: MOHAA 1.1 / above.
 15:: MOHAAS 2.0.
-16:: MOHAAS 2.11 and MOHAAB demo 0.30.
-17:: MOHAAS 2.11 / 2.15 | MOHAAB 2.30 / 2.40b.
+16:: MOHAAS Demo 2.11 | MOHAAB demo 0.30.
+17:: MOHAAS 2.11 / above | MOHAAB 2.30 / 2.40b.
 
 Note: Breakthrough shares the same protocol as Spearhead, excepts it adds "Breakthrough" clientType value when connecting.
 
-Note 2: Protocol version 5 is supported, but the SP demo was not compiled with remote network support.
+Note 2: Protocol version 5 is assumed to be supported, but the SP demo was not compiled with remote network support.
 
 ==== In-game
 
@@ -108,8 +113,8 @@ Note 2: Protocol version 5 is supported, but the SP demo was not compiled with r
 * Game events parsing, callbacks & notifications.
 * Interpolation/Extrapolation support.
 * Player movement prediction and local collision support.
-* Radar support (requires the server to be running at least SH 2.0), used to keep track of teammates when the server doesn't send to the client (non-pvs).
-* User input simulation.
+* Radar support which requires the server to be running at least SH 2.0. It used to keep track of teammates when the server is not sending players to the client (non-pvs).
+* User input support (all inputs are supported).
 
 == Example
 
@@ -148,4 +153,6 @@ int main(int argc, char *argv[])
 
 === TODO
 
-This README will change over time.
+This README will change over time. The library is also subject to change overtime.
+It will also need more unit tests.
+A documentation will come, but it is not the priority.
