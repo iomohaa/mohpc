@@ -83,7 +83,7 @@ namespace MOHPC
 			void processClient(ClientData& client, uint32_t sequenceNum, IMessageStream& stream, MSG& msg);
 
 		private:
-			void connectionLessReply(const NetAddr& target, const char* reply);
+			void connectionLessReply(const NetAddrPtr& target, const char* reply);
 
 			void processRequests();
 			void sendStateToClients();

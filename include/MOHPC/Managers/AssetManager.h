@@ -89,6 +89,19 @@ namespace MOHPC
 	};
 	using AssetManagerPtr = SharedPtr<AssetManager>;
 
+	template<class T>
+	SharedPtr<T> Object::GetManager() const
+	{
+		const SharedPtr<AssetManager> manPtr = GetAssetManager();
+		if (manPtr)
+		{
+			// return the owning asset manager
+			return manPtr->GetManager<T>();
+		}
+
+		return nullptr;
+	}
+
 	namespace AssetError
 	{
 		class Base : public std::exception {};
@@ -100,8 +113,30 @@ namespace MOHPC
 
 			MOHPC_EXPORTS const char* getFileName() const;
 
+		public:
+			const char* what() const override;
+
 		private:
 			str fileName;
+		};
+
+		/**
+		 * The asset file has wrong header.
+		 */
+		class BadHeader4 : public Base
+		{
+		public:
+			BadHeader4(const uint8_t foundHeader[4], const uint8_t expectedHeader[4]);
+
+			MOHPC_EXPORTS const uint8_t* getHeader() const;
+			MOHPC_EXPORTS const uint8_t* getExpectedHeader() const;
+
+		public:
+			const char* what() const override;
+
+		private:
+			uint8_t foundHeader[4];
+			uint8_t expectedHeader[4];
 		};
 	}
 }

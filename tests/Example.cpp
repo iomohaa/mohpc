@@ -25,7 +25,7 @@ void ExampleCode()
 	char* Buffer = nullptr;
 
 	// Puts the content of bar.tik into a buffer...
-	std::streamsize Size = File->ReadBuffer((void**)&Buffer);
+	uint64_t Size = File->ReadBuffer((void**)&Buffer);
 
 	// No need to close the file, shared_ptr will do it after auto-destruction
 	// AssetManager will automatically destroy everything once it begins destruction.

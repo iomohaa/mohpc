@@ -82,7 +82,7 @@ namespace MOHPC
 		TikiScript();
 		~TikiScript();
 
-		virtual bool Load() override;
+		void Load() override;
 		void Close();
 		const char *Filename();
 		int GetLineNumber();
@@ -101,7 +101,7 @@ namespace MOHPC
 		void GetVector(bool crossline, float *vec);
 		int LinesInFile();
 		void Parse(char *data, uintmax_t length, const char *name);
-		bool LoadFile(const char *name);
+		void LoadFile(const char *name);
 		const char *Token();
 		void MarkPos();
 		void ReturnToMark();

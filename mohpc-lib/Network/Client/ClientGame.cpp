@@ -19,7 +19,7 @@ using namespace MOHPC::Network;
 
 static constexpr size_t MAX_MSGLEN = 49152;
 static constexpr size_t MINIMUM_RECEIVE_BUFFER_SIZE = 1024;
-static constexpr char* MOHPC_LOG_NAMESPACE = "network_cgame";
+static constexpr char MOHPC_LOG_NAMESPACE[] = "network_cgame";
 
 constexpr uint8_t charByteMapping[256] =
 {
@@ -177,9 +177,8 @@ ClientSnapshot::ClientSnapshot()
 
 MOHPC_OBJECT_DEFINITION(ClientGameConnection);
 
-ClientGameConnection::ClientGameConnection(const NetworkManagerPtr& inNetworkManager, const INetchanPtr& inNetchan, const NetAddrPtr& inAdr, uint32_t challengeResponse, const protocolType_c& protoType, const ClientInfoPtr& cInfo)
-	: ITickableNetwork(inNetworkManager)
-	, netchan(inNetchan)	
+ClientGameConnection::ClientGameConnection(const INetchanPtr& inNetchan, const IRemoteIdentifierPtr& inAdr, uint32_t challengeResponse, const protocolType_c& protoType, const ClientInfoPtr& cInfo)
+	: netchan(inNetchan)	
 	, adr(inAdr)
 	, realTimeStart(0)
 	, serverStartTime(0)
@@ -296,17 +295,17 @@ void ClientGameConnection::tick(uint64_t deltaTime, uint64_t currentTime)
 
 	size_t count = 0;
 
-	IUdpSocket* socket = getNetchan()->getRawSocket();
+	ICommunicator* socket = getNetchan()->getRawSocket();
 	// Loop until there is no valid data
 	// or the max number of processed packets has reached the limit
-	while(isChannelValid() && socket->dataAvailable() && count++ < settings.getMaxTickPackets())
+	while(isChannelValid() && socket->getIncomingSize() && count++ < settings.getMaxTickPackets())
 	{
 		DynamicDataMessageStream stream;
 		// reserve a minimum amount to avoid reallocating each time
 		stream.reserve(MINIMUM_RECEIVE_BUFFER_SIZE);
 
 		uint32_t sequenceNum;
-		NetAddrPtr from;
+		IRemoteIdentifierPtr from;
 
 		if(getNetchan()->receive(from, stream, sequenceNum))
 		{
@@ -336,7 +335,7 @@ void ClientGameConnection::tick(uint64_t deltaTime, uint64_t currentTime)
 
 	try
 	{
-		if (isActive && cgameModule) {
+		if (cgameModule) {
 			cgameModule->tick(deltaTime, currentTime, serverTime);
 		}
 	}
@@ -360,7 +359,7 @@ const INetchanPtr& ClientGameConnection::getNetchan() const
 	return netchan;
 }
 
-void ClientGameConnection::receive(const NetAddrPtr& from, MSG& msg, uint64_t currentTime, uint32_t sequenceNum)
+void ClientGameConnection::receive(const IRemoteIdentifierPtr& from, MSG& msg, uint64_t currentTime, uint32_t sequenceNum)
 {
 	serverMessageSequence = (uint32_t)sequenceNum;
 
@@ -409,7 +408,7 @@ void ClientGameConnection::receive(const NetAddrPtr& from, MSG& msg, uint64_t cu
 	}
 }
 
-void ClientGameConnection::receiveConnectionLess(const NetAddrPtr& from, MSG& msg)
+void ClientGameConnection::receiveConnectionLess(const IRemoteIdentifierPtr& from, MSG& msg)
 {
 	msg.SetCodec(MessageCodecs::OOB);
 
@@ -523,7 +522,7 @@ void GetNullEntityState(entityState_t* nullState) {
 
 void ClientGameConnection::parseGameState(MSG& msg)
 {
-	MOHPC_LOG(Verbose, "Received gamestate");
+	MOHPC_LOG(Debug, "Received gamestate");
 
 	MsgTypesHelper msgHelper(msg);
 
@@ -590,7 +589,7 @@ void ClientGameConnection::parseGameState(MSG& msg)
 		// new map/server, reset important data
 		clearState();
 	} else {
-		MOHPC_LOG(Warning, "Server has resent gamestate while in-game");
+		MOHPC_LOG(Warn, "Server has resent gamestate while in-game");
 	}
 
 	// notify about the new game state
@@ -880,7 +879,7 @@ void DownloadManager::processDownload(MSG& msg)
 
 		downloadBlock = 0;
 
-		MOHPC_LOG(Verbose, "downloading file of size %d", fileSize);
+		MOHPC_LOG(Debug, "downloading file of size %d", fileSize);
 	}
 
 	const uint16_t size = msg.ReadUShort();
@@ -912,7 +911,7 @@ void DownloadManager::processDownload(MSG& msg)
 		// append data
 		//strm.write((const char*)data, size);
 
-		MOHPC_LOG(Verbose, "downloaded block %d size %d", block, size);
+		MOHPC_LOG(Debug, "downloaded block %d size %d", block, size);
 
 		// tell the server to continue downloading
 		imports.addReliableCommand(str::printf("nextdl %d", downloadBlock));
@@ -1018,21 +1017,16 @@ void ClientGameConnection::parseCommandString(MSG& msg)
 	parser.Parse(s, strlen(s));
 
 	const str commandName = parser.GetToken(false);
-
-	while (parser.TokenAvailable(true)) {
-		ev.AddString(parser.GetToken(true));
-	}
-
 #if _DEBUG
+
 	if (!str::icmp(commandName, "stufftext"))
 	{
 		// Warn about stufftext
-		MOHPC_LOG(Warning, "Stufftext command detected. Handle it with high precautions. Arguments : %s", s.getData() + 10);
+		MOHPC_LOG(Warn, "Stufftext command detected. Handle it with high precautions. Arguments : %s", s.getData() + 10);
 	}
 #endif
-
 	// notify about the new command
-	handlerList.serverCommandHandler.broadcast(commandName.c_str(), ev);
+	handlerList.serverCommandHandler.broadcast(commandName.c_str(), parser);
 
 	if (!str::icmp(commandName, "disconnect"))
 	{
@@ -1151,7 +1145,7 @@ uint8_t ClientGameConnection::getNumCommandsToWrite(uint32_t oldPacketNum) const
 	if (cmdNumber > outPackets[oldPacketNum].p_cmdNumber + MAX_PACKET_USERCMDS)
 	{
 		return MAX_PACKET_USERCMDS;
-		MOHPC_LOG(Warning, "MAX_PACKET_USERCMDS");
+		MOHPC_LOG(Warn, "MAX_PACKET_USERCMDS");
 	}
 
 	return cmdNumber - outPackets[oldPacketNum].p_cmdNumber;
@@ -1360,17 +1354,17 @@ const ClientSnapshot* ClientGameConnection::readOldSnapshot(MSG& msg, ClientSnap
 	if (!old->valid) {
 		// should never happen
 		// FIXME: throw?
-		MOHPC_LOG(Warning, "Delta from invalid frame (not supposed to happen!).");
+		MOHPC_LOG(Warn, "Delta from invalid frame (not supposed to happen!).");
 	}
 	else if (old->messageNum != snap.deltaNum) {
 		// The frame that the server did the delta from
 		// is too old, so we can't reconstruct it properly.
 		// FIXME: throw?
-		MOHPC_LOG(Warning, "Delta frame too old.");
+		MOHPC_LOG(Warn, "Delta frame too old.");
 	}
 	else if (parseEntitiesNum > old->parseEntitiesNum + (MAX_PARSE_ENTITIES - 128)) {
 		// FIXME: throw?
-		MOHPC_LOG(Warning, "Delta parseEntitiesNum too old.");
+		MOHPC_LOG(Warn, "Delta parseEntitiesNum too old.");
 	}
 	else {
 		snap.valid = true;	// valid delta parse
@@ -1562,9 +1556,9 @@ CGameModuleBase* ClientGameConnection::getCGModule()
 	return cgameModule;
 }
 
-const NetAddr& ClientGameConnection::getRemoteAddress() const
+const IRemoteIdentifierPtr& ClientGameConnection::getRemoteAddress() const
 {
-	return *adr;
+	return adr;
 }
 
 const gameState_t& ClientGameConnection::getGameState() const
@@ -1749,6 +1743,16 @@ uint32_t ClientGameConnection::getCurrentServerMessageSequence() const
 uint32_t ClientGameConnection::getCurrentServerCommandSequence() const
 {
 	return serverCommandSequence;
+}
+
+uint32_t Network::ClientGameConnection::getReliableSequence() const
+{
+	return reliableSequence;
+}
+
+uint32_t Network::ClientGameConnection::getReliableAcknowledge() const
+{
+	return reliableAcknowledge;
 }
 
 void ClientGameConnection::disconnect()

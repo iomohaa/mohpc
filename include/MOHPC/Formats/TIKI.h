@@ -5,40 +5,71 @@
 #include "../Vector.h"
 #include "Skel.h"
 
+//=
 // animation flags
-#define TAF_RANDOM					0x1		// random
-#define TAF_NOREPEAT				0x2		// no loop
-#define TAF_DONTREPEAT				( TAF_RANDOM | TAF_NOREPEAT )	// don't repeat
-#define TAF_AUTOSTEPS_DOG			0x4		// footsteps for dogs
-#define TAF_DEFAULT_ANGLES			0x8		// ?
-#define TAF_NOTIMECHECK				0x10	// don't check for timing
-#define TAF_AUTOSTEPS_WALK			( TAF_NOTIMECHECK | TAF_AUTOSTEPS_DOG )	// walk
-#define TAF_AUTOSTEPS_RUN			( TAF_NOTIMECHECK | TAF_AUTOSTEPS_DOG | TAF_DEFAULT_ANGLES )	// run
-#define TAF_DELTADRIVEN				0x20	// animation is based on skeletor animation's delta
+//=
 
+/** Random animation play. */
+static constexpr unsigned int TAF_RANDOM				= 0x1;
+/** Prevent looping. */
+static constexpr unsigned int TAF_NOREPEAT				= 0x2;
+/** Don't repeat the animation. */
+static constexpr unsigned int TAF_DONTREPEAT			= ( TAF_RANDOM | TAF_NOREPEAT );
+/** Footsteps for dogs. */
+static constexpr unsigned int TAF_AUTOSTEPS_DOG			= 0x4;
+static constexpr unsigned int TAF_DEFAULT_ANGLES		= 0x8;
+/** Don't check for timing. */
+static constexpr unsigned int TAF_NOTIMECHECK			= 0x10;
+/** Automatically play sound when the owning entity is walking. */
+static constexpr unsigned int TAF_AUTOSTEPS_WALK		= ( TAF_NOTIMECHECK | TAF_AUTOSTEPS_DOG );
+/** Automatically play sound when the owning entity is running. */
+static constexpr unsigned int TAF_AUTOSTEPS_RUN			= ( TAF_NOTIMECHECK | TAF_AUTOSTEPS_DOG | TAF_DEFAULT_ANGLES );
+/** Animation is based on skeletor animation's delta. */
+static constexpr unsigned int TAF_DELTADRIVEN			= 0x20;
+
+//=
 // skeletor animation flags
-#define TAF_LOOP				0x20
-#define TAF_HASDELTA			0x40
-#define TAF_HASMORPH			0x80
+//=
 
+/** The animation should loop. */
+static constexpr unsigned int TAF_LOOP					= 0x20;
+/** Contains delta data. */
+static constexpr unsigned int TAF_HASDELTA				= 0x40;
+/** Contains morph data. */
+static constexpr unsigned int TAF_HASMORPH				= 0x80;
+
+//=
 // tiki anim command frames
-#define TIKI_FRAME_LAST				-5			// exec at last
-#define TIKI_FRAME_END				-4			// exec at end
-#define TIKI_FRAME_ENTRY			-3			// exec at entry
-#define TIKI_FRAME_EXIT				-2			// exec at exit
-#define TIKI_FRAME_EVERY			-1			// exec each frame
-#define TIKI_FRAME_FIRST			0			// exec at first frame
-#define TIKI_FRAME_MAXFRAMERATE		60
+//=
 
+/** Execute command last. */
+static constexpr unsigned int TIKI_FRAME_LAST			= -5;
+/** Execute command at end. */
+static constexpr unsigned int TIKI_FRAME_END			= -4;
+/** Execute command at entry. */
+static constexpr unsigned int TIKI_FRAME_ENTRY			= -3;
+/** Execute command at exit. */
+static constexpr unsigned int TIKI_FRAME_EXIT			= -2;
+/** Execute command each frame. */
+static constexpr unsigned int TIKI_FRAME_EVERY			= -1;
+/** Execute command on first frame. */
+static constexpr unsigned int TIKI_FRAME_FIRST			= 0;
+static constexpr unsigned int TIKI_FRAME_MAXFRAMERATE	= 60;
+
+//=
 // tiki surface flags
-#define TIKI_SURF_SKIN1				( 1 << 0 )
-#define TIKI_SURF_SKIN2				( 1 << 1 )
-#define TIKI_SURF_SKIN3				( TIKI_SURF_SKIN1 | TIKI_SURF_SKIN2 )
-#define TIKI_SURF_NODRAW			( 1 << 2 )
-#define TIKI_SURF_CROSSFADE			( 1 << 6 )
-#define TIKI_SURF_NODAMAGE			( 1 << 7 )
-#define TIKI_SURF_NOMIPMAPS			( 1 << 8 )
-#define TIKI_SURF_NOPICMIP			( 1 << 9 )
+//=
+
+static constexpr unsigned int TIKI_SURF_SKIN1				= ( 1 << 0 );
+static constexpr unsigned int TIKI_SURF_SKIN2				= ( 1 << 1 );
+static constexpr unsigned int TIKI_SURF_SKIN3				= ( TIKI_SURF_SKIN1 | TIKI_SURF_SKIN2 );
+static constexpr unsigned int TIKI_SURF_NODRAW				= ( 1 << 2 );
+static constexpr unsigned int TIKI_SURF_CROSSFADE			= ( 1 << 6 );
+static constexpr unsigned int TIKI_SURF_NODAMAGE			= ( 1 << 7 );
+static constexpr unsigned int TIKI_SURF_NOMIPMAPS			= ( 1 << 8 );
+static constexpr unsigned int TIKI_SURF_NOPICMIP			= ( 1 << 9 );
+
+static constexpr char TIKI_HEADER[] = "TIKI";
 
 namespace MOHPC
 {
@@ -56,7 +87,7 @@ namespace MOHPC
 			MOHPC::str alias;
 			float weight;
 			float blendtime;
-			int flags;
+			uint32_t flags;
 			MOHPC::Container<Command> client_cmds;
 			MOHPC::Container<Command> server_cmds;
 			SharedPtr<SkeletonAnimation> animData;
@@ -94,7 +125,7 @@ namespace MOHPC
 		{
 			MOHPC::str name;
 			MOHPC::Container<MOHPC::str> shaders;
-			int32_t flags;
+			uint32_t flags;
 			float damageMultiplier;
 		};
 
@@ -124,7 +155,7 @@ namespace MOHPC
 		MOHPC_EXPORTS TIKI();
 		~TIKI();
 
-		virtual bool Load() override;
+		void Load() override;
 
 		// animations
 		MOHPC_EXPORTS size_t GetNumAnimations() const;
@@ -178,10 +209,9 @@ namespace MOHPC
 		bool LoadSetupCase(const char *filename, const dloaddef_t* ld, MOHPC::Container<dloadsurface_t>& loadsurfaces);
 		bool LoadSetup(const char *filename, const dloaddef_t* ld, MOHPC::Container<dloadsurface_t>& loadsurfaces);
 
-		void FixFrameNum(TIKIAnim *ptiki, SkeletonAnimation *animData, TIKIAnim::Command *cmd, const char *alias);
-		void LoadAnim(TIKIAnim *ptiki);
+		void FixFrameNum(const TIKIAnim *ptiki, const SkeletonAnimation *animData, TIKIAnim::Command *cmd, const char *alias);
+		void LoadAnim(const TIKIAnim *ptiki);
 		TIKIAnim* InitTiki(dloaddef_t *ld);
-		void RemoveTiki(TIKIAnim *ptiki);
 
 		// animations
 		void GetAnimOrder(const dloaddef_t *ld, MOHPC::Container<size_t>& order) const;
@@ -189,4 +219,15 @@ namespace MOHPC
 		// main
 		void SetupIndividualSurface(const char *filename, TIKISurface* surf, const char *name, const dloadsurface_t *loadsurf);
 	};
+
+	namespace TIKIError
+	{
+		class Base : public std::exception {};
+
+		class BadSetup : public Base
+		{
+		public:
+			const char* what() const override;
+		};
+	}
 };

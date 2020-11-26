@@ -70,7 +70,7 @@ namespace MOHPC
 		Container<SkanChannelHdr> ary_channels;
 
 	public:
-		virtual bool Load() override;
+		void Load() override;
 
 	public:
 		MOHPC_EXPORTS SkeletonAnimation();
@@ -132,4 +132,43 @@ namespace MOHPC
 		void LoadProcessedAnim(const char *path, void *buffer, size_t len, const char *name);
 		void LoadProcessedAnimEx(const char *path, void *buffer, size_t len, const char *name);
 	};
+
+	namespace SkelAnimError
+	{
+		class Base : public std::exception {};
+
+		/**
+		 * The skeleton animation has wrong header.
+		 */
+		class BadHeader : public Base
+		{
+		public:
+			BadHeader(const uint8_t foundHeader[4]);
+
+			MOHPC_EXPORTS const uint8_t* getHeader() const;
+
+		public:
+			const char* what() const override;
+
+		private:
+			uint8_t foundHeader[4];
+		};
+
+		/**
+		 * The skeleton animation has wrong version.
+		 */
+		class WrongVersion : public Base
+		{
+		public:
+			WrongVersion(const uint32_t version);
+
+			MOHPC_EXPORTS uint32_t getVersion() const;
+
+		public:
+			const char* what() const override;
+
+		private:
+			uint32_t foundVersion;
+		};
+	}
 };

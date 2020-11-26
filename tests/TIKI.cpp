@@ -12,7 +12,7 @@ public:
 		return "TIKI";
 	}
 
-	virtual unsigned int priority()
+	virtual unsigned int priority() override
 	{ 
 		return 0;
 	}

@@ -14,7 +14,7 @@
 class CMSGUnitTest : public IUnitTest
 {
 public:
-	virtual unsigned int priority()
+	virtual unsigned int priority() override
 	{
 		return 2;
 	}
@@ -77,7 +77,7 @@ public:
 				}
 
 				for (int j = 1; j <= 64; ++j) {
-					msg1.WriteNumber(1ull << (j - 1), j);
+					msg1.WriteNumber<uint64_t>(1ull << (j - 1), j);
 				}
 
 				const MOHPC::SerializableAngle16 serializableAngle(180.f);

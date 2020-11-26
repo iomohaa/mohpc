@@ -9,6 +9,7 @@ voteInfo_t::voteInfo_t()
 	, numVotesYes(0)
 	, numVotesNo(0)
 	, numUndecidedVotes(0)
+	, modified(false)
 {
 
 }

@@ -6,6 +6,7 @@
 #include "../../Utilities/Info.h"
 #include "../../Utilities/LazyPtr.h"
 #include "../../Utilities/RequestHandler.h"
+#include "../../Utilities/MessageDispatcher.h"
 #include "../../Managers/NetworkManager.h"
 #include "../../Object.h"
 #include <functional>
@@ -67,23 +68,26 @@ namespace MOHPC
 		};
 		using ConnectSettingsPtr = SharedPtr<ConnectSettings>;
 
-		class IServer : public ITickableNetwork
+		class IServer
 		{
-		private:
-			NetAddrPtr address;
-
 		public:
-			IServer(const NetworkManagerPtr& inManager, const NetAddrPtr& adr);
+			IServer(const IRemoteIdentifierPtr& identifier);
+			virtual ~IServer() = default;
 
 			virtual void query(Callbacks::Query&& response, Callbacks::ServerTimeout&& timeoutResult = Callbacks::ServerTimeout(), size_t timeoutTime = 10000) = 0;
-			MOHPC_EXPORTS const NetAddrPtr& getAddress() const;
+			MOHPC_EXPORTS const IRemoteIdentifierPtr& getIdentifier() const;
+
+		private:
+			IRemoteIdentifierPtr identifier;
 		};
 
 		using IServerPtr = SharedPtr<IServer>;
 		using IServerLazyPtr = LazyPtr<IServer>;
 
-		class GSServer : public IServer, public std::enable_shared_from_this<GSServer>
+		class GSServer : public IServer
 		{
+			MOHPC_OBJECT_DECLARATION(GSServer);
+
 		private:
 			class Request_Query : public IGamespyServerRequest, public std::enable_shared_from_this<Request_Query>
 			{
@@ -96,39 +100,39 @@ namespace MOHPC
 				Request_Query(Callbacks::Query&& response, Callbacks::ServerTimeout&& timeoutResult);
 
 				virtual const char* generateQuery() override;
-				virtual SharedPtr<IRequestBase> process(RequestData& data) override;
+				virtual SharedPtr<IRequestBase> process(InputRequest& data) override;
 				virtual SharedPtr<IRequestBase> timedOut() override;
 
 			};
 			
 		private:
-			RequestHandler<IGamespyServerRequest, GamespyUDPRequestParam> handler;
+			IncomingMessageHandler handler;
 			IUdpSocketPtr socket;
 
 		public:
-			GSServer(const NetworkManagerPtr& inManager, const NetAddrPtr& adr);
-
-			virtual void tick(uint64_t deltaTime, uint64_t currentTime) override;
+			MOHPC_EXPORTS GSServer(const MessageDispatcherPtr& dispatcher, const ICommunicatorPtr& comm, const IRemoteIdentifierPtr& identifier);
 
 			void query(Callbacks::Query&& response, Callbacks::ServerTimeout&& timeoutResult, size_t timeoutTime) override;
 		};
+		using GSServerPtr = SharedPtr<GSServer>;
 
 		class LANServer : public IServer
 		{
+			MOHPC_OBJECT_DECLARATION(LANServer);
+
 		private:
 			ReadOnlyInfo info;
 			char* dataStr;
 
 		public:
-			LANServer(const NetworkManagerPtr& inManager, const NetAddrPtr& inAddress, char* inInfo, size_t infoSize);
+			MOHPC_EXPORTS LANServer(const IRemoteIdentifierPtr& identifier, char* inInfo, size_t infoSize);
 			~LANServer();
-
-			virtual void tick(uint64_t deltaTime, uint64_t currentTime) override;
 
 			void query(Callbacks::Query&& response, Callbacks::ServerTimeout&& timeoutResult, size_t timeoutTime) override;
 		};
+		using LANServerPtr = SharedPtr<LANServer>;
 
-		class EngineServer : public ITickableNetwork, public std::enable_shared_from_this<EngineServer>
+		class EngineServer : public std::enable_shared_from_this<EngineServer>
 		{
 			MOHPC_OBJECT_DECLARATION(EngineServer);
 
@@ -173,7 +177,7 @@ namespace MOHPC
 
 				virtual void generateOutput(IMessageStream& output) override final;
 
-				virtual IRequestPtr process(RequestData& data) override final;
+				virtual SharedPtr<IRequestBase> process(InputRequest& data) override final;
 				virtual IRequestPtr timedOut() override;
 
 			};
@@ -187,7 +191,7 @@ namespace MOHPC
 
 			public:
 				VerBeforeChallengeRequest(ConnectionParams&& inData);
-				virtual str generateRequest();
+				virtual str generateRequest() override;
 				virtual bool supportsEvent(const char* name) override;
 				virtual IRequestPtr handleResponse(const char* name, TokenParser& parser) override;
 			};
@@ -200,7 +204,7 @@ namespace MOHPC
 
 			public:
 				ChallengeRequest(const protocolType_c& proto, ConnectionParams&& inData, Callbacks::ServerTimeout&& inTimeoutCallback);
-				virtual str generateRequest();
+				virtual str generateRequest() override;
 				virtual bool supportsEvent(const char* name) override;
 				virtual IRequestPtr handleResponse(const char* name, TokenParser& parser) override;
 				virtual uint64_t overrideTimeoutTime(bool& overriden) override;
@@ -218,7 +222,7 @@ namespace MOHPC
 
 			public:
 				AuthorizeRequest(const protocolType_c& proto, ConnectionParams&& inData, const char* challenge, Callbacks::ServerTimeout&& inTimeoutCallback);
-				virtual str generateRequest();
+				virtual str generateRequest() override;
 				virtual bool supportsEvent(const char* name) override;
 				virtual IRequestPtr handleResponse(const char* name, TokenParser& parser) override;
 				virtual uint64_t overrideTimeoutTime(bool& overriden) override;
@@ -236,8 +240,8 @@ namespace MOHPC
 
 			public:
 				ConnectRequest(const protocolType_c& proto, ConnectionParams&& inData, uint32_t challenge, Callbacks::ServerTimeout&& inTimeoutCallback);
-				virtual str generateRequest();
-				virtual bool shouldCompressRequest(size_t& offset);
+				virtual str generateRequest() override;
+				virtual bool shouldCompressRequest(size_t& offset) override;
 				virtual bool supportsEvent(const char* name) override;
 				virtual IRequestPtr handleResponse(const char* name, TokenParser& parser) override;
 				virtual uint64_t overrideTimeoutTime(bool& overriden) override;
@@ -285,15 +289,11 @@ namespace MOHPC
 			};
 
 		private:
-			IUdpSocketPtr socket;
-			NetAddrPtr address;
-			RequestHandler<IRequestBase, GamespyUDPRequestParam> handler;
+			IncomingMessageHandler handler;
 
 		public:
-			MOHPC_EXPORTS EngineServer(const NetworkManagerPtr& inManager, const NetAddrPtr& inAddress, const IUdpSocketPtr& existingSocket = nullptr);
+			MOHPC_EXPORTS EngineServer(const MessageDispatcherPtr& dispatcher, const ICommunicatorPtr& comm, const IRemoteIdentifierPtr& remoteIdentifier);
 			MOHPC_EXPORTS ~EngineServer();
-
-			virtual void tick(uint64_t deltaTime, uint64_t currentTime) override;
 
 			/**
 			 * Callbacks::Connect to the specified server.
@@ -311,7 +311,7 @@ namespace MOHPC
 			 * @param	to		Server to get status from
 			 * @param	result	Callback that will be called after receiving response
 			 */
-			MOHPC_EXPORTS void getStatus(Callbacks::Response&& result, Callbacks::ServerTimeout&& timeoutResult = Callbacks::ServerTimeout(), size_t timeoutTime = 10000);
+			MOHPC_EXPORTS void getStatus(Callbacks::Response&& result, Callbacks::ServerTimeout&& timeoutResult = Callbacks::ServerTimeout(), uint64_t timeoutTime = 10000);
 
 			/**
 			 * Retrieve various engine info from the specified server.
@@ -319,14 +319,7 @@ namespace MOHPC
 			 * @param	to		Server to get status from
 			 * @param	result	Callback that will be called after receiving response
 			 */
-			MOHPC_EXPORTS void getInfo(Callbacks::Response&& result, Callbacks::ServerTimeout&& timeoutResult = Callbacks::ServerTimeout(), size_t timeoutTime = 10000);
-
-			/**
-			 * Set the timeout value in ms.
-			 *
-			 * @param	milliseconds	Number of milliseconds before any request timeout
-			 */
-			MOHPC_EXPORTS void setRequestTimeout(size_t milliseconds);
+			MOHPC_EXPORTS void getInfo(Callbacks::Response&& result, Callbacks::ServerTimeout&& timeoutResult = Callbacks::ServerTimeout(), uint64_t timeoutTime = 10000);
 
 		private:
 			const IRequestPtr& currentRequest() const;

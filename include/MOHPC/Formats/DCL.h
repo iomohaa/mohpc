@@ -52,7 +52,7 @@ namespace MOHPC
 		MOHPC_EXPORTS DCL();
 		MOHPC_EXPORTS ~DCL();
 
-		virtual bool Load() override;
+		virtual void Load() override;
 
 		/** Get the number of decals. */
 		MOHPC_EXPORTS size_t GetNumDecals() const;
@@ -73,6 +73,9 @@ namespace MOHPC
 
 			MOHPC_EXPORTS const uint8_t* getHeader() const;
 
+		public:
+			const char* what() const override;
+
 		private:
 			uint8_t foundHeader[4];
 		};
@@ -83,6 +86,9 @@ namespace MOHPC
 			WrongVersion(uint32_t inVersion);
 
 			MOHPC_EXPORTS uint32_t getVersion() const;
+
+		public:
+			const char* what() const override;
 
 		private:
 			uint32_t version;

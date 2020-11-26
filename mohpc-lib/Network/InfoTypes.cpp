@@ -899,7 +899,7 @@ bool sound_t::hasSoundPitch() const
 }
 
 protocolType_c::protocolType_c()
-	: serverType(serverType_e::none)
+	: serverType(serverType_e::normal)
 	, protocolVersion(protocolVersion_e::bad)
 {}
 

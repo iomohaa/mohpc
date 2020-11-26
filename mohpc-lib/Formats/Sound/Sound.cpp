@@ -1,12 +1,13 @@
 #include <Shared.h>
 #include <MOHPC/Formats/Sound.h>
+#include <MOHPC/Managers/AssetManager.h>
 #include <MOHPC/Managers/FileManager.h>
 //#include <lame/lame.h>
 #include <libmad/mad.h>
 #include <sstream>
 #include <fstream>
 #include <MOHPC/Misc/Endian.h>
-#include <string.h>
+#include <cstring>
 
 using namespace MOHPC;
 
@@ -130,13 +131,13 @@ enum mad_flow output(void *data,
 
 				sample = scale(*left_ch++);
 
-				unsigned short value = Endian.LittleLong(sample);
+				unsigned short value = short(Endian.LittleLong(sample));
 				*(short*)datap = value;
 				datap += sizeof(short);
 
 				sample = scale(*right_ch++);
 
-				value = Endian.LittleLong(sample);
+				value = short(Endian.LittleLong(sample));
 				*(short*)datap = value;
 				datap += sizeof(short);
 			}
@@ -151,7 +152,7 @@ enum mad_flow output(void *data,
 
 				sample = scale(*left_ch++);
 
-				unsigned short value = Endian.LittleLong(sample);
+				unsigned short value = short(Endian.LittleLong(sample));
 				*(short*)datap = value;
 				datap += sizeof(short);
 			}
@@ -224,39 +225,40 @@ Sound::~Sound()
 	}
 }
 
-bool Sound::Load()
+void Sound::Load()
 {
-	FilePtr File = GetFileManager()->OpenFile(GetFilename().c_str());
-	if (!File)
-	{
-		return false;
+	FileManager* fileMan = GetFileManager();
+	const char* fname = GetFilename().c_str();
+
+	FilePtr File = fileMan->OpenFile(fname);
+	if (!File) {
+		throw AssetError::AssetNotFound(GetFilename());
 	}
 
 	void *buf = nullptr;
 	dataLen = (size_t)File->ReadBuffer(&buf);
 	if (dataLen <= 0)
 	{
-		return false;
+		// empty sound, considered as valid
+		return;
 	}
 
-	if (!stricmp(GetFileManager()->GetFileExtension(GetFilename().c_str()), "mp3"))
+	const char* ext = fileMan->GetFileExtension(fname);
+	if (!str::icmp(ext, "mp3"))
 	{
-		return DecodeLAME(buf, dataLen);
+		DecodeLAME(buf, dataLen);
 	}
-	else if (!stricmp(GetFileManager()->GetFileExtension(GetFilename().c_str()), "wav"))
+	else if (!stricmp(ext, "wav"))
 	{
 		data = new uint8_t[dataLen];
 		memcpy(data, buf, dataLen);
 	}
-	else
-	{
-		return false;
+	else {
+		throw SoundError::BadOrUnsupportedSound(ext);
 	}
-
-	return true;
 }
 
-bool Sound::DecodeLAME(void *buf, std::streamsize len)
+void Sound::DecodeLAME(void *buf, uint64_t len)
 {
 #if 0
 	lame_t lame = lame_init();
@@ -273,7 +275,7 @@ bool Sound::DecodeLAME(void *buf, std::streamsize len)
 
 	int32_t nChannels = -1;
 	int32_t nSampleRate = -1;
-	std::streamsize mp3_len;
+	uint64_t mp3_len;
 	uint32_t wavsize = 0;
 	int32_t samples = 0;
 	uint8_t* mp3_buffer = (uint8_t*)buf;
@@ -283,8 +285,8 @@ bool Sound::DecodeLAME(void *buf, std::streamsize len)
 
 	short pcm_l_r[pcmSize * 2];
 
-	std::streamsize prevLen = len;
-	std::streamsize remainingLength = len - 4096;
+	uint64_t prevLen = len;
+	uint64_t remainingLength = len - 4096;
 	if (remainingLength < 0)
 	{
 		remainingLength = 0;
@@ -292,7 +294,7 @@ bool Sound::DecodeLAME(void *buf, std::streamsize len)
 
 	std::stringstream wavdata;
 
-	std::streamsize readLen = prevLen - remainingLength;
+	uint64_t readLen = prevLen - remainingLength;
 	while (readLen > 0)
 	{
 		mp3_len = readLen;
@@ -418,8 +420,6 @@ bool Sound::DecodeLAME(void *buf, std::streamsize len)
 		}
 	}
 #endif
-
-	return true;
 }
 
 uint8_t * Sound::GetData() const
@@ -430,4 +430,19 @@ uint8_t * Sound::GetData() const
 size_t Sound::GetDataLength() const
 {
 	return dataLen;
+}
+
+SoundError::BadOrUnsupportedSound::BadOrUnsupportedSound(const str& inExtension)
+	: extension(inExtension)
+{
+}
+
+const char* SoundError::BadOrUnsupportedSound::getExtension() const
+{
+	return extension.c_str();
+}
+
+const char* SoundError::BadOrUnsupportedSound::what() const
+{
+	return "Bad or unsupported sound format";
 }

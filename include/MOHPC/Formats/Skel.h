@@ -141,7 +141,7 @@ namespace MOHPC
 		Container<str> MorphTargets;
 	public:
 		MOHPC_EXPORTS Skeleton();
-		virtual bool Load() override;
+		void Load() override;
 
 		/** Return the model name. */
 		MOHPC_EXPORTS const char* GetName() const;
@@ -204,6 +204,34 @@ namespace MOHPC
 		void LoadSKBSurfaces(const File_SkelHeader* pHeader, size_t length);
 		void LoadSKDSurfaces(const File_SkelHeader* pHeader, size_t length);
 	};
+
+	namespace SkelError
+	{
+		class Base : public std::exception {};
+
+		class BadExtension : public Base
+		{
+		public:
+			BadExtension(const str& extension);
+
+			MOHPC_EXPORTS const char* getExtension() const;
+
+		public:
+			const char* what() const override;
+
+		private:
+			str extension;
+		};
+
+		class NoExtension : public Base
+		{
+		public:
+			NoExtension() = default;
+
+		public:
+			const char* what() const override;
+		};
+	}
 };
 
 #include <MOHPC/Formats/Skel/SkeletonNameLists.h>

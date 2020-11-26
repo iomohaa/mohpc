@@ -122,9 +122,7 @@ namespace MOHPC
 	template< typename k, typename v >
 	bool con_arrayset< k, v >::remove(const k& key)
 	{
-		int i;
-
-		for (i = 1; i <= this->tableLength; i++)
+		for (uintptr_t i = 1; i <= this->tableLength; i++)
 		{
 			if (reverseTable[i] &&
 				reverseTable[i]->key == key)

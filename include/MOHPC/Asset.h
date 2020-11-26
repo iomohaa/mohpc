@@ -34,9 +34,9 @@ namespace MOHPC
 		void HashFinalize();
 
 	protected:
-		void HashUpdate(const uint8_t* Data, std::streamsize Length);
+		void HashUpdate(const uint8_t* Data, uint64_t Length);
 		void HashCopy(const Asset* A);
 
-		virtual bool Load();
+		virtual void Load() = 0;
 	};
 }

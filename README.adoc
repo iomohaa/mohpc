@@ -11,9 +11,9 @@ Author Ludovic
 The library is widely used in link:https://moh-rises.com/[mohue] for importing and converting assets, and also for network compatibility between MOHAA PC and mohue. If you feel like this project is helpful, you can make a donation to the maintainer:
 
 [horizontal]
-Bitcoin (BTC):: 3Em1F2QzMGQttohXopn8eSni4Y3DXFzDxE
-Etherum (ETH):: 0x4a40bb8e021f8E0eaa1fB6e41cadf789034BdD81
-Monero (XMR):: 87M4Jdiw41iVCVCeQr7QhYbJWGoLrvjPZYxFrSc3CnssVrDi3iRvmm4Pk2dPhE7qvb8cfBYHFPBnihhLCVcRmEiU77qJon4
+Bitcoin (XBT):: bc1qcedvjyq6msz8s4zr9srjuntjct5ph2y78utt2p
+Etherum (ETH):: 0x793e92017AD73094F2F917112595eF7197C8aa10
+Monero (XMR):: 89SmmLbgoFogG65dBwJYncdmt6jm8KToPBoM16rf2VLkByAQrsJi1sh7XGAfAEU7BySP2nvn48Vxq7dcN7wDHrKxAJKRcUD
 
 == Introduction
 

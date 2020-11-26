@@ -71,9 +71,9 @@ namespace MOHPC
 			uint32_t numVotesYes;
 			uint32_t numVotesNo;
 			uint32_t numUndecidedVotes;
-			bool modified : 1;
 			str voteOptionsStr;
 			str voteString;
+			bool modified : 1;
 		};
 
 		/**

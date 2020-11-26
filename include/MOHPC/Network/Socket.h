@@ -35,7 +35,10 @@ namespace MOHPC
 			 *
 			 * @return	True if there is any pending data.
 			 */
-			virtual bool dataAvailable() = 0;
+			virtual size_t dataCount() = 0;
+
+			/** Return the underlying socket. */
+			virtual void* getRaw() = 0;
 		};
 
 		using ISocketPtr = SharedPtr<ISocket>;
@@ -94,6 +97,11 @@ namespace MOHPC
 			 * @return	Size of the data that was successfully received
 			 */
 			virtual size_t receive(void* buf, size_t maxsize) = 0;
+
+			/**
+			 * Return the address of the tcp socket.
+			 */
+			virtual NetAddrPtr getAddress() = 0;
 		};
 
 		using ITcpSocketPtr = SharedPtr<ITcpSocket>;
@@ -144,8 +152,8 @@ namespace MOHPC
 			 * @param	address			IP/hostname/domain to connect to
 			 * @return	The UDP socket on success
 			 */
-			virtual ITcpSocketPtr createTcp(const NetAddr4& address) = 0;
-			virtual ITcpSocketPtr createTcp6(const NetAddr6& address) = 0;
+			virtual ITcpSocketPtr createTcp(const NetAddr4Ptr& address, const NetAddr4* bindAddress = nullptr) = 0;
+			virtual ITcpSocketPtr createTcp6(const NetAddr6Ptr& address, const NetAddr6* bindAddress = nullptr) = 0;
 
 			/**
 			 * Create a TCP socket that is ready to accept incoming connections.
@@ -160,7 +168,17 @@ namespace MOHPC
 			 *
 			 * @param	domain	Domain name
 			 */
-			virtual NetAddr4 getHost(const char* domain) = 0;
+			virtual NetAddr4Ptr getHost(const char* domain) = 0;
+
+			/**
+			 * Wait for one or multiple sockets.
+			 *
+			 * @param sockets Socket to wait.
+			 * @param signaledSockets Sockets that was signaled. Must be the same size as sockets.
+			 * @param num Number of sockets to wait.
+			 * @param return Number of signaled sockets.
+			 */
+			 virtual size_t wait(const ISocketPtr sockets[], ISocketPtr signaledSockets[], size_t num, size_t timeout) = 0;
 
 			/** Get the factory used to create sockets. */
 			MOHPC_EXPORTS static ISocketFactory* get();

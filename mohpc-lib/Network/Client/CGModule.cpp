@@ -157,6 +157,7 @@ void CGameModuleBase::init(uintptr_t serverMessageSequence, uintptr_t serverComm
 {
 	processedSnapshotNum = serverMessageSequence;
 	latestCommandSequence = serverCommandSequence;
+	latestSnapshotNum = processedSnapshotNum;
 }
 
 const CGameModuleBase::HandlerListCGame& CGameModuleBase::handlers() const
@@ -271,10 +272,15 @@ SnapshotInfo* CGameModuleBase::readNextSnapshot()
 
 void CGameModuleBase::processSnapshots()
 {
-	uintptr_t n = getImports().getCurrentSnapshotNumber();
+	const uintptr_t n = getImports().getCurrentSnapshotNumber();
 	if (n != latestSnapshotNum)
 	{
-		assert(n < latestSnapshotNum);
+		if(n < latestSnapshotNum)
+		{
+			// This should never happen
+			throw CGError::SnapNumWentBackward(n, latestSnapshotNum);
+		}
+
 		latestSnapshotNum = n;
 	}
 
@@ -603,7 +609,7 @@ void CGameModuleBase::interpolatePlayerState(bool grabAngles)
 	if (!next || next->serverTime <= prev->serverTime)
 	{
 		if(!next) {
-			MOHPC_LOG(VeryVerbose, "CGameModuleBase::interpolatePlayerState: nextSnap == NULL");
+			MOHPC_LOG(Trace, "CGameModuleBase::interpolatePlayerState: nextSnap == NULL");
 		}
 		return;
 	}
@@ -1039,12 +1045,15 @@ cgsInfo::cgsInfo()
 	, matchEndTme(0)
 	, levelStartTime(0)
 	, serverLagTime(0)
-	, gameType(gameType_e::FreeForAll)
 	, dmFlags(0)
 	, teamFlags(0)
 	, maxClients(0)
+	, mapChecksum(0)
 	, fragLimit(0)
 	, timeLimit(0)
+	, serverType(serverType_e::normal)
+	, gameType(gameType_e::FreeForAll)
+	, allowVote(false)
 {
 }
 
@@ -1096,6 +1105,21 @@ int32_t cgsInfo::getFragLimit() const
 int32_t cgsInfo::getTimeLimit() const
 {
 	return timeLimit;
+}
+
+serverType_e cgsInfo::getServerType() const
+{
+	return serverType;
+}
+
+bool cgsInfo::isVotingAllowed() const
+{
+	return allowVote;
+}
+
+uint32_t cgsInfo::getMapChecksum() const
+{
+	return mapChecksum;
 }
 
 const char* cgsInfo::getMapName() const
@@ -1289,23 +1313,46 @@ void CGameModuleBase::parseServerInfo(const char* cs)
 	ReadOnlyInfo info(cs);
 
 	// Parse match settings
+	size_t versionLen;
+	const char* version = info.ValueForKey("version", versionLen);
+	cgs.serverType = parseServerType(version, versionLen);
 	cgs.gameType = gameType_e(info.IntValueForKey("g_gametype"));
 	cgs.dmFlags = info.IntValueForKey("dmflags");
 	cgs.teamFlags = info.IntValueForKey("teamflags");
 	cgs.fragLimit = info.IntValueForKey("fraglimit");
 	cgs.timeLimit = info.IntValueForKey("timelimit");
 	cgs.maxClients = info.IntValueForKey("sv_maxclients");
+	cgs.allowVote = info.BoolValueForKey("g_allowVote");
+	cgs.mapChecksum = info.IntValueForKey("sv_mapChecksum");
 	// Parse map
-	cgs.mapName = info.ValueForKey("mapname");
-	cgs.mapFilename = "maps/" + cgs.mapName + ".bsp";
+	size_t mapLen;
+	const char* mapName = info.ValueForKey("mapname", mapLen);
+	if(*mapName)
+	{
+		const char* lastMapChar = str::findcharn(mapName, '$', mapLen);
+		if(lastMapChar)
+		{
+			// don't put anything from the dollar
+			cgs.mapName = str(mapName, 0, lastMapChar - mapName);
+		}
+		else {
+			cgs.mapName = str(mapName, mapLen);
+		}
+
+		cgs.mapFilename = "maps/" + cgs.mapName + ".bsp";
+	}
 
 	// Parse scoreboard info
 	cgs.alliedText[0] = info.ValueForKey("g_obj_alliedtext1");
 	cgs.alliedText[1] = info.ValueForKey("g_obj_alliedtext2");
 	cgs.alliedText[2] = info.ValueForKey("g_obj_alliedtext3");
+	cgs.alliedText[3] = info.ValueForKey("g_obj_alliedtext4");
+	cgs.alliedText[4] = info.ValueForKey("g_obj_alliedtext5");
 	cgs.axisText[0] = info.ValueForKey("g_obj_axistext1");
 	cgs.axisText[1] = info.ValueForKey("g_obj_axistext2");
 	cgs.axisText[2] = info.ValueForKey("g_obj_axistext3");
+	cgs.axisText[3] = info.ValueForKey("g_obj_axistext4");
+	cgs.axisText[4] = info.ValueForKey("g_obj_axistext5");
 	cgs.scoreboardPic = info.ValueForKey("g_scoreboardpic");
 	cgs.scoreboardPicOver = info.ValueForKey("g_scoreboardpicover");
 }
@@ -1321,7 +1368,7 @@ void CGameModuleBase::conditionalReflectClient(const clientInfo_t& client)
 		const char* currentName = userInfo->getName();
 		if (str::icmp(client.name, currentName))
 		{
-			MOHPC_LOG(Log, "Name changed from \"%s\" to \"%s\"", currentName, client.name.c_str());
+			MOHPC_LOG(Info, "Name changed from \"%s\" to \"%s\"", currentName, client.name.c_str());
 			// the name has changed (can be because it was sanitized)
 			// as a consequence, the change must be reflected on the client
 			userInfo->setName(client.name.c_str());
@@ -1810,6 +1857,8 @@ void CGameModule6::handleCGMessage(MSG& msg, uint8_t msgId)
 	case cgmessage_e::playsound_entity:
 		commonMessage.playSoundEntity();
 		break;
+	default:
+		break;
 	}
 }
 
@@ -1988,6 +2037,11 @@ void CGameModule6::parseFogInfo(const char* s, environment_t& env)
 	);
 	// Parse bool
 	env.farplaneCull = tmp;
+}
+
+serverType_e CGameModule6::parseServerType(const char* version, size_t len)
+{
+	return serverType_e::normal;
 }
 
 CGameModule15::CGameModule15(const ClientImports& inImports)
@@ -2309,6 +2363,8 @@ void CGameModule15::handleCGMessage(MSG& msg, uint8_t msgId)
 		const uint8_t val2 = msg.ReadByte();
 		// FIXME: not sure what it does
 	}
+	default:
+		break;
 
 	}
 }
@@ -2504,6 +2560,21 @@ void CGameModule15::parseFogInfo(const char* s, environment_t& env)
 	// Parse bool
 	env.farplaneCull = tmp;
 	env.renderTerrain = tmp2;
+}
+
+serverType_e MOHPC::Network::CGameModule15::parseServerType(const char* version, size_t len)
+{
+	if(str::ifindn(version, "spearhead", len)) {
+		return serverType_e::spearhead;
+	}
+	else if(str::ifindn(version, "breakthrough", len)) {
+		return serverType_e::breakthrough;
+	}
+	else
+	{
+		MOHPC_LOG(Warn, "Can't find the server type. Defaulting to Spearhead server type. (Server game version = \"%.*s\")", len, version);
+		return serverType_e::spearhead;
+	}
 }
 
 CommonMessageHandler::CommonMessageHandler(MSG& inMsg, const CGameModuleBase::HandlerListCGame& inHandlerList)
@@ -3078,4 +3149,20 @@ uint64_t CGError::NextSnapTimeWentBackward::getClientTime() const
 uint64_t CGError::NextSnapTimeWentBackward::getSnapTime() const
 {
 	return time;
+}
+
+CGError::SnapNumWentBackward::SnapNumWentBackward(uintptr_t inNewNum, uintptr_t inLatestNum)
+	: newNum(inNewNum)
+	, latestNum(inLatestNum)
+{
+}
+
+uintptr_t CGError::SnapNumWentBackward::getNewNum() const
+{
+	return newNum;
+}
+
+uintptr_t CGError::SnapNumWentBackward::getLatestNum() const
+{
+	return latestNum;
 }

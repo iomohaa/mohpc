@@ -100,28 +100,21 @@ str::str(const str& text)
 str::str(const str& text, size_t start, size_t end)
 	: m_data(NULL)
 {
-	size_t i;
-	size_t len;
-
-	if (end > text.length())
-	{
+	if (end > text.length()) {
 		end = text.length();
 	}
 
-	if (start > text.length())
-	{
+	if (start > text.length()) {
 		start = text.length();
 	}
 
-	len = end - start;
-	if (len < 0)
-	{
-		len = 0;
-	}
+	const size_t len = end > start
+		? (end - start)
+		: 0;
 
 	EnsureAlloced(len + 1);
 
-	for (i = 0; i < len; i++)
+	for (size_t i = 0; i < len; i++)
 	{
 		m_data->data[i] = text[start + i];
 	}
@@ -187,7 +180,7 @@ str::str(const long num)
 	char text[32];
 	size_t len;
 
-	sprintf(text, "%l", num);
+	sprintf(text, "%ld", num);
 	len = strlen(text);
 	EnsureAlloced(len + 1);
 	strcpy(m_data->data, text);
@@ -200,7 +193,7 @@ str::str(const unsigned long num)
 	char text[32];
 	size_t len;
 
-	sprintf(text, "%ul", num);
+	sprintf(text, "%lu", num);
 	len = strlen(text);
 	EnsureAlloced(len + 1);
 	strcpy(m_data->data, text);
@@ -226,7 +219,7 @@ str::str(const unsigned long long num)
 	char text[32];
 	size_t len;
 
-	sprintf(text, "%zu", num);
+	sprintf(text, "%llu", num);
 	len = strlen(text);
 	EnsureAlloced(len + 1);
 	strcpy(m_data->data, text);
@@ -551,11 +544,7 @@ int str::icmpn
 	return str::icmpn(m_data->data, text.m_data->data, n);
 }
 
-int str::icmp
-(
-	const char* text
-) const
-
+int str::icmp(const char* text) const
 {
 	assert(m_data);
 	assert(text);
@@ -563,11 +552,7 @@ int str::icmp
 	return str::icmp(m_data->data, text);
 }
 
-int str::icmp
-(
-	const str& text
-) const
-
+int str::icmp(const str& text) const
 {
 	assert(c_str());
 	assert(text.c_str());
@@ -575,12 +560,7 @@ int str::icmp
 	return str::icmp(c_str(), text.c_str());
 }
 
-int str::cmpn
-(
-	const char* text,
-	size_t n
-) const
-
+int str::cmpn(const char* text, size_t n) const
 {
 	assert(c_str());
 	assert(text);
@@ -588,12 +568,7 @@ int str::cmpn
 	return str::cmpn(c_str(), text, n);
 }
 
-int str::cmpn
-(
-	const str& text,
-	size_t n
-) const
-
+int str::cmpn(const str& text, size_t n) const
 {
 	assert(c_str());
 	assert(text.c_str());
@@ -601,11 +576,7 @@ int str::cmpn
 	return str::cmpn(c_str(), text.c_str(), n);
 }
 
-void str::tolower
-(
-	void
-)
-
+void str::tolower()
 {
 	assert(m_data);
 
@@ -614,11 +585,7 @@ void str::tolower
 	str::tolower(m_data->data);
 }
 
-void str::toupper
-(
-	void
-)
-
+void str::toupper()
 {
 	assert(m_data);
 
@@ -646,18 +613,14 @@ str::operator const char*
 	return c_str();
 }
 
-char* str::tolower
-(
-	char* s1
-)
-
+char* str::tolower(char* s1)
 {
 	char* s;
 
 	s = s1;
 	while (*s)
 	{
-		*s = ::tolower(*s);
+		*s = tolower(*s);
 		s++;
 	}
 
@@ -675,20 +638,24 @@ char* str::toupper
 	s = s1;
 	while (*s)
 	{
-		*s = ::toupper(*s);
+		*s = toupper(*s);
 		s++;
 	}
 
 	return s1;
 }
 
-int str::icmpn
-(
-	const char* s1,
-	const char* s2,
-	size_t n
-)
+char str::tolower(char c)
+{
+	return ::tolower(c);
+}
 
+char str::toupper(char c)
+{
+	return ::toupper(c);
+}
+
+int str::icmpn(const char* s1, const char* s2, size_t n)
 {
 	int c1;
 	int c2;
@@ -733,12 +700,7 @@ int str::icmpn
 	return 0;
 }
 
-int str::icmp
-(
-	const char* s1,
-	const char* s2
-)
-
+int str::icmp(const char* s1, const char* s2)
 {
 	int c1;
 	int c2;
@@ -777,13 +739,7 @@ int str::icmp
 	return 0;
 }
 
-int str::cmpn
-(
-	const char* s1,
-	const char* s2,
-	size_t n
-)
-
+int str::cmpn(const char* s1, const char* s2, size_t n)
 {
 	int c1;
 	int c2;
@@ -815,12 +771,7 @@ int str::cmpn
 	return 0;
 }
 
-int str::cmp
-(
-	const char* s1,
-	const char* s2
-)
-
+int str::cmp(const char* s1, const char* s2)
 {
 	int c1;
 	int c2;
@@ -843,6 +794,107 @@ int str::cmp
 	} while (c1);
 
 	// strings are equal
+	return 0;
+}
+
+size_t str::len(const char* s)
+{
+	return strlen(s);
+}
+
+const char* str::ifindchar(const char* s, char c)
+{
+	do {
+		if (tolower(*s) == tolower(c)) {
+			return s;
+		}
+	} while (*s++);
+
+	return 0;
+}
+
+const char* str::ifindcharn(const char* s, char c, size_t n)
+{
+	for (size_t i = 0; i < n && *s; ++i, ++s)
+	{
+		if (tolower(*s) == tolower(c)) {
+			return s;
+		}
+	}
+	return 0;
+}
+
+const char* str::ifind(const char* s1, const char* s2)
+{
+	const size_t len = str::len(s2);
+	for (const char* p = s1; (p = ifindchar(p, *s2)); ++p)
+	{
+		if (icmpn(p, s2, len) == 0) {
+			return p;
+		}
+	}
+
+	return 0;
+}
+
+const char* str::ifindn(const char* s1, const char* s2, size_t n)
+{
+	const size_t len = str::len(s2);
+	for (const char* p = s1; (p = ifindchar(p, *s2)) && size_t(p - s1) < n; ++p)
+	{
+		if (icmpn(p, s2, len) == 0) {
+			return p;
+		}
+	}
+
+	return 0;
+}
+
+const char* str::findchar(const char* s, char c)
+{
+	do {
+		if (*s == c) {
+			return s;
+		}
+	} while (*s++);
+
+	return 0;
+}
+
+const char* str::findcharn(const char* s, char c, size_t n)
+{
+	for(size_t i = 0; i < n && *s; ++i, ++s)
+	{
+		if(*s == c) {
+			return s;
+		}
+	}
+	return 0;
+}
+
+const char* str::find(const char* s1, const char* s2)
+{
+	const size_t len = str::len(s2);
+	for (const char* p = s1; (p = findchar(p, *s2)); ++p)
+	{
+		if (cmpn(p, s2, len) == 0) {
+			return p;
+		}
+	}
+
+	return 0;
+}
+
+const char* str::findn(const char* s1, const char* s2, size_t n)
+{
+	const size_t len = str::len(s2);
+	for (const char* p = s1; (p = findchar(p, *s2)) && size_t(p - s1) < n; ++p)
+	{
+		if (cmpn(p, s2, len) == 0) {
+			return p;
+		}
+	}
+
 	return 0;
 }
 

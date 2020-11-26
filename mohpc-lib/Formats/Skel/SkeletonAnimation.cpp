@@ -36,13 +36,13 @@ SkeletonAnimation::SkeletonAnimation()
 {
 }
 
-bool SkeletonAnimation::Load()
+void SkeletonAnimation::Load()
 {
 	const char *Fname = GetFilename().c_str();
 	if (*Fname == '/' || *Fname == '\\') Fname++;
 	const str nwPath = str("/newanim/") + Fname;
 	void* buf;
-	std::streamsize length = 0;
+	uint64_t length = 0;
 
 	FilePtr file = GetFileManager()->OpenFile(nwPath.c_str());
 	if (file)
@@ -60,7 +60,7 @@ bool SkeletonAnimation::Load()
 		if (!file)
 		{
 			// not a valid file
-			return false;
+			throw AssetError::AssetNotFound(Fname);
 		}
 
 		const File_AnimDataHeader* pHeader;
@@ -69,10 +69,14 @@ bool SkeletonAnimation::Load()
 		{
 			pHeader = (const File_AnimDataHeader*)buf;
 
+			// check for header and version
+			if (memcmp(pHeader->ident, TIKI_SKC_HEADER_IDENT, sizeof(pHeader->ident))) {
+				throw SkelAnimError::BadHeader(pHeader->ident);
+			}
+
 			const uint32_t version = Endian.LittleInteger(pHeader->version);
-			if (memcmp(pHeader->ident, TIKI_SKC_HEADER_IDENT, sizeof(pHeader->ident)) || (version != TIKI_SKC_HEADER_OLD_VERSION && version != TIKI_SKC_HEADER_VERSION))
-			{
-				return false;
+			if(version != TIKI_SKC_HEADER_OLD_VERSION && version != TIKI_SKC_HEADER_VERSION) {
+				throw SkelAnimError::WrongVersion(version);
 			}
 
 			if (version == TIKI_SKC_HEADER_OLD_VERSION)
@@ -100,8 +104,6 @@ bool SkeletonAnimation::Load()
 	}
 
 	HashUpdate((uint8_t*)buf, length);
-
-	return true;
 }
 
 bool Compress( SkeletonAnimation::AnimFrame *current, SkeletonAnimation::AnimFrame *last, size_t channelIndex, const SkeletonChannelList *channelList, const SkeletonChannelNameTable *channelNames )
@@ -800,4 +802,34 @@ bool SkeletonAnimation::IsDynamic() const
 	}
 
 	return false;
+}
+
+SkelAnimError::BadHeader::BadHeader(const uint8_t inHeader[4])
+	: foundHeader{ inHeader[0], inHeader[1], inHeader[2], inHeader[3] }
+{
+}
+
+const uint8_t* SkelAnimError::BadHeader::getHeader() const
+{
+	return foundHeader;
+}
+
+const char* SkelAnimError::BadHeader::what() const
+{
+	return "Bad skeleton animation header";
+}
+
+SkelAnimError::WrongVersion::WrongVersion(const uint32_t inVersion)
+	: foundVersion(inVersion)
+{
+}
+
+uint32_t SkelAnimError::WrongVersion::getVersion() const
+{
+	return foundVersion;
+}
+
+const char* SkelAnimError::WrongVersion::what() const
+{
+	return "Wrong skeleton animation version";
 }

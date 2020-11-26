@@ -45,20 +45,19 @@ namespace MOHPC
 		str token;
 
 		bool		releaseBuffer;
-		bool		hasError;
 
 		bool		AtComment(void);
 		void			CheckOverflow(void);
 
 	public:
 		const char	*buffer;
-		std::streamsize	length;
+		uint64_t	length;
 
 		MOHPC_EXPORTS ~Script();
 		MOHPC_EXPORTS Script(const char* filename);
 		MOHPC_EXPORTS Script();
 
-		MOHPC_EXPORTS virtual bool Load() override;
+		MOHPC_EXPORTS void Load() override;
 		MOHPC_EXPORTS void Close(void);
 		MOHPC_EXPORTS const char* Filename(void);
 		MOHPC_EXPORTS int GetLineNumber(void);
@@ -89,7 +88,7 @@ namespace MOHPC
 		MOHPC_EXPORTS Vector GetVector(bool crossline);
 		MOHPC_EXPORTS int LinesInFile(void);
 		MOHPC_EXPORTS void Parse(const char* data, uintmax_t length, const char* name = "");
-		MOHPC_EXPORTS bool LoadFile(const char* name);
+		MOHPC_EXPORTS void LoadFile(const char* name);
 		MOHPC_EXPORTS void LoadFile(const char* name, int length, const char* buf);
 		MOHPC_EXPORTS const char* Token(void);
 		MOHPC_EXPORTS void AddMacroDefinition(bool crossline);

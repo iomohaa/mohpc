@@ -2,49 +2,53 @@
 #include <MOHPC/Managers/SoundManager.h>
 #include <MOHPC/Managers/FileManager.h>
 #include <MOHPC/Script.h>
-#include <string.h>
+#include <MOHPC/Log.h>
+
+#include <cstring>
+
+#define MOHPC_LOG_NAMESPACE "soundman"
 
 using namespace MOHPC;
 
 static SoundChannel_e S_ChannelNameToNum(const char *pszName)
 {
-	if (!stricmp(pszName, "auto"))
+	if (!str::icmp(pszName, "auto"))
 	{
 		return CHAN_AUTO;
 	}
-	else if (!stricmp(pszName, "local"))
+	else if (!str::icmp(pszName, "local"))
 	{
 		return CHAN_LOCAL;
 	}
-	else if (!stricmp(pszName, "weapon"))
+	else if (!str::icmp(pszName, "weapon"))
 	{
 		return CHAN_WEAPON;
 	}
-	else if (!stricmp(pszName, "voice"))
+	else if (!str::icmp(pszName, "voice"))
 	{
 		return CHAN_VOICE;
 	}
-	else if (!stricmp(pszName, "item"))
+	else if (!str::icmp(pszName, "item"))
 	{
 		return CHAN_ITEM;
 	}
-	else if (!stricmp(pszName, "body"))
+	else if (!str::icmp(pszName, "body"))
 	{
 		return CHAN_BODY;
 	}
-	else if (!stricmp(pszName, "dialog"))
+	else if (!str::icmp(pszName, "dialog"))
 	{
 		return CHAN_DIALOG;
 	}
-	else if (!stricmp(pszName, "dialog_secondary"))
+	else if (!str::icmp(pszName, "dialog_secondary"))
 	{
 		return CHAN_DIALOG_SECONDARY;
 	}
-	else if (!stricmp(pszName, "weaponidle"))
+	else if (!str::icmp(pszName, "weaponidle"))
 	{
 		return CHAN_WEAPONIDLE;
 	}
-	else if (!stricmp(pszName, "menu"))
+	else if (!str::icmp(pszName, "menu"))
 	{
 		return CHAN_MENU;
 	}
@@ -67,12 +71,12 @@ size_t SoundHash::operator()(const str& Keyval) const
 
 bool SoundEqual::operator()(const str& Left, const str& Right) const
 {
-	return Left.length() == Right.length() ? !stricmp(Left.c_str(), Right.c_str()) : false;
+	return Left.length() == Right.length() ? !str::icmp(Left.c_str(), Right.c_str()) : false;
 }
 
 bool SoundLess::operator()(const SoundNode* Left, const SoundNode* Right) const
 {
-	return stricmp(Left->GetAliasName(), Right->GetAliasName()) < 0;
+	return str::icmp(Left->GetAliasName(), Right->GetAliasName()) < 0;
 }
 
 SoundResults::SoundResults()
@@ -212,9 +216,13 @@ void SoundManager::Init()
 	size_t totalSize = 0;
 	SoundResults results;
 
+	MOHPC_LOG(Info, "Loading sound aliases.");
+
 	Container<const char*> categoryList;
 	GetFileManager()->GetCategoryList(categoryList);
 
+	numNodes = 0;
+	
 	const size_t numCategory = categoryList.size();
 	for (size_t i = 0; i < numCategory; i++)
 	{
@@ -247,6 +255,8 @@ void SoundManager::Init()
 
 		SortList();
 	}
+
+	MOHPC_LOG(Info, "%zu sound alias(es).", numNodes);
 }
 
 
@@ -314,11 +324,15 @@ SoundResults SoundManager::ParseUbersound(const char* filename, const char* cate
 	FilePtr File = GetFileManager()->OpenFile(filename, categoryName);
 	if (!File)
 	{
+		if (firstSoundNode) {
+			MOHPC_LOG(Warn, "ubersound '%s' not found for %s.", filename, categoryName);
+		}
+
 		return SoundResults();
 	}
 
 	const char* buf = nullptr;
-	std::streamsize streamSize = File->ReadBuffer((void**)&buf);
+	uint64_t streamSize = File->ReadBuffer((void**)&buf);
 
 	script.LoadFile(filename, (int)streamSize, buf);
 
@@ -326,19 +340,20 @@ SoundResults SoundManager::ParseUbersound(const char* filename, const char* cate
 
 	if (firstSoundNode)
 	{
+		MOHPC_LOG(Warn, "parsing ubersound '%s' from %s", filename, categoryName);
+
 		SoundNode* soundNode = firstSoundNode;
 		SoundNode* prevSoundNode = ppLastSoundNode ? *ppLastSoundNode : nullptr;
 
 		while (script.TokenAvailable(true))
 		{
 			const char* token = script.GetToken(true);
-			if (!stricmp(token, "aliascache") || !stricmp(token, "alias"))
+			if (!str::icmp(token, "aliascache") || !str::icmp(token, "alias"))
 			{
 				const size_t soundSize = ParseAlias(script, soundNode) + sizeof(SoundNode);
 				if (soundSize)
 				{
-					if (prevSoundNode)
-					{
+					if (prevSoundNode) {
 						prevSoundNode->next = soundNode;
 					}
 
@@ -353,6 +368,7 @@ SoundResults SoundManager::ParseUbersound(const char* filename, const char* cate
 			}
 			else
 			{
+				MOHPC_LOG(Warn, "unsupported command '%s' in ubersound '%s' from %s.", token, filename, categoryName);
 				script.SkipToEOL();
 			}
 		}
@@ -367,7 +383,7 @@ SoundResults SoundManager::ParseUbersound(const char* filename, const char* cate
 		while (script.TokenAvailable(true))
 		{
 			const char* token = script.GetToken(true);
-			if (!stricmp(token, "aliascache") || !stricmp(token, "alias"))
+			if (!str::icmp(token, "aliascache") || !str::icmp(token, "alias"))
 			{
 				const size_t soundSize = ParseAlias(script, nullptr) + sizeof(SoundNode);
 				if(soundSize)
@@ -376,8 +392,7 @@ SoundResults SoundManager::ParseUbersound(const char* filename, const char* cate
 					results.totalNodesSize += soundSize;
 				}
 			}
-			else
-			{
+			else {
 				script.SkipToEOL();
 			}
 		}
@@ -411,7 +426,7 @@ size_t SoundManager::ParseAlias(Script& script, SoundNode* soundNode)
 	}
 
 	token = script.GetToken(false);
-	if (stricmp(token, "soundparms"))
+	if (str::icmp(token, "soundparms"))
 	{
 		script.SkipToEOL();
 		return 0;
@@ -430,7 +445,7 @@ size_t SoundManager::ParseAlias(Script& script, SoundNode* soundNode)
 	bool bStreamed = false;
 
 	token = script.GetToken(false);
-	if (!stricmp(token, "streamed"))
+	if (!str::icmp(token, "streamed"))
 	{
 		bStreamed = true;
 	}
@@ -450,7 +465,7 @@ size_t SoundManager::ParseAlias(Script& script, SoundNode* soundNode)
 	size_t subtitleSize = 0;
 
 	token = script.GetToken(false);
-	if (!stricmp(token, "subtitle"))
+	if (!str::icmp(token, "subtitle"))
 	{
 		token = script.GetToken(false);
 		subtitleSize = strlen(token) + 1;

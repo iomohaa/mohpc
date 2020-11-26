@@ -149,6 +149,11 @@ str Info::ValueForKey(const char* key) const
 	return str();
 }
 
+bool MOHPC::Info::BoolValueForKey(const char* key) const
+{
+	return atoi(ValueForKey("key")) ? true : false;
+}
+
 uint32_t Info::IntValueForKey(const char* key) const
 {
 	return atoi(ValueForKey("key"));
@@ -250,7 +255,12 @@ const char* ReadOnlyInfo::ValueForKey(const char* key, size_t& outLen) const
 		pkey = endValue;
 	}
 
-	return str();
+	return "";
+}
+
+bool ReadOnlyInfo::BoolValueForKey(const char* key) const
+{
+	return atoi(ValueForKey("key")) ? true : false;
 }
 
 uint32_t ReadOnlyInfo::IntValueForKey(const char* key) const
@@ -277,7 +287,6 @@ InfoIterator ReadOnlyInfo::createConstIterator() const
 {
 	return InfoIterator(keyBuffer, size);
 }
-
 
 InfoIterator::InfoIterator(const char* text, size_t size)
 	: keyBuffer(text)

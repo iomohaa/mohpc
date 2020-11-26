@@ -219,9 +219,14 @@ namespace MOHPC
 		AGEN_SCOORD,
 		AGEN_TCOORD,
 		AGEN_DIST_FADE,
+		AGEN_TIKI_DIST_FADE,
 		AGEN_ONE_MINUS_DIST_FADE,
+		AGEN_ONE_MINUS_TIKI_DIST_FADE,
 		AGEN_DOT_VIEW,
-		AGEN_ONE_MINUS_DOT_VIEW
+		AGEN_ONE_MINUS_DOT_VIEW,
+		AGEN_FROM_ENTITY,
+		AGEN_HEIGHT_FADE,
+		AGEN_FROM_CLIENT
 	};
 
 	enum ColorGen
@@ -274,7 +279,7 @@ namespace MOHPC
 		SPRITE_PARALLEL_UPRIGHT
 	};
 
-	enum TextureMod
+	enum textureMod_e
 	{
 		TMOD_NONE,
 		TMOD_TRANSFORM,
@@ -283,7 +288,11 @@ namespace MOHPC
 		TMOD_SCALE,
 		TMOD_STRETCH,
 		TMOD_ROTATE,
-		TMOD_ENTITY_TRANSLATE
+		TMOD_ENTITY_TRANSLATE,
+		TMOD_WAVETRANT,
+		TMOD_PARALLAX,
+		TMOD_OFFSET,
+		TMOD_BULGE
 	};
 
 	class ImageCache
@@ -356,26 +365,39 @@ namespace MOHPC
 
 	struct TextureModInfo
 	{
-		TextureMod type;
+		textureMod_e type;
 
 		// used for TMOD_TURBULENT and TMOD_STRETCH
 		WaveForm wave;
 
 		// used for TMOD_TRANSFORM
-		float matrix[2][2];		// s' = s * m[0][0] + t * m[1][0] + trans[0]
-		float translate[2];		// t' = s * m[0][1] + t * m[0][1] + trans[1]
+		// s' = s * m[0][0] + t * m[1][0] + trans[0]
+		// t' = s * m[0][1] + t * m[0][1] + trans[1]
+		float matrix[2][2];
+		float translate[2];
 
-											// used for TMOD_SCALE
-		float scale[2];			// s *= scale[0]
-											// t *= scale[1]
+		// used for TMOD_SCALE
+		// s *= scale[0]
+		// t *= scale[1]
+		float scale[2];
 
-											// used for TMOD_SCROLL
-		float scroll[2];			// s' = s + scroll[0] * time
-											// t' = t + scroll[1] * time
+		// used for TMOD_SCROLL
+		// s' = s + scroll[0] * time
+		// t' = t + scroll[1] * time
+		float scroll[2];
 
-											// + = clockwise
-											// - = counterclockwise
+		// + = clockwise
+		// - = counterclockwise
 		float rotateSpeed;
+
+		// used for TMOD_PARALLAX
+		float parallax[2];
+
+		// used for TMOD_OFFSET
+		float offset[2];
+
+		// used for TMOD_BULGE
+		float bulge[2];
 
 		TextureModInfo();
 	};
@@ -411,6 +433,8 @@ namespace MOHPC
 		AlphaGen alphaGen;
 
 		float constantColor[4];
+		float distFadeRange;
+		float distFadeNear;
 
 		unsigned stateBits;
 
@@ -464,8 +488,8 @@ namespace MOHPC
 		MOHPC_EXPORTS ShaderManager* GetShaderManager() const;
 		MOHPC_EXPORTS ShaderContainer* GetShaderContainer();
 		MOHPC_EXPORTS const ShaderContainer* GetShaderContainer() const;
-		MOHPC_EXPORTS const str& GetFilename() const;
-		MOHPC_EXPORTS const str& GetName() const;
+		MOHPC_EXPORTS const char* GetFilename() const;
+		MOHPC_EXPORTS const char* GetName() const;
 		MOHPC_EXPORTS int32_t GetContents() const;
 		MOHPC_EXPORTS int32_t GetSurfaceFlags() const;
 		MOHPC_EXPORTS float GetDistRange() const;
@@ -581,7 +605,7 @@ namespace MOHPC
 
 	private:
 		void ParseShaders(const class FileEntryList& files);
-		void ParseShaderContainer(ShaderContainer *shaderContainer, const char *name, const char *buffer, std::streamsize length = 0);
+		ShaderContainerPtr ParseShaderContainer(const str& fileName, const char *buffer, uint64_t length = 0);
 		//string ParseTextureExtension(const string& name);
 	};
 	using ShaderManagerPtr = SharedPtr<ShaderManager>;

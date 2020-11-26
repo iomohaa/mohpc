@@ -15,7 +15,7 @@ struct SkeletonAnimation::File_AnimFrame
 
 struct SkeletonAnimation::File_AnimDataHeader
 {
-	char ident[4];
+	uint8_t ident[4];
 	uint32_t version;
 	uint32_t flags;
 	uint32_t nBytesUsed;

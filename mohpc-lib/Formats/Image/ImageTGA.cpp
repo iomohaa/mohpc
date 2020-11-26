@@ -14,7 +14,7 @@ typedef struct _TargaHeader {
 	unsigned char	pixel_size, attributes;
 } TargaHeader;
 
-void Image::LoadTGA(const char *name, void *buf, std::streamsize len)
+void Image::LoadTGA(const char *name, void *buf, uint64_t len)
 {
 	int32_t columns, rows, numPixels;
 	uint8_t *pixbuf;
@@ -23,7 +23,7 @@ void Image::LoadTGA(const char *name, void *buf, std::streamsize len)
 	uint8_t *targa_rgba;
 
 	if (len < 18) {
-		throw ImageException("LoadTGA: header too short (%s)", name);
+		throw ImageError::HeaderTooShort(len);
 	}
 
 	const uint8_t* buf_p = (uint8_t*)buf;
@@ -56,26 +56,25 @@ void Image::LoadTGA(const char *name, void *buf, std::streamsize len)
 		&& targa_header.image_type != 10
 		&& targa_header.image_type != 3)
 	{
-		throw ImageException("LoadTGA: Only type 2 (RGB), 3 (gray), and 10 (RGB) TGA images supported");
+		throw ImageError::TGA::UnsupportedType(targa_header.image_type);
 	}
 
 	if (targa_header.colormap_type != 0)
 	{
-		throw ImageException("LoadTGA: colormaps not supported");
+		throw ImageError::TGA::UnsupportedColormap(targa_header.colormap_type);
 	}
 
 	if ((targa_header.pixel_size != 32 && targa_header.pixel_size != 24) && targa_header.image_type != 3)
 	{
-		throw ImageException("LoadTGA: Only 32 or 24 bit images supported (no colormaps)");
+		throw ImageError::TGA::UnsupportedPixelSize(targa_header.pixel_size);
 	}
 
 	columns = targa_header.width;
 	rows = targa_header.height;
 	numPixels = columns * rows * 4;
 
-	if (!columns || !rows || numPixels > 0x7FFFFFFF || numPixels / columns / 4 != rows)
-	{
-		throw ImageException("LoadTGA: %s has an invalid image size", name);
+	if (!columns || !rows || numPixels > 0x7FFFFFFF || numPixels / columns / 4 != rows) {
+		throw ImageError::TGA::InvalidSize(columns, rows);
 	}
 
 	targa_rgba = new uint8_t[numPixels];
@@ -85,18 +84,20 @@ void Image::LoadTGA(const char *name, void *buf, std::streamsize len)
 		if (buf_p + targa_header.id_length > end)
 		{
 			delete[] targa_rgba;
-			throw ImageException("LoadTGA: header too short (%s)", name);
+			throw ImageError::HeaderTooShort(targa_header.id_length);
 		}
 
-		buf_p += targa_header.id_length;  // skip TARGA image comment
+		// skip TARGA image comment
+		buf_p += targa_header.id_length;
 	}
 
 	if (targa_header.image_type == 2 || targa_header.image_type == 3)
 	{
-		if (buf_p + columns * rows*targa_header.pixel_size / 8 > end)
+		const size_t totalLen = columns * rows * targa_header.pixel_size / 8;
+		if (buf_p + totalLen > end)
 		{
 			delete[] targa_rgba;
-			throw ImageException("LoadTGA: file truncated %s", name);
+			throw ImageError::FileTruncated(len, totalLen + (buf_p - (uint8_t*)buf));
 		}
 
 		// Uncompressed RGB or gray scale image
@@ -140,31 +141,40 @@ void Image::LoadTGA(const char *name, void *buf, std::streamsize len)
 					break;
 				default:
 					delete[] targa_rgba;
-					throw ImageException("LoadTGA: illegal pixel_size '%d' in file '%s'", targa_header.pixel_size, name);
+					assert(!"illegal pixel_size");
 					break;
 				}
 			}
 		}
 	}
-	else if (targa_header.image_type == 10) {   // Runlength encoded RGB images
+	// Runlength encoded RGB images
+	else if (targa_header.image_type == 10)
+	{
 		unsigned char red, green, blue, alphabyte, packetHeader, packetSize, j;
 
-		for (row = rows - 1; row >= 0; row--) {
+		for (row = rows - 1; row >= 0; row--)
+		{
 			pixbuf = targa_rgba + row * columns * 4;
-			for (column = 0; column < columns; ) {
+			for (column = 0; column < columns; )
+			{
 				if (buf_p + 1 > end)
 				{
 					delete[] targa_rgba;
-					throw ImageException("LoadTGA: file truncated %s", name);
+					throw ImageError::FileTruncated(len, buf_p + 1 - (uint8_t*)buf);
 				}
+
 				packetHeader = *buf_p++;
 				packetSize = 1 + (packetHeader & 0x7f);
-				if (packetHeader & 0x80) {        // run-length packet
-					if (buf_p + targa_header.pixel_size / 8 > end)
+				if (packetHeader & 0x80)
+				{
+					// run-length packet
+					const size_t totalLen = targa_header.pixel_size / 8;
+					if (buf_p + totalLen > end)
 					{
 						delete[] targa_rgba;
-						throw ImageException("LoadTGA: file truncated %s", name);
+						throw ImageError::FileTruncated(len, totalLen + (buf_p - (uint8_t*)buf));
 					}
+
 					switch (targa_header.pixel_size) {
 					case 24:
 						blue = *buf_p++;
@@ -180,7 +190,6 @@ void Image::LoadTGA(const char *name, void *buf, std::streamsize len)
 						break;
 					default:
 						delete[] targa_rgba;
-						throw ImageException("LoadTGA: illegal pixel_size '%d' in file '%s'", targa_header.pixel_size, name);
 						break;
 					}
 
@@ -200,13 +209,16 @@ void Image::LoadTGA(const char *name, void *buf, std::streamsize len)
 						}
 					}
 				}
-				else {                            // non run-length packet
-
-					if (buf_p + targa_header.pixel_size / 8 * packetSize > end)
+				else
+				{                           
+					// non run-length packet
+					const size_t totalLen = targa_header.pixel_size / 8 * packetSize;
+					if (buf_p + totalLen > end)
 					{
 						delete[] targa_rgba;
-						throw ImageException("LoadTGA: file truncated %s", name);
+						throw ImageError::FileTruncated(len, totalLen + (buf_p - (uint8_t*)buf));
 					}
+
 					for (j = 0; j < packetSize; j++) {
 						switch (targa_header.pixel_size) {
 						case 24:
@@ -230,7 +242,7 @@ void Image::LoadTGA(const char *name, void *buf, std::streamsize len)
 							break;
 						default:
 							delete[] targa_rgba;
-							throw ImageException("LoadTGA: illegal pixel_size '%d' in file '%s'", targa_header.pixel_size, name);
+							assert(!"illegal pixel_size");
 							break;
 						}
 						column++;
@@ -278,5 +290,71 @@ void Image::LoadTGA(const char *name, void *buf, std::streamsize len)
 	dataSize = numPixels;
 	width = columns;
 	height = rows;
-	pixelFormat = PixelFormat::IF_RGBA;
+	pixelFormat = PixelFormat::RGBA;
+}
+
+ImageError::TGA::UnsupportedType::UnsupportedType(uint8_t inType)
+	: type(inType)
+{
+}
+
+uint8_t ImageError::TGA::UnsupportedType::getType() const
+{
+	return type;
+}
+
+const char* ImageError::TGA::UnsupportedType::what() const
+{
+	return "Unsupported targa type";
+}
+
+ImageError::TGA::UnsupportedColormap::UnsupportedColormap(uint8_t inColorMapType)
+	: colorMapType(inColorMapType)
+{
+}
+
+uint8_t ImageError::TGA::UnsupportedColormap::getColorMapType() const
+{
+	return colorMapType;
+}
+
+const char* ImageError::TGA::UnsupportedColormap::what() const
+{
+	return "Unsupported colormap";
+}
+
+ImageError::TGA::UnsupportedPixelSize::UnsupportedPixelSize(uint8_t inPixelSize)
+	: pixelSize(inPixelSize)
+{
+}
+
+uint8_t ImageError::TGA::UnsupportedPixelSize::getPixelSize() const
+{
+	return pixelSize;
+}
+
+const char* ImageError::TGA::UnsupportedPixelSize::what() const
+{
+	return "Unsupported pixel size";
+}
+
+ImageError::TGA::InvalidSize::InvalidSize(uint16_t inWidth, uint16_t inHeight)
+	: width(inWidth)
+	, height(inHeight)
+{
+}
+
+uint16_t ImageError::TGA::InvalidSize::getWidth() const
+{
+	return width;
+}
+
+uint16_t ImageError::TGA::InvalidSize::getHeight() const
+{
+	return height;
+}
+
+const char* ImageError::TGA::InvalidSize::what() const
+{
+	return "Invalid image size";
 }

@@ -2,29 +2,28 @@
 
 #include "SharedPtr.h"
 #include "../Misc/MSG/Stream.h"
+#include "../Utilities/RemoteIdentifier.h"
+#include "../Utilities/Communicator.h"
+
 #include <queue>
-#include <stdint.h>
+#include <cstdint>
 #include <chrono>
 
 namespace MOHPC
 {
 	class str;
 	class IMessageStream;
+	class MessageDispatcher;
+	class IRemoteIdentifier;
 
-	class RequestData
+	class InputRequest
 	{
 	public:
-		IMessageStream& stream;
-		void** param;
+		InputRequest(IMessageStream& stream, const IRemoteIdentifierPtr& identifier);
 
 	public:
-		RequestData(IMessageStream& inStream, void** inParam);
-
-		template<typename Param>
-		const Param& getParam() const
-		{
-			return reinterpret_cast<Param&>(*param);
-		}
+		IMessageStream& stream;
+		const IRemoteIdentifierPtr& identifier;
 	};
 
 	class IRequestBase
@@ -39,7 +38,7 @@ namespace MOHPC
 		virtual bool mustProcess() const { return true; };
 
 		/** Return another request to execute, or finish it by returning NULL. */
-		virtual SharedPtr<IRequestBase> process(RequestData& data) = 0;
+		virtual SharedPtr<IRequestBase> process(InputRequest& data) = 0;
 
 		/** Delay added to the base timeout time. */
 		virtual uint64_t timeOutDelay() { return 0; }
@@ -55,64 +54,54 @@ namespace MOHPC
 	};
 	using IRequestPtr = SharedPtr<IRequestBase>;
 
-	/** Template for request parameters. */
-	class RequestParam
-	{
-	public:
-		void send(const uint8_t* buf, size_t size) {};
-		size_t receive(uint8_t* buf, size_t size) { return 0; };
-		bool hasData() { return false; };
-		size_t receiveSize() { return 0; }
-	};
-
-	template<class T = IRequestBase, class Param = RequestParam>
-	class RequestHandler
+	/**
+	 * Handle incoming requests from a specific source.
+	 */
+	class IncomingMessageHandler
 	{
 	private:
-		using IRequestPtr = SharedPtr<T>;
-
-		struct PendingRequest
-		{
-			IRequestPtr request;
-			Param param;
-			uint64_t timeout;
-
-			PendingRequest(IRequestPtr&& inRequest, Param&& inParam, uint64_t timeout);
-		};
-
 		template<typename TimeType>
 		using time_point = std::chrono::time_point<TimeType>;
 		using steady_clock = std::chrono::steady_clock;
 
-	private:
-		IRequestPtr request;
-		Param param;
-		time_point<steady_clock> startTime;
-		time_point<steady_clock> timeoutTime;
-		time_point<steady_clock> deferTime;
-		std::queue<PendingRequest> pendingRequests;
-
 	public:
-		RequestHandler();
+		/**
+		 * Construct the handler.
+		 *
+		 * @param dispatcher The message dispatcher.
+		 * @param communicator Communicator.
+		 * @param remoteId The remote identifier.
+		 */
+		IncomingMessageHandler(MessageDispatcher* dispatcher, const ICommunicatorPtr& communicator, const IRemoteIdentifierPtr& remoteId);
+		~IncomingMessageHandler();
 
 		/**
-		 * Handle requests
+		 * Send a request or enqueue it if it can't be sent right now.
 		 *
-		 * @param	param	The way data will be sent and received.
+		 * @param newRequest The request to send.
+		 * @param param The way the data will be sent.
+		 * @param timeout Timeout in ms.
 		 */
-		void handle();
+		void sendRequest(IRequestPtr&& newRequest,  uint64_t timeout = 0);
 
-		/**
-		 * Send a request or enqueue it if it can't be sent right now
-		 *
-		 * @param	newRequest	request to send.
-		 * @param	param		The way the data will be sent.
-		 * @param	timeout		Timeout in ms.
-		 */
-		void sendRequest(IRequestPtr&& newRequest, Param&& param, uint64_t timeout = 0);
-
-		/** Return true if a request is waiting a response. */
+		/** Return true if there is a request and the handler is expecting a response. */
 		bool isRequesting() const;
+
+		/**
+		 * Handle requests.
+		 *
+		 * @param param The way data will be sent and received.
+		 */
+		void handleIncoming(IMessageStream& stream, const IRemoteIdentifierPtr& incomingId);
+
+		/** Return the time at which the request should start. */
+		time_point<steady_clock> getDeferredTime() const;
+
+		/** Return the remote identifier that identities the request. */
+		const IRemoteIdentifierPtr& getRemoteId() const;
+
+		/** Return the communicator used by the request. */
+		const ICommunicatorPtr& getComm() const;
 
 	private:
 		bool processDeferred();
@@ -122,9 +111,35 @@ namespace MOHPC
 		void setRequestTimeout(const IRequestPtr& newRequest, uint64_t timeout);
 		void sendData(const IRequestPtr& newRequest);
 		void dequeRequest();
-		void clearRequest();
 		const IRequestPtr& currentRequest() const;
-	};
-}
+		bool processTimeOut();
 
-#include "RequestHandler_imp.h"
+	private:
+		friend MessageDispatcher;
+
+		MessageDispatcher* dispatcher;
+		ICommunicatorPtr comm;
+		IncomingMessageHandler* next;
+		IncomingMessageHandler* prev;
+
+		IRemoteIdentifierPtr remoteId;
+
+	private:
+		struct PendingRequest
+		{
+			IRequestPtr request;
+			uint64_t timeout;
+
+			PendingRequest(IRequestPtr&& inRequest, uint64_t timeout);
+		};
+
+	private:
+		IRequestPtr request;
+		time_point<steady_clock> startTime;
+		time_point<steady_clock> timeoutTime;
+		time_point<steady_clock> deferTime;
+		std::queue<PendingRequest> pendingRequests;
+	};
+	}
+
+//#include "RequestHandler_imp.h"

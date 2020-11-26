@@ -3,6 +3,7 @@
 #include "Server.h"
 #include "GamespyRequest.h"
 #include "../../Utilities/RequestHandler.h"
+#include "../../Utilities/MessageDispatcher.h"
 #include "../../Managers/NetworkManager.h"
 #include "../../Global.h"
 #include "../../Object.h"
@@ -29,16 +30,18 @@ namespace MOHPC
 		};
 
 		/** Abstract server list class. */
-		class IServerList : public ITickableNetwork
+		class IServerList
 		{
 		public:
-			IServerList(const NetworkManagerPtr& inManager);
+			IServerList();
+			virtual ~IServerList() = default;
+
 			/**
 			 * Fetch the list of servers.
 			 *
 			 * @param	callback	Called each time it finds a server.
 			 */
-			 virtual void fetch(FoundServerCallback&& callback, MasterServerDone&& doneCallback = MasterServerDone()) = 0;
+			 virtual void fetch(FoundServerCallback&& callback) = 0;
 		};
 		using IServerListPtr = SharedPtr<IServerList>;
 
@@ -49,30 +52,28 @@ namespace MOHPC
 		private:
 			class Request_SendCon : public IGamespyRequest
 			{
-			private:
-				NetworkManagerPtr networkManager;
-				gameListType_e gameType;
-
 			public:
-				Request_SendCon(const NetworkManagerPtr& networkManager, gameListType_e inType);
+				Request_SendCon(gameListType_e inType);
 
-				virtual void generateInfo(Info& info);
-				virtual SharedPtr<IRequestBase> process(RequestData& data) override;
+				virtual void generateInfo(Info& info) override;
+				virtual SharedPtr<IRequestBase> process(InputRequest& data) override;
+
+			private:
+				gameListType_e gameType;
 			};
 
 			class Request_SendToken : public IGamespyRequest
 			{
 			private:
-				NetworkManagerPtr networkManager;
 				gameListType_e gameType;
 				char encoded[64];
 
 			public:
-				Request_SendToken(const NetworkManagerPtr& networkManager, const char* challenge, gameListType_e inType);
-				virtual void generateInfo(Info& info);
-				virtual bool mustProcess() const;
-				virtual SharedPtr<IRequestBase> process(RequestData& data) override;
-				virtual const char* queryId() const;
+				Request_SendToken(const char* challenge, gameListType_e inType);
+				virtual void generateInfo(Info& info) override;
+				virtual bool mustProcess() const override;
+				virtual SharedPtr<IRequestBase> process(InputRequest& data) override;
+				virtual const char* queryId() const override;
 
 			private:
 				void swapByte(uint8_t* a, uint8_t* b);
@@ -84,19 +85,19 @@ namespace MOHPC
 			class Request_FetchServers : public IGamespyRequest, public std::enable_shared_from_this<Request_FetchServers>
 			{
 			private:
-				NetworkManagerPtr networkManager;
+				MessageDispatcherPtr dispatcher;
+				ICommunicatorPtr comm;
 				const uint8_t* key;
 				const char* game;
 				FoundServerCallback callback;
-				MasterServerDone doneCallback;
 				size_t pendingLen;
 				char pendingData[6];
 
 			public:
-				Request_FetchServers(const NetworkManagerPtr& networkManager, gameListType_e inGameType, FoundServerCallback&& inCallback, MasterServerDone&& doneCallback);
+				Request_FetchServers(const MessageDispatcherPtr& dispatcher, const ICommunicatorPtr& comm, gameListType_e inGameType, FoundServerCallback&& inCallback);
 
-				virtual void generateInfo(Info& info);
-				virtual SharedPtr<IRequestBase> process(RequestData& data) override;
+				virtual void generateInfo(Info& info) override;
+				virtual SharedPtr<IRequestBase> process(InputRequest& data) override;
 
 
 				virtual SharedPtr<IRequestBase> timedOut() override;
@@ -106,15 +107,15 @@ namespace MOHPC
 			};
 
 		private:
-			ITcpSocketPtr socket;
-			RequestHandler<IGamespyRequest, GamespyRequestParam> handler;
+			ICommunicatorPtr comm;
+			MessageDispatcherPtr dispatcher;
+			IncomingMessageHandler handler;
 			gameListType_e gameType;
 
 		public:
-			MOHPC_EXPORTS ServerList(const NetworkManagerPtr& inManager, gameListType_e type);
+			MOHPC_EXPORTS ServerList(const MessageDispatcherPtr& dispatcher, const ICommunicatorPtr& masterComm, const ICommunicatorPtr& comm, const IRemoteIdentifierPtr& masterId, gameListType_e type);
 
-			MOHPC_EXPORTS virtual void fetch(FoundServerCallback&& callback, MasterServerDone&& doneCallback) override;
-			virtual void tick(uint64_t deltaTime, uint64_t currentTime) override;
+			MOHPC_EXPORTS virtual void fetch(FoundServerCallback&& callback) override;
 
 		private:
 			void sendRequest(IGamespyRequestPtr&& newRequest);
@@ -129,25 +130,24 @@ namespace MOHPC
 			class Request_InfoBroadcast : public IRequestBase, public std::enable_shared_from_this<Request_InfoBroadcast>
 			{
 			private:
-				NetworkManagerPtr networkManager;
 				FoundServerCallback response;
 
 			public:
-				Request_InfoBroadcast(const NetworkManagerPtr& inNetworkManager, FoundServerCallback&& inResponse);
+				Request_InfoBroadcast(FoundServerCallback&& inResponse);
 
 				virtual void generateOutput(IMessageStream& output) override;
-				virtual SharedPtr<IRequestBase> process(RequestData& data) override;
+				virtual SharedPtr<IRequestBase> process(InputRequest& data) override;
 			};
 
 		private:
 			IUdpSocketPtr socket;
-			RequestHandler<IRequestBase, GamespyUDPBroadcastRequestParam> handler;
+			//RequestHandler<IRequestBase, GamespyUDPBroadcastRequestParam> handler;
+			IncomingMessageHandler handler;
 
 		public:
-			MOHPC_EXPORTS ServerListLAN(const NetworkManagerPtr& inManager);
+			MOHPC_EXPORTS ServerListLAN(const MessageDispatcherPtr& dispatcher, const ICommunicatorPtr& comm);
 
-			void fetch(FoundServerCallback&& callback, MasterServerDone&& doneCallback) override;
-			virtual void tick(uint64_t deltaTime, uint64_t currentTime) override;
+			void fetch(FoundServerCallback&& callback) override;
 		};
 		using ServerListLANPtr = SharedPtr<ServerListLAN>;
 	}

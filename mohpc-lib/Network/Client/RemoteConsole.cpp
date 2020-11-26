@@ -14,23 +14,22 @@ MOHPC_OBJECT_DEFINITION(RemoteConsole);
 
 constexpr unsigned long MAX_RCON_RECV_PACKETS = 10;
 
-RemoteConsole::RemoteConsole(const NetworkManagerPtr& networkManager, const NetAddrPtr& inAddress, const char* inPassword)
-	: ITickableNetwork(networkManager)
-	, password(inPassword)
-	, address(inAddress)
+RemoteConsole::RemoteConsole(const MessageDispatcherPtr& dispatcher, const ICommunicatorPtr& comm, const IRemoteIdentifierPtr& remoteIdentifier, const char* inPassword)
+	: password(inPassword)
+	, handler(dispatcher.get(), comm, remoteIdentifier)
 {
-	socket = ISocketFactory::get()->createUdp();
 }
 
 MOHPC::Network::RemoteConsole::~RemoteConsole()
 {
 }
 
+/*
 void MOHPC::Network::RemoteConsole::tick(uint64_t deltaTime, uint64_t currentTime)
 {
 	size_t numPackets = 0;
 
-	while (socket->dataAvailable() && numPackets++ < MAX_RCON_RECV_PACKETS)
+	while (socket->dataCount() && numPackets++ < MAX_RCON_RECV_PACKETS)
 	{
 		uint8_t buf[MAX_UDP_DATA_SIZE];
 
@@ -74,23 +73,33 @@ void MOHPC::Network::RemoteConsole::tick(uint64_t deltaTime, uint64_t currentTim
 			handlerList.printHandler.broadcast(text);
 		}
 		else {
-			MOHPC_LOG(Warning, "Unexpected rcon result command: \"%s\" (arguments \"%s\")", token, parser.GetCurrentScript());
+			MOHPC_LOG(Warn, "Unexpected rcon result command: \"%s\" (arguments \"%s\")", token, parser.GetCurrentScript());
 		}
 	}
 }
+*/
 
 RemoteConsole::RConHandlerList& RemoteConsole::getHandlerList()
 {
 	return handlerList;
 }
 
-void RemoteConsole::send(const char* command)
+void RemoteConsole::send(const char* command, uint64_t timeoutValue)
 {
-	uint8_t buf[MAX_UDP_DATA_SIZE];
-	// Bind a stream to the buffer
-	FixedDataMessageStream stream(buf, sizeof(buf));
+	handler.sendRequest(makeShared<RConMessageRequest>(handlerList, command, password.c_str()), timeoutValue);
+}
+
+RemoteConsole::RConMessageRequest::RConMessageRequest(const RConHandlerList& inHandlerList, const char* inCommand, const char* inPassword)
+	: handlerList(inHandlerList)
+	, command(inCommand)
+	, password(inPassword)
+{
+}
+
+void RemoteConsole::RConMessageRequest::generateOutput(IMessageStream& output)
+{
 	// Create a message using this stream
-	MSG msg(stream, msgMode_e::Writing);
+	MSG msg(output, msgMode_e::Writing);
 
 	// Write in OOB mode
 	msg.SetCodec(MessageCodecs::OOB);
@@ -101,13 +110,45 @@ void RemoteConsole::send(const char* command)
 	// Direction (to server)
 	msg.WriteByte(2);
 
-	str rconStr = str::printf("rcon %s %s", password.c_str(), command);
+	str rconStr = str::printf("rcon %s %s", password, command);
 	// Write the string
 	msg.WriteString(rconStr.c_str());
 
 	// Write all pending data
 	msg.Flush();
+}
 
-	// Send the buffer data
-	socket->send(*address, buf, stream.GetPosition());
+SharedPtr<MOHPC::IRequestBase> RemoteConsole::RConMessageRequest::process(InputRequest& data)
+{
+	MSG msg(data.stream, msgMode_e::Reading);
+	// RCon messages are using OOB codec
+	msg.SetCodec(MessageCodecs::OOB);
+
+	const uint32_t sequenceNum = msg.ReadUInteger();
+	if (sequenceNum != -1)
+	{
+		// Only connectionless packets are accepted
+		return nullptr;
+	}
+
+	const uint8_t dir = msg.ReadByte();
+
+	const StringMessage cmd = msg.ReadString();
+
+	TokenParser parser;
+	parser.Parse(cmd, strlen(cmd));
+
+	const char* token = parser.GetToken(false);
+	if (!str::icmp(token, "print"))
+	{
+		// Print text
+		const char* text = parser.GetCurrentScript();
+		//handlerList.notify<RConHandlers::Print>(text);
+		handlerList.printHandler.broadcast(text);
+	}
+	else {
+		MOHPC_LOG(Warn, "Unexpected rcon result command: \"%s\" (arguments \"%s\")", token, parser.GetCurrentScript());
+	}
+
+	return nullptr;
 }

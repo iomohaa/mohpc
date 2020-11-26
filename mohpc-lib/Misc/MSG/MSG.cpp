@@ -539,14 +539,6 @@ uint64_t MSG::ReadNumber<uint64_t>(size_t bits)
 }
 
 template<>
-unsigned long MSG::ReadNumber<unsigned long>(size_t bits)
-{
-	unsigned long value = 0;
-	ReadBits(&value, bits);
-	return Endian.LittleLong(value);
-}
-
-template<>
 float MSG::ReadNumber<float>(size_t bits)
 {
 	float value = 0;
@@ -558,7 +550,6 @@ template<> int8_t MSG::ReadNumber<int8_t>(size_t bits) { return ReadNumber<uint8
 template<> int16_t MSG::ReadNumber<int16_t>(size_t bits) { return ReadNumber<uint16_t>(bits); }
 template<> int32_t MSG::ReadNumber<int32_t>(size_t bits) { return ReadNumber<uint32_t>(bits); }
 template<> int64_t MSG::ReadNumber<int64_t>(size_t bits) { return ReadNumber<uint64_t>(bits); }
-template<> long MSG::ReadNumber<long>(size_t bits) { return ReadNumber<unsigned long>(bits); }
 
 MSG& MSG::ReadClass(ISerializableMessage& value)
 {
@@ -731,13 +722,6 @@ MSG& MOHPC::MSG::WriteNumber<uint64_t>(uint64_t value, size_t bits)
 	return WriteBits(&bytes, bits);
 }
 
-template<>
-MSG& MOHPC::MSG::WriteNumber<unsigned long>(unsigned long value, size_t bits)
-{
-	const unsigned long bytes = Endian.LittleLong(value);
-	return WriteBits(&bytes, bits);
-}
-
 template<> MSG& MSG::WriteNumber<float>(float value, size_t bits)
 {
 	const float bytes = Endian.LittleFloat(value);
@@ -748,7 +732,6 @@ template<> MSG& MSG::WriteNumber<int8_t>(int8_t value, size_t bits) { return Wri
 template<> MSG& MSG::WriteNumber<int16_t>(int16_t value, size_t bits) { return WriteNumber<uint16_t>(value, bits); }
 template<> MSG& MSG::WriteNumber<int32_t>(int32_t value, size_t bits) { return WriteNumber<uint32_t>(value, bits); }
 template<> MSG& MSG::WriteNumber<int64_t>(int64_t value, size_t bits) { return WriteNumber<uint64_t>(value, bits); }
-template<> MSG& MSG::WriteNumber<long>(long value, size_t bits) { return WriteNumber<unsigned long>(value, bits); }
 
 MSG& MSG::WriteClass(const ISerializableMessage& value)
 {
@@ -794,7 +777,6 @@ StringMessage MSG::ReadStringInternal(const char* byteCharMapping)
 	do
 	{
 		val = ReadByte();
-		if (val == -1) break;
 		c = byteCharMapping[val];
 		++len;
 	} while (c);
@@ -808,7 +790,7 @@ StringMessage MSG::ReadStringInternal(const char* byteCharMapping)
 		memcpy(bitData, oldBits, sizeof(bitData));
 
 		s.preAlloc(len);
-		len--; // not including the null-terminating character
+		len--; // Skip null-terminated character
 
 		for (size_t i = 0; i < len; ++i)
 		{

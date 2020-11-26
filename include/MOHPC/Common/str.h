@@ -127,16 +127,27 @@ namespace MOHPC
 		int cmpn(const char* text, size_t n) const;
 		int cmpn(const str& text, size_t n) const;
 
-		void tolower(void);
-		void toupper(void);
+		void tolower();
+		void toupper();
 
 		static char* tolower(char* s1);
 		static char* toupper(char* s1);
+		static char tolower(char c);
+		static char toupper(char c);
 
 		static int icmpn(const char* s1, const char* s2, size_t n);
 		static int icmp(const char* s1, const char* s2);
 		static int cmpn(const char* s1, const char* s2, size_t n);
 		static int cmp(const char* s1, const char* s2);
+		static size_t len(const char* s);
+		static const char* ifindchar(const char* s, char c);
+		static const char* ifindcharn(const char* s, char c, size_t n);
+		static const char* ifind(const char* s1, const char* s2);
+		static const char* ifindn(const char* s1, const char* s2, size_t n);
+		static const char* findchar(const char* s, char c);
+		static const char* findcharn(const char* s, char c, size_t n);
+		static const char* find(const char* s1, const char* s2);
+		static const char* findn(const char* s1, const char* s2, size_t n);
 
 		static   void snprintf(char* dst, int size, const char* fmt, ...);
 		void strip(void);

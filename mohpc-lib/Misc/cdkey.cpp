@@ -105,7 +105,7 @@ void GetHashBytes(char* out, int xorHash)
 
 void GetCrcHashBytes(char* out, int crchash)
 {
-	out[6] = (8 * (crchash & 3)) | (crchash >> 27) & 7;
+	out[6] = (8 * (crchash & 3)) | ((crchash >> 27) & 7);
 	out[5] = (crchash >> 2) & 0x1F;
 	out[4] = (crchash >> 7) & 0x1F;
 	out[3] = (crchash >> 12) & 0x1F;

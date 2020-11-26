@@ -37,7 +37,7 @@ public:
 			return;
 		}
 
-		sockaddr_in local;
+		sockaddr_in local{0};
 		local.sin_family = family;
 
 		//int val = 1;
@@ -85,7 +85,7 @@ public:
 			setsockopt(conn, SOL_SOCKET, SO_BROADCAST, (const char*)&val, sizeof(val));
 		}
 
-		sockaddr_in srvAddr;
+		sockaddr_in srvAddr{0};
 		srvAddr.sin_family = family;
 		srvAddr.sin_port = htons(to.port);
 		memcpy(&srvAddr.sin_addr, inAddr, sizeof(srvAddr.sin_addr));
@@ -100,7 +100,7 @@ public:
 		);
 	}
 
-	size_t receive(void* buf, size_t maxsize, NetAddrPtr& from)
+	size_t receive(void* buf, size_t maxsize, NetAddrPtr& from) override
 	{
 		sockaddr_template fromAddr;
 		socklen_t addrSz = sizeof(fromAddr);
@@ -133,11 +133,16 @@ public:
 		return result == 1;
 	}
 
-	virtual bool dataAvailable() override
+	virtual size_t dataCount() override
 	{
 		u_long count = 0;
 		ioctlSocket(conn, FIONREAD, &count);
-		return count > 0;
+		return count;
+	}
+
+	void* getRaw() override
+	{
+		return (void*)conn;
 	}
 
 	NetAddrPtr createAddress(const sockaddr_template& addr) const;
@@ -179,13 +184,10 @@ class WindowsTCPSocket : public ITcpSocket
 	static constexpr unsigned long addressSize = ::addressSize<type>;
 	static constexpr unsigned int family = ::family<type>;
 
-private:
-	socket_t conn;
-
 public:
-	WindowsTCPSocket(const NetAddr& addr)
+	WindowsTCPSocket(const NetAddrPtr& addr, const NetAddr* bindAddress)
 	{
-		if (addr.getAddrSize() != addressSize)
+		if (addr->getAddrSize() != addressSize)
 		{
 			// FIXME: throw?
 			return;
@@ -200,7 +202,7 @@ public:
 			conn = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
 			break;
 		default:
-			conn = NULL;
+			conn = socket_t(0);
 			break;
 		}
 
@@ -212,18 +214,26 @@ public:
 		//setsockopt(conn, SOL_SOCKET, SO_REUSEADDR, (const char*)val, sizeof(val));
 
 		sockaddr_in local;
-		local.sin_family = AF_INET;
-		//local.sin_port = htons(12205);
-		local.sin_port = 0;
-		inet_pton(AF_INET, "0.0.0.0", &local.sin_addr);
+		local.sin_family = family;
 
 		// Bind to local address
-		bind(conn, (sockaddr*)&local, sizeof(local));
+		if (!bindAddress)
+		{
+			// bind a default port
+			local.sin_port = 0;
+			// set address to 0
+			memset(&local.sin_addr, 0, sizeof(local.sin_addr));
+		}
+		else
+		{
+			local.sin_port = htons(bindAddress->port);
+			memcpy(&local.sin_addr.s_addr, bindAddress->getAddress(), addressSize);
+		}
 
 		sockaddr_in srvAddr;
 		srvAddr.sin_family = AF_INET;
-		srvAddr.sin_port = htons(addr.port);
-		memcpy(&srvAddr.sin_addr, addr.getAddress(), addressSize);
+		srvAddr.sin_port = htons(addr->port);
+		memcpy(&srvAddr.sin_addr, addr->getAddress(), addressSize);
 		int srvAddrSz = sizeof(srvAddr);
 
 		// Set non-blocking
@@ -232,6 +242,8 @@ public:
 
 		// Connect to remote
 		connect(conn, (sockaddr*)&srvAddr, sizeof(srvAddr));
+
+		connectedAddress = addr;
 	}
 
 	~WindowsTCPSocket()
@@ -247,6 +259,11 @@ public:
 	virtual size_t receive(void* buf, size_t maxsize) override
 	{
 		return ::recv(conn, (char*)buf, (int)maxsize, 0);
+	}
+
+	virtual NetAddrPtr getAddress() override
+	{
+		return connectedAddress;
 	}
 
 	virtual bool wait(size_t timeout) override
@@ -273,12 +290,21 @@ public:
 		return true;
 	}
 
-	virtual bool dataAvailable() override
+	virtual size_t dataCount() override
 	{
 		u_long count = 0;
 		ioctlSocket(conn, FIONREAD, &count);
-		return count > 0;
+		return count;
 	}
+
+	void* getRaw() override
+	{
+		return (void*)conn;
+	}
+
+private:
+	NetAddrPtr connectedAddress;
+	socket_t conn;
 };
 
 class WindowsSocketFactory : public ISocketFactory
@@ -304,14 +330,14 @@ public:
 		return makeShared<WindowsUDPSocket<addressType_e::IPv6>>(bindAddress);
 	}
 
-	virtual ITcpSocketPtr createTcp(const NetAddr4& address) override
+	virtual ITcpSocketPtr createTcp(const NetAddr4Ptr& address, const NetAddr4* bindAddress) override
 	{
-		return makeShared<WindowsTCPSocket<addressType_e::IPv4>>(address);
+		return makeShared<WindowsTCPSocket<addressType_e::IPv4>>(address, bindAddress);
 	}
 
-	virtual ITcpSocketPtr createTcp6(const NetAddr6& address) override
+	virtual ITcpSocketPtr createTcp6(const NetAddr6Ptr& address, const NetAddr6* bindAddress) override
 	{
-		return makeShared<WindowsTCPSocket<addressType_e::IPv6>>(address);
+		return makeShared<WindowsTCPSocket<addressType_e::IPv6>>(address, bindAddress);
 	}
 
 	virtual ITcpServerSocketPtr createTcpListener() override
@@ -320,24 +346,58 @@ public:
 		return nullptr;
 	}
 
-	virtual NetAddr4 getHost(const char* domain) override
+	virtual NetAddr4Ptr getHost(const char* domain) override
 	{
 		struct addrinfo hints { 0 }, *result;
 		hints.ai_family = AF_UNSPEC;
 
 		int retval = getaddrinfo(domain, NULL, &hints, &result);
 		if (retval != 0) {
-			return NetAddr4();
+			return nullptr;
 		}
 
 		sockaddr_in* sockad = (sockaddr_in*)result->ai_addr;
 
-		NetAddr4 adr;
-		memcpy(&adr.ip, &sockad->sin_addr, sizeof(adr.ip));
+		NetAddr4Ptr adr(NetAddr4::create());
+		memcpy(&adr->ip, &sockad->sin_addr, sizeof(adr->ip));
 
 		freeaddrinfo(result);
 
 		return adr;
+	}
+
+	size_t wait(const ISocketPtr sockets[], ISocketPtr signaledSockets[], size_t num, size_t timeout) override
+	{
+		timeval t{ 0 };
+		t.tv_usec = (long)timeout * 1000;
+
+		fd_set readfds;
+		FD_ZERO(&readfds);
+
+		// set all sockets
+		for (size_t i = 0; i < num; ++i)
+		{
+			const ISocketPtr& socket = sockets[i];
+			if(socket) {
+				FD_SET((socket_t)socket->getRaw(), &readfds);
+			}
+		}
+
+		int result = select((int)num, &readfds, NULL, NULL, timeout != -1 ? &t : NULL);
+		if(result > 0)
+		{
+			// a socket is signaled, find it
+			for (size_t i = 0; i < num; ++i)
+			{
+				if(FD_ISSET(i, &readfds)) {
+					signaledSockets[i] = sockets[i];
+				}
+			}
+
+			return result;
+		}
+
+		return 0;
 	}
 };
 

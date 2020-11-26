@@ -7,6 +7,7 @@
 #include "../../Utilities/SharedPtr.h"
 #include "../../Utilities/HandlerList.h"
 #include "../../Utilities/RequestHandler.h"
+#include "../../Utilities/MessageDispatcher.h"
 
 namespace MOHPC
 {
@@ -25,7 +26,7 @@ namespace MOHPC
 		/**
 		 * Remote console for server (RCon).
 		 */
-		class RemoteConsole : public ITickableNetwork
+		class RemoteConsole
 		{
 			MOHPC_OBJECT_DECLARATION(RemoteConsole);
 
@@ -38,23 +39,36 @@ namespace MOHPC
 
 		private:
 			RConHandlerList handlerList;
-			IUdpSocketPtr socket;
 			str password;
-			NetAddrPtr address;
-			// FIXME: RequestHandler (queue response each requests)
-			// FIXME: HandlerList (callbacks, for all rcon response)
+			IncomingMessageHandler handler;
 
 		public:
-			MOHPC_EXPORTS RemoteConsole(const NetworkManagerPtr& networkManager, const NetAddrPtr& address, const char* password);
+			MOHPC_EXPORTS RemoteConsole(const MessageDispatcherPtr& dispatcher, const ICommunicatorPtr& comm, const IRemoteIdentifierPtr& remoteIdentifier, const char* password);
 			~RemoteConsole();
-
-			virtual void tick(uint64_t deltaTime, uint64_t currentTime) override;
 
 			/** Return the handler list. */
 			MOHPC_EXPORTS RConHandlerList& getHandlerList();
 
 			/** Send a remote console command. */
-			MOHPC_EXPORTS void send(const char* command);
+			MOHPC_EXPORTS void send(const char* command, uint64_t timeoutValue = 5000);
+
+		private:
+			class RConMessageRequest : public IRequestBase
+			{
+			public:
+				RConMessageRequest(const RConHandlerList& handlerList, const char* command, const char* password);
+
+				/** Return a supplied info request string. */
+				void generateOutput(IMessageStream& output) override;
+
+				/** Return another request to execute, or finish it by returning NULL. */
+				SharedPtr<IRequestBase> process(InputRequest& data) override;
+
+			private:
+				const RConHandlerList& handlerList;
+				const char* command;
+				const char* password;
+			};
 		};
 		using RemoteConsolePtr = SharedPtr<RemoteConsole>;
 	}

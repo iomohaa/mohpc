@@ -253,7 +253,7 @@ void Slerp( SkelQuat &from, SkelQuat &to, float t, SkelQuat *out )
 	f2 = 1.0f - t;
 
 	// little hack because I don't know how can this operation be converted to float...
-	*( int * )&f = *( int * )&f & 0x80000000 ^ *( int * )&f2;
+	*( int * )&f = (*( int * )&f & 0x80000000) ^ *( int * )&f2;
 
 	out->x = to.x * t + from.x * f;
 	out->y = to.y * t + from.y * f;

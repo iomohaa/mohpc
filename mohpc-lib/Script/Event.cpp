@@ -161,7 +161,7 @@ void EV_Print(FILE *stream, const char *format, ...)
 
 	if (stream)
 	{
-		fprintf(stream, buffer);
+		fprintf(stream, "%s", buffer);
 	}
 	else
 	{

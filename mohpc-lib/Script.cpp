@@ -1,8 +1,9 @@
 #include <Shared.h>
 #include "Shared.h"
 #include <MOHPC/Script.h>
+#include <MOHPC/Managers/AssetManager.h>
 #include <MOHPC/Managers/FileManager.h>
-#include <string.h>
+#include <cstring>
 
 using namespace MOHPC;
 
@@ -38,9 +39,9 @@ Script::Script()
 	token.clear();
 }
 
-bool Script::Load()
+void Script::Load()
 {
-	return LoadFile(GetFilename().c_str());
+	LoadFile(GetFilename().c_str());
 }
 
 void Script::Close( void )
@@ -108,7 +109,6 @@ void Script::Reset( void )
 	script_p = buffer;
 	line = 1;
 	tokenready = false;
-	hasError = false;
 }
 
 /*
@@ -1060,7 +1060,7 @@ void Script::Parse( const char *data, uintmax_t length, const char *name )
 ==============
 */
 
-bool Script::LoadFile( const char *name )
+void Script::LoadFile( const char *name )
 {
 	char *buffer;
 	char *tempbuf;
@@ -1069,24 +1069,15 @@ bool Script::LoadFile( const char *name )
 	Close();
 
 	FilePtr file = GetFileManager()->OpenFile(name);
-	if (!file)
-	{
-		hasError = true;
-		return false;
-	}
-	else
-	{
-		hasError = false;
+	if (!file) {
+		throw AssetError::AssetNotFound(name);
 	}
 
 	uintmax_t length = file->ReadBuffer((void**)&tempbuf);
-
-	hasError = false;
-
-	if (length < 0)
+	if(!length)
 	{
-		hasError = true;
-		return false;
+		// return but don't throw an error
+		return;
 	}
 
 	// create our own space
@@ -1101,8 +1092,6 @@ bool Script::LoadFile( const char *name )
 	
 	Parse( const_buffer, length, name );
 	releaseBuffer = true;
-
-	return true;
 }
 
 /*
@@ -1125,11 +1114,6 @@ void Script::LoadFile( const char *name, int length, const char *buf )
 
 	Parse( buffer, this->length, name );
 	releaseBuffer = true;
-}
-
-bool Script::isValid()
-{
-	return !hasError;
 }
 
 bool Script::EndOfFile( void )

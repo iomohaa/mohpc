@@ -222,13 +222,13 @@ void MOHPC::AngleVectors(const vec3_t angles, vec3_t forward, vec3_t right, vec3
 	static float		sr, sp, sy, cr, cp, cy;
 	// static to help MS compiler fp bugs
 
-	angle = angles[YAW] * (M_PI * 2 / 360);
+	angle = angles[YAW] * float(M_PI * 2 / 360);
 	sy = sin(angle);
 	cy = cos(angle);
-	angle = angles[PITCH] * (M_PI * 2 / 360);
+	angle = angles[PITCH] * float(M_PI * 2 / 360);
 	sp = sin(angle);
 	cp = cos(angle);
-	angle = angles[ROLL] * (M_PI * 2 / 360);
+	angle = angles[ROLL] * float(M_PI * 2 / 360);
 	sr = sin(angle);
 	cr = cos(angle);
 
@@ -258,10 +258,10 @@ void MOHPC::AngleVectorsLeft(const vec3_t angles, vec3_t forward, vec3_t left, v
 	static float		sr, sp, sy, cr, cp, cy;
 	// static to help MS compiler fp bugs
 
-	angle = angles[YAW] * (M_PI * 2 / 360);
+	angle = angles[YAW] * float(M_PI * 2 / 360);
 	sy = sin(angle);
 	cy = cos(angle);
-	angle = angles[PITCH] * (M_PI * 2 / 360);
+	angle = angles[PITCH] * float(M_PI * 2 / 360);
 	sp = sin(angle);
 	cp = cos(angle);
 
@@ -274,7 +274,7 @@ void MOHPC::AngleVectorsLeft(const vec3_t angles, vec3_t forward, vec3_t left, v
 
 	if (left || up)
 	{
-		angle = angles[ROLL] * (M_PI * 2 / 360);
+		angle = angles[ROLL] * float(M_PI * 2 / 360);
 		sr = sin(angle);
 		cr = cos(angle);
 
@@ -957,19 +957,19 @@ int MOHPC::BoundingBoxToInteger(vec3_t mins, vec3_t maxs)
 {
 	int x, y, zd, zu, result;
 
-	x = maxs[0];
+	x = int(maxs[0]);
 	if (x < 0)
 		x = 0;
 	if (x >= BBOX_MAX_X)
 		x = BBOX_MAX_X - 1;
 
-	y = maxs[1];
+	y = int(maxs[1]);
 	if (y < 0)
 		y = 0;
 	if (y >= BBOX_MAX_Y)
 		y = BBOX_MAX_Y - 1;
 
-	zd = mins[2] + BBOX_MAX_BOTTOM_Z;
+	zd = int(mins[2]) + BBOX_MAX_BOTTOM_Z;
 	if (zd < 0)
 	{
 		zd = 0;
@@ -979,7 +979,7 @@ int MOHPC::BoundingBoxToInteger(vec3_t mins, vec3_t maxs)
 		zd = BBOX_REALMAX_BOTTOM_Z - 1;
 	}
 
-	zu = maxs[2];
+	zu = int(maxs[2]);
 	if (zu < 0)
 		zu = 0;
 	if (zu >= BBOX_MAX_TOP_Z)
@@ -1003,11 +1003,11 @@ void MOHPC::IntegerToBoundingBox(int num, vec3_t mins, vec3_t maxs)
 	zd -= BBOX_MAX_BOTTOM_Z;
 	zu = (num >> (BBOX_XBITS + BBOX_YBITS + BBOX_ZBOTTOMBITS)) & (BBOX_MAX_TOP_Z - 1);
 
-	mins[0] = -x;
-	mins[1] = -y;
-	mins[2] = zd;
+	mins[0] = float(-x);
+	mins[1] = float(-y);
+	mins[2] = float(zd);
 
-	maxs[0] = x;
-	maxs[1] = y;
-	maxs[2] = zu;
+	maxs[0] = float(x);
+	maxs[1] = float(y);
+	maxs[2] = float(zu);
 }

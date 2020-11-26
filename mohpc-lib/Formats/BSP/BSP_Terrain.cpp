@@ -1555,7 +1555,7 @@ void BSP::TR_PickTerrainSquareMode(TerrainCollideSquare* square, const MOHPC::Ve
 	flags0 = ((unsigned short)(patch->varTree[vni->iTreeAndMask & 1][vni->iNode].s.flags & 0xFFFE & vni->iTreeAndMask) != 0);
 	flags1 = ((unsigned short)(patch->varTree[vni[1].iTreeAndMask & 1][vni[1].iNode].s.flags & 0xFFFE & vni[1].iTreeAndMask) != 0);
 
-	square->eMode = modeTable[(j + i) & 1 | 2 * flags0 | 4 * flags1];
+	square->eMode = modeTable[((j + i) & 1) | (2 * flags0) | (4 * flags1)];
 
 	if (square->eMode == 2)
 	{

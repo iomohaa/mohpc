@@ -84,6 +84,8 @@ add_library(gcd_serverbrowsing STATIC ${SRCS_serverbrowsing})
 add_library(gcd_webservices STATIC ${SRCS_webservices})
 add_library(gcd INTERFACE)
 
+set_property(TARGET gcd_common gcd_key PROPERTY POSITION_INDEPENDENT_CODE ON)
+
 if(UNIX)
 	add_compile_definitions(_LINUX=1)
 endif(UNIX)

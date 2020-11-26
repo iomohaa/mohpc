@@ -80,8 +80,10 @@ namespace MOHPC
 
 		enum class serverType_e : unsigned char
 		{
-			/** Regular server type (the default). */
-			none = 1,
+			/** Allied Assault server type (unspecified on AA). */
+			normal = 0,
+			/** Spearhead server type (this is the default on SH/BT). */
+			spearhead = 1,
 			/** Breakthrough server. */
 			breakthrough = 2
 		};

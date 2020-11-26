@@ -1,13 +1,10 @@
 #include <Shared.h>
 #include <MOHPC/Formats/Image.h>
+#include <MOHPC/Managers/AssetManager.h>
 #include <MOHPC/Managers/FileManager.h>
-#include <filesystem>
 #include <string>
 
-using namespace std::string_literals;
-
 using namespace MOHPC;
-namespace fs = std::filesystem;
 
 CLASS_DEFINITION(Image);
 Image::Image()
@@ -15,7 +12,7 @@ Image::Image()
 	data = nullptr;
 	dataSize = 0;
 	width = height = 0;
-	pixelFormat = PixelFormat::IF_Unknown;
+	pixelFormat = PixelFormat::Unknown;
 }
 
 Image::~Image()
@@ -26,13 +23,13 @@ Image::~Image()
 	}
 }
 
-bool Image::Load()
+void Image::Load()
 {
 	struct ExtensionWrapper
 	{
 		const char *Extension;
 
-		typedef void (Image::*_ExtensionFunction)(const char *, void *, std::streamsize);
+		typedef void (Image::*_ExtensionFunction)(const char *, void *, uint64_t);
 		_ExtensionFunction ExtensionFunction;
 	};
 
@@ -44,48 +41,37 @@ bool Image::Load()
 		{ ".dds", &Image::LoadDDS }
 	};
 
-	std::string ext = fs::path(GetFilename().c_str()).extension().generic_string();
+	const char* ext = GetFilename().GetExtension();
 
 	ExtensionWrapper::_ExtensionFunction ExtensionFunction = nullptr;
 
 	const size_t numExtensions = sizeof(ExtensionWrappers) / sizeof(ExtensionWrappers[0]);
 	for (intptr_t i = 0; i < numExtensions; i++)
 	{
-		if (!stricmp(ext.c_str(), ExtensionWrappers[i].Extension))
+		if (!str::icmp(ext, ExtensionWrappers[i].Extension))
 		{
 			ExtensionFunction = ExtensionWrappers[i].ExtensionFunction;
 			break;
 		}
 	}
 
-	if (!ExtensionFunction)
-	{
-		return false;
+	if (!ExtensionFunction) {
+		throw ImageError::BadExtension(ext);
 	}
 
 	const char *Fname = GetFilename().c_str();
 
 	FilePtr file = GetFileManager()->OpenFile(Fname);
-	if (!file)
-	{
-		return false;
+	if (!file) {
+		throw AssetError::AssetNotFound(GetFilename());
 	}
 
 	void *buf;
-	std::streamsize len = file->ReadBuffer(&buf);
+	uint64_t len = file->ReadBuffer(&buf);
 
-	try
-	{
-		(this->*ExtensionFunction)(Fname, buf, len);
-	}
-	catch (std::exception&)
-	{
-		return false;
-	}
+	(this->*ExtensionFunction)(Fname, buf, len);
 
 	HashUpdate((uint8_t*)buf, (size_t)len);
-
-	return true;
 }
 
 uint8_t *Image::GetData() const
@@ -111,4 +97,55 @@ uint32_t Image::GetWidth() const
 uint32_t Image::GetHeight() const
 {
 	return height;
+}
+
+ImageError::BadExtension::BadExtension(const str& inExtension)
+	: extension(inExtension)
+{
+}
+
+const char* ImageError::BadExtension::getExtension() const
+{
+	return extension.c_str();
+}
+
+const char* ImageError::BadExtension::what() const
+{
+	return "Bad or unsupported image extension";
+}
+
+ImageError::HeaderTooShort::HeaderTooShort(uint64_t inLen)
+	: len(inLen)
+{
+}
+
+uint64_t ImageError::HeaderTooShort::getLength() const
+{
+	return len;
+}
+
+const char* ImageError::HeaderTooShort::what() const
+{
+	return "Image header too short";
+}
+
+ImageError::FileTruncated::FileTruncated(uint64_t inExpectedSize, uint64_t inFileSize)
+	: expectedSize(inExpectedSize)
+	, fileSize(inFileSize)
+{
+}
+
+uint64_t ImageError::FileTruncated::getExpectedSize() const
+{
+	return expectedSize;
+}
+
+uint64_t ImageError::FileTruncated::getFileSize() const
+{
+	return fileSize;
+}
+
+const char* ImageError::FileTruncated::what() const
+{
+	return "The image file is truncated";
 }

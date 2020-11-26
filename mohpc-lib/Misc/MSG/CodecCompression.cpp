@@ -27,7 +27,7 @@ namespace MOHPC
 	}
 }
 
-static int msg_hData[256] = {
+static uint32_t msg_hData[256] = {
 250315,			// 0
 41193,			// 1
 6292,			// 2
@@ -294,9 +294,9 @@ public:
 		Huff compressor, decompressor;
 		auto start = std::chrono::system_clock().now();
 
-		for (uintptr_t i = 0; i < 256; i++)
+		for (uint32_t i = 0; i < 256; i++)
 		{
-			for (uintptr_t j = 0; j < msg_hData[i]; j++)
+			for (uint32_t j = 0; j < msg_hData[i]; j++)
 			{
 				// Do update for each
 				compressor.addRef(uint8_t(i));

@@ -646,11 +646,11 @@ void ScriptVariable::PrintValue(void)
 		break;
 
 	case VARIABLE_CONSTSTRING:
-		printf(GetScriptManager()->GetString(m_data.constStringValue));
+		printf("%s", GetScriptManager()->GetString(m_data.constStringValue).c_str());
 		break;
 
 	case VARIABLE_STRING:
-		printf(m_data.stringValue->c_str());
+		printf("%s", m_data.stringValue->c_str());
 		break;
 
 	case VARIABLE_INTEGER:
@@ -680,6 +680,8 @@ void ScriptVariable::PrintValue(void)
 
 	case VARIABLE_VECTOR:
 		printf("( %f %f %f )", m_data.vectorValue[0], m_data.vectorValue[1], m_data.vectorValue[2]);
+		break;
+	default:
 		break;
 	}
 }
@@ -1133,7 +1135,7 @@ str ScriptVariable::stringValue() const
 		}
 
 	case VARIABLE_VECTOR:
-		return str("( ") + str(m_data.vectorValue[0]) + str(" ") + str(m_data.vectorValue[1]) + str(" ") + str(m_data.vectorValue[2] + str(" )"));
+		return str("( ") + str(m_data.vectorValue[0]) + str(" ") + str(m_data.vectorValue[1]) + str(" ") + str(m_data.vectorValue[2]) + str(" )");
 
 	default:
 		ScriptError("Cannot cast '%s' to string", typenames[GetType()]);

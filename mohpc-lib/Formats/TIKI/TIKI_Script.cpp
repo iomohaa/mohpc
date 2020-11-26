@@ -3,8 +3,8 @@
 #include <string.h>
 #include <Shared.h>
 
-#define TIKI_DPrintf
-#define TIKI_Error
+#define TIKI_DPrintf(x, ...)
+#define TIKI_Error(x, ...)
 
 using namespace MOHPC;
 
@@ -62,9 +62,9 @@ void TikiScript::Close(void)
 	mark_pos = 0;
 }
 
-bool TikiScript::Load()
+void TikiScript::Load()
 {
-	return LoadFile(GetFilename().c_str());
+	LoadFile(GetFilename().c_str());
 }
 
 /*
@@ -158,7 +158,8 @@ void TikiScript::CheckOverflow(void)
 {
 	if (script_p >= end_p)
 	{
-		this->error = 1;
+		// FIXME: throw
+		this->error = true;
 		TIKI_DPrintf("End of tiki file reached prematurely reading %s\n", Filename());
 		TIKI_DPrintf("   This may be caused by having a tiki file command at the end of the file\n");
 		TIKI_DPrintf("   without an 'end' at the end of the tiki file.\n");
@@ -748,7 +749,7 @@ const char *TikiScript::GetToken(bool crossline)
 	macro_start = NULL;
 	macro_end = NULL;
 	token_p = i->token;
-	while ((*i->script_p > TOKENSPACE) && (!i->AtComment() || i->AtExtendedComment() && allow_extended_comment))
+	while ((*i->script_p > TOKENSPACE) && (!i->AtComment() || (i->AtExtendedComment() && allow_extended_comment)))
 	{
 		if ((*i->script_p == '\\') && (i->script_p < (end_p - 1)))
 		{
@@ -1265,19 +1266,16 @@ void TikiScript::Parse(char *data, uintmax_t length, const char *name)
 =
 ==============
 */
-bool TikiScript::LoadFile(const char *name)
+void TikiScript::LoadFile(const char *name)
 {
-	std::streamsize length;
+	uint64_t length;
 	char *buf;
 
 	Close();
 
 	FilePtr file = GetFileManager()->OpenFile(name);
-	if (!file)
-	{
-		//if (!quiet)
-		//	TIKI_DPrintf("Tiki:LoadFile Couldn't load %s\n", name);
-		return false;
+	if (!file) {
+		throw AssetError::AssetNotFound(name);
 	}
 
 	length = file->ReadBuffer((void**)&buf);
@@ -1294,13 +1292,6 @@ bool TikiScript::LoadFile(const char *name)
 
 	Parse(buffer, (size_t)length, name);
 	releaseBuffer = true;
-
-	if (error)
-	{
-		return false;
-	}
-
-	return true;
 }
 
 /*

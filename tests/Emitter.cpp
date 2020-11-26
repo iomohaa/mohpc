@@ -16,11 +16,11 @@ public:
 
 	virtual void run(const MOHPC::AssetManagerPtr& AM) override
 	{
-		MOHPC_LOG(Log, "Loading test emitter...");
+		MOHPC_LOG(Info, "Loading test emitter...");
 		auto start = std::chrono::system_clock().now();
 		MOHPC::TIKIPtr Tiki = AM->LoadAsset<MOHPC::TIKI>("/models/fx/fx_tank_explosion.tik");
 		auto end = std::chrono::system_clock().now();
-		MOHPC_LOG(Verbose, "%lf time", std::chrono::duration<double>(end - start).count());
+		MOHPC_LOG(Debug, "%lf time", std::chrono::duration<double>(end - start).count());
 
 		MOHPC::EmitterManagerPtr EmitterManager = AM->GetManager<MOHPC::EmitterManager>();
 
@@ -28,7 +28,7 @@ public:
 		{
 			MOHPC::EmitterResults Emitter;
 			while (EmitterManager->ParseEmitters(Tiki.get(), Emitter)) {
-				MOHPC_LOG(Verbose, "got anim %s (%d), %d emitters", Emitter.animName.c_str(), Emitter.animNum, Emitter.GetNumEmitters());
+				MOHPC_LOG(Debug, "got anim %s (%d), %d emitters", Emitter.animName.c_str(), Emitter.animNum, Emitter.GetNumEmitters());
 			}
 		}
 	}

@@ -6,10 +6,13 @@
 #include "unix/unix_sockets.h"
 #endif
 
+#include <cstdint>
+#include <cstddef>
+
 namespace MOHPC
 {
 	bool initSocket();
 	void cleanupSocket();
 	void closeSocket(socket_t socket);
-	void ioctlSocket(int fd, unsigned long request, unsigned long* argp);
+	void ioctlSocket(uintptr_t fd, unsigned long request, unsigned long* argp);
 }

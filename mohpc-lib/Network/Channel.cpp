@@ -1,6 +1,7 @@
 #include <MOHPC/Network/Channel.h>
 #include <MOHPC/Network/InfoTypes.h>
 #include <MOHPC/Network/Socket.h>
+#include <MOHPC/Network/UDPMessageDispatcher.h>
 #include <MOHPC/Misc/MSG/MSG.h>
 #include <MOHPC/Misc/MSG/Serializable.h>
 #include <MOHPC/Misc/MSG/Stream.h>
@@ -9,14 +10,14 @@
 using namespace MOHPC;
 using namespace Network;
 
-INetchan::INetchan(const IUdpSocketPtr& inSocket)
+INetchan::INetchan(const ICommunicatorPtr& inSocket)
 	: socket(inSocket)
 {
 }
 
 MOHPC_OBJECT_DEFINITION(Netchan);
 
-Netchan::Netchan(const IUdpSocketPtr& existingSocket, uint16_t inQport)
+Netchan::Netchan(const ICommunicatorPtr& existingSocket, uint16_t inQport)
 	: INetchan(existingSocket)
 	, qport(inQport)
 	, incomingSequence(0)
@@ -30,12 +31,12 @@ Netchan::~Netchan()
 {
 }
 
-IUdpSocketPtr Network::INetchan::getSocket() const
+ICommunicatorPtr Network::INetchan::getSocket() const
 {
 	return socket;
 }
 
-IUdpSocket* Network::INetchan::getRawSocket() const
+ICommunicator* Network::INetchan::getRawSocket() const
 {
 	return socket.get();
 }
@@ -45,10 +46,10 @@ uint16_t Network::INetchan::getOutgoingSequence() const
 	return 0;
 }
 
-bool Network::Netchan::receive(NetAddrPtr& from, IMessageStream& stream, uint32_t& outSeqNum)
+bool Network::Netchan::receive(IRemoteIdentifierPtr& from, IMessageStream& stream, uint32_t& outSeqNum)
 {
 	uint8_t data[MAX_UDP_DATA_SIZE];
-	size_t len = getSocket()->receive(data, sizeof(data), from);
+	size_t len = getSocket()->receive(from, data, sizeof(data));
 	if (len == -1) {
 		return false;
 	}
@@ -157,7 +158,7 @@ bool Network::Netchan::receive(NetAddrPtr& from, IMessageStream& stream, uint32_
 	return true;
 }
 
-bool Network::Netchan::transmit(const NetAddr& to, IMessageStream& stream)
+bool Network::Netchan::transmit(const IRemoteIdentifier& to, IMessageStream& stream)
 {
 	const size_t bufLen = stream.GetLength();
 	if (bufLen >= FRAGMENT_SIZE)
@@ -204,7 +205,7 @@ bool Network::Netchan::transmit(const NetAddr& to, IMessageStream& stream)
 	return true;
 }
 
-void Netchan::transmitNextFragment(const NetAddr& to, IMessageStream& stream, fragment_t& unsentFragmentStart, fragmentLen_t& unsentLength, bool& unsentFragments)
+void Netchan::transmitNextFragment(const IRemoteIdentifier& to, IMessageStream& stream, fragment_t& unsentFragmentStart, fragmentLen_t& unsentLength, bool& unsentFragments)
 {
 	// a fragment contains:
 	// - qport [2 bytes]
@@ -311,16 +312,16 @@ uint16_t Network::Netchan::getOutgoingSequence() const
 MOHPC_OBJECT_DEFINITION(ConnectionlessChan);
 
 Network::ConnectionlessChan::ConnectionlessChan()
-	: INetchan(ISocketFactory::get()->createUdp())
+	: INetchan(makeShared<UDPCommunicator>())
 {
 
 }
 
-Network::ConnectionlessChan::ConnectionlessChan(const IUdpSocketPtr& existingSocket)
+Network::ConnectionlessChan::ConnectionlessChan(const ICommunicatorPtr& existingSocket)
 	: INetchan(existingSocket)
 {}
 
-bool Network::ConnectionlessChan::receive(NetAddrPtr& from, IMessageStream& stream, uint32_t& sequenceNum)
+bool Network::ConnectionlessChan::receive(IRemoteIdentifierPtr& from, IMessageStream& stream, uint32_t& sequenceNum)
 {
 	MSG msg(stream, msgMode_e::Reading);
 
@@ -343,7 +344,7 @@ bool Network::ConnectionlessChan::receive(NetAddrPtr& from, IMessageStream& stre
 	return true;
 }
 
-bool Network::ConnectionlessChan::transmit(const NetAddr& to, IMessageStream& stream)
+bool Network::ConnectionlessChan::transmit(const IRemoteIdentifier& to, IMessageStream& stream)
 {
 	uint8_t msgBuf[MAX_UDP_DATA_SIZE];
 

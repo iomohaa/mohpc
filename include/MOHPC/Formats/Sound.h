@@ -23,10 +23,29 @@ namespace MOHPC
 		MOHPC_EXPORTS ~Sound();
 
 	protected:
-		virtual bool Load() override;
+		void Load() override;
 
 	private:
-		bool DecodeLAME(void *buf, std::streamsize len);
+		void DecodeLAME(void *buf, uint64_t len);
 	};
 	using SoundPtr = SharedPtr<Sound>;
+
+	namespace SoundError
+	{
+		class Base : public std::exception {};
+
+		class BadOrUnsupportedSound : public Base
+		{
+		public:
+			BadOrUnsupportedSound(const str& extension);
+
+			MOHPC_EXPORTS const char* getExtension() const;
+
+		public:
+			const char* what() const override;
+
+		private:
+			str extension;
+		};
+	}
 }

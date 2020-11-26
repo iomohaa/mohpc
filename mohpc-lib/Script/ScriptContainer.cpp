@@ -217,7 +217,7 @@ void ScriptContainer::KillThreads()
 		m_next = m_current->next;
 		delete m_current->m_Thread;
 
-	} while (m_current = m_next);
+	} while ((m_current = m_next));
 
 	m_Threads = NULL;
 }

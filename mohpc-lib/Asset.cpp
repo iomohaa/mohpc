@@ -22,7 +22,7 @@ AssetManager::AssetManager()
 {
 	FM = NULL;
 
-	MOHPC_LOG(Verbose, "MOHPC %s version %s build %d", VERSION_ARCHITECTURE, VERSION_SHORT_STRING, VERSION_BUILD);
+	MOHPC_LOG(Debug, "MOHPC %s version %s build %d", VERSION_ARCHITECTURE, VERSION_SHORT_STRING, VERSION_BUILD);
 }
 
 AssetManager::~AssetManager()
@@ -120,19 +120,14 @@ bool AssetManager::CacheLoadAsset(const char *Filename, const SharedPtr<Asset>& 
 {
 	A->InitAssetManager(shared_from_this());
 	A->Init(Filename);
-	if (!A->Load())
-	{
-		// Can't continue
-		MOHPC_LOG(Error, "Can't load asset '%s'", Filename);
-		return false;
-	}
+	A->Load();
 
 	A->HashFinalize();
 
 	//m_assetCache[Filename] = A;
 	m_assetCache.addKeyValue(Filename) = A;
 
-	MOHPC_LOG(Log, "Asset '%s' loaded", Filename);
+	MOHPC_LOG(Info, "Asset '%s' loaded", Filename);
 	return true;
 }
 
@@ -202,11 +197,6 @@ void Asset::Init(const char *F)
 	Filename = F;
 }
 
-bool Asset::Load()
-{
-	return false;
-}
-
 const str& Asset::GetFilename() const
 {
 	return Filename;
@@ -223,7 +213,7 @@ void Asset::HashGetHash(uint8_t* Destination) const
 	*/
 }
 
-void Asset::HashUpdate(const uint8_t* Data, std::streamsize Length)
+void Asset::HashUpdate(const uint8_t* Data, uint64_t Length)
 {
 	/*
 	if (!Hash)
@@ -274,4 +264,31 @@ AssetError::AssetNotFound::AssetNotFound(const str& inFileName)
 const char* AssetError::AssetNotFound::getFileName() const
 {
 	return fileName.c_str();
+}
+
+const char* AssetError::AssetNotFound::what() const
+{
+	return "The specified asset was not found";
+}
+
+AssetError::BadHeader4::BadHeader4(const uint8_t inFoundHeader[4], const uint8_t inExpectedHeader[4])
+	: foundHeader{ inFoundHeader[0], inFoundHeader[1], inFoundHeader[2], inFoundHeader[3] }
+	, expectedHeader{ inExpectedHeader[0], inExpectedHeader[1], inExpectedHeader[2], inExpectedHeader[3] }
+{
+
+}
+
+const uint8_t* AssetError::BadHeader4::getHeader() const
+{
+	return foundHeader;
+}
+
+const uint8_t* AssetError::BadHeader4::getExpectedHeader() const
+{
+	return expectedHeader;
+}
+
+const char* AssetError::BadHeader4::what() const
+{
+	return "Bad asset header";
 }

@@ -6,8 +6,11 @@
 #include <MOHPC/Math.h>
 #include <MOHPC/Misc/Endian.h>
 #include <MOHPC/Misc/EndianHelpers.h>
+#include <MOHPC/Log.h>
 
 #include <cstring>
+
+#define MOHPC_LOG_NAMESPACE "dcl"
 
 using namespace MOHPC;
 
@@ -47,6 +50,7 @@ static constexpr char DCL_SIGNATURE[] = { 'D', 'C', 'L', ' ' };
 		int32_t iIndex;
 		int32_t iNumVerts;
 	} dclSavedMarkPoly_t;
+
 }
 
 CLASS_DEFINITION(DCL);
@@ -64,7 +68,7 @@ DCL::~DCL()
 	}
 }
 
-bool DCL::Load()
+void DCL::Load()
 {
 	FilePtr File = GetFileManager()->OpenFile(GetFilename().c_str());
 	if (!File) {
@@ -87,6 +91,7 @@ bool DCL::Load()
 
 	if (version == dclVersion_e::Beta)
 	{
+		// no map time in beta
 		mapTime[0] = '\0';
 	}
 	else
@@ -126,9 +131,9 @@ bool DCL::Load()
 		pPoly->bDoLighting = saveMark.bDoLighting;
 	}
 
-	// FIXME: Should it process numFragments?
+	MOHPC_LOG(Info, "%d decals loaded for '%s'.", numDecals, GetFilename().c_str());
 
-	return true;
+	// FIXME: Should it process numFragments?
 }
 
 size_t DCL::GetNumDecals() const
@@ -158,6 +163,11 @@ const uint8_t* DCLError::BadHeader::getHeader() const
 	return foundHeader;
 }
 
+const char* DCLError::BadHeader::what() const
+{
+	return "Bad DCL header";
+}
+
 DCLError::WrongVersion::WrongVersion(uint32_t inVersion)
 	: version(inVersion)
 {
@@ -166,4 +176,9 @@ DCLError::WrongVersion::WrongVersion(uint32_t inVersion)
 uint32_t DCLError::WrongVersion::getVersion() const
 {
 	return version;
+}
+
+const char* DCLError::WrongVersion::what() const
+{
+	return "Wrong DCL version";
 }

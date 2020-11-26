@@ -14,7 +14,7 @@ namespace MOHPC
 	namespace Network
 	{
 		/**
-		 * Base class for handling gamespy request
+		 * Base class for handling gamespy request from master server.
 		 */
 		class IGamespyRequest : public IRequestBase
 		{
@@ -27,11 +27,11 @@ namespace MOHPC
 			/** Return the query id. */
 			virtual const char* queryId() const { return nullptr; };
 
-			virtual void generateOutput(IMessageStream& output) override final;
+			void generateOutput(IMessageStream& output) override final;
 		};
 
 		/**
-		 * Base class for handling gamespy request
+		 * Base class for handling gamespy request from server.
 		 */
 		class IGamespyServerRequest : public IRequestBase
 		{
@@ -41,62 +41,9 @@ namespace MOHPC
 			/** Return a supplied info request string. */
 			virtual const char* generateQuery() = 0;
 
-			virtual void generateOutput(IMessageStream& output) override final;
+			void generateOutput(IMessageStream& output) override final;
 		};
 
 		using IGamespyRequestPtr = SharedPtr<IGamespyRequest>;
-
-		class GamespyRequestParam
-		{
-		private:
-			ITcpSocketPtr socket;
-
-		public:
-			GamespyRequestParam();
-			GamespyRequestParam(const ITcpSocketPtr& inSocket);
-
-			void send(const uint8_t* buf, size_t size);
-			size_t receive(uint8_t* buf, size_t size);
-			bool hasData() const;
-			size_t receiveSize() const;
-		};
-
-		class GamespyUDPRequestParam
-		{
-		private:
-			IUdpSocketPtr socket;
-			NetAddrPtr addr;
-
-		public:
-			GamespyUDPRequestParam();
-			GamespyUDPRequestParam(const IUdpSocketPtr& inSocket, const NetAddrPtr& inAddr);
-
-			void send(const uint8_t* buf, size_t size);
-			size_t receive(uint8_t* buf, size_t size);
-			bool hasData() const;
-			size_t receiveSize() const;
-
-			const NetAddr& getLastIp() const;
-		};
-
-		class GamespyUDPBroadcastRequestParam
-		{
-		private:
-			IUdpSocketPtr socket;
-			uint16_t startPort;
-			uint16_t endPort;
-			NetAddrPtr lastIp;
-
-		public:
-			GamespyUDPBroadcastRequestParam();
-			GamespyUDPBroadcastRequestParam(const IUdpSocketPtr& inSocket, uint16_t inStartPort, uint16_t inEndPort);
-
-			void send(const uint8_t* buf, size_t size);
-			size_t receive(uint8_t* buf, size_t size);
-			bool hasData() const;
-			size_t receiveSize() const;
-
-			const NetAddrPtr& getLastIp() const;
-		};
 	}
 }

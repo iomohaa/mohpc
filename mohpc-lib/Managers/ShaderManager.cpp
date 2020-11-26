@@ -9,19 +9,19 @@
 
 using namespace MOHPC;
 
-#define MOHPC_LOG_NAMESPACE "shaderManager"
+#define MOHPC_LOG_NAMESPACE "shaderman"
 
 static unsigned NameToAFunc(const char *funcname)
 {
-	if (!stricmp(funcname, "GT0"))
+	if (!str::icmp(funcname, "GT0"))
 	{
 		return GLS_ATEST_GT_0;
 	}
-	else if (!stricmp(funcname, "LT128"))
+	else if (!str::icmp(funcname, "LT128"))
 	{
 		return GLS_ATEST_LT_80;
 	}
-	else if (!stricmp(funcname, "GE128"))
+	else if (!str::icmp(funcname, "GE128"))
 	{
 		return GLS_ATEST_GE_80;
 	}
@@ -31,27 +31,27 @@ static unsigned NameToAFunc(const char *funcname)
 
 static GenFunc NameToGenFunc(const char *funcname)
 {
-	if (!stricmp(funcname, "sin"))
+	if (!str::icmp(funcname, "sin"))
 	{
 		return GF_SIN;
 	}
-	else if (!stricmp(funcname, "square"))
+	else if (!str::icmp(funcname, "square"))
 	{
 		return GF_SQUARE;
 	}
-	else if (!stricmp(funcname, "triangle"))
+	else if (!str::icmp(funcname, "triangle"))
 	{
 		return GF_TRIANGLE;
 	}
-	else if (!stricmp(funcname, "sawtooth"))
+	else if (!str::icmp(funcname, "sawtooth"))
 	{
 		return GF_SAWTOOTH;
 	}
-	else if (!stricmp(funcname, "inversesawtooth"))
+	else if (!str::icmp(funcname, "inversesawtooth"))
 	{
 		return GF_INVERSE_SAWTOOTH;
 	}
-	else if (!stricmp(funcname, "noise"))
+	else if (!str::icmp(funcname, "noise"))
 	{
 		return GF_NOISE;
 	}
@@ -62,39 +62,39 @@ static GenFunc NameToGenFunc(const char *funcname)
 
 static int NameToSrcBlendMode(const char *name)
 {
-	if (!stricmp(name, "GL_ONE"))
+	if (!str::icmp(name, "GL_ONE"))
 	{
 		return GLS_SRCBLEND_ONE;
 	}
-	else if (!stricmp(name, "GL_ZERO"))
+	else if (!str::icmp(name, "GL_ZERO"))
 	{
 		return GLS_SRCBLEND_ZERO;
 	}
-	else if (!stricmp(name, "GL_DST_COLOR"))
+	else if (!str::icmp(name, "GL_DST_COLOR"))
 	{
 		return GLS_SRCBLEND_DST_COLOR;
 	}
-	else if (!stricmp(name, "GL_ONE_MINUS_DST_COLOR"))
+	else if (!str::icmp(name, "GL_ONE_MINUS_DST_COLOR"))
 	{
 		return GLS_SRCBLEND_ONE_MINUS_DST_COLOR;
 	}
-	else if (!stricmp(name, "GL_SRC_ALPHA"))
+	else if (!str::icmp(name, "GL_SRC_ALPHA"))
 	{
 		return GLS_SRCBLEND_SRC_ALPHA;
 	}
-	else if (!stricmp(name, "GL_ONE_MINUS_SRC_ALPHA"))
+	else if (!str::icmp(name, "GL_ONE_MINUS_SRC_ALPHA"))
 	{
 		return GLS_SRCBLEND_ONE_MINUS_SRC_ALPHA;
 	}
-	else if (!stricmp(name, "GL_DST_ALPHA"))
+	else if (!str::icmp(name, "GL_DST_ALPHA"))
 	{
 		return GLS_SRCBLEND_DST_ALPHA;
 	}
-	else if (!stricmp(name, "GL_ONE_MINUS_DST_ALPHA"))
+	else if (!str::icmp(name, "GL_ONE_MINUS_DST_ALPHA"))
 	{
 		return GLS_SRCBLEND_ONE_MINUS_DST_ALPHA;
 	}
-	else if (!stricmp(name, "GL_SRC_ALPHA_SATURATE"))
+	else if (!str::icmp(name, "GL_SRC_ALPHA_SATURATE"))
 	{
 		return GLS_SRCBLEND_ALPHA_SATURATE;
 	}
@@ -109,35 +109,35 @@ NameToDstBlendMode
 */
 static int NameToDstBlendMode(const char *name)
 {
-	if (!stricmp(name, "GL_ONE"))
+	if (!str::icmp(name, "GL_ONE"))
 	{
 		return GLS_DSTBLEND_ONE;
 	}
-	else if (!stricmp(name, "GL_ZERO"))
+	else if (!str::icmp(name, "GL_ZERO"))
 	{
 		return GLS_DSTBLEND_ZERO;
 	}
-	else if (!stricmp(name, "GL_SRC_ALPHA"))
+	else if (!str::icmp(name, "GL_SRC_ALPHA"))
 	{
 		return GLS_DSTBLEND_SRC_ALPHA;
 	}
-	else if (!stricmp(name, "GL_ONE_MINUS_SRC_ALPHA"))
+	else if (!str::icmp(name, "GL_ONE_MINUS_SRC_ALPHA"))
 	{
 		return GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA;
 	}
-	else if (!stricmp(name, "GL_DST_ALPHA"))
+	else if (!str::icmp(name, "GL_DST_ALPHA"))
 	{
 		return GLS_DSTBLEND_DST_ALPHA;
 	}
-	else if (!stricmp(name, "GL_ONE_MINUS_DST_ALPHA"))
+	else if (!str::icmp(name, "GL_ONE_MINUS_DST_ALPHA"))
 	{
 		return GLS_DSTBLEND_ONE_MINUS_DST_ALPHA;
 	}
-	else if (!stricmp(name, "GL_SRC_COLOR"))
+	else if (!str::icmp(name, "GL_SRC_COLOR"))
 	{
 		return GLS_DSTBLEND_SRC_COLOR;
 	}
-	else if (!stricmp(name, "GL_ONE_MINUS_SRC_COLOR"))
+	else if (!str::icmp(name, "GL_ONE_MINUS_SRC_COLOR"))
 	{
 		return GLS_DSTBLEND_ONE_MINUS_SRC_COLOR;
 	}
@@ -201,7 +201,7 @@ void ImageCache::ClearCachedImage()
 
 TextureModInfo::TextureModInfo()
 {
-	type = TextureMod::TMOD_NONE;
+	type = textureMod_e::TMOD_NONE;
 	matrix[0][0] = matrix[0][1] = 0;
 	matrix[1][0] = matrix[1][1] = 0;
 	translate[0] = translate[1] = 0;
@@ -276,6 +276,9 @@ ShaderStage::ShaderStage()
 	constantColor[2] = 0;
 	constantColor[3] = 0;
 
+	distFadeRange = 0.f;
+	distFadeNear = 0.f;
+
 	stateBits = 0;
 
 	alphaMin = 0.f;
@@ -316,12 +319,12 @@ Shader::~Shader()
 {
 }
 
-const str& Shader::GetFilename() const
+const char* Shader::GetFilename() const
 {
 	return shaderContainer->GetFilename();
 }
 
-const str& Shader::GetName() const
+const char* Shader::GetName() const
 {
 	return m_name;
 }
@@ -446,69 +449,68 @@ void Shader::ParseShader(Script& script)
 	{
 		const char *token = script.GetToken(false);
 
-		if (!stricmp(token, "qer_editorimage"))
+		if (!str::icmp(token, "qer_editorimage"))
 		{
 			//m_editorimage = GetShaderManager()->GetFileManager()->GetFixedPath(script.GetToken(false));
 			token = script.GetToken(false);
 			m_editorimage = GetShaderManager()->FindImage(token);
 		}
-		else if (!stricmp(token, "deformVertexes"))
+		else if (!str::icmp(token, "deformVertexes"))
 		{
 			ParseDeform(script);
 		}
-		else if (!stricmp(token, "spriteGen"))
+		else if (!str::icmp(token, "spriteGen"))
 		{
 			token = script.GetToken(false);
 
-			if (!stricmp(token, "parallel"))
+			if (!str::icmp(token, "parallel"))
 			{
 				this->sprite.type = SPRITE_PARALLEL;
 			}
-			else if (!stricmp(token, "parallel_oriented"))
+			else if (!str::icmp(token, "parallel_oriented"))
 			{
 				sprite.type = SPRITE_PARALLEL_ORIENTED;
 			}
-			else if (!stricmp(token, "parallel_upright"))
+			else if (!str::icmp(token, "parallel_upright"))
 			{
 				sprite.type = SPRITE_PARALLEL_UPRIGHT;
 			}
-			else if (!stricmp(token, "oriented"))
+			else if (!str::icmp(token, "oriented"))
 			{
 				sprite.type = SPRITE_ORIENTED;
 			}
 		}
-		else if (!stricmp(token, "spriteScale"))
+		else if (!str::icmp(token, "spriteScale"))
 		{
 			token = script.GetToken(false);
 
-			if (!token[0])
-			{
+			if (!token[0]) {
 				continue;
 			}
 
 			sprite.scale = (float)atof(token);
 		}
-		else if (!stricmp(token, "surfaceparm"))
+		else if (!str::icmp(token, "surfaceparm"))
 		{
 			ParseSurfaceParm(script);
 		}
 		// no mip maps
-		else if (!stricmp(token, "nomipmaps"))
+		else if (!str::icmp(token, "nomipmaps"))
 		{
 			bNoMipMaps = true;
 			bNoPicMip = true;
 		}
 		// no picmip adjustment
-		else if (!stricmp(token, "nopicmip"))
+		else if (!str::icmp(token, "nopicmip"))
 		{
 			bNoPicMip = true;
 		}
 		// portal
-		else if (!stricmp(token, "portal"))
+		else if (!str::icmp(token, "portal"))
 		{
 			bIsPortal = true;
 		}
-		else if (!stricmp(token, "skyparms"))
+		else if (!str::icmp(token, "skyparms"))
 		{
 			//token = script.GetToken(false);
 			//m_env = GetShaderManager()->GetFileManager()->GetFixedPath(string(token) + "_ft");
@@ -516,36 +518,36 @@ void Shader::ParseShader(Script& script)
 			ParseSkyParms(script);
 		}
 		// cull <face>
-		else if (!stricmp(token, "cull"))
+		else if (!str::icmp(token, "cull"))
 		{
 			token = script.GetToken(false);
 			if (token[0] == 0)
 			{
-				//ri.Printf(PRINT_WARNING, "WARNING: missing cull parms in shader '%s'\n", shader.name);
+				MOHPC_LOG(Warn, "missing cull parms in shader '%s' (file %s)", GetName(), GetFilename());
 				continue;
 			}
 
-			if (!stricmp(token, "none") || !stricmp(token, "twosided") || !stricmp(token, "disable"))
+			if (!str::icmp(token, "none") || !str::icmp(token, "twosided") || !str::icmp(token, "disable"))
 			{
 				cullType = CT_TWO_SIDED;
 			}
-			else if (!stricmp(token, "back") || !stricmp(token, "backside") || !stricmp(token, "backsided"))
-			{
+			else if (!str::icmp(token, "back") || !str::icmp(token, "backside") || !str::icmp(token, "backsided")) {
 				cullType = CT_BACK_SIDED;
 			}
-			else
-			{
-				//ri.Printf(PRINT_WARNING, "WARNING: invalid cull parm '%s' in shader '%s'\n", token, shader.name);
+			else if (!str::icmp(token, "front") || !str::icmp(token, "frontside") || !str::icmp(token, "frontsided")) {
+				cullType = CT_FRONT_SIDED;
+			}
+			else {
+				MOHPC_LOG(Warn, "invalid cull parm '%s' in shader '%s' (file %s)", token, GetName(), GetFilename());
 			}
 		}
-		else if (!stricmp(token, "portalsky"))
+		else if (!str::icmp(token, "portalsky"))
 		{
 			bIsPortalSky = true;
 		}
 		// stage definition
 		else if (token[0] == '{')
 		{
-			//ShaderStage& shaderStage = *m_stages.insert(m_stages.end(), ShaderStage());
 			ShaderStage* shaderStage = new(m_stages) ShaderStage();
 
 			ParseStage(script, shaderStage);
@@ -565,7 +567,7 @@ void Shader::ParseWaveForm(Script& script, WaveForm *wave)
 	token = script.GetToken(false);
 	if (token[0] == 0)
 	{
-		//ri.Printf(PRINT_WARNING, "WARNING: missing waveform parm in shader '%s'\n", shader.name);
+		MOHPC_LOG(Warn, "missing waveform func parm in shader '%s' (file %s)", GetName(), GetFilename());
 		return;
 	}
 	wave->func = NameToGenFunc(token);
@@ -574,7 +576,7 @@ void Shader::ParseWaveForm(Script& script, WaveForm *wave)
 	token = script.GetToken(false);
 	if (token[0] == 0)
 	{
-		//ri.Printf(PRINT_WARNING, "WARNING: missing waveform parm in shader '%s'\n", shader.name);
+		MOHPC_LOG(Warn, "missing waveform base parm in shader '%s' (file %s)", GetName(), GetFilename());
 		return;
 	}
 	wave->base = (float)atof(token);
@@ -582,7 +584,7 @@ void Shader::ParseWaveForm(Script& script, WaveForm *wave)
 	token = script.GetToken(false);
 	if (token[0] == 0)
 	{
-		//ri.Printf(PRINT_WARNING, "WARNING: missing waveform parm in shader '%s'\n", shader.name);
+		MOHPC_LOG(Warn, "missing waveform amplitude parm in shader '%s' (file %s)", GetName(), GetFilename());
 		return;
 	}
 	wave->amplitude = (float)atof(token);
@@ -590,7 +592,7 @@ void Shader::ParseWaveForm(Script& script, WaveForm *wave)
 	token = script.GetToken(false);
 	if (token[0] == 0)
 	{
-		//ri.Printf(PRINT_WARNING, "WARNING: missing waveform parm in shader '%s'\n", shader.name);
+		MOHPC_LOG(Warn, "missing waveform phase parm in shader '%s' (file %s)", GetName(), GetFilename());
 		return;
 	}
 	wave->phase = (float)atof(token);
@@ -598,7 +600,7 @@ void Shader::ParseWaveForm(Script& script, WaveForm *wave)
 	token = script.GetToken(false);
 	if (token[0] == 0)
 	{
-		//ri.Printf(PRINT_WARNING, "WARNING: missing waveform parm in shader '%s'\n", shader.name);
+		MOHPC_LOG(Warn, "missing waveform frequency parm in shader '%s' (file %s)", GetName(), GetFilename());
 		return;
 	}
 	wave->frequency = (float)atof(token);
@@ -614,33 +616,33 @@ void Shader::ParseTexMod(Script& script, ShaderStage *stage)
 	//
 	// turb
 	//
-	if (!stricmp(token, "turb"))
+	if (!str::icmp(token, "turb"))
 	{
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			//ri.Printf(PRINT_WARNING, "WARNING: missing tcMod turb parms in shader '%s'\n", shader.name);
+			MOHPC_LOG(Warn, "missing tcMod turb parms in shader '%s' (file %s)", GetName(), GetFilename());
 			return;
 		}
 		tmi->wave.base = (float)atof(token);
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			//ri.Printf(PRINT_WARNING, "WARNING: missing tcMod turb in shader '%s'\n", shader.name);
+			MOHPC_LOG(Warn, "missing tcMod turb in shader '%s' (file %s)", GetName(), GetFilename());
 			return;
 		}
 		tmi->wave.amplitude = (float)atof(token);
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			//ri.Printf(PRINT_WARNING, "WARNING: missing tcMod turb in shader '%s'\n", shader.name);
+			MOHPC_LOG(Warn, "missing tcMod turb in shader '%s' (file %s)", GetName(), GetFilename());
 			return;
 		}
 		tmi->wave.phase = (float)atof(token);
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			//ri.Printf(PRINT_WARNING, "WARNING: missing tcMod turb in shader '%s'\n", shader.name);
+			MOHPC_LOG(Warn, "missing tcMod turb in shader '%s' (file %s)", GetName(), GetFilename());
 			return;
 		}
 		tmi->wave.frequency = (float)atof(token);
@@ -650,12 +652,12 @@ void Shader::ParseTexMod(Script& script, ShaderStage *stage)
 	//
 	// scale
 	//
-	else if (!stricmp(token, "scale"))
+	else if (!str::icmp(token, "scale"))
 	{
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			//ri.Printf(PRINT_WARNING, "WARNING: missing scale parms in shader '%s'\n", shader.name);
+			MOHPC_LOG(Warn, "missing tcMod turb in shader '%s' (file %s)", GetName(), GetFilename());
 			return;
 		}
 		tmi->scale[0] = (float)atof(token);
@@ -663,7 +665,7 @@ void Shader::ParseTexMod(Script& script, ShaderStage *stage)
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			//ri.Printf(PRINT_WARNING, "WARNING: missing scale parms in shader '%s'\n", shader.name);
+			MOHPC_LOG(Warn, "missing tcMod turb in shader '%s' (file %s)", GetName(), GetFilename());
 			return;
 		}
 		tmi->scale[1] = (float)atof(token);
@@ -672,19 +674,19 @@ void Shader::ParseTexMod(Script& script, ShaderStage *stage)
 	//
 	// scroll
 	//
-	else if (!stricmp(token, "scroll"))
+	else if (!str::icmp(token, "scroll"))
 	{
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			//ri.Printf(PRINT_WARNING, "WARNING: missing scale scroll parms in shader '%s'\n", shader.name);
+			MOHPC_LOG(Warn, "missing scale scroll parms in shader '%s' (file %s)", GetName(), GetFilename());
 			return;
 		}
 		tmi->scroll[0] = (float)atof(token);
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			//ri.Printf(PRINT_WARNING, "WARNING: missing scale scroll parms in shader '%s'\n", shader.name);
+			MOHPC_LOG(Warn, "missing scale scroll parms in shader '%s' (file %s)", GetName(), GetFilename());
 			return;
 		}
 		tmi->scroll[1] = (float)atof(token);
@@ -693,59 +695,26 @@ void Shader::ParseTexMod(Script& script, ShaderStage *stage)
 	//
 	// stretch
 	//
-	else if (!stricmp(token, "stretch"))
+	else if (!str::icmp(token, "stretch"))
 	{
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			//ri.Printf(PRINT_WARNING, "WARNING: missing stretch parms in shader '%s'\n", shader.name);
+			MOHPC_LOG(Warn, "missing stretch parms in shader '%s' (file %s)", GetName(), GetFilename());
 			return;
 		}
-		tmi->wave.func = NameToGenFunc(token);
-
-		token = script.GetToken(false);
-		if (token[0] == 0)
-		{
-			//ri.Printf(PRINT_WARNING, "WARNING: missing stretch parms in shader '%s'\n", shader.name);
-			return;
-		}
-		tmi->wave.base = (float)atof(token);
-
-		token = script.GetToken(false);
-		if (token[0] == 0)
-		{
-			//ri.Printf(PRINT_WARNING, "WARNING: missing stretch parms in shader '%s'\n", shader.name);
-			return;
-		}
-		tmi->wave.amplitude = (float)atof(token);
-
-		token = script.GetToken(false);
-		if (token[0] == 0)
-		{
-			//ri.Printf(PRINT_WARNING, "WARNING: missing stretch parms in shader '%s'\n", shader.name);
-			return;
-		}
-		tmi->wave.phase = (float)atof(token);
-
-		token = script.GetToken(false);
-		if (token[0] == 0)
-		{
-			//ri.Printf(PRINT_WARNING, "WARNING: missing stretch parms in shader '%s'\n", shader.name);
-			return;
-		}
-		tmi->wave.frequency = (float)atof(token);
-
+		ParseWaveForm(script, &tmi->wave);
 		tmi->type = TMOD_STRETCH;
 	}
 	//
 	// transform
 	//
-	else if (!stricmp(token, "transform"))
+	else if (!str::icmp(token, "transform"))
 	{
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			//ri.Printf(PRINT_WARNING, "WARNING: missing transform parms in shader '%s'\n", shader.name);
+			MOHPC_LOG(Warn, "missing transform parms in shader '%s' (file %s)", GetName(), GetFilename());
 			return;
 		}
 		tmi->matrix[0][0] = (float)atof(token);
@@ -753,7 +722,7 @@ void Shader::ParseTexMod(Script& script, ShaderStage *stage)
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			//ri.Printf(PRINT_WARNING, "WARNING: missing transform parms in shader '%s'\n", shader.name);
+			MOHPC_LOG(Warn, "missing transform parms in shader '%s' (file %s)", GetName(), GetFilename());
 			return;
 		}
 		tmi->matrix[0][1] = (float)atof(token);
@@ -761,7 +730,7 @@ void Shader::ParseTexMod(Script& script, ShaderStage *stage)
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			//ri.Printf(PRINT_WARNING, "WARNING: missing transform parms in shader '%s'\n", shader.name);
+			MOHPC_LOG(Warn, "missing transform parms in shader '%s' (file %s)", GetName(), GetFilename());
 			return;
 		}
 		tmi->matrix[1][0] = (float)atof(token);
@@ -769,7 +738,7 @@ void Shader::ParseTexMod(Script& script, ShaderStage *stage)
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			//ri.Printf(PRINT_WARNING, "WARNING: missing transform parms in shader '%s'\n", shader.name);
+			MOHPC_LOG(Warn, "missing transform parms in shader '%s' (file %s)", GetName(), GetFilename());
 			return;
 		}
 		tmi->matrix[1][1] = (float)atof(token);
@@ -777,7 +746,7 @@ void Shader::ParseTexMod(Script& script, ShaderStage *stage)
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			//ri.Printf(PRINT_WARNING, "WARNING: missing transform parms in shader '%s'\n", shader.name);
+			MOHPC_LOG(Warn, "missing transform parms in shader '%s' (file %s)", GetName(), GetFilename());
 			return;
 		}
 		tmi->translate[0] = (float)atof(token);
@@ -785,7 +754,7 @@ void Shader::ParseTexMod(Script& script, ShaderStage *stage)
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			//ri.Printf(PRINT_WARNING, "WARNING: missing transform parms in shader '%s'\n", shader.name);
+			MOHPC_LOG(Warn, "missing transform parms in shader '%s' (file %s)", GetName(), GetFilename());
 			return;
 		}
 		tmi->translate[1] = (float)atof(token);
@@ -795,12 +764,12 @@ void Shader::ParseTexMod(Script& script, ShaderStage *stage)
 	//
 	// rotate
 	//
-	else if (!stricmp(token, "rotate"))
+	else if (!str::icmp(token, "rotate"))
 	{
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			//ri.Printf(PRINT_WARNING, "WARNING: missing tcMod rotate parms in shader '%s'\n", shader.name);
+			MOHPC_LOG(Warn, "missing tcMod rotate parms in shader '%s' (file %s)", GetName(), GetFilename());
 			return;
 		}
 		tmi->rotateSpeed = (float)atof(token);
@@ -809,13 +778,82 @@ void Shader::ParseTexMod(Script& script, ShaderStage *stage)
 	//
 	// entityTranslate
 	//
-	else if (!stricmp(token, "entityTranslate"))
-	{
+	else if (!str::icmp(token, "entityTranslate")) {
 		tmi->type = TMOD_ENTITY_TRANSLATE;
 	}
-	else
+	//
+	// wavetrant
+	//
+	else if (!str::icmp(token, "wavetrant"))
 	{
-		//ri.Printf(PRINT_WARNING, "WARNING: unknown tcMod '%s' in shader '%s'\n", token, shader.name);
+		ParseWaveForm(script, &tmi->wave);
+		tmi->type = TMOD_WAVETRANT;
+	}
+	//
+	// parallax
+	//
+	else if(!str::icmp(token, "parallax"))
+	{
+		token = script.GetToken(false);
+		if (token[0] == 0)
+		{
+			MOHPC_LOG(Warn, "missing parallax parms in shader '%s' (file %s)", GetName(), GetFilename());
+			return;
+		}
+		tmi->parallax[0] = (float)atof(token);
+		token = script.GetToken(false);
+		if (token[0] == 0)
+		{
+			MOHPC_LOG(Warn, "missing parallax parms in shader '%s' (file %s)", GetName(), GetFilename());
+			return;
+		}
+		tmi->parallax[1] = (float)atof(token);
+		tmi->type = TMOD_PARALLAX;
+	}
+	//
+	// offset
+	//
+	else if(!str::icmp(token, "offset"))
+	{
+		token = script.GetToken(false);
+		if (token[0] == 0)
+		{
+			MOHPC_LOG(Warn, "missing offset parms in shader '%s' (file %s)", GetName(), GetFilename());
+			return;
+		}
+		tmi->offset[0] = (float)atof(token);
+		token = script.GetToken(false);
+		if (token[0] == 0)
+		{
+			MOHPC_LOG(Warn, "missing offset parms in shader '%s' (file %s)", GetName(), GetFilename());
+			return;
+		}
+		tmi->offset[1] = (float)atof(token);
+		tmi->type = TMOD_OFFSET;
+	}
+	//
+	// bulge
+	//
+	else if(!str::icmp(token, "bulge"))
+	{
+		token = script.GetToken(false);
+		if (token[0] == 0)
+		{
+			MOHPC_LOG(Warn, "missing bulge parms in shader '%s' (file %s)", GetName(), GetFilename());
+			return;
+		}
+		tmi->bulge[0] = (float)atof(token);
+		token = script.GetToken(false);
+		if (token[0] == 0)
+		{
+			MOHPC_LOG(Warn, "missing bulge parms in shader '%s' (file %s)", GetName(), GetFilename());
+			return;
+		}
+		tmi->bulge[1] = (float)atof(token);
+		tmi->type = TMOD_BULGE;
+	}
+	else {
+		MOHPC_LOG(Warn, "unknown tcMod '%s' in shader '%s' (file %s)", token, GetName(), GetFilename());
 	}
 }
 
@@ -833,36 +871,36 @@ bool Shader::ParseStage(Script& script, ShaderStage *stage)
 			break;
 		}
 
-		if (!stricmp(token, "map") || !stricmp(token, "clampmap"))
+		if (!str::icmp(token, "map") || !str::icmp(token, "clampmap"))
 		{
 			token = script.GetToken(false);
 			stage->bundle[bundleNum].image.push_back(GetShaderManager()->FindImage(token)); // GetShaderManager()->GetFileManager()->GetFixedPath(token);
 		}
-		else if (!stricmp(token, "alphafunc"))
+		else if (!str::icmp(token, "alphafunc"))
 		{
 			token = script.GetToken(false);
 			atestBits = NameToAFunc(token);
 		}
-		else if (!stricmp(token, "blendfunc"))
+		else if (!str::icmp(token, "blendfunc"))
 		{
 			token = script.GetToken(false);
 
-			if (!stricmp(token, "add"))
+			if (!str::icmp(token, "add"))
 			{
 				blendSrcBits = GLS_SRCBLEND_ONE;
 				blendDstBits = GLS_DSTBLEND_ONE;
 			}
-			else if (!stricmp(token, "filter"))
+			else if (!str::icmp(token, "filter"))
 			{
 				blendSrcBits = GLS_SRCBLEND_DST_COLOR;
 				blendDstBits = GLS_DSTBLEND_ZERO;
 			}
-			else if (!stricmp(token, "blend"))
+			else if (!str::icmp(token, "blend"))
 			{
 				blendSrcBits = GLS_SRCBLEND_SRC_ALPHA;
 				blendDstBits = GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA;
 			}
-			else if (!stricmp(token, "alphaadd"))
+			else if (!str::icmp(token, "alphaadd"))
 			{
 				blendSrcBits = GLS_SRCBLEND_SRC_ALPHA;
 				blendDstBits = GLS_DSTBLEND_ONE;
@@ -878,21 +916,21 @@ bool Shader::ParseStage(Script& script, ShaderStage *stage)
 		//
 		// rgbGen
 		//
-		else if (!stricmp(token, "rgbGen"))
+		else if (!str::icmp(token, "rgbGen"))
 		{
 			token = script.GetToken(false);
 			if (token[0] == 0)
 			{
-				//ri.Printf(PRINT_WARNING, "WARNING: missing parameters for rgbGen in shader '%s'\n", shader.name);
+				MOHPC_LOG(Warn, "missing parameters for rgbGen in shader '%s' (file %s)", GetName(), GetFilename());
 				continue;
 			}
 
-			if (!stricmp(token, "wave"))
+			if (!str::icmp(token, "wave"))
 			{
 				ParseWaveForm(script, &stage->rgbWave);
 				stage->rgbGen = CGEN_WAVEFORM;
 			}
-			else if (!stricmp(token, "colorwave"))
+			else if (!str::icmp(token, "colorwave"))
 			{
 				Vector color = script.GetVector(false);
 				stage->constantColor[0] = color[0];
@@ -901,7 +939,7 @@ bool Shader::ParseStage(Script& script, ShaderStage *stage)
 				ParseWaveForm(script, &stage->rgbWave);
 				stage->rgbGen = CGEN_MULTIPLY_BY_WAVEFORM;
 			}
-			else if (!stricmp(token, "const") || !stricmp(token, "constant"))
+			else if (!str::icmp(token, "const") || !str::icmp(token, "constant"))
 			{
 				Vector color = script.GetVector(false);
 				stage->constantColor[0] = color[0];
@@ -910,79 +948,79 @@ bool Shader::ParseStage(Script& script, ShaderStage *stage)
 
 				stage->rgbGen = CGEN_CONST;
 			}
-			else if (!stricmp(token, "identity"))
+			else if (!str::icmp(token, "identity"))
 			{
 				stage->rgbGen = CGEN_IDENTITY;
 			}
-			else if (!stricmp(token, "identityLighting"))
+			else if (!str::icmp(token, "identityLighting"))
 			{
 				stage->rgbGen = CGEN_IDENTITY_LIGHTING;
 			}
-			else if (!stricmp(token, "entity") || !stricmp(token, "fromentity"))
+			else if (!str::icmp(token, "entity") || !str::icmp(token, "fromentity"))
 			{
 				stage->rgbGen = CGEN_ENTITY;
 			}
-			else if (!stricmp(token, "oneMinusEntity"))
+			else if (!str::icmp(token, "oneMinusEntity"))
 			{
 				stage->rgbGen = CGEN_ONE_MINUS_ENTITY;
 			}
-			else if (!stricmp(token, "vertex") || !stricmp(token, "fromclient"))
+			else if (!str::icmp(token, "vertex") || !str::icmp(token, "fromclient"))
 			{
 				stage->rgbGen = CGEN_VERTEX;
-				if (stage->alphaGen == 0) {
+				if (stage->alphaGen == AGEN_IDENTITY) {
 					stage->alphaGen = AGEN_VERTEX;
 				}
 			}
-			else if (!stricmp(token, "exactVertex"))
+			else if (!str::icmp(token, "exactVertex"))
 			{
 				stage->rgbGen = CGEN_EXACT_VERTEX;
 			}
-			else if (!stricmp(token, "vertexLit"))
+			else if (!str::icmp(token, "vertexLit"))
 			{
 				stage->rgbGen = CGEN_VERTEX_LIT;
-				if (stage->alphaGen == 0) {
+				if (stage->alphaGen == AGEN_IDENTITY) {
 					stage->alphaGen = AGEN_VERTEX;
 				}
 			}
-			else if (!stricmp(token, "exactVertexLit"))
+			else if (!str::icmp(token, "exactVertexLit"))
 			{
 				stage->rgbGen = CGEN_EXACT_VERTEX_LIT;
 			}
-			else if (!stricmp(token, "lightingGrid"))
+			else if (!str::icmp(token, "lightingGrid"))
 			{
 				stage->rgbGen = CGEN_LIGHTING_GRID;
 			}
-			else if (!stricmp(token, "lightingSpherical"))
+			else if (!str::icmp(token, "lightingSpherical"))
 			{
 				//stage->rgbGen = CGEN_LIGHTING_SPHERICAL;
 				stage->rgbGen = CGEN_LIGHTING_DIFFUSE;
 			}
-			else if (!stricmp(token, "lightingDiffuse"))
+			else if (!str::icmp(token, "lightingDiffuse"))
 			{
 				stage->rgbGen = CGEN_LIGHTING_DIFFUSE;
 			}
-			else if (!stricmp(token, "oneMinusVertex"))
+			else if (!str::icmp(token, "oneMinusVertex"))
 			{
 				stage->rgbGen = CGEN_ONE_MINUS_VERTEX;
 			}
-			else if (!stricmp(token, "global"))
+			else if (!str::icmp(token, "global"))
 			{
 				stage->rgbGen = CGEN_GLOBAL_COLOR;
 			}
-			else if (!stricmp(token, "static"))
+			else if (!str::icmp(token, "static"))
 			{
 				stage->rgbGen = CGEN_STATIC;
 
-				if (stage->alphaGen = AGEN_IDENTITY) {
+				if (stage->alphaGen == AGEN_IDENTITY) {
 					stage->alphaGen = AGEN_VERTEX;
 				}
 			}
-			else if (!stricmp(token, "sCoord") || !stricmp(token, "tCoord"))
+			else if (!str::icmp(token, "sCoord") || !str::icmp(token, "tCoord"))
 			{
-				if (!stricmp(token, "sCoord")) {
+				if (!str::icmp(token, "sCoord")) {
 					stage->rgbGen = CGEN_SCOORD;
 				}
-				else if (!stricmp(token, "tCoord")) {
+				else if (!str::icmp(token, "tCoord")) {
 					stage->rgbGen = CGEN_TCOORD;
 				}
 
@@ -1013,13 +1051,13 @@ bool Shader::ParseStage(Script& script, ShaderStage *stage)
 							}
 							else
 							{
-								//ri.Printf(PRINT_WARNING, "WARNING: missing rgbGen sCoord or tCoord parm 'max' in shader '%s'\n", shader.name);
+								MOHPC_LOG(Warn, "missing rgbGen sCoord or tCoord parm 'max' in shader '%s' (file %s)", GetName(), GetFilename());
 							}
 						}
 					}
 				}
 			}
-			else if (!stricmp(token, "dot"))
+			else if (!str::icmp(token, "dot"))
 			{
 				//shader.needsNormal = qtrue;
 				stage->alphaMin = 0.0;
@@ -1038,7 +1076,7 @@ bool Shader::ParseStage(Script& script, ShaderStage *stage)
 					}
 				}
 			}
-			else if (!stricmp(token, "oneminusdot"))
+			else if (!str::icmp(token, "oneminusdot"))
 			{
 				//shader.needsNormal = qtrue;
 				stage->alphaMin = 0.0;
@@ -1059,76 +1097,86 @@ bool Shader::ParseStage(Script& script, ShaderStage *stage)
 			}
 			else
 			{
-				//ri.Printf(PRINT_WARNING, "WARNING: unknown rgbGen parameter '%s' in shader '%s'\n", token, shader.name);
+				MOHPC_LOG(Warn, "unknown rgbGen parameter '%s' in shader '%s' (file %s)", token, GetName(), GetFilename());
 				continue;
 			}
 		}
 		//
 		// alphaGen 
 		//
-		else if (!stricmp(token, "alphaGen"))
+		else if (!str::icmp(token, "alphaGen"))
 		{
 			token = script.GetToken(false);
 			if (token[0] == 0)
 			{
-				//ri.Printf(PRINT_WARNING, "WARNING: missing parameters for alphaGen in shader '%s'\n", shader.name);
+				MOHPC_LOG(Warn, "missing parameters for alphaGen in shader '%s' (file %s)", GetName(), GetFilename());
 				continue;
 			}
 
-			if (!stricmp(token, "wave"))
+			if (!str::icmp(token, "wave"))
 			{
 				ParseWaveForm(script, &stage->alphaWave);
 				stage->alphaGen = AGEN_WAVEFORM;
 			}
-			else if (!stricmp(token, "const") || !stricmp(token, "constant"))
+			else if (!str::icmp(token, "const") || !str::icmp(token, "constant"))
 			{
 				token = script.GetToken(false);
 				stage->constantColor[3] = 255 * (float)atof(token);
 				stage->alphaGen = AGEN_CONST;
 			}
-			else if (!stricmp(token, "identity"))
+			else if (!str::icmp(token, "identity"))
 			{
 				stage->alphaGen = AGEN_IDENTITY;
 			}
-			else if (!stricmp(token, "entity"))
+			else if (!str::icmp(token, "entity") || !str::icmp(token, "fromentity"))
 			{
 				stage->alphaGen = AGEN_ENTITY;
 			}
-			else if (!stricmp(token, "oneMinusEntity"))
+			else if (!str::icmp(token, "oneMinusEntity"))
 			{
 				stage->alphaGen = AGEN_ONE_MINUS_ENTITY;
 			}
-			else if (!stricmp(token, "vertex"))
+			else if (!str::icmp(token, "vertex"))
 			{
 				stage->alphaGen = AGEN_VERTEX;
 			}
-			else if (!stricmp(token, "lightingSpecular"))
+			else if (!str::icmp(token, "lightingSpecular"))
 			{
 				stage->alphaGen = AGEN_LIGHTING_SPECULAR;
 			}
-			else if (!stricmp(token, "oneMinusVertex"))
+			else if (!str::icmp(token, "oneMinusVertex"))
 			{
 				stage->alphaGen = AGEN_ONE_MINUS_VERTEX;
 			}
-			else if (!stricmp(token, "portal"))
+			else if (!str::icmp(token, "portal"))
 			{
 				stage->alphaGen = AGEN_PORTAL;
 				token = script.GetToken(false);
 				if (token[0] == 0)
 				{
 					portalRange = 256;
-					//ri.Printf(PRINT_WARNING, "WARNING: missing range parameter for alphaGen portal in shader '%s', defaulting to 256\n", shader.name);
+					MOHPC_LOG(Warn, "missing range parameter for alphaGen portal in shader '%s', defaulting to 256 (file %s)", GetName(), GetFilename());
 				}
 				else
 				{
 					portalRange = (float)atof(token);
 				}
 			}
-			else if (!stricmp(token, "distFade"))
+			else if (!str::icmp(token, "distFade") || !str::icmp(token, "oneMinusDistFade")
+				|| !str::icmp(token, "tikiDistFade") || !str::icmp(token, "oneMinusTikiDistFade"))
 			{
-				stage->alphaGen = AGEN_DIST_FADE;
-				fDistRange = 256;
-				fDistNear = 256;
+				if (!str::icmp(token, "distFade")) {
+					stage->alphaGen = AGEN_DIST_FADE;
+				} else if (!str::icmp(token, "oneMinusDistFade")) {
+					stage->alphaGen = AGEN_ONE_MINUS_DIST_FADE;
+				} else if (!str::icmp(token, "oneMinusDistFade")) {
+					stage->alphaGen = AGEN_TIKI_DIST_FADE;
+				} else if (!str::icmp(token, "oneMinusDistFade")) {
+					stage->alphaGen = AGEN_ONE_MINUS_TIKI_DIST_FADE;
+				}
+
+				stage->distFadeNear = 256;
+				stage->distFadeRange = 256;
 
 				token = script.GetToken(false);
 				if (token[0])
@@ -1142,25 +1190,25 @@ bool Shader::ParseStage(Script& script, ShaderStage *stage)
 					}
 				}
 			}
-			else if (!stricmp(token, "oneMinusDistFade"))
+			else if (!str::icmp(token, "heightFade"))
 			{
-				stage->alphaGen = AGEN_ONE_MINUS_DIST_FADE;
-				fDistRange = 256;
-				fDistNear = 256;
+				stage->alphaGen = AGEN_HEIGHT_FADE;
+				stage->distFadeNear = 256.f;
+				stage->distFadeRange = 512.f;
 
 				token = script.GetToken(false);
 				if (token[0])
 				{
-					fDistNear = (float)atof(token);
+					stage->distFadeNear = (float)atof(token);
 
 					token = script.GetToken(false);
 					if (token[0])
 					{
-						fDistRange = (float)atof(token);
+						stage->distFadeRange = (float)atof(token);
 					}
 				}
 			}
-			else if (!stricmp(token, "dot"))
+			else if (!str::icmp(token, "dot"))
 			{
 				//shader.needsNormal = qtrue;
 				stage->alphaMin = 0.0;
@@ -1179,7 +1227,7 @@ bool Shader::ParseStage(Script& script, ShaderStage *stage)
 					}
 				}
 			}
-			else if (!stricmp(token, "dotView"))
+			else if (!str::icmp(token, "dotView"))
 			{
 				//shader.needsNormal = qtrue;
 				stage->alphaMin = 0.0;
@@ -1198,7 +1246,7 @@ bool Shader::ParseStage(Script& script, ShaderStage *stage)
 					}
 				}
 			}
-			else if (!stricmp(token, "oneMinusDotView"))
+			else if (!str::icmp(token, "oneMinusDotView"))
 			{
 				//shader.needsNormal = qtrue;
 				stage->alphaMin = 0.0;
@@ -1217,7 +1265,7 @@ bool Shader::ParseStage(Script& script, ShaderStage *stage)
 					}
 				}
 			}
-			else if (!stricmp(token, "oneMinusDot"))
+			else if (!str::icmp(token, "oneMinusDot"))
 			{
 				//shader.needsNormal = qtrue;
 				stage->alphaMin = 0.0;
@@ -1236,20 +1284,20 @@ bool Shader::ParseStage(Script& script, ShaderStage *stage)
 					}
 				}
 			}
-			else if (!stricmp(token, "skyAlpha"))
+			else if (!str::icmp(token, "skyAlpha"))
 			{
 				stage->alphaGen = AGEN_SKYALPHA;
 			}
-			else if (!stricmp(token, "oneMinusSkyAlpha"))
+			else if (!str::icmp(token, "oneMinusSkyAlpha"))
 			{
 				stage->alphaGen = AGEN_ONE_MINUS_SKYALPHA;
 			}
-			else if (!stricmp(token, "sCoord") || !stricmp(token, "tCoord"))
+			else if (!str::icmp(token, "sCoord") || !str::icmp(token, "tCoord"))
 			{
-				if (!stricmp(token, "sCoord")) {
+				if (!str::icmp(token, "sCoord")) {
 					stage->alphaGen = AGEN_SCOORD;
 				}
-				else if (!stricmp(token, "tCoord")) {
+				else if (!str::icmp(token, "tCoord")) {
 					stage->alphaGen = AGEN_TCOORD;
 				}
 
@@ -1280,54 +1328,60 @@ bool Shader::ParseStage(Script& script, ShaderStage *stage)
 							}
 							else
 							{
-								//ri.Printf(PRINT_WARNING, "WARNING: missing rgbGen sCoord or tCoord parm 'max' in shader '%s'\n", shader.name);
+								MOHPC_LOG(Warn, "missing rgbGen sCoord or tCoord parm 'max' in shader '%s' (file %s)", GetName(), GetFilename());
 							}
 						}
 					}
 				}
 			}
+			else if(!str::icmp(token, "alphaGen")) {
+				stage->alphaGen = AGEN_FROM_ENTITY;
+			}
+			else if (!str::icmp(token, "fromClient")) {
+				stage->alphaGen = AGEN_FROM_CLIENT;
+			}
 			else
 			{
-				//ri.Printf(PRINT_WARNING, "WARNING: unknown alphaGen parameter '%s' in shader '%s'\n", token, shader.name);
+				MOHPC_LOG(Warn, "unknown alphaGen parameter '%s' in shader '%s' (file %s)", token, GetName(), GetFilename());
 				continue;
 			}
 		}
 		//
 		// tcGen <function>
 		//
-		else if (!stricmp(token, "texgen") || !stricmp(token, "tcGen"))
+		else if (!str::icmp(token, "texgen") || !str::icmp(token, "tcGen"))
 		{
 			token = script.GetToken(false);
 			if (token[0] == 0)
 			{
-				//ri.Printf(PRINT_WARNING, "WARNING: missing texgen parm in shader '%s'\n", shader.name);
+				MOHPC_LOG(Warn, "missing texgen parm in shader '%s' (file %s)", GetName(), GetFilename());
 				continue;
 			}
 
-			if (!stricmp(token, "environment"))
+			if (!str::icmp(token, "environment"))
 			{
 				//shader.needsNormal = qtrue;
 				stage->bundle[bundleNum].tcGen = TCGEN_ENVIRONMENT_MAPPED;
 			}
-			else if (!stricmp(token, "environmentmodel"))
+			else if (!str::icmp(token, "environmentmodel"))
 			{
 				//shader.needsNormal = qtrue;
 				stage->bundle[bundleNum].tcGen = TCGEN_ENVIRONMENT_MAPPED2;
 			}
-			else if (!stricmp(token, "sunreflection"))
+			else if (!str::icmp(token, "sunreflection"))
 			{
 				//shader.needsNormal = qtrue;
 				stage->bundle[bundleNum].tcGen = TCGEN_SUN_REFLECTION;
 			}
-			else if (!stricmp(token, "lightmap"))
+			else if (!str::icmp(token, "lightmap"))
 			{
 				stage->bundle[bundleNum].tcGen = TCGEN_LIGHTMAP;
 			}
-			else if (!stricmp(token, "texture") || !stricmp(token, "base"))
+			else if (!str::icmp(token, "texture") || !str::icmp(token, "base"))
 			{
 				stage->bundle[bundleNum].tcGen = TCGEN_TEXTURE;
 			}
-			else if (!stricmp(token, "vector"))
+			else if (!str::icmp(token, "vector"))
 			{
 				stage->bundle[bundleNum].tcGenVectors[0] = script.GetVector(false);
 				stage->bundle[bundleNum].tcGenVectors[1] = script.GetVector(false);
@@ -1336,24 +1390,24 @@ bool Shader::ParseStage(Script& script, ShaderStage *stage)
 			}
 			else
 			{
-				//ri.Printf(PRINT_WARNING, "WARNING: unknown texgen parm in shader '%s'\n", shader.name);
+				MOHPC_LOG(Warn, "unknown texgen parm '%s' in shader '%s' (file %s)", token, GetName(), GetFilename());
 			}
 		}
 		//
 		// tcMod <type> <...>
 		//
-		else if (!stricmp(token, "tcMod"))
+		else if (!str::icmp(token, "tcMod"))
 		{
 			ParseTexMod(script, stage);
 		}
-		else if (!stricmp(token, "nextbundle"))
+		else if (!str::icmp(token, "nextbundle"))
 		{
 			bundleNum++;
 			stage->bundle.push_back(TextureBundle());
 		}
-		else if (!stricmp(token, "animmap") || !stricmp(token, "animmaponce") || !stricmp(token, "animmapphase"))
+		else if (!str::icmp(token, "animmap") || !str::icmp(token, "animmaponce") || !str::icmp(token, "animmapphase"))
 		{
-			if (!stricmp(token, "animmap") || !stricmp(token, "animmaponce"))
+			if (!str::icmp(token, "animmap") || !str::icmp(token, "animmaponce"))
 			{
 				token = script.GetToken(false);
 
@@ -1375,7 +1429,7 @@ bool Shader::ParseStage(Script& script, ShaderStage *stage)
 					stage->bundle[bundleNum].imageAnimationSpeed = (float)atof(token);
 				}
 			}
-			else if (!stricmp(token, "animmapphase"))
+			else if (!str::icmp(token, "animmapphase"))
 			{
 				stage->bundle[bundleNum].imageAnimationSpeed = script.GetFloat(false);
 				stage->bundle[bundleNum].imageAnimationPhase = script.GetFloat(false);
@@ -1435,23 +1489,23 @@ void Shader::ParseDeform(Script& script)
 	const char *token = script.GetToken(false);
 	if (token[0] == 0)
 	{
-		//ri.Printf(PRINT_WARNING, "WARNING: missing deform parm in shader '%s'\n", shader.name);
+		MOHPC_LOG(Warn, "missing deform parm in shader '%s' (file %s)", GetName(), GetFilename());
 		return;
 	}
 
 	m_deforms.push_back(DeformStage());
 	DeformStage* ds = m_deforms.Data();
 
-	if (!stricmp(token, "projectionShadow"))
+	if (!str::icmp(token, "projectionShadow"))
 	{
 		ds->deformation = DEFORM_PROJECTION_SHADOW;
 	}
-	else if (!stricmp(token, "autosprite"))
+	else if (!str::icmp(token, "autosprite"))
 	{
 		ds->deformation = DEFORM_AUTOSPRITE;
 		sprite.type = SPRITE_ORIENTED;
 	}
-	else if (!stricmp(token, "autosprite2"))
+	else if (!str::icmp(token, "autosprite2"))
 	{
 		ds->deformation = DEFORM_AUTOSPRITE2;
 		sprite.type = SPRITE_ORIENTED;
@@ -1466,12 +1520,12 @@ void Shader::ParseDeform(Script& script)
 		}
 		ds->deformation = (DeformMod)(DEFORM_TEXT0 + n);
 	}
-	else if (!stricmp(token, "bulge"))
+	else if (!str::icmp(token, "bulge"))
 	{
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			//ri.Printf(PRINT_WARNING, "WARNING: missing deformVertexes bulge parm in shader '%s'\n", shader.name);
+			MOHPC_LOG(Warn, "missing deformVertexes bulge parm in shader '%s' (file %s)", GetName(), GetFilename());
 			return;
 		}
 		ds->bulgeWidth = (float)atof(token);
@@ -1479,7 +1533,7 @@ void Shader::ParseDeform(Script& script)
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			//ri.Printf(PRINT_WARNING, "WARNING: missing deformVertexes bulge parm in shader '%s'\n", shader.name);
+			MOHPC_LOG(Warn, "missing deformVertexes bulge parm in shader '%s' (file %s)", GetName(), GetFilename());
 			return;
 		}
 		ds->bulgeHeight = (float)atof(token);
@@ -1487,19 +1541,19 @@ void Shader::ParseDeform(Script& script)
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			//ri.Printf(PRINT_WARNING, "WARNING: missing deformVertexes bulge parm in shader '%s'\n", shader.name);
+			MOHPC_LOG(Warn, "missing deformVertexes bulge parm in shader '%s' (file %s)", GetName(), GetFilename());
 			return;
 		}
 		ds->bulgeSpeed = (float)atof(token);
 
 		ds->deformation = DEFORM_BULGE;
 	}
-	else if (!stricmp(token, "wave"))
+	else if (!str::icmp(token, "wave"))
 	{
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			//ri.Printf(PRINT_WARNING, "WARNING: missing deformVertexes parm in shader '%s'\n", shader.name);
+			MOHPC_LOG(Warn, "missing deformVertexes parm in shader '%s' (file %s)", GetName(), GetFilename());
 			return;
 		}
 
@@ -1510,18 +1564,18 @@ void Shader::ParseDeform(Script& script)
 		else
 		{
 			ds->deformationSpread = 100.0f;
-			//ri.Printf(PRINT_WARNING, "WARNING: illegal div value of 0 in deformVertexes command for shader '%s'\n", shader.name);
+			MOHPC_LOG(Warn, "illegal div value of 0 in deformVertexes command for shader '%s' (file %s)", GetName(), GetFilename());
 		}
 
 		ParseWaveForm(script, &ds->deformationWave);
 		ds->deformation = DEFORM_WAVE;
 	}
-	else if (!stricmp(token, "normal"))
+	else if (!str::icmp(token, "normal"))
 	{
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			//ri.Printf(PRINT_WARNING, "WARNING: missing deformVertexes parm in shader '%s'\n", shader.name);
+			MOHPC_LOG(Warn, "missing deformVertexes parm in shader '%s' (file %s)", GetName(), GetFilename());
 			return;
 		}
 		ds->deformationWave.amplitude = (float)atof(token);
@@ -1529,14 +1583,14 @@ void Shader::ParseDeform(Script& script)
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			//ri.Printf(PRINT_WARNING, "WARNING: missing deformVertexes parm in shader '%s'\n", shader.name);
+			MOHPC_LOG(Warn, "missing deformVertexes parm in shader '%s' (file %s)", GetName(), GetFilename());
 			return;
 		}
 		ds->deformationWave.frequency = (float)atof(token);
 
 		ds->deformation = DEFORM_NORMALS;
 	}
-	else if (!stricmp(token, "move"))
+	else if (!str::icmp(token, "move"))
 	{
 		int		i;
 
@@ -1545,7 +1599,7 @@ void Shader::ParseDeform(Script& script)
 			token = script.GetToken(false);
 			if (token[0] == 0)
 			{
-				//ri.Printf(PRINT_WARNING, "WARNING: missing deformVertexes parm in shader '%s'\n", shader.name);
+				MOHPC_LOG(Warn, "missing deformVertexes parm in shader '%s' (file %s)", GetName(), GetFilename());
 				return;
 			}
 			ds->moveVector[i] = (float)atof(token);
@@ -1554,7 +1608,7 @@ void Shader::ParseDeform(Script& script)
 		ParseWaveForm(script, &ds->deformationWave);
 		ds->deformation = DEFORM_MOVE;
 	}
-	else if (!stricmp(token, "flap"))
+	else if (!str::icmp(token, "flap"))
 	{
 		token = script.GetToken(false);
 		if (token[0] == 0)
@@ -1598,7 +1652,7 @@ void Shader::ParseSkyParms(Script& script)
 	const char *token = script.GetToken(false);
 	if (token[0] == 0)
 	{
-		//ri.Printf(PRINT_WARNING, "WARNING: 'skyParms' missing parameter in shader '%s'\n", shader.name);
+		MOHPC_LOG(Warn, "'skyParms' missing parameter in shader '%s'", GetName(), GetFilename());
 		return;
 	}
 	if (strcmp(token, "-"))
@@ -1621,7 +1675,7 @@ void Shader::ParseSkyParms(Script& script)
 	token = script.GetToken(false);
 	if (token[0] == 0)
 	{
-		//ri.Printf(PRINT_WARNING, "WARNING: 'skyParms' missing parameter in shader '%s'\n", shader.name);
+		MOHPC_LOG(Warn, "'skyParms' missing parameter in shader '%s'", GetName(), GetFilename());
 		return;
 	}
 
@@ -1637,7 +1691,7 @@ void Shader::ParseSkyParms(Script& script)
 	token = script.GetToken(false);
 	if (token[0] == 0)
 	{
-		//ri.Printf(PRINT_WARNING, "WARNING: 'skyParms' missing parameter in shader '%s'\n", shader.name);
+		MOHPC_LOG(Warn, "'skyParms' missing parameter in shader '%s'", GetName(), GetFilename());
 		return;
 	}
 	if (strcmp(token, "-"))
@@ -1723,7 +1777,7 @@ void Shader::ParseSurfaceParm(Script& script)
 
 	for (intptr_t i = 0; i < sizeof(paramsToFlags) / sizeof(paramsToFlags[0]); i++)
 	{
-		if (!stricmp(paramsToFlags[i].param, token))
+		if (!str::icmp(paramsToFlags[i].param, token))
 		{
 			surfaceFlags |= paramsToFlags[i].surfaceFlags;
 			contents |= paramsToFlags[i].contents;
@@ -1886,7 +1940,7 @@ ShaderRef& ShaderRef::operator=(Shader* other)
 		shader->ClearReference();
 	}
 
-	shader = shader;
+	shader = other;
 	if (shader)
 	{
 		shader->AddReference();
@@ -2041,6 +2095,8 @@ void ShaderManager::Init()
 	m_nametoshader.resize(7000);
 	m_images.Resize(7000);
 
+	MOHPC_LOG(Info, "loading shaders");
+
 	// Parse all shaders
 	ParseShaders(entryList);
 
@@ -2050,9 +2106,7 @@ void ShaderManager::Init()
 
 	seconds = (float)(end - start) / CLOCKS_PER_SEC;
 
-	MOHPC_LOG(Log, "%d shaders, loaded in %lf", m_nametoshader.size(), seconds);
-
-	//bi.Printf( "%d shaders loaded in %.2f seconds\n", m_shaderlist.size(), seconds );
+	MOHPC_LOG(Info, "%d shaders, loaded in %lf", m_nametoshader.size(), seconds);
 }
 
 void ShaderManager::ParseShaders(const FileEntryList& files)
@@ -2072,49 +2126,56 @@ void ShaderManager::ParseShaders(const FileEntryList& files)
 			continue;
 		}
 
-		std::streamsize length = file->ReadBuffer((void**)&buffer);
-
-		ShaderContainerPtr shaderContainer = makeShared<ShaderContainer>(this, filename);
+		const uint64_t length = file->ReadBuffer((void**)&buffer);
 
 		// Parse the shader
-		ParseShaderContainer(shaderContainer.get(), filename.c_str(), buffer, length);
-
-		m_shaderContainers.AddObject(shaderContainer);
-		m_fileShaderMap.addKeyValue(filename) = shaderContainer;
+		const ShaderContainerPtr shaderContainer = ParseShaderContainer(filename, buffer, length);
+		if(shaderContainer)
+		{
+			m_shaderContainers.AddObject(shaderContainer);
+			m_fileShaderMap.addKeyValue(filename) = shaderContainer;
+		}
 	}
 }
 
-void ShaderManager::ParseShaderContainer(ShaderContainer *shaderContainer, const char *name, const char *buffer, std::streamsize length)
+ShaderContainerPtr ShaderManager::ParseShaderContainer(const str& fileName, const char *buffer, uint64_t length)
 {
 	if (!length) length = strlen(buffer) + 1;
 
 	Script script;
 	script.Parse(buffer, length, "");
 
-	str filename = name;
+	if(!length || !script.TokenAvailable(true))
+	{
+		MOHPC_LOG(Info, "Nothing to parse in %s.", fileName.c_str());
+		return nullptr;
+	}
+
+	ShaderContainerPtr shaderContainer = makeShared<ShaderContainer>(this, fileName);
 
 	while (script.TokenAvailable(true))
 	{
 		const char *token = script.GetToken(false);
 		if (!token[0])
 		{
-			return;
+			MOHPC_LOG(Warn, "Empty token, file %s.", fileName.c_str());
+			return nullptr;
 		}
 
 		if (token[0] == '/' && token[1] == '*')
 		{
 			bool bTokenAvailable;
-			while (bTokenAvailable = script.TokenAvailable(true))
+			while ((bTokenAvailable = script.TokenAvailable(true)))
 			{
-				if (token[0] == '*' && token[1] == '/')
-				{
+				if (token[0] == '*' && token[1] == '/') {
 					break;
 				}
 				script.GetToken(false);
 			}
 			if (!bTokenAvailable)
 			{
-				return;
+				MOHPC_LOG(Warn, "Unexpected end of file found while parsing a comment for file %s.", fileName.c_str());
+				return nullptr;
 			}
 			continue;
 		}
@@ -2125,10 +2186,11 @@ void ShaderManager::ParseShaderContainer(ShaderContainer *shaderContainer, const
 
 		if (token[0] != '{')
 		{
-			return;
+			MOHPC_LOG(Warn, "A beginning brace was expected for file %s.", fileName.c_str());
+			return nullptr;
 		}
 
-		ShaderPtr shader = AllocShader(shaderContainer);
+		const ShaderPtr shader = AllocShader(shaderContainer.get());
 		shader->m_name = shadername;
 		shader->m_name.tolower();
 		//std::transform(shader->m_name.begin(), shader->m_name.end(), shader->m_name.begin(), &shader_tolower);
@@ -2140,6 +2202,8 @@ void ShaderManager::ParseShaderContainer(ShaderContainer *shaderContainer, const
 
 		AddShader(shader);
 	}
+
+	return shaderContainer;
 }
 
 /*

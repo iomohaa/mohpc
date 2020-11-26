@@ -6,10 +6,10 @@
 #include <MOHPC/Log.h>
 #include <GameSpy/gcdkey/gcdkeyc.h>
 
-static constexpr char* MOHPC_LOG_NAMESPACE = "server_cmd";
+static constexpr char MOHPC_LOG_NAMESPACE[] = "server_cmd";
 
 using namespace MOHPC;
-using namespace Network;
+using namespace MOHPC::Network;
 using namespace Log;
 
 EngineServer::IEngineRequest::IEngineRequest(Callbacks::ServerTimeout&& inTimeoutCallback)
@@ -18,22 +18,22 @@ EngineServer::IEngineRequest::IEngineRequest(Callbacks::ServerTimeout&& inTimeou
 }
 
 //== Get version before challenge
-MOHPC::Network::EngineServer::VerBeforeChallengeRequest::VerBeforeChallengeRequest(ConnectionParams&& inData)
+EngineServer::VerBeforeChallengeRequest::VerBeforeChallengeRequest(ConnectionParams&& inData)
 	: data(std::move(inData))
 {
 }
 
-MOHPC::str MOHPC::Network::EngineServer::VerBeforeChallengeRequest::generateRequest()
+str EngineServer::VerBeforeChallengeRequest::generateRequest()
 {
 	return "getinfo";
 }
 
-bool MOHPC::Network::EngineServer::VerBeforeChallengeRequest::supportsEvent(const char* name)
+bool EngineServer::VerBeforeChallengeRequest::supportsEvent(const char* name)
 {
 	return !str::icmp(name, "infoResponse");
 }
 
-IRequestPtr MOHPC::Network::EngineServer::VerBeforeChallengeRequest::handleResponse(const char* name, TokenParser& parser)
+IRequestPtr EngineServer::VerBeforeChallengeRequest::handleResponse(const char* name, TokenParser& parser)
 {
 	const char* token = parser.GetLine(true);
 	ReadOnlyInfo info(token);
@@ -52,12 +52,12 @@ IRequestPtr MOHPC::Network::EngineServer::VerBeforeChallengeRequest::handleRespo
 	size_t gameVersionLen;
 	const char* gameVersion = info.ValueForKey("gamever", gameVersionLen);
 
-	MOHPC_LOG(Log, "server type %d protocol version %d game version \"%.*s\"", serverType, protocolVersionNumber, gameVersionLen, gameVersion);
+	MOHPC_LOG(Info, "server type %d protocol version %d game version \"%.*s\"", serverType, protocolVersionNumber, gameVersionLen, gameVersion);
 	return makeShared<ChallengeRequest>(protocolType_c(serverType, protocolVersion), std::move(data), std::move(timeoutCallback));
 }
 
 //== Challenge
-Network::EngineServer::ChallengeRequest::ChallengeRequest(const protocolType_c& proto, ConnectionParams&& inData, Callbacks::ServerTimeout&& inTimeoutCallback)
+EngineServer::ChallengeRequest::ChallengeRequest(const protocolType_c& proto, ConnectionParams&& inData, Callbacks::ServerTimeout&& inTimeoutCallback)
 	: IEngineRequest(std::move(inTimeoutCallback))
 	, data(std::move(inData))
 	, protocol(proto)
@@ -66,37 +66,37 @@ Network::EngineServer::ChallengeRequest::ChallengeRequest(const protocolType_c& 
 
 }
 
-str Network::EngineServer::ChallengeRequest::generateRequest()
+str EngineServer::ChallengeRequest::generateRequest()
 {
 	return "getchallenge";
 }
 
-bool Network::EngineServer::ChallengeRequest::supportsEvent(const char* name)
+bool EngineServer::ChallengeRequest::supportsEvent(const char* name)
 {
 	return !str::icmp(name, "getKey") || !str::icmp(name, "challengeResponse");
 }
 
-IRequestPtr MOHPC::Network::EngineServer::ChallengeRequest::handleResponse(const char* name, TokenParser& parser)
+IRequestPtr EngineServer::ChallengeRequest::handleResponse(const char* name, TokenParser& parser)
 {
 	if (!str::icmp(name, "getKey"))
 	{
 		const char* challenge = parser.GetLine(false);
-		MOHPC_LOG(Verbose, "forwarding request for getKey: %s", name);
+		MOHPC_LOG(Debug, "forwarding request for getKey: %s", name);
 		return makeShared<AuthorizeRequest>(protocol, std::move(data), challenge, std::move(timeoutCallback));
 	}
 
 	int32_t challengeResponse = parser.GetInteger(false);
-	MOHPC_LOG(Verbose, "challenge %d", challengeResponse);
+	MOHPC_LOG(Debug, "challenge %d", challengeResponse);
 	return makeShared<ConnectRequest>(protocol, std::move(data), challengeResponse, std::move(timeoutCallback));
 }
 
-uint64_t MOHPC::Network::EngineServer::ChallengeRequest::overrideTimeoutTime(bool& overriden)
+uint64_t EngineServer::ChallengeRequest::overrideTimeoutTime(bool& overriden)
 {
 	overriden = true;
 	return 3000;
 }
 
-MOHPC::IRequestPtr EngineServer::ChallengeRequest::timedOut()
+IRequestPtr EngineServer::ChallengeRequest::timedOut()
 {
 	if (numRetries > 5)
 	{
@@ -113,7 +113,7 @@ uint64_t EngineServer::ChallengeRequest::deferredTime()
 }
 
 //== Authorize
-Network::EngineServer::AuthorizeRequest::AuthorizeRequest(const protocolType_c& proto, ConnectionParams&& inData, const char* inChallenge, Callbacks::ServerTimeout&& inTimeoutCallback)
+EngineServer::AuthorizeRequest::AuthorizeRequest(const protocolType_c& proto, ConnectionParams&& inData, const char* inChallenge, Callbacks::ServerTimeout&& inTimeoutCallback)
 	: IEngineRequest(std::move(inTimeoutCallback))
 	, data(std::move(inData))
 	, protocol(proto)
@@ -122,12 +122,12 @@ Network::EngineServer::AuthorizeRequest::AuthorizeRequest(const protocolType_c& 
 {
 }
 
-bool Network::EngineServer::AuthorizeRequest::supportsEvent(const char* name)
+bool EngineServer::AuthorizeRequest::supportsEvent(const char* name)
 {
 	return !str::icmp(name, "getKey") || !str::icmp(name, "challengeResponse");
 }
 
-str Network::EngineServer::AuthorizeRequest::generateRequest()
+str EngineServer::AuthorizeRequest::generateRequest()
 {
 	const char* cdKey = data.settings ? data.settings->getCDKey() : "";
 
@@ -136,24 +136,24 @@ str Network::EngineServer::AuthorizeRequest::generateRequest()
 	// Get the key
 	gcd_compute_response((char*)cdKey, (char*)challenge.c_str(), outResponse, CDResponseMethod_NEWAUTH);
 
-	ILog::get().log(logType_e::Verbose, "network", "will send authorization \"%s\"", outResponse);
+	ILog::get().log(logType_e::Debug, "network", "will send authorization \"%s\"", outResponse);
 
 	return "authorizeThis " + str(outResponse);
 }
 
-IRequestPtr MOHPC::Network::EngineServer::AuthorizeRequest::handleResponse(const char* name, TokenParser& parser)
+IRequestPtr EngineServer::AuthorizeRequest::handleResponse(const char* name, TokenParser& parser)
 {
 	if (!str::icmp(name, "challengeResponse"))
 	{
 		int32_t challenge = parser.GetInteger(false);
-		MOHPC_LOG(Verbose, "got challenge %d", challenge);
+		MOHPC_LOG(Debug, "got challenge %d", challenge);
 		return makeShared<ConnectRequest>(protocol, std::move(data), challenge, std::move(timeoutCallback));
 	}
 
 	return nullptr;
 }
 
-uint64_t MOHPC::Network::EngineServer::AuthorizeRequest::overrideTimeoutTime(bool& overriden)
+uint64_t EngineServer::AuthorizeRequest::overrideTimeoutTime(bool& overriden)
 {
 	overriden = true;
 	// 5000 is the timeout time for the server to authorize
@@ -161,7 +161,7 @@ uint64_t MOHPC::Network::EngineServer::AuthorizeRequest::overrideTimeoutTime(boo
 	return 5500;
 }
 
-MOHPC::IRequestPtr MOHPC::Network::EngineServer::AuthorizeRequest::timedOut()
+IRequestPtr EngineServer::AuthorizeRequest::timedOut()
 {
 	if (numRetries > 2) {
 		return IEngineRequest::timedOut();
@@ -172,7 +172,7 @@ MOHPC::IRequestPtr MOHPC::Network::EngineServer::AuthorizeRequest::timedOut()
 }
 
 //== Connect
-Network::EngineServer::ConnectRequest::ConnectRequest(const protocolType_c& proto, ConnectionParams&& inData, uint32_t inChallenge, Callbacks::ServerTimeout&& inTimeoutCallback)
+EngineServer::ConnectRequest::ConnectRequest(const protocolType_c& proto, ConnectionParams&& inData, uint32_t inChallenge, Callbacks::ServerTimeout&& inTimeoutCallback)
 	: IEngineRequest(std::move(inTimeoutCallback))
 	, data(std::move(inData))
 	, protocol(proto)
@@ -187,7 +187,7 @@ Network::EngineServer::ConnectRequest::ConnectRequest(const protocolType_c& prot
 	}
 }
 
-str Network::EngineServer::ConnectRequest::generateRequest()
+str EngineServer::ConnectRequest::generateRequest()
 {
 	//========================
 	// fill in important info
@@ -231,19 +231,19 @@ str Network::EngineServer::ConnectRequest::generateRequest()
 	return connectArgs;
 }
 
-bool Network::EngineServer::ConnectRequest::shouldCompressRequest(size_t& offset)
+bool EngineServer::ConnectRequest::shouldCompressRequest(size_t& offset)
 {
 	// after --> "connect " <--
 	offset = 8;
 	return true;
 }
 
-bool Network::EngineServer::ConnectRequest::supportsEvent(const char* name)
+bool EngineServer::ConnectRequest::supportsEvent(const char* name)
 {
 	return !str::icmp(name, "connectResponse") || !str::icmp(name, "droperror") || !str::icmp(name, "print");
 }
 
-IRequestPtr MOHPC::Network::EngineServer::ConnectRequest::handleResponse(const char* name, TokenParser& parser)
+IRequestPtr EngineServer::ConnectRequest::handleResponse(const char* name, TokenParser& parser)
 {
 	if (!str::icmp(name, "droperror"))
 	{
@@ -270,18 +270,18 @@ IRequestPtr MOHPC::Network::EngineServer::ConnectRequest::handleResponse(const c
 		}
 	}
 
-	MOHPC_LOG(Verbose, "connection succeeded");
+	MOHPC_LOG(Debug, "connection succeeded");
 	data.response(qport, challenge, protocol, std::move(data.info), nullptr);
 	return nullptr;
 }
 
-uint64_t MOHPC::Network::EngineServer::ConnectRequest::overrideTimeoutTime(bool& overriden)
+uint64_t EngineServer::ConnectRequest::overrideTimeoutTime(bool& overriden)
 {
 	overriden = true;
 	return 3000;
 }
 
-MOHPC::IRequestPtr MOHPC::Network::EngineServer::ConnectRequest::timedOut()
+IRequestPtr EngineServer::ConnectRequest::timedOut()
 {
 	if (numRetries > 5) {
 		return IEngineRequest::timedOut();
@@ -297,23 +297,23 @@ uint64_t EngineServer::ConnectRequest::deferredTime()
 }
 
 //== GetStatus
-Network::EngineServer::StatusRequest::StatusRequest(Callbacks::Response&& inResponse)
+EngineServer::StatusRequest::StatusRequest(Callbacks::Response&& inResponse)
 	: response(inResponse)
 {
 
 }
 
-str Network::EngineServer::StatusRequest::generateRequest()
+str EngineServer::StatusRequest::generateRequest()
 {
 	return "getstatus";
 }
 
-bool Network::EngineServer::StatusRequest::supportsEvent(const char* name)
+bool EngineServer::StatusRequest::supportsEvent(const char* name)
 {
 	return !str::icmp(name, "statusResponse");
 }
 
-IRequestPtr MOHPC::Network::EngineServer::StatusRequest::handleResponse(const char* name, TokenParser& parser)
+IRequestPtr EngineServer::StatusRequest::handleResponse(const char* name, TokenParser& parser)
 {
 	const char* token = parser.GetLine(true);
 	if (*token)
@@ -331,22 +331,22 @@ IRequestPtr MOHPC::Network::EngineServer::StatusRequest::handleResponse(const ch
 }
 
 //== GetInfo
-Network::EngineServer::InfoRequest::InfoRequest(Callbacks::Response&& inResponse)
+EngineServer::InfoRequest::InfoRequest(Callbacks::Response&& inResponse)
 	: response(inResponse)
 {
 }
 
-str Network::EngineServer::InfoRequest::generateRequest()
+str EngineServer::InfoRequest::generateRequest()
 {
 	return "getinfo";
 }
 
-bool Network::EngineServer::InfoRequest::supportsEvent(const char* name)
+bool EngineServer::InfoRequest::supportsEvent(const char* name)
 {
 	return !str::icmp(name, "infoResponse");
 }
 
-IRequestPtr MOHPC::Network::EngineServer::InfoRequest::handleResponse(const char* name, TokenParser& parser)
+IRequestPtr EngineServer::InfoRequest::handleResponse(const char* name, TokenParser& parser)
 {
 	const char* token = parser.GetLine(true);
 	ReadOnlyInfo info(token);

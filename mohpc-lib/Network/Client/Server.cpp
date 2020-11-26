@@ -4,31 +4,26 @@
 #include <MOHPC/Misc/MSG/MSG.h>
 #include <MOHPC/Utilities/Info.h>
 #include <MOHPC/Utilities/TokenParser.h>
+#include <MOHPC/Utilities/MessageDispatcher.h>
 #include <MOHPC/Log.h>
 
 using namespace MOHPC;
-using namespace MOHPC::Network;
+using namespace Network;
 
 #define MOHPC_LOG_NAMESPACE "gs_server"
 
-GSServer::GSServer(const NetworkManagerPtr& inManager, const NetAddrPtr& adr)
-	: IServer(inManager, adr)
+MOHPC_OBJECT_DEFINITION(GSServer);
+
+GSServer::GSServer(const MessageDispatcherPtr& dispatcher, const ICommunicatorPtr& comm, const IRemoteIdentifierPtr& identifier)
+	: IServer(identifier)
+	, handler(dispatcher.get(), comm, identifier)
 {
 	socket = ISocketFactory::get()->createUdp();
 }
 
 void GSServer::query(Callbacks::Query&& response, Callbacks::ServerTimeout&& timeoutResult, size_t timeoutTime)
 {
-	GamespyUDPRequestParam param(socket, getAddress());
-	handler.sendRequest(makeShared<Request_Query>(std::move(response), std::move(timeoutResult)), std::move(param), timeoutTime);
-}
-
-void GSServer::tick(uint64_t deltaTime, uint64_t currentTime)
-{
-	// Avoid deletion while the request was pending
-	IServerPtr This = shared_from_this();
-
-	handler.handle();
+	handler.sendRequest(makeShared<Request_Query>(std::move(response), std::move(timeoutResult)), timeoutTime);
 }
 
 GSServer::Request_Query::Request_Query(Callbacks::Query&& inResponse, Callbacks::ServerTimeout&& timeoutResult)
@@ -42,7 +37,7 @@ const char* GSServer::Request_Query::generateQuery()
 	return "status";
 }
 
-SharedPtr<IRequestBase> GSServer::Request_Query::process(RequestData& data)
+SharedPtr<IRequestBase> GSServer::Request_Query::process(InputRequest& data)
 {
 	const size_t len = data.stream.GetLength();
 
@@ -67,7 +62,7 @@ SharedPtr<IRequestBase> GSServer::Request_Query::process(RequestData& data)
 			{
 				const char* key = it.key();
 				const char* value = it.value();
-				MOHPC_LOG(VeryVerbose, "%s: %s", key, value);
+				MOHPC_LOG(Trace, "%s: %s", key, value);
 			}
 			*/
 
@@ -86,19 +81,20 @@ SharedPtr<IRequestBase> GSServer::Request_Query::timedOut()
 	return nullptr;
 }
 
-IServer::IServer(const NetworkManagerPtr& inManager, const NetAddrPtr& adr)
-	: ITickableNetwork(inManager)
-	, address(adr)
+IServer::IServer(const IRemoteIdentifierPtr& inIdentifier)
+	: identifier(inIdentifier)
 {
 }
 
-const NetAddrPtr& IServer::getAddress() const
+const IRemoteIdentifierPtr& IServer::getIdentifier() const
 {
-	return address;
+	return identifier;
 }
 
-LANServer::LANServer(const NetworkManagerPtr& inManager, const NetAddrPtr& inAddress, char* inInfo, size_t infoSize)
-	: IServer(inManager, inAddress)
+MOHPC_OBJECT_DEFINITION(LANServer);
+
+LANServer::LANServer(const IRemoteIdentifierPtr& inIdentifier, char* inInfo, size_t infoSize)
+	: IServer(inIdentifier)
 	, info(ReadOnlyInfo(inInfo, infoSize))
 	, dataStr(inInfo)
 {
@@ -109,10 +105,6 @@ LANServer::~LANServer()
 	delete[] dataStr;
 }
 
-void LANServer::tick(uint64_t deltaTime, uint64_t currentTime)
-{
-}
-
 void LANServer::query(Callbacks::Query&& response, Callbacks::ServerTimeout&& timeoutResult, size_t timeoutTime)
 {
 	// No need to sent any request with the info
@@ -121,10 +113,8 @@ void LANServer::query(Callbacks::Query&& response, Callbacks::ServerTimeout&& ti
 
 MOHPC_OBJECT_DEFINITION(EngineServer);
 
-EngineServer::EngineServer(const NetworkManagerPtr& inManager, const NetAddrPtr& inAddress, const IUdpSocketPtr& existingSocket)
-	: ITickableNetwork(inManager)
-	, socket(existingSocket ? existingSocket : ISocketFactory::get()->createUdp())
-	, address(inAddress)
+EngineServer::EngineServer(const MessageDispatcherPtr& dispatcher, const ICommunicatorPtr& comm, const IRemoteIdentifierPtr& remoteIdentifier)
+	: handler(dispatcher.get(), comm, remoteIdentifier)
 {
 }
 
@@ -132,11 +122,13 @@ EngineServer::~EngineServer()
 {
 }
 
+/*
 void EngineServer::tick(uint64_t deltaTime, uint64_t currentTime)
 {
 	EngineServerPtr ThisPtr = shared_from_this();
 	handler.handle();
 }
+*/
 
 void EngineServer::connect(const ClientInfoPtr& clientInfo, const ConnectSettingsPtr& connectSettings, Callbacks::Connect&& result, Callbacks::ServerTimeout&& timeoutResult)
 {
@@ -149,25 +141,23 @@ void EngineServer::connect(const ClientInfoPtr& clientInfo, const ConnectSetting
 
 	sendRequest(makeShared<VerBeforeChallengeRequest>(std::move(connData)), std::move(timeoutResult));
 
-	MOHPC_LOG(Verbose, "connection request sent");
+	MOHPC_LOG(Debug, "connection request sent");
 }
 
-void EngineServer::getStatus(Callbacks::Response&& result, Callbacks::ServerTimeout&& timeoutResult, size_t timeoutTime)
+void EngineServer::getStatus(Callbacks::Response&& result, Callbacks::ServerTimeout&& timeoutResult, uint64_t timeoutTime)
 {
 	sendRequest(makeShared<StatusRequest>(std::move(result)), std::move(timeoutResult), timeoutTime);
 }
 
-void EngineServer::getInfo(Callbacks::Response&& result, Callbacks::ServerTimeout&& timeoutResult, size_t timeoutTime)
+void EngineServer::getInfo(Callbacks::Response&& result, Callbacks::ServerTimeout&& timeoutResult, uint64_t timeoutTime)
 {
 	sendRequest(makeShared<InfoRequest>(std::move(result)), std::move(timeoutResult), timeoutTime);
 }
 
-void EngineServer::sendRequest(IEngineRequestPtr&& req, Callbacks::ServerTimeout&& timeoutResult, size_t timeoutTime)
+void EngineServer::sendRequest(IEngineRequestPtr&& req, Callbacks::ServerTimeout&& timeoutResult, uint64_t timeoutTime)
 {
 	req->timeoutCallback = std::move(timeoutResult);
-
-	GamespyUDPRequestParam param(socket, address);
-	handler.sendRequest(std::move(req), std::move(param), timeoutTime);
+	handler.sendRequest(std::move(req), timeoutTime);
 }
 
 void EngineServer::onConnect(const Callbacks::Connect result, uint16_t qport, uint32_t challengeResponse, const protocolType_c& protoType, const ClientInfoPtr& cInfo, const char* errorMessage)
@@ -175,13 +165,12 @@ void EngineServer::onConnect(const Callbacks::Connect result, uint16_t qport, ui
 	if (!errorMessage)
 	{
 		// create a net channel and use the same socket
-		INetchanPtr newChannel = makeShared<Netchan>(socket, qport);
+		INetchanPtr newChannel = makeShared<Netchan>(handler.getComm(), qport);
 		// and pass it to the new client game connection
 		// using a shared ptr, to be able to use the deleter from the library itself
 		ClientGameConnectionPtr connection = ClientGameConnection::create(
-			getManager(),
 			newChannel,
-			address,
+			handler.getRemoteId(),
 			challengeResponse,
 			protoType,
 			cInfo
@@ -257,10 +246,8 @@ void EngineServer::IEngineRequest::generateOutput(IMessageStream& output)
 	}
 }
 
-IRequestPtr EngineServer::IEngineRequest::process(RequestData& data)
+SharedPtr<IRequestBase> EngineServer::IEngineRequest::process(InputRequest& data)
 {
-	const NetAddr& from = data.getParam<GamespyUDPRequestParam>().getLastIp();
-
 	// Set in OOB mode to read one single byte each call
 	MSG msg(data.stream, msgMode_e::Reading);
 	msg.SetCodec(MessageCodecs::OOB);
@@ -269,14 +256,14 @@ IRequestPtr EngineServer::IEngineRequest::process(RequestData& data)
 	if (marker != -1)
 	{
 		// must be a connectionless packet
-		MOHPC_LOG(Log, "Received a sequenced packet (%d)", marker);
+		MOHPC_LOG(Info, "Received a sequenced packet (%d)", marker);
 		return nullptr;
 	}
 
 	const netsrc_e dirByte = (netsrc_e)msg.ReadByte();
 	if (dirByte != netsrc_e::Client)
 	{
-		MOHPC_LOG(Log, "Wrong direction for connectionLess packet (must be targeted at client, got %d)", dirByte);
+		MOHPC_LOG(Info, "Wrong direction for connectionLess packet (must be targeted at client, got %d)", dirByte);
 		return nullptr;
 	}
 
@@ -298,8 +285,8 @@ IRequestPtr EngineServer::IEngineRequest::process(RequestData& data)
 		{
 			// Unexpected response
 			MOHPC_LOG(
-				Log, "unexpected reply \"%s\" from %s:%d",
-				command, from.asString().c_str(), from.port
+				Info, "unexpected reply \"%s\" from %s",
+				command, data.identifier->getString().c_str()
 			);
 		}
 	}
@@ -307,8 +294,8 @@ IRequestPtr EngineServer::IEngineRequest::process(RequestData& data)
 	{
 		// Empty response
 		MOHPC_LOG(
-			Log, "empty response from %s:%d",
-			from.asString().c_str(), from.port
+			Info, "empty response from %s",
+			data.identifier->getString().c_str()
 		);
 	}
 

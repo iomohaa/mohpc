@@ -48,6 +48,7 @@ namespace MOHPC
 
 		str ValueForKey(const char* key) const;
 		const char* ValueForKey(const char* key, size_t& outLen) const;
+		bool BoolValueForKey(const char* key) const;
 		uint32_t IntValueForKey(const char* key) const;
 		uint64_t LongValueForKey(const char* key) const;
 
@@ -74,6 +75,7 @@ namespace MOHPC
 		void SetValueForKey(const char* key, const char* value);
 		void RemoveKey(const char* key);
 		str ValueForKey(const char* key) const;
+		bool BoolValueForKey(const char* key) const;
 		uint32_t IntValueForKey(const char* key) const;
 		uint64_t LongValueForKey(const char* key) const;
 

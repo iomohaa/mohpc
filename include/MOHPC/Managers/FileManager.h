@@ -95,7 +95,7 @@ namespace MOHPC
 		 * @param Out - Specify a pointer to a variable that the function will output the buffer to
 		 * @return the total bytes read, 0 if the stream is empty or was not read.
 		 */
-		std::streamsize ReadBuffer(void** Out);
+		uint64_t ReadBuffer(void** Out);
 	};
 
 	struct FileManagerCategory;

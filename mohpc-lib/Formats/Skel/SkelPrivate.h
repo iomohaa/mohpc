@@ -40,18 +40,18 @@ namespace MOHPC
 		skelBone_World();
 
 	private:
-		SkelMat4		GetDirtyTransform(const skelAnimStoreFrameList_c *frames);
-		virtual void	SetBaseValue(const Skeleton::BoneData *boneData) override;
-		size_t			GetChannelIndex(size_t num);
-		skelBone_Base	*GetBoneRef(size_t num);
+		SkelMat4		GetDirtyTransform(const skelAnimStoreFrameList_c *frames) override;
+		void			SetBaseValue(const Skeleton::BoneData *boneData) override;
+		size_t			GetChannelIndex(size_t num) override;
+		skelBone_Base	*GetBoneRef(size_t num) override;
 	};
 
 	class skelBone_Zero : public skelBone_Base {
 	private:
-		SkelMat4			GetDirtyTransform(const skelAnimStoreFrameList_c *frames);
-		virtual void		SetBaseValue(const Skeleton::BoneData *boneData) override;
-		size_t				GetChannelIndex(size_t num);
-		skelBone_Base		*GetBoneRef(size_t num);
+		SkelMat4			GetDirtyTransform(const skelAnimStoreFrameList_c *frames) override;
+		void				SetBaseValue(const Skeleton::BoneData *boneData) override;
+		size_t				GetChannelIndex(size_t num) override;
+		skelBone_Base		*GetBoneRef(size_t num) override;
 	};
 
 	class skelBone_Rotation : public skelBone_Base {
@@ -60,13 +60,13 @@ namespace MOHPC
 		size_t m_quatChannel;
 
 	protected:
-		SkelMat4		GetDirtyTransform(const skelAnimStoreFrameList_c *frames);
+		SkelMat4		GetDirtyTransform(const skelAnimStoreFrameList_c *frames) override;
 
 	public:
 		void			SetChannels(size_t num);
-		virtual void	SetBaseValue(const Skeleton::BoneData *boneData) override;
-		size_t			GetChannelIndex(size_t num);
-		skelBone_Base	*GetBoneRef(size_t num);
+		void			SetBaseValue(const Skeleton::BoneData *boneData) override;
+		size_t			GetChannelIndex(size_t num) override;
+		skelBone_Base	*GetBoneRef(size_t num) override;
 	};
 
 	class skelBone_PosRot : public skelBone_Base {
@@ -76,17 +76,17 @@ namespace MOHPC
 
 	public:
 	protected:
-		SkelMat4		GetDirtyTransform(const skelAnimStoreFrameList_c *frames);
+		SkelMat4		GetDirtyTransform(const skelAnimStoreFrameList_c *frames) override;
 	public:
 		void			SetChannels(size_t quatChannel, size_t offsetChannel);
 		virtual void	SetBaseValue(const Skeleton::BoneData *boneData) override;
-		size_t			GetChannelIndex(size_t num);
-		skelBone_Base	*GetBoneRef(size_t num);
+		size_t			GetChannelIndex(size_t num) override;
+		skelBone_Base	*GetBoneRef(size_t num) override;
 	};
 
 	class skelBone_Root : public skelBone_PosRot {
 	public:
-		SkelMat4	GetDirtyTransform(const skelAnimStoreFrameList_c *frames);
+		SkelMat4	GetDirtyTransform(const skelAnimStoreFrameList_c *frames) override;
 	};
 
 	class skelBone_IKshoulder : public skelBone_Base {
@@ -101,10 +101,10 @@ namespace MOHPC
 
 		skelBone_IKshoulder();
 
-		SkelMat4		GetDirtyTransform(const skelAnimStoreFrameList_c *frames);
+		SkelMat4		GetDirtyTransform(const skelAnimStoreFrameList_c *frames) override;
 		virtual void	SetBaseValue(const Skeleton::BoneData *boneData) override;
-		size_t			GetChannelIndex(size_t num);
-		skelBone_Base	*GetBoneRef(size_t num);
+		size_t			GetChannelIndex(size_t num) override;
+		skelBone_Base	*GetBoneRef(size_t num) override;
 		void			SetElbowValue(float elbowOffset);
 		void			SetWristValue(float wristOffset);
 		void			SetWristBone(skelBone_IKwrist *wrist);
@@ -117,11 +117,11 @@ namespace MOHPC
 		skelBone_IKshoulder *m_shoulder;
 
 	public:
-		SkelMat4		GetDirtyTransform(const skelAnimStoreFrameList_c *frames);
+		SkelMat4		GetDirtyTransform(const skelAnimStoreFrameList_c *frames) override;
 		void			SetBoneRefs(skelBone_IKshoulder *shoulder);
 		virtual void	SetBaseValue(const Skeleton::BoneData *boneData) override;
-		size_t			GetChannelIndex(size_t num);
-		skelBone_Base	*GetBoneRef(size_t num);
+		size_t			GetChannelIndex(size_t num) override;
+		skelBone_Base	*GetBoneRef(size_t num) override;
 	};
 
 	class skelBone_IKwrist : public skelBone_Base {
@@ -131,12 +131,12 @@ namespace MOHPC
 		size_t m_offsetChannel;
 
 	public:
-		SkelMat4		GetDirtyTransform(const skelAnimStoreFrameList_c *frame);
+		SkelMat4		GetDirtyTransform(const skelAnimStoreFrameList_c *frame) override;
 		void			SetChannels(size_t quatChannel, size_t offsetChannel);
 		void			SetBoneRefs(skelBone_IKshoulder *shoulder);
-		virtual void	SetBaseValue(const Skeleton::BoneData *boneData) override;
-		size_t			GetChannelIndex(size_t num);
-		skelBone_Base	*GetBoneRef(size_t num);
+		void			SetBaseValue(const Skeleton::BoneData *boneData) override;
+		size_t			GetChannelIndex(size_t num) override;
+		skelBone_Base	*GetBoneRef(size_t num) override;
 	};
 
 	class skelBone_AvRot : public skelBone_Base {
@@ -150,11 +150,11 @@ namespace MOHPC
 	public:
 		skelBone_AvRot();
 
-		SkelMat4		GetDirtyTransform(const skelAnimStoreFrameList_c *frames);
+		SkelMat4		GetDirtyTransform(const skelAnimStoreFrameList_c *frames) override;
 		void			SetBoneRefs(skelBone_Base *ref1, skelBone_Base *ref2);
-		virtual void	SetBaseValue(const Skeleton::BoneData *boneData) override;
-		size_t			GetChannelIndex(size_t num);
-		skelBone_Base	*GetBoneRef(size_t num);
+		void			SetBaseValue(const Skeleton::BoneData *boneData) override;
+		size_t			GetChannelIndex(size_t num) override;
+		skelBone_Base	*GetBoneRef(size_t num) override;
 	};
 
 	class skelBone_HoseRot : public skelBone_Base {
@@ -167,27 +167,27 @@ namespace MOHPC
 		float m_spinRatio;
 
 	public:
-		SkelMat4		GetDirtyTransform(const skelAnimStoreFrameList_c *frames);
+		SkelMat4		GetDirtyTransform(const skelAnimStoreFrameList_c *frames) override;
 		SkelMat4		GetDirtyTransform(SkelMat4& myParentTM, SkelMat4& targetTM);
 		void			SetBoneRefs(skelBone_Base *ref);
-		virtual void	SetBaseValue(const Skeleton::BoneData *boneData) override;
-		size_t			GetChannelIndex(size_t num);
-		skelBone_Base	*GetBoneRef(size_t num);
+		void			SetBaseValue(const Skeleton::BoneData *boneData) override;
+		size_t			GetChannelIndex(size_t num) override;
+		skelBone_Base	*GetBoneRef(size_t num) override;
 	};
 
 	class skelBone_HoseRotBoth : public skelBone_HoseRot {
 	public:
-		SkelMat4		GetDirtyTransform(const skelAnimStoreFrameList_c *frames);
-		virtual void	SetBaseValue(const Skeleton::BoneData *boneData) override;
+		SkelMat4		GetDirtyTransform(const skelAnimStoreFrameList_c *frames) override;
+		void			SetBaseValue(const Skeleton::BoneData *boneData) override;
 	};
 
 	class skelBone_HoseRotParent : public skelBone_HoseRot {
 	public:
-		SkelMat4	GetDirtyTransform(const skelAnimStoreFrameList_c *frames);
-		virtual void	SetBaseValue(const Skeleton::BoneData *boneData) override;
+		SkelMat4	GetDirtyTransform(const skelAnimStoreFrameList_c *frames) override;
+		void		SetBaseValue(const Skeleton::BoneData *boneData) override;
 	};
 
-	typedef char skelChannelName_t[32];
+	using skelChannelName_t = char[32];
 };
 
 #include "Skeletor.h"

@@ -1,13 +1,18 @@
 #include <Shared.h>
+
+#include <MOHPC/Managers/FileManager.h>
+#include <MOHPC/Misc/SHA256.h>
+#include <MOHPC/Log.h>
+
 #include <fstream>
 #include <unordered_map>
 #include <set>
-#include <MOHPC/Managers/FileManager.h>
 #include <zlib/contrib/minizip/unzip.h>
 #include <filesystem>
 #include "../Misc/decompression_streambuf.h"
-#include <string.h>
-#include <MOHPC/Misc/SHA256.h>
+#include <cstring>
+
+#define MOHPC_LOG_NAMESPACE "fileman"
 
 using namespace MOHPC;
 
@@ -308,9 +313,9 @@ std::istream* File::GetStream() const
 	return m_data->LinkedStream;
 }
 
-std::streamsize File::ReadBuffer(void** Out)
+uint64_t MOHPC::File::ReadBuffer(void** Out)
 {
-	std::streamsize length = 0;
+	uint64_t length = 0;
 
 	if (!m_data->Buffer)
 	{
@@ -349,6 +354,10 @@ FileManager::~FileManager()
 {
 	PakFile* tmppak;
 
+	MOHPC_LOG(Debug, "Cleaning up file manager.");
+
+	MOHPC_LOG(Debug, "Removing pak files...");
+
 	for (PakFile* P = m_pPak; P != NULL; P = tmppak)
 	{
 		tmppak = P->Next;
@@ -362,6 +371,8 @@ FileManager::~FileManager()
 		delete P;
 	}
 
+	MOHPC_LOG(Debug, "Removing game paths...");
+
 	GamePath* tmpsp;
 
 	for (GamePath* G = m_pGamePath; G != NULL; G = tmpsp)
@@ -369,6 +380,8 @@ FileManager::~FileManager()
 		tmpsp = G->Next;
 		delete G;
 	}
+
+	MOHPC_LOG(Debug, "Removing categories...");
 
 	const size_t numCategories = m_pData->categoryList.size();
 	for (size_t i = 0; i < numCategories; i++)
@@ -384,6 +397,7 @@ bool FileManager::AddGameDirectory(const char* Directory, const char* CategoryNa
 {
 	if (!fs::exists(Directory))
 	{
+		MOHPC_LOG(Error, "Directory %s for %s doesn't exist.", Directory, CategoryName);
 		return false;
 	}
 
@@ -395,6 +409,8 @@ bool FileManager::AddGameDirectory(const char* Directory, const char* CategoryNa
 	m_pGamePath = G;
 	numGamePaths++;
 
+	MOHPC_LOG(Info, "Added directory %s for %s.", Directory, CategoryName);
+
 	return true;
 }
 
@@ -403,6 +419,7 @@ bool FileManager::AddPakFile(const char* Filename, const char* CategoryName)
 	unzFile ZipFile = unzOpen(Filename);
 	if (!ZipFile)
 	{
+		MOHPC_LOG(Error, "Pak file %s for %s doesn't exist.", Filename, CategoryName);
 		return false;
 	}
 
@@ -438,6 +455,8 @@ bool FileManager::AddPakFile(const char* Filename, const char* CategoryName)
 
 	numPaks++;
 
+	MOHPC_LOG(Info, "Loaded pak %s (for %s).", Filename, CategoryName);
+
 	return true;
 }
 
@@ -445,6 +464,8 @@ bool FileManager::FillGameDirectory(const char* Directory)
 {
 	const char* gameDir;
 	str gameDirStr;
+
+	MOHPC_LOG(Info, "Loading pak files...");
 
 	if(!HasTrailingSlash(Directory))
 	{
@@ -476,6 +497,8 @@ bool FileManager::FillGameDirectory(const char* Directory)
 	success &= AddPakFile(str::printf("%smaintt" PSL "Pak2.pk3", gameDir), "BT");
 	success &= AddPakFile(str::printf("%smaintt" PSL "Pak3.pk3", gameDir), "BT");
 	success &= AddPakFile(str::printf("%smaintt" PSL "Pak4.pk3", gameDir), "BT");
+
+	MOHPC_LOG(Info, "%d pak(s) loaded in %s.", numPaks, Directory);
 
 	return success;
 }
@@ -581,6 +604,8 @@ FilePtr FileManager::OpenFile(const char* Filename, const char* CategoryName)
 		}
 
 		delete ifs;
+
+		MOHPC_LOG(Warn, "Tried to open non-existent file %s for category %s", Filename, CategoryName);
 	}
 
 	return FilePtr();
@@ -605,8 +630,7 @@ str FileManager::GetFileHash(const char* Filename, const char* CategoryName)
 	{
 		Entry = it->second;
 
-		if (Entry->Hash.length())
-		{
+		if (Entry->Hash.length()) {
 			return Entry->Hash;
 		}
 	}
@@ -990,6 +1014,8 @@ FileManagerCategory* FileManager::GetOrCreateCategory(const char* CategoryName)
 
 void FileManager::CacheFiles()
 {
+	MOHPC_LOG(Info, "Caching files for the first time...");
+
 	CacheFilesCategory(nullptr);
 
 	const size_t numCategories = m_pData->categoryList.size();

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.13)
 
 project(mohpc-lib VERSION 1.0)
 
@@ -25,11 +25,6 @@ endif()
 
 add_library(MOHPC SHARED ${SRC} "${CMAKE_SOURCE_DIR}/include/MOHPC/mohpc.natvis")
 
-include_directories(${PROJECT_SOURCE_DIR})
-include_directories(${PROJECT_SOURCE_DIR}/../thirdparty)
-include_directories(${PROJECT_SOURCE_DIR}/../thirdparty/zlib)
-include_directories(${PROJECT_SOURCE_DIR}/../thirdparty/GameSpy/src)
-
 # Add support for std c++ filesystem on Unix
 if(UNIX)
 	target_link_libraries(MOHPC PUBLIC stdc++fs)
@@ -42,6 +37,11 @@ target_link_libraries(MOHPC PRIVATE MOHPC-3PT)
 add_dependencies(MOHPC MOHPC-3PT)
 
 target_compile_definitions(MOHPC PRIVATE MOHPC_DLL=1 FPM_64BIT)
+
+target_include_directories(MOHPC PRIVATE ${PROJECT_SOURCE_DIR})
+target_include_directories(MOHPC PRIVATE ${PROJECT_SOURCE_DIR}/../thirdparty)
+target_include_directories(MOHPC PRIVATE ${PROJECT_SOURCE_DIR}/../thirdparty/zlib)
+target_include_directories(MOHPC PRIVATE ${PROJECT_SOURCE_DIR}/../thirdparty/GameSpy/src)
 target_include_directories(MOHPC PUBLIC $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include> $<INSTALL_INTERFACE:${CMAKE_INSTALL_PREFIX}/include>)
 
 set_property(TARGET MOHPC PROPERTY CMAKE_CXX_STANDARD 17)
@@ -54,9 +54,8 @@ add_dependencies(MOHPC versioning)
 
 install(
 	TARGETS MOHPC
-	EXPORT MOHPC-Config
-	DESTINATION "${CMAKE_INSTALL_PREFIX}"
-	INCLUDES DESTINATION "${CMAKE_INSTALL_PREFIX}/include"
+	DESTINATION ${CMAKE_INSTALL_PREFIX}
+	EXPORT MOHPC-Targets
 )
 
 install(
@@ -64,25 +63,31 @@ install(
 	DESTINATION include
 )
 
-#install(
-#	FILES $<TARGET_PDB_FILE:MOHPC>
-#	DESTINATION "${CMAKE_INSTALL_PREFIX}"
-#)
-
-export(
-	TARGETS MOHPC
-	NAMESPACE MOHPC::
-	FILE "${CMAKE_INSTALL_PREFIX}/mohpc-config.cmake"
-)
-
-export(
-	PACKAGE MOHPC
-)
-
 install(
-	EXPORT MOHPC-Config
-	DESTINATION "${CMAKE_INSTALL_PREFIX}"
+	EXPORT MOHPC-Targets
+	DESTINATION .
 	NAMESPACE MOHPC::
 )
 
+set(INCLUDE_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/include)
+set(LIB_INSTALL_DIR ${CMAKE_INSTALL_PREFIX})
 
+include(CMakePackageConfigHelpers)
+configure_package_config_file( 
+  "Config.cmake.in" 
+  "MOHPC-Config.cmake"
+  INSTALL_DESTINATION ${CMAKE_INSTALL_PREFIX}
+  PATH_VARS
+    INCLUDE_INSTALL_DIR
+	LIB_INSTALL_DIR
+)
+
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/MOHPC-Config.cmake DESTINATION ${CMAKE_INSTALL_PREFIX})
+
+if(MSVC)
+	install(
+		FILES $<TARGET_PDB_FILE:MOHPC>
+		DESTINATION .
+		OPTIONAL
+	)
+endif()

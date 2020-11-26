@@ -226,14 +226,15 @@ typedef enum DXGI_FORMAT {
 static constexpr char DDS_HEADER[] = "DDS ";
 static constexpr char DDS_HEADER_DX10[] = "DX10";
 
-void Image::LoadDDS(const char *name, void *buf, std::streamsize len)
+void Image::LoadDDS(const char *name, void *buf, uint64_t len)
 {
 	//
 	// reject files that are too small to hold even a header
 	//
 	if (len < 4 + sizeof(ddsHeader_t))
 	{
-		throw ImageException("File %s is too small to be a DDS file.\n", name);
+		// it is too small to be a DDS file
+		throw ImageError::HeaderTooShort(len);
 	}
 
 	//
@@ -242,7 +243,8 @@ void Image::LoadDDS(const char *name, void *buf, std::streamsize len)
 	const uint32_t header = Endian.LittleInteger(*(uint32_t*)buf);
 	if (memcmp(&header, DDS_HEADER, sizeof(header)))
 	{
-		throw ImageException("File %s is not a DDS file.\n", name);
+		// not a DDS file
+		throw ImageError::DDS::BadHeader((const uint8_t*)&header);
 	}
 
 	//
@@ -255,9 +257,12 @@ void Image::LoadDDS(const char *name, void *buf, std::streamsize len)
 	const uint32_t fourCC = Endian.LittleInteger(ddsHeader->fourCC);
 	if ((pixelFormatFlags & DDSPF_FOURCC) && !memcmp(&fourCC, DDS_HEADER_DX10, sizeof(fourCC)))
 	{
-		if (len < 4 + sizeof(*ddsHeader) + sizeof(*ddsHeaderDxt10))
+		static constexpr size_t minHeaderSize = 4 + sizeof(*ddsHeader) + sizeof(*ddsHeaderDxt10);
+
+		if (len < minHeaderSize)
 		{
-			throw ImageException("File %s indicates a DX10 header it is too small to contain.\n", name);
+			// indicates a DX10 header it is too small to contain
+			throw ImageError::HeaderTooShort(len);
 		}
 
 		ddsHeaderDxt10 = (const ddsHeaderDxt10_t *)((const uint8_t*)buf + 4 + sizeof(ddsHeader_t));
@@ -359,7 +364,7 @@ void Image::LoadDDS(const char *name, void *buf, std::streamsize len)
 			break;
 
 		default:
-			throw ImageException("DDS File %s has unsupported DXGI format %d.", name, dxgiFormat);
+			throw ImageError::DDS::UnsupportedDXGIFormat(dxgiFormat);
 		}
 	}
 	else
@@ -413,5 +418,65 @@ void Image::LoadDDS(const char *name, void *buf, std::streamsize len)
 
 	data = new uint8_t[(size_t)len];
 	memcpy(data, ddsData, (size_t)len);
-	pixelFormat = PixelFormat::IF_RGBA;
+	pixelFormat = PixelFormat::RGBA;
+}
+
+ImageError::DDS::BadHeader::BadHeader(const uint8_t inFoundHeader[4])
+	: foundHeader{ inFoundHeader[0], inFoundHeader[1], inFoundHeader[2], inFoundHeader[3] }
+{
+}
+
+const uint8_t* ImageError::DDS::BadHeader::getHeader() const
+{
+	return foundHeader;
+}
+
+const char* ImageError::DDS::BadHeader::what() const
+{
+	return "Bad DDS image header";
+}
+
+ImageError::DDS::UnsupportedDXGIFormat::UnsupportedDXGIFormat(uint32_t inFormat)
+	: format(inFormat)
+{
+}
+
+uint32_t ImageError::DDS::UnsupportedDXGIFormat::getFormat() const
+{
+	return format;
+}
+
+const char* ImageError::DDS::UnsupportedDXGIFormat::what() const
+{
+	return "Unsupported DXGI format";
+}
+
+ImageError::DDS::UnsupportedFourCCFormat::UnsupportedFourCCFormat(uint32_t inFormat)
+	: format(inFormat)
+{
+}
+
+uint32_t ImageError::DDS::UnsupportedFourCCFormat::getFormat() const
+{
+	return format;
+}
+
+const char* ImageError::DDS::UnsupportedFourCCFormat::what() const
+{
+	return "Unsupported four-character code";
+}
+
+ImageError::DDS::UnsupportedRGBAFormat::UnsupportedRGBAFormat(uint32_t inFormat)
+	: format(inFormat)
+{
+}
+
+uint32_t ImageError::DDS::UnsupportedRGBAFormat::getFormat() const
+{
+	return format;
+}
+
+const char* ImageError::DDS::UnsupportedRGBAFormat::what() const
+{
+	return "Unsupported RGBA format";
 }

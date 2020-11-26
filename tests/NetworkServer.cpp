@@ -12,7 +12,7 @@ using namespace MOHPC::Network;
 class CNetworkServerUnitTest : public IUnitTest, public TAutoInst<CNetworkServerUnitTest>
 {
 private:
-	virtual unsigned int priority()
+	virtual unsigned int priority() override
 	{
 		return 0;
 	}

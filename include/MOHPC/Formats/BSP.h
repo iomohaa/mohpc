@@ -143,7 +143,7 @@ namespace MOHPC
 		private:
 			const Shader* shader;
 			Container<Vertice> vertices;
-			Container<size_t> indexes;
+			Container<uint32_t> indexes;
 			Vector centroid;
 			bool bIsPatch;
 			int32_t lightmapNum;
@@ -182,7 +182,7 @@ namespace MOHPC
 			MOHPC_EXPORTS const Vertice* GetVertice(size_t index) const;
 
 			MOHPC_EXPORTS size_t GetNumIndexes() const;
-			MOHPC_EXPORTS size_t GetIndice(size_t index) const;
+			MOHPC_EXPORTS uint32_t GetIndice(size_t index) const;
 
 			MOHPC_EXPORTS int32_t GetLightmapNum() const;
 			MOHPC_EXPORTS int32_t GetLightmapX() const;
@@ -576,7 +576,7 @@ namespace MOHPC
 		static bool PlaneFromPoints(vec4_t plane, vec3_t a, vec3_t b, vec3_t c);
 
 	protected:
-		bool Load() override;
+		void Load() override;
 
 	private:
 		BSPData::Plane::PlaneType PlaneTypeForNormal(const Vector& Normal);
@@ -610,7 +610,7 @@ namespace MOHPC
 		void LoadStaticModelDefs(const BSPFile::GameLump* GameLump);
 		void LoadTerrain(const BSPFile::GameLump* GameLump);
 		void LoadTerrainIndexes(const BSPFile::GameLump* GameLump);
-		void FloodArea(size_t areaNum, uint32_t floodNum, uint32_t& floodValid);
+		void FloodArea(uint32_t areaNum, uint32_t floodNum, uint32_t& floodValid);
 		void FloodAreaConnections();
 
 		// terrain
@@ -705,6 +705,9 @@ namespace MOHPC
 	{
 		class Base : public std::exception {};
 
+		/**
+		 * BSP has wrong header.
+		 */
 		class BadHeader : public Base
 		{
 		public:
@@ -712,10 +715,16 @@ namespace MOHPC
 
 			MOHPC_EXPORTS const uint8_t* getHeader() const;
 
+		public:
+			const char* what() const override;
+
 		private:
 			uint8_t foundHeader[4];
 		};
 
+		/**
+		 * BSP has wrong or unsupported version.
+		 */
 		class WrongVersion : public Base
 		{
 		public:
@@ -723,10 +732,16 @@ namespace MOHPC
 
 			MOHPC_EXPORTS uint32_t getVersion() const;
 
+		public:
+			const char* what() const override;
+
 		private:
 			uint32_t version;
 		};
 
+		/**
+		 * Lump size doesn't match with structure size.
+		 */
 		class FunnyLumpSize : public Base
 		{
 		public:
@@ -734,8 +749,103 @@ namespace MOHPC
 
 			MOHPC_EXPORTS const char* getLumpName() const;
 
+		public:
+			const char* what() const override;
+
 		private:
 			const char* lumpName;
 		};
+
+		/**
+		 * Bad mesh size for patch.
+		 */
+		class BadMeshSize : public Base
+		{
+		public:
+			BadMeshSize(int32_t inWidth, int32_t inHeight);
+
+			MOHPC_EXPORTS int32_t getWidth() const;
+			MOHPC_EXPORTS int32_t getHeight() const;
+
+		public:
+			const char* what() const override;
+
+		private:
+			int32_t width;
+			int32_t height;
+		};
+
+		/**
+		 * Invalid index on triangle.
+		 */
+		class BadFaceSurfaceIndex : public Base
+		{
+		public:
+			BadFaceSurfaceIndex(uint32_t inIndex);
+
+			MOHPC_EXPORTS uint32_t getIndex() const;
+
+		public:
+			const char* what() const override;
+
+		private:
+			uint32_t index;
+		};
+
+		/**
+		 * Invalid lightmap scale on terrain.
+		 */
+		class BadTerrainLightmapScale : public Base
+		{
+		public:
+			BadTerrainLightmapScale(uint8_t scale);
+
+			MOHPC_EXPORTS uint8_t getScale() const;
+
+		public:
+			const char* what() const override;
+
+		private:
+			uint8_t scale;
+		};
+
+		/**
+		 * Trying to flood an area that was already flooded.
+		 */
+		class RefloodedArea : public Base
+		{
+		public:
+			RefloodedArea(uint32_t inAreaNum, uint32_t inFloodNum);
+
+			MOHPC_EXPORTS uint32_t getAreaNum() const;
+			MOHPC_EXPORTS uint32_t getFloodNum() const;
+
+		public:
+			const char* what() const override;
+
+		private:
+			uint32_t areaNum;
+			uint32_t floodNum;
+		};
+
+		/**
+		 * BSP has bad entity string.
+		 */
+		class ExpectedInitBrace : public Base
+		{
+		public:
+			ExpectedInitBrace(char inChar);
+
+			MOHPC_EXPORTS char getCharacter() const;
+
+		public:
+			const char* what() const override;
+
+		private:
+			char c ;
+		};
+
+		/** Unexpected end of file met while parsing entities. */
+		class UnexpectedEntityEOF : public Base { using Base::Base; };
 	}
 }

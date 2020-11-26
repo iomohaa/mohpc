@@ -21,7 +21,7 @@ public:
 
 	virtual void run(const MOHPC::AssetManagerPtr& AM) override
 	{
-		MOHPC_LOG(Log, "Loading shaders...");
+		MOHPC_LOG(Info, "Loading shaders...");
 
 		MOHPC::ShaderManagerPtr SM = AM->GetManager<MOHPC::ShaderManager>();
 

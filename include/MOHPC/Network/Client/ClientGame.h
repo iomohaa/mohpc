@@ -10,6 +10,8 @@
 #include "../../Utilities/Info.h"
 #include "../../Utilities/PropertyMap.h"
 #include "../../Utilities/TokenParser.h"
+#include "../../Utilities/RemoteIdentifier.h"
+#include "../../Utilities/Tick.h"
 #include "../../Object.h"
 #include "../../Misc/MSG/MSG.h"
 #include "../../Managers/NetworkManager.h"
@@ -110,7 +112,7 @@ namespace MOHPC
 			 *
 			 * @param	command		Command to process.
 			 */
-			struct ServerCommand : public HandlerNotifyBase<void(const char* command, const Event& ev)> {};
+			struct ServerCommand : public HandlerNotifyBase<void(const char* command, const TokenParser& ev)> {};
 
 			/**
 			 * This callback is used to modify the player input before sending.
@@ -346,7 +348,7 @@ namespace MOHPC
 		 *
 		 * Call markReady() method to allow client to send user input to server, thus making it enter the game.
 		 */
-		class ClientGameConnection : public ITickableNetwork
+		class ClientGameConnection : public ITickable
 		{
 			MOHPC_OBJECT_DECLARATION(ClientGameConnection);
 
@@ -421,7 +423,7 @@ namespace MOHPC
 			uint32_t reliableAcknowledge;
 			uint32_t lastSnapFlags;
 			clientGameSettings_t settings;
-			NetAddrPtr adr;
+			IRemoteIdentifierPtr adr;
 			bool newSnapshots : 1;
 			bool extrapolatedSnapshot : 1;
 			bool isActive : 1;
@@ -449,10 +451,10 @@ namespace MOHPC
 			 * @param	challengeResponse	Challenge used to XOR data.
 			 * @param	protocolVersion		Version of the protocol to use.
 			 */
-			ClientGameConnection(const NetworkManagerPtr& inNetworkManager, const INetchanPtr& netchan, const NetAddrPtr& inAdr, uint32_t challengeResponse, const protocolType_c& protoType, const ClientInfoPtr& cInfo);
+			ClientGameConnection(const INetchanPtr& netchan, const IRemoteIdentifierPtr& inAdr, uint32_t challengeResponse, const protocolType_c& protoType, const ClientInfoPtr& cInfo);
 			~ClientGameConnection();
 
-			// ITickableNetwork
+			// ITickable
 			// ~
 			virtual void tick(uint64_t deltaTime, uint64_t currentTime) override;
 			// ~
@@ -471,7 +473,7 @@ namespace MOHPC
 			MOHPC_EXPORTS HandlerListClient& getHandlerList();
 
 			/** Return the IP address of the remote server. */
-			const NetAddr& getRemoteAddress() const;
+			const IRemoteIdentifierPtr& getRemoteAddress() const;
 
 			/** Retrieve the current game state. */
 			MOHPC_EXPORTS const gameState_t& getGameState() const;
@@ -525,11 +527,17 @@ namespace MOHPC
 			/** Return the current client number. */
 			MOHPC_EXPORTS uint32_t getClientNum() const;
 
-			/** Return the current user input number. */
+			/** Return the current server message sequence (the latest packet number). */
 			MOHPC_EXPORTS uint32_t getCurrentServerMessageSequence() const;
 
-			/** Return the current user input number. */
+			/** Return the current server command sequence (the latest command number). */
 			MOHPC_EXPORTS uint32_t getCurrentServerCommandSequence() const;
+
+			/** Return the current reliable sequence (the latest command number on the client). */
+			MOHPC_EXPORTS uint32_t getReliableSequence() const;
+
+			/** Return the current reliable acknowledge (the latest command number on the server). */
+			MOHPC_EXPORTS uint32_t getReliableAcknowledge() const;
 
 			/**
 			 * Return user input data.
@@ -578,8 +586,8 @@ namespace MOHPC
 
 		private:
 			const INetchanPtr& getNetchan() const;
-			void receive(const NetAddrPtr& from, MSG& msg, uint64_t currentTime, uint32_t sequenceNum);
-			void receiveConnectionLess(const NetAddrPtr& from, MSG& msg);
+			void receive(const IRemoteIdentifierPtr& from, MSG& msg, uint64_t currentTime, uint32_t sequenceNum);
+			void receiveConnectionLess(const IRemoteIdentifierPtr& from, MSG& msg);
 			void wipeChannel();
 			bool isChannelValid() const;
 			void serverDisconnected(const char* reason);

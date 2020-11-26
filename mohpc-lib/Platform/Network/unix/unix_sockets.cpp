@@ -16,7 +16,7 @@ void MOHPC::closeSocket(socket_t socket)
 	close(socket);
 }
 
-void MOHPC::ioctlSocket(int fd, unsigned long request, unsigned long* argp)
+void MOHPC::ioctlSocket(uintptr_t fd, unsigned long request, unsigned long* argp)
 {
 	ioctl(fd, request, argp);
 }

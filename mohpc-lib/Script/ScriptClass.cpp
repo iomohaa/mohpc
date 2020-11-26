@@ -84,7 +84,7 @@ ClassDef *MOHPC::GetClassForID(const char *name)
 
 ClassDef *MOHPC::GetClass(const char *name)
 {
-	if (name == NULL || name == "") {
+	if (name == NULL || !*name) {
 		return NULL;
 	}
 
@@ -193,7 +193,7 @@ void MOHPC::CLASS_Print(FILE *class_file, const char *fmt, ...)
 	va_end(argptr);
 
 	if (class_file)
-		fprintf(class_file, text);
+		fprintf(class_file, "%s", text);
 	else
 		CLASS_DPrintf(text);
 }

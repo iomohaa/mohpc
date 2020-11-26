@@ -4,6 +4,8 @@
 #include <MOHPC/Network/Channel.h>
 #include <MOHPC/Network/Encoding.h>
 #include <MOHPC/Network/Configstring.h>
+#include <MOHPC/Network/IPRemoteIdentifier.h>
+#include <MOHPC/Network/UDPMessageDispatcher.h>
 #include <MOHPC/Misc/MSG/Codec.h>
 #include <MOHPC/Misc/MSG/MSG.h>
 #include <MOHPC/Misc/MSG/Stream.h>
@@ -94,7 +96,7 @@ ServerHost::ServerHost(const NetworkManagerPtr& networkManager)
 	bindAddress.port = 12203;
 
 	serverSocket = ISocketFactory::get()->createUdp(&bindAddress);
-	conChan = ConnectionlessChan::create(serverSocket);
+	conChan = ConnectionlessChan::create(UDPCommunicator::create(serverSocket));
 
 	serverId = rand();
 }
@@ -155,7 +157,7 @@ void ServerHost::tick(uint64_t deltaTime, uint64_t currentTime)
 		}
 	}
 
-	if (serverSocket->dataAvailable())
+	if (serverSocket->dataCount())
 	{
 		processRequests();
 	}
@@ -163,7 +165,7 @@ void ServerHost::tick(uint64_t deltaTime, uint64_t currentTime)
 	sendStateToClients();
 }
 
-void ServerHost::connectionLessReply(const NetAddr& target, const char* reply)
+void ServerHost::connectionLessReply(const NetAddrPtr& target, const char* reply)
 {
 	uint8_t transmission[MAX_UDP_DATA_SIZE];
 	FixedDataMessageStream clientStream(transmission, MAX_UDP_DATA_SIZE);
@@ -175,7 +177,9 @@ void ServerHost::connectionLessReply(const NetAddr& target, const char* reply)
 	clientMessage.WriteString(reply);
 
 	clientStream = FixedDataMessageStream(transmission, clientStream.GetPosition());
-	conChan->transmit(target, clientStream);
+
+	IPRemoteIdentifier id(target);
+	conChan->transmit(id, clientStream);
 }
 
 void ServerHost::processRequests()
@@ -220,7 +224,7 @@ void ServerHost::processRequests()
 			}
 
 			// send the client challenge
-			connectionLessReply(*from, str::printf("challengeResponse %d", challenge->getChallenge()));
+			connectionLessReply(from, str::printf("challengeResponse %d", challenge->getChallenge()));
 		}
 		else if (!str::icmp(command, "connect "))
 		{
@@ -268,7 +272,7 @@ void ServerHost::processRequests()
 			ClientData& client = createClient(from, qport, challengeNum);
 
 			// inform the client that it's connected
-			connectionLessReply(*from, "connectResponse");
+			connectionLessReply(from, "connectResponse");
 		}
 	}
 	else
@@ -289,7 +293,8 @@ void ServerHost::processRequests()
 			clientMessage.WriteByte(0);
 			clientMessage.WriteString("disconnect");
 
-			conChan->transmit(*from, clientStream);
+			IPRemoteIdentifier id(from);
+			conChan->transmit(id, clientStream);
 
 			return;
 		}

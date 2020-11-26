@@ -22,23 +22,23 @@ public:
 		const char* typeStr;
 		switch (type)
 		{
-		case logType_e::VeryVerbose:
-			typeStr = "dbg";
-			break;
-		case logType_e::Verbose:
-			typeStr = "verb";
-			break;
-		case logType_e::Log:
-			typeStr = "info";
-			break;
-		case logType_e::Warning:
-			typeStr = "warn";
+		case logType_e::Fatal:
+			typeStr = "fatal";
 			break;
 		case logType_e::Error:
 			typeStr = "err";
 			break;
-		case logType_e::Disconnect:
-			typeStr = "fatal";
+		case logType_e::Warn:
+			typeStr = "warn";
+			break;
+		case logType_e::Info:
+			typeStr = "info";
+			break;
+		case logType_e::Debug:
+			typeStr = "dbg";
+			break;
+		case logType_e::Trace:
+			typeStr = "trace";
 			break;
 		default:
 			typeStr = "";
@@ -97,8 +97,6 @@ int main(int argc, char *argv[])
 	{
 		MOHPC::AssetManagerPtr AM = MOHPC::AssetManager::create();
 		MOHPC::FileManager* FM = AM->GetFileManager();
-
-		printf("Loading pak files...\n");
 
 #ifdef _WIN32
 		FM->FillGameDirectory("I:\\Jeux\\Mohaa\\");

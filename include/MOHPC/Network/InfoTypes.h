@@ -351,7 +351,7 @@ static constexpr unsigned int RF_ALWAYSDRAW			= (1<<30);
 		LastStat,
 
 		/**
-		/* Old names for backward compatibility
+		 * Old names for backward compatibility
 		 */
 		//
 		STAT_HEALTH = Health,

@@ -91,6 +91,7 @@ namespace MOHPC
 		struct gameState_t;
 
 		static constexpr size_t MAX_ACTIVE_SNAPSHOTS = 2;
+		static constexpr size_t NUM_TEAM_OBJECTIVES = 5;
 
 		/**
 		 * This is the list of effects.
@@ -843,6 +844,15 @@ namespace MOHPC
 			/** Returns the time limit before the match ends. */
 			MOHPC_EXPORTS int32_t getTimeLimit() const;
 
+			/** Return the server type the client is connected on. */
+			MOHPC_EXPORTS serverType_e getServerType() const;
+
+			/** Return whether or not voting is allowed. */
+			MOHPC_EXPORTS bool isVotingAllowed() const;
+
+			/** Return the map checksum on the server. Useful to compare against the checksum of the map on the client. */
+			MOHPC_EXPORTS uint32_t getMapChecksum() const;
+
 			/** Return the current map name. */
 			MOHPC_EXPORTS const char* getMapName() const;
 			MOHPC_EXPORTS const str& getMapNameStr() const;
@@ -851,10 +861,10 @@ namespace MOHPC
 			MOHPC_EXPORTS const char* getMapFilename() const;
 			MOHPC_EXPORTS const str& getMapFilenameStr() const;
 
-			/** Return the allied text in the range of [0..2]*/
+			/** Return the allied text NUM_TEAM_OBJECTIVES is the max. */
 			MOHPC_EXPORTS const char* getAlliedText(size_t index) const;
 
-			/** Return the axis text in the range of [0..2]*/
+			/** Return the axis text. NUM_TEAM_OBJECTIVES is the max. */
 			MOHPC_EXPORTS const char* getAxisText(size_t index);
 
 			/** Return the scoreboard pic shader. */
@@ -868,19 +878,22 @@ namespace MOHPC
 			uint64_t matchEndTme;
 			uint64_t levelStartTime;
 			uint64_t serverLagTime;
+			str mapName;
+			str mapFilename;
+			str alliedText[NUM_TEAM_OBJECTIVES];
+			str axisText[NUM_TEAM_OBJECTIVES];
+			str scoreboardPic;
+			str scoreboardPicOver;
 			voteInfo_t voteInfo;
 			uint32_t dmFlags;
 			uint32_t teamFlags;
 			uint32_t maxClients;
+			uint32_t mapChecksum;
 			int32_t fragLimit;
 			int32_t timeLimit;
+			serverType_e serverType;
 			gameType_e gameType;
-			str mapName;
-			str mapFilename;
-			str alliedText[3];
-			str axisText[3];
-			str scoreboardPic;
-			str scoreboardPicOver;
+			bool allowVote;
 		};
 
 		/**
@@ -1094,6 +1107,8 @@ namespace MOHPC
 			/** Parse fog/environment info between versions. */
 			virtual void parseFogInfo(const char* s, environment_t& env) = 0;
 
+			virtual serverType_e parseServerType(const char* version, size_t len) = 0;
+
 		private:
 			void parseServerInfo(const char* cs);
 			void conditionalReflectClient(const clientInfo_t& client);
@@ -1225,6 +1240,7 @@ namespace MOHPC
 			void parseFogInfo(const char* s, environment_t& env) override;
 			Pmove& getMove() override;
 			void setupMove(Pmove& pmove) override;
+			serverType_e parseServerType(const char* version, size_t len) override;
 
 		private:
 			effects_e getEffectId(uint32_t effectId);
@@ -1248,6 +1264,7 @@ namespace MOHPC
 			void setupMove(Pmove& pmove) override;
 			void parseFogInfo(const char* s, environment_t& env) override;
 			Pmove& getMove() override;
+			serverType_e parseServerType(const char* version, size_t len) override;
 
 		private:
 			effects_e getEffectId(uint32_t effectId);
@@ -1301,6 +1318,24 @@ namespace MOHPC
 			private:
 				uint64_t oldTime;
 				uint64_t time;
+			};
+
+			/**
+			 * The next snapshot number is lower than the latest snapshot number.
+			 */
+			class SnapNumWentBackward : public Base
+			{
+			public:
+				SnapNumWentBackward(uintptr_t newNum, uintptr_t latestNum);
+
+				/** Return the new snapshot number. */
+				MOHPC_EXPORTS uintptr_t getNewNum() const;
+				/** Return the latest snapshot number. */
+				MOHPC_EXPORTS uintptr_t getLatestNum() const;
+
+			private:
+				uintptr_t newNum;
+				uintptr_t latestNum;
 			};
 
 			/**

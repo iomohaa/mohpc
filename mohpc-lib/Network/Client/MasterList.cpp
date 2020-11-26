@@ -2,6 +2,7 @@
 #include <MOHPC/Network/Client/Server.h>
 #include <MOHPC/Network/Types.h>
 #include <MOHPC/Network/GameSpy/Encryption.h>
+#include <MOHPC/Network/UDPMessageDispatcher.h>
 #include <MOHPC/Misc/MSG/Stream.h>
 #include <MOHPC/Misc/MSG/MSG.h>
 #include <MOHPC/Misc/MSG/Codec.h>
@@ -32,50 +33,44 @@ static const char* gameName[(size_t)gameListType_e::max] =
 	"mohaab"
 };
 
-MOHPC::Network::IServerList::IServerList(const NetworkManagerPtr& inManager)
-	: ITickableNetwork(inManager)
+IServerList::IServerList()
 {
 }
 
 MOHPC_OBJECT_DEFINITION(ServerList);
 
-Network::ServerList::ServerList(const NetworkManagerPtr& inManager, gameListType_e type)
-	: IServerList(inManager)
+ServerList::ServerList(const MessageDispatcherPtr& inDispatcher, const ICommunicatorPtr& inMasterComm, const ICommunicatorPtr& inComm, const IRemoteIdentifierPtr& masterId, gameListType_e type)
+	: comm(inComm)
+	, dispatcher(inDispatcher)
+	, handler(inDispatcher.get(), inMasterComm, masterId)
 	, gameType(type)
 {
-	NetAddr4 addr = ISocketFactory::get()->getHost("master.x-null.net");
-	addr.port = 28900;
-	socket = ISocketFactory::get()->createTcp(addr);
+	//NetAddr4 addr = ISocketFactory::get()->getHost("master.x-null.net");
+	//addr.port = 28900;
+	//socket = ISocketFactory::get()->createTcp(addr);
 
-	sendRequest(makeShared<Request_SendCon>(inManager, type));
+	sendRequest(makeShared<Request_SendCon>(type));
 }
 
-void Network::ServerList::fetch(FoundServerCallback&& callback, MasterServerDone&& doneCallback)
+void ServerList::fetch(FoundServerCallback&& callback)
 {
-	sendRequest(makeShared<Request_FetchServers>(getManager(), gameType, std::move(callback), std::move(doneCallback)));
+	sendRequest(makeShared<Request_FetchServers>(dispatcher, comm, gameType, std::move(callback)));
 }
 
-void Network::ServerList::tick(uint64_t deltaTime, uint64_t currentTime)
+void ServerList::sendRequest(IGamespyRequestPtr&& newRequest)
 {
-	handler.handle();
-}
-
-void Network::ServerList::sendRequest(IGamespyRequestPtr&& newRequest)
-{
-	GamespyRequestParam param(socket);
-	handler.sendRequest(std::move(newRequest), std::move(param), 10000);
+	handler.sendRequest(std::move(newRequest), 10000);
 }
 
 //===================
 //= SendCon         =
 //===================
-Network::ServerList::Request_SendCon::Request_SendCon(const NetworkManagerPtr& inNetworkManager, gameListType_e inType)
-	: networkManager(inNetworkManager)
-	, gameType(inType)
+ServerList::Request_SendCon::Request_SendCon(gameListType_e inType)
+	: gameType(inType)
 {
 }
 
-SharedPtr<IRequestBase> Network::ServerList::Request_SendCon::process(RequestData& data)
+SharedPtr<IRequestBase> ServerList::Request_SendCon::process(InputRequest& data)
 {
 	char dataStr[256];
 
@@ -90,22 +85,22 @@ SharedPtr<IRequestBase> Network::ServerList::Request_SendCon::process(RequestDat
 
 	const char* token = ptr + 8;
 
-	MOHPC_LOG(Verbose, "connected to master and got token %s", token);
+	MOHPC_LOG(Debug, "connected to master and got token %s", token);
 
 	// Return the token to server
-	return makeShared<Request_SendToken>(networkManager, token, gameType);
+	return makeShared<Request_SendToken>(token, gameType);
 }
 
-void Network::ServerList::Request_SendCon::generateInfo(Info& info)
+void ServerList::Request_SendCon::generateInfo(Info& info)
 {
+	// Request will be sent after TCP acknowledge
 }
 
 //===================
 //= SendToken       =
 //===================
-Network::ServerList::Request_SendToken::Request_SendToken(const NetworkManagerPtr& inNetworkManager, const char* challenge, gameListType_e inType)
-	: networkManager(inNetworkManager)
-	, gameType(inType)
+ServerList::Request_SendToken::Request_SendToken(const char* challenge, gameListType_e inType)
+	: gameType(inType)
 {
 	char encdata[6];
 	memcpy(encdata, challenge, sizeof(encdata));
@@ -122,10 +117,10 @@ Network::ServerList::Request_SendToken::Request_SendToken(const NetworkManagerPt
 	// Encode the data
 	encode((uint8_t*)encdata, 6, (uint8_t*)encoded);
 
-	MOHPC_LOG(Verbose, "sending back encrypted token %s", encoded);
+	MOHPC_LOG(Debug, "sending back encrypted token %s", encoded);
 }
 
-void Network::ServerList::Request_SendToken::generateInfo(Info& info)
+void ServerList::Request_SendToken::generateInfo(Info& info)
 {
 	info.SetValueForKey("gamename", gameName[(uint8_t)gameType]);
 	info.SetValueForKey("gamever", "3");
@@ -136,17 +131,17 @@ void Network::ServerList::Request_SendToken::generateInfo(Info& info)
 	//info.SetValueForKey("enctype", "2");
 }
 
-bool Network::ServerList::Request_SendToken::mustProcess() const
+bool ServerList::Request_SendToken::mustProcess() const
 {
 	return false;
 }
 
-const char* Network::ServerList::Request_SendToken::queryId() const
+const char* ServerList::Request_SendToken::queryId() const
 {
 	return "1.1";
 }
 
-SharedPtr<IRequestBase> Network::ServerList::Request_SendToken::process(RequestData& data)
+SharedPtr<IRequestBase> ServerList::Request_SendToken::process(InputRequest& data)
 {
 	return nullptr;
 }
@@ -222,12 +217,12 @@ void ServerList::Request_SendToken::encrypt(const uint8_t* key, int key_len, uin
 //===================
 //= FetchServers    =
 //===================
-Network::ServerList::Request_FetchServers::Request_FetchServers(const NetworkManagerPtr& inNetworkManager, gameListType_e inGameType, FoundServerCallback&& inCallback, MasterServerDone&& inDoneCallback)
-	: networkManager(inNetworkManager)
+ServerList::Request_FetchServers::Request_FetchServers(const MessageDispatcherPtr& inDispatcher, const ICommunicatorPtr& inComm, gameListType_e inGameType, FoundServerCallback&& inCallback)
+	: dispatcher(inDispatcher)
+	, comm(inComm)
 	, key(gameKeys[(uint8_t)inGameType])
 	, game(gameName[(uint8_t)inGameType])
 	, callback(std::move(inCallback))
-	, doneCallback(std::move(inDoneCallback))
 	, pendingLen(0)
 {
 	if (!callback)
@@ -235,97 +230,102 @@ Network::ServerList::Request_FetchServers::Request_FetchServers(const NetworkMan
 		using namespace std::placeholders;
 		callback = std::bind(&Request_FetchServers::nullCallback, this, _1);
 
-		MOHPC_LOG(Warning, "No callback was given for fetching servers! Fallback to a null callback");
+		MOHPC_LOG(Warn, "No callback was given for fetching servers! Fallback to a null callback");
 	}
 }
 
-void Network::ServerList::Request_FetchServers::generateInfo(Info& info)
+void ServerList::Request_FetchServers::generateInfo(Info& info)
 {
 	info.SetValueForKey("list", "cmp");
 	info.SetValueForKey("gamename", game);
 	info.SetValueForKey("where", "");
 }
 
-SharedPtr<IRequestBase> Network::ServerList::Request_FetchServers::process(RequestData& data)
+SharedPtr<IRequestBase> ServerList::Request_FetchServers::process(InputRequest& data)
 {
-	char dataStr[512 + sizeof(pendingData)];
+	char dataStr[sizeof(pendingData) * 100];
 
+	// copy pending data
 	memcpy(dataStr, pendingData, pendingLen);
 
-	const size_t len = data.stream.GetLength();
-	data.stream.Read(dataStr + pendingLen, len - pendingLen);
-
-	//EncryptionLevel2 enc;
-	//enc.decode(key, (unsigned char*)dataStr + pendingLen, len - pendingLen);
-
-	const size_t totalLen = len + pendingLen;
-	pendingLen = totalLen % 6;
-	const size_t maxlen = len - pendingLen;
-
-	const char* p = dataStr;
-	const char* endbuf = dataStr + maxlen;
-	while (p < endbuf)
+	size_t processedLen = 0;
+	size_t len = 0;
+	const size_t streamLen = data.stream.GetLength();
+	for(size_t processedLen = 0; processedLen < streamLen; processedLen += len)
 	{
-		if (!strncmp(p, "\\final\\", 7))
+		const size_t remainingLen = streamLen - processedLen;
+		len = std::min(remainingLen, sizeof(dataStr));
+		data.stream.Read(dataStr + pendingLen, len);
+
+		//EncryptionLevel2 enc;
+		//enc.decode(key, (unsigned char*)dataStr + pendingLen, len - pendingLen);
+
+		const size_t totalLen = len + pendingLen;
+		pendingLen = totalLen % 6;
+		const size_t maxlen = len - pendingLen;
+
+		const char* p = dataStr;
+		const char* endbuf = dataStr + maxlen;
+		while (p < endbuf)
 		{
-			// finished processing
-			if (doneCallback) doneCallback();
-			return nullptr;
+			if (!strncmp(p, "\\final\\", 7))
+			{
+				// finished processing
+				return nullptr;
+			}
+
+			const uint8_t ip[4] = { (uint8_t)*p++, (uint8_t)*p++, (uint8_t)*p++, (uint8_t)*p++ };
+			const uint16_t port = rotl(*(uint16_t*)p, 8);
+			p += sizeof(port);
+
+			// the master server only return IPv4 entries
+			// for now, only use netadr4_t
+			NetAddr4Ptr adr = makeShared<NetAddr4>();
+			const IRemoteIdentifierPtr identifier = makeShared<IPRemoteIdentifier>(adr);
+			memcpy(adr->ip, ip, sizeof(adr->ip));
+			adr->port = port;
+	
+			IServerPtr ptr = makeShared<GSServer>(dispatcher, comm, identifier);
+			callback(ptr);
 		}
 
-		const uint8_t ip[4] = { (uint8_t)*p++, (uint8_t)*p++, (uint8_t)*p++, (uint8_t)*p++ };
-		const uint16_t port = rotl(*(uint16_t*)p, 8);
-		p += sizeof(port);
-
-		// the master server only return IPv4 entries
-		// for now, only use netadr4_t
-		NetAddr4Ptr adr = makeShared<NetAddr4>();
-		memcpy(adr->ip, ip, sizeof(adr->ip));
-		adr->port = port;
-	
-		IServerPtr ptr = makeShared<GSServer>(networkManager, adr);
-		callback(ptr);
+		memcpy(pendingData, p, pendingLen);
 	}
-
-	memcpy(pendingData, p, pendingLen);
 
 	return shared_from_this();
 }
 
-void Network::ServerList::Request_FetchServers::nullCallback(const IServerPtr& server)
+void ServerList::Request_FetchServers::nullCallback(const IServerPtr& server)
 {
-	const NetAddrPtr& address = server->getAddress();
+	const IRemoteIdentifierPtr& identifier = server->getIdentifier();
 
-	MOHPC_LOG(VeryVerbose, "Request_FetchServers::nullCallback: found %s:%d", address->asString().c_str(), address->port);
+	MOHPC_LOG(Trace, "Request_FetchServers::nullCallback: found %s", identifier->getString().c_str());
 }
 
 MOHPC_OBJECT_DEFINITION(ServerListLAN);
 
-ServerListLAN::ServerListLAN(const NetworkManagerPtr& inManager)
-	: IServerList(inManager)
+ServerListLAN::ServerListLAN(const MessageDispatcherPtr& dispatcher, const ICommunicatorPtr& comm)
+	: handler(dispatcher.get(), comm, nullptr)
 {
-	socket = ISocketFactory::get()->createUdp();
 }
 
-void ServerListLAN::fetch(FoundServerCallback&& callback, MasterServerDone&& doneCallback)
+void ServerListLAN::fetch(FoundServerCallback&& callback)
 {
-	GamespyUDPBroadcastRequestParam param(socket, 12203, 12218);
-	handler.sendRequest(makeShared<Request_InfoBroadcast>(getManager(), std::forward<FoundServerCallback>(callback)), std::move(param), 1000);
+	handler.sendRequest(makeShared<Request_InfoBroadcast>(std::forward<FoundServerCallback>(callback)), 1000);
 }
-
+/*
 void ServerListLAN::tick(uint64_t deltaTime, uint64_t currentTime)
 {
 	handler.handle();
 }
+*/
 
-Network::ServerListLAN::Request_InfoBroadcast::Request_InfoBroadcast(const NetworkManagerPtr& inNetworkManager, FoundServerCallback&& inResponse)
-	: networkManager(inNetworkManager)
-	, response(inResponse)
+ServerListLAN::Request_InfoBroadcast::Request_InfoBroadcast(FoundServerCallback&& inResponse)
+	: response(inResponse)
 {
-
 }
 
-void Network::ServerListLAN::Request_InfoBroadcast::generateOutput(IMessageStream& output)
+void ServerListLAN::Request_InfoBroadcast::generateOutput(IMessageStream& output)
 {
 	MSG msg(output, msgMode_e::Writing);
 	msg.SetCodec(MessageCodecs::OOB);
@@ -335,7 +335,7 @@ void Network::ServerListLAN::Request_InfoBroadcast::generateOutput(IMessageStrea
 	msg.WriteString("getInfo xxx");
 }
 
-SharedPtr<IRequestBase> Network::ServerListLAN::Request_InfoBroadcast::process(RequestData& data)
+SharedPtr<IRequestBase> ServerListLAN::Request_InfoBroadcast::process(InputRequest& data)
 {
 	const size_t len = data.stream.GetLength();
 
@@ -343,13 +343,13 @@ SharedPtr<IRequestBase> Network::ServerListLAN::Request_InfoBroadcast::process(R
 	data.stream.Read(dataStr, len);
 	dataStr[len] = 0;
 
-	const GamespyUDPBroadcastRequestParam& param = data.getParam<GamespyUDPBroadcastRequestParam>();
-	const NetAddrPtr& addr = param.getLastIp();
+	//const GamespyUDPBroadcastRequestParam& param = data.getParam<GamespyUDPBroadcastRequestParam>();
+	//const NetAddrPtr& addr = param.getLastIp();
 
 	// Don't create a server without a callback
 	if (response)
 	{
-		IServerPtr lanServer = makeShared<LANServer>(networkManager, addr, dataStr, strlen(dataStr));
+		IServerPtr lanServer = makeShared<LANServer>(data.identifier, dataStr, strlen(dataStr));
 		response(lanServer);
 	}
 
@@ -357,8 +357,7 @@ SharedPtr<IRequestBase> Network::ServerListLAN::Request_InfoBroadcast::process(R
 	return shared_from_this();
 }
 
-MOHPC::SharedPtr<MOHPC::IRequestBase> MOHPC::Network::ServerList::Request_FetchServers::timedOut()
+SharedPtr<IRequestBase> ServerList::Request_FetchServers::timedOut()
 {
-	if (doneCallback) doneCallback();
 	return nullptr;
 }

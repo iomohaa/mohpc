@@ -1488,7 +1488,7 @@ void ScriptVM::Execute(ScriptVariable *data, int dataSize, str label)
 				{
 					pTop->setListenerValue(NULL);
 
-					if (*m_CodePos >= OP_BIN_EQUALITY && *m_CodePos <= OP_BIN_GREATER_THAN_OR_EQUAL || *m_CodePos >= OP_BOOL_UN_NOT && *m_CodePos <= OP_UN_CAST_BOOLEAN) {
+					if ((*m_CodePos >= OP_BIN_EQUALITY && *m_CodePos <= OP_BIN_GREATER_THAN_OR_EQUAL) || (*m_CodePos >= OP_BOOL_UN_NOT && *m_CodePos <= OP_UN_CAST_BOOLEAN)) {
 						ScriptError("Targetname '%s' does not exist.", pTop->stringValue().c_str());
 					}
 
@@ -1509,7 +1509,7 @@ void ScriptVM::Execute(ScriptVariable *data, int dataSize, str label)
 
 					pTop->setListenerValue(NULL);
 
-					if (*m_CodePos >= OP_BIN_EQUALITY && *m_CodePos <= OP_BIN_GREATER_THAN_OR_EQUAL || *m_CodePos >= OP_BOOL_UN_NOT && *m_CodePos <= OP_UN_CAST_BOOLEAN) {
+					if ((*m_CodePos >= OP_BIN_EQUALITY && *m_CodePos <= OP_BIN_GREATER_THAN_OR_EQUAL) || (*m_CodePos >= OP_BOOL_UN_NOT && *m_CodePos <= OP_UN_CAST_BOOLEAN)) {
 						ScriptError("Targetname '%s' does not exist.", value.c_str());
 					}
 

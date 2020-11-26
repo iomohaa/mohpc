@@ -19,7 +19,7 @@ void MOHPC::closeSocket(socket_t socket)
 	closesocket(socket);
 }
 
-void MOHPC::ioctlSocket(int fd, unsigned long request, unsigned long* argp)
+void MOHPC::ioctlSocket(uintptr_t fd, unsigned long request, unsigned long* argp)
 {
 	ioctlsocket(fd, request, argp);
 }

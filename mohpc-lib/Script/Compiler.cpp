@@ -1877,7 +1877,7 @@ size_t ScriptCompiler::Compile( GameScript *gameScript, unsigned char *progBuffe
 	}
 	catch( ScriptException& exc )
 	{
-		printf(exc.string.c_str());
+		printf("%s\n", exc.string.c_str());
 		length = 0;
 		prog_end_ptr = code_pos;
 	}

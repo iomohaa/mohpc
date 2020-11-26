@@ -28,7 +28,7 @@ namespace MOHPC
 		/** Free up memory */ \
 		delete[] reinterpret_cast<unsigned char*>(instance); \
 	} \
-	void* c::allocate() { return new unsigned char[sizeof(c)]; };
+	void* c::allocate() { return new unsigned char[sizeof(c)]; }
 
 	class Object
 	{
@@ -61,17 +61,4 @@ namespace MOHPC
 		MOHPC_EXPORTS SharedPtr<AssetManager> GetAssetManager() const;
 		MOHPC_EXPORTS class FileManager* GetFileManager() const;
 	};
-
-	template<class T>
-	SharedPtr<T> Object::GetManager() const
-	{
-		const SharedPtr<AssetManager> AssetManager = GetAssetManager();
-		if (AssetManager)
-		{
-			// return the owning asset manager
-			return AssetManager->template GetManager<T>();
-		}
-
-		return nullptr;
-	}
 }

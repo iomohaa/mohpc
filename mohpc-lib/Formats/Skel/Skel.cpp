@@ -62,7 +62,7 @@ void Skeleton::LoadBoneFromBuffer2(const BoneFileData *fileData, BoneData *boneD
 		boneData->channelIndex[i] = boneNamesTable->RegisterChannel(newChannelName);
 		if (boneData->channelIndex[i] < 0)
 		{
-			MOHPC_LOG(Warning, "Channel named %s not added. (Bone will not work without it)", newChannelName);
+			MOHPC_LOG(Warn, "Channel named %s not added. (Bone will not work without it)", newChannelName);
 			boneData->boneType = Skeleton::SKELBONE_ZERO;
 		}
 
@@ -154,7 +154,7 @@ bool Skeleton::LoadModel(const char *path)
 
 	const File_SkelHeader* pHeader;
 	// Read the header
-	std::streamoff length = file->ReadBuffer((void**)&pHeader);
+	uint64_t length = file->ReadBuffer((void**)&pHeader);
 
 	// Check if the header matches
 	if (memcmp(pHeader->ident, TIKI_SKB_HEADER_IDENT, sizeof(pHeader->ident)) && memcmp(pHeader->ident, TIKI_SKD_HEADER_IDENT, sizeof(pHeader->ident)))
@@ -218,25 +218,26 @@ bool Skeleton::LoadModel(const char *path)
 	return true;
 }
 
-bool Skeleton::Load()
+void Skeleton::Load()
 {
 	const char *Fname = GetFilename().c_str();
 	size_t length = GetFilename().length();
 
-	const char* ext = length > 4 ? &Fname[length - 4] : NULL;
+	const char* ext = length > 4 ? &Fname[length - 4] : nullptr;
 	if (ext)
 	{
-		if (!stricmp(ext, ".skb") || !stricmp(ext, ".skd")) {
-			return LoadModel(Fname);
+		if (!str::icmp(ext, ".skb") || !str::icmp(ext, ".skd")) {
+			LoadModel(Fname);
 		}
 		else
 		{
 			MOHPC_LOG(Error, "Invalid extension '%s'", ext);
-			return false;
+			throw SkelError::BadExtension(ext);
 		}
 	}
-
-	return true;
+	else {
+		throw SkelError::NoExtension();
+	}
 }
 
 size_t Skeleton::GetNumSurfaces() const
@@ -438,7 +439,7 @@ void MOHPC::Skeleton::LoadSKBBones(const File_SkelHeader* pHeader, size_t length
 	const uint32_t numBones = Endian.LittleInteger(pHeader->numBones);
 	Bones.resize(numBones);
 
-	MOHPC_LOG(Verbose, "Old skeleton (SKB), creating bone data");
+	MOHPC_LOG(Debug, "Old skeleton (SKB), creating bone data");
 
 	const File_SkelBoneName* TIKI_bones = (const File_SkelBoneName*)((const uint8_t*)pHeader + Endian.LittleInteger(pHeader->ofsBones));
 	for (uint32_t i = 0; i < numBones; i++)
@@ -488,7 +489,7 @@ void MOHPC::Skeleton::LoadBoxes(const File_SkelHeader* pHeader, size_t length)
 			}
 		}
 		else {
-			MOHPC_LOG(Warning, "Box data is corrupted for '%s'", GetFilename().c_str());
+			MOHPC_LOG(Warn, "Box data is corrupted for '%s'", GetFilename().c_str());
 		}
 	}
 }
@@ -519,7 +520,7 @@ void MOHPC::Skeleton::LoadMorphs(const File_SkelHeader* pHeader, size_t length)
 
 		if (ofsMorphTargets >= 0 && (uint32_t)(ofsMorphTargets + nMorphBytes) <= length)
 		{
-			MorphTargets.SetNumObjectsUninitialized(numMorphTargets);
+			MorphTargets.SetNumObjects(numMorphTargets);
 
 			const char* pMorphTargets = (const char*)pHeader + ofsMorphTargets;
 
@@ -531,7 +532,27 @@ void MOHPC::Skeleton::LoadMorphs(const File_SkelHeader* pHeader, size_t length)
 			}
 		}
 		else {
-			MOHPC_LOG(Warning, "Morph targets data is corrupted for '%s'", GetFilename().c_str());
+			MOHPC_LOG(Warn, "Morph targets data is corrupted for '%s'", GetFilename().c_str());
 		}
 	}
+}
+
+MOHPC::SkelError::BadExtension::BadExtension(const str& inExtension)
+	: extension(inExtension)
+{
+}
+
+const char* MOHPC::SkelError::BadExtension::getExtension() const
+{
+	return extension.c_str();
+}
+
+const char* MOHPC::SkelError::BadExtension::what() const
+{
+	return "Bad or unsupported skeleton extension";
+}
+
+const char* MOHPC::SkelError::NoExtension::what() const
+{
+	return "No extension was specified for loading the skeleton file";
 }
