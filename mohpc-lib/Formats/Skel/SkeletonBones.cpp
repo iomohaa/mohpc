@@ -18,7 +18,8 @@ void Skeleton::LoadBoneFromBuffer(const SkeletonChannelList *boneList, const Ske
 
 	if (!bone[newBoneIndex])
 	{
-		boneName = GetAssetManager()->GetManager<SkeletorManager>()->GetBoneNamesTable()->FindName(boneData->channel);
+		SkeletonChannelNameTable* const nameTable = GetAssetManager()->GetManager<SkeletorManager>()->GetBoneNamesTable();
+		boneName = nameTable->FindName(boneData->channel);
 
 		if (boneData->parent < 0)
 		{
@@ -48,7 +49,7 @@ void Skeleton::LoadBoneFromBuffer(const SkeletonChannelList *boneList, const Ske
 		{
 			skelBone_PosRot *newBone;
 
-			if (!strncmp(boneName, "Bip01", 5))
+			if (!str::cmpn(boneName, "Bip01", 5))
 			{
 				newBone = new skelBone_Root;
 				bone[newBoneIndex] = newBone;
@@ -144,7 +145,6 @@ void Skeleton::LoadBonesFromBuffer(const SkeletonChannelList *boneList, skelBone
 		LoadBoneFromBuffer(boneList, &Bones[boneNum], bone);
 	}
 }
-
 
 const float *DecodeRLEValue( const SkeletonAnimation::SkanChannelHdr *channelFrames, size_t desiredFrameNum )
 {

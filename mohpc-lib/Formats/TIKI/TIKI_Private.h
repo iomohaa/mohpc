@@ -32,13 +32,13 @@ namespace MOHPC
 {
 	struct TIKI::dtikicmd_t
 	{
-		int32_t frame_num;
+		frameInt_t frame_num;
 		MOHPC::Container<MOHPC::str> args;
 	};
 
 	struct TIKI::dloadframecmd_t 
 	{
-		int frame_num;
+		frameInt_t frame_num;
 		MOHPC::Container<MOHPC::str> args;
 		MOHPC::str location;
 	};

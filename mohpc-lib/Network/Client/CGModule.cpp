@@ -192,7 +192,7 @@ void CGameModuleBase::tick(uint64_t deltaTime, uint64_t currentTime, uint64_t se
 		// Calculate the interpolation time
 		if (nextSnap)
 		{
-			uint32_t delta = nextSnap->serverTime - snap->serverTime;
+			const uint32_t delta = nextSnap->serverTime - snap->serverTime;
 			if (!delta) {
 				frameInterpolation = 0.f;
 			}
@@ -204,7 +204,7 @@ void CGameModuleBase::tick(uint64_t deltaTime, uint64_t currentTime, uint64_t se
 			frameInterpolation = 0.f;
 		}
 
-		predictPlayerState(deltaTime);
+		predictPlayerState();
 	}
 
 	if (cgs.voteInfo.modified) {
@@ -540,14 +540,21 @@ void CGameModuleBase::transitionEntity(EntityInfo& entInfo)
 	entInfo.teleported = false;
 }
 
-void CGameModuleBase::predictPlayerState(uint64_t deltaTime)
+void CGameModuleBase::predictPlayerState()
 {
+	if (!snap || (snap->snapFlags & SNAPFLAG_NOT_ACTIVE))
+	{
+		// avoid predicting while in an invalid snap
+		return;
+	}
+
 	if (!validPPS)
 	{
 		validPPS = true;
 		predictedPlayerState = snap->ps;
 	}
 
+	// server can freeze the player and/or disable prediction for the player
 	if (snap->ps.pm_flags & PMF_NO_PREDICTION || snap->ps.pm_flags & PMF_FROZEN)
 	{
 		interpolatePlayerState(false);
@@ -561,6 +568,7 @@ void CGameModuleBase::predictPlayerState(uint64_t deltaTime)
 		return;
 	}
 
+	// replay all commands for this frame
 	const bool moved = replayAllCommands();
 
 	// interpolate camera view (spectator, cutscenes, etc)
@@ -590,7 +598,7 @@ void CGameModuleBase::interpolatePlayerState(bool grabAngles)
 	// if we are still allowing local input, short circuit the view angles
 	if (grabAngles)
 	{
-		uintptr_t cmdNum = getImports().getCurrentCmdNumber();
+		const uintptr_t cmdNum = getImports().getCurrentCmdNumber();
 
 		usercmd_t cmd;
 		getImports().getUserCmd(cmdNum, cmd);
@@ -603,13 +611,13 @@ void CGameModuleBase::interpolatePlayerState(bool grabAngles)
 		return;
 	}
 
-	const SnapshotInfo* prev = snap;
-	const SnapshotInfo* next = nextSnap;
+	const SnapshotInfo* const prev = snap;
+	const SnapshotInfo* const next = nextSnap;
 
 	if (!next || next->serverTime <= prev->serverTime)
 	{
 		if(!next) {
-			MOHPC_LOG(Trace, "CGameModuleBase::interpolatePlayerState: nextSnap == NULL");
+			MOHPC_LOG(Debug, "CGameModuleBase::interpolatePlayerState: nextSnap == NULL");
 		}
 		return;
 	}
@@ -656,8 +664,8 @@ void CGameModuleBase::interpolatePlayerStateCamera()
 		return;
 	}
 
-	SnapshotInfo* prev = snap;
-	SnapshotInfo* next = nextSnap;
+	const SnapshotInfo* const prev = snap;
+	const SnapshotInfo* const next = nextSnap;
 
 	if (!next || next->serverTime <= prev->serverTime) {
 		return;
@@ -897,7 +905,7 @@ bool CGameModuleBase::replayAllCommands()
 	// Set settings depending on the protocol/version
 	setupMove(pmove);
 
-	playerState_t oldPlayerState = predictedPlayerState;
+	const playerState_t oldPlayerState = predictedPlayerState;
 	const uintptr_t current = getImports().getCurrentCmdNumber();
 
 	// Grab the latest cmd
@@ -920,6 +928,7 @@ bool CGameModuleBase::replayAllCommands()
 	pm.pmove_msec = pmove_msec;
 
 	bool moved = false;
+	// play all previous commands up to the current
 	for (uintptr_t cmdNum = CMD_BACKUP; cmdNum > 0; --cmdNum)
 	{
 		moved |= tryReplayCommand(pmove, oldPlayerState, latestCmd, current - cmdNum + 1);

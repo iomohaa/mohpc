@@ -446,19 +446,20 @@ bool TikiScript::ProcessCommand(bool crossline)
 	{
 		SkipToEOL();
 		SkipWhiteSpace(crossline);
-		include = GetAssetManager()->LoadAsset<TikiScript>(argument1);
-		if (include)
+		try
 		{
+			include = GetAssetManager()->LoadAsset<TikiScript>(argument1);
 			include->SkipNonToken(crossline);
 			for (i = 0; i < nummacros; i++)
 			{
 				include->AddMacro(macros[i].name, macros[i].macro);
 			}
 			include->parent = shared_from_this();
+
 		}
-		else
+		catch (const std::exception& exception)
 		{
-			TIKI_Error("^~^~^ Cannot find include file '%s' in %s on line %d\n", &argument1, Filename(), GetLineNumber());
+			TIKI_Error("^~^~^ Couldn't parse include '%s' in %s on line %d: %s", &argument1, Filename(), GetLineNumber(), exception.what());
 			Uninclude();
 		}
 	}

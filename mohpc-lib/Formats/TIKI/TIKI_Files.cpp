@@ -33,18 +33,37 @@ void TIKI::Load()
 	FreeStorage(&loaddef);
 }
 
+bool TIKI::IsValidFrame(size_t maxFrames, frameInt_t frameNum) const
+{
+	switch(frameNum)
+	{
+		case TIKI_FRAME_LAST:
+		case TIKI_FRAME_END:
+		case TIKI_FRAME_ENTRY:
+		case TIKI_FRAME_EXIT:
+		case TIKI_FRAME_EVERY:
+		case TIKI_FRAME_FIRST:
+			return true;
+		default:
+			return frameNum < maxFrames;
+	}
+
+	return false;
+}
+
 void TIKI::FixFrameNum(const TIKIAnim *ptiki, const SkeletonAnimation *animData, TIKIAnim::Command *cmd, const char *alias)
 {
-	if (cmd->frame_num >= TIKI_FRAME_LAST && cmd->frame_num < (intptr_t)animData->GetNumFrames())
+	if (IsValidFrame(animData->GetNumFrames(), cmd->frame_num))
 	{
-		if (cmd->frame_num <= TIKI_FRAME_END)
+		if (cmd->frame_num == TIKI_FRAME_END || cmd->frame_num == TIKI_FRAME_LAST)
 		{
-			cmd->frame_num = animData->GetNumFrames() - 1;
+			// fix frame number when it is the end or the last
+			cmd->frame_num = frameInt_t(animData->GetNumFrames() - 1);
 		}
 	}
 	else
 	{
-		MOHPC_LOG(Error, "TIKI_FixFrameNum: illegal frame number %d (total: %d) in anim '%s' in '%s'", cmd->frame_num, animData->GetNumFrames(), alias, ptiki->name);
+		MOHPC_LOG(Error, "TIKI_FixFrameNum: illegal frame number %d (total: %d) in anim '%s' in '%s'", cmd->frame_num, animData->GetNumFrames(), alias, ptiki->name.c_str());
 		cmd->frame_num = 0;
 	}
 }

@@ -36,6 +36,7 @@ Skeleton::Skeleton()
 void Skeleton::LoadBoneFromBuffer2(const BoneFileData *fileData, BoneData *boneData) const
 {
 	SkeletonChannelNameTable* const boneNamesTable = GetAssetManager()->GetManager<SkeletorManager>()->GetBoneNamesTable();
+	SkeletonChannelNameTable* const channelNamesTable = GetAssetManager()->GetManager<SkeletorManager>()->GetChannelNamesTable();
 
 	boneData->channel = boneNamesTable->RegisterChannel(fileData->name);
 	boneData->boneType = (BoneType)fileData->boneType;
@@ -59,7 +60,7 @@ void Skeleton::LoadBoneFromBuffer2(const BoneFileData *fileData, BoneData *boneD
 
 	for (uint16_t i = 0; i < boneData->numChannels; i++)
 	{
-		boneData->channelIndex[i] = boneNamesTable->RegisterChannel(newChannelName);
+		boneData->channelIndex[i] = channelNamesTable->RegisterChannel(newChannelName);
 		if (boneData->channelIndex[i] < 0)
 		{
 			MOHPC_LOG(Warn, "Channel named %s not added. (Bone will not work without it)", newChannelName);
@@ -78,7 +79,7 @@ void Skeleton::LoadBoneFromBuffer2(const BoneFileData *fileData, BoneData *boneD
 		newBoneRefName += strlen(newBoneRefName) + 1;
 	}
 
-	if (!strcmp(fileData->parent, SKEL_BONENAME_WORLD))
+	if (!str::cmp(fileData->parent, SKEL_BONENAME_WORLD))
 	{
 		// no parent if it's the worldBone in the file
 		boneData->parent = -1;
@@ -446,8 +447,8 @@ void MOHPC::Skeleton::LoadSKBBones(const File_SkelHeader* pHeader, size_t length
 	{
 		const char* boneName;
 
-		const uint32_t parent = Endian.LittleInteger(TIKI_bones->parent);
-		if (parent == -1) {
+		const uint16_t parent = Endian.LittleShort(TIKI_bones->parent);
+		if (parent == uint16_t(-1)) {
 			boneName = SKEL_BONENAME_WORLD;
 		}
 		else {

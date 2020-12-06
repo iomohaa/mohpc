@@ -1012,6 +1012,13 @@ namespace MOHPC
 			MOHPC_EXPORTS const playerState_t& getPredictedPlayerState() const;
 
 			/**
+			 * Predict the player state movement.
+			 * It is not called in the tick() function. It gives a chance for the caller
+			 * to immediately predict player state after the input has been processed.
+			 */
+			MOHPC_EXPORTS void predictPlayerState();
+
+			/**
 			 * Set the function used to trace through the world.
 			 *
 			 * @param	inTraceFunction		Custom function to use for tracing
@@ -1138,7 +1145,6 @@ namespace MOHPC
 			/**
 			 * Player state calculation
 			 */
-			void predictPlayerState(uint64_t deltaTime);
 			void interpolatePlayerState(bool grabAngles);
 			void interpolatePlayerStateCamera();
 			//====

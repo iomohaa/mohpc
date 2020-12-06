@@ -4,7 +4,7 @@
 class CSoundUnitTest : public IUnitTest
 {
 public:
-	unsigned int priority() override
+	long priority() override
 	{
 		return 0;
 	}

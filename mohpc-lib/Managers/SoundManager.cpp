@@ -366,6 +366,16 @@ SoundResults SoundManager::ParseUbersound(const char* filename, const char* cate
 					results.totalNodesSize += soundSize;
 				}
 			}
+			else if(!str::icmp(token, "end"))
+			{
+				// end instruction reached
+				break;
+			}
+			else if(!str::icmp(token, "settiki"))
+			{
+				token = script.GetToken(false);
+				// ignore settiki command, not useful in the library
+			}
 			else
 			{
 				MOHPC_LOG(Warn, "unsupported command '%s' in ubersound '%s' from %s.", token, filename, categoryName);
@@ -392,6 +402,16 @@ SoundResults SoundManager::ParseUbersound(const char* filename, const char* cate
 					results.totalNodesSize += soundSize;
 				}
 			}
+			else if (!str::icmp(token, "end"))
+			{
+				// end instruction reached
+				break;
+			}
+			else if (!str::icmp(token, "settiki"))
+			{
+				token = script.GetToken(false);
+				// ignore settiki command, not useful in the library
+			}
 			else {
 				script.SkipToEOL();
 			}
@@ -403,7 +423,7 @@ SoundResults SoundManager::ParseUbersound(const char* filename, const char* cate
 
 size_t SoundManager::ParseAlias(Script& script, SoundNode* soundNode)
 {
-	const char* token = script.GetToken(false);
+	const char* token = script.GetToken(true);
 	const size_t aliasNameSize = strlen(token) + 1;
 
 	if (soundNode)
@@ -415,7 +435,7 @@ size_t SoundManager::ParseAlias(Script& script, SoundNode* soundNode)
 		soundNode->aliasName = p;
 	}
 
-	token = script.GetToken(false);
+	token = script.GetToken(true);
 	const size_t realNameSize = strlen(token) + 1;
 
 	if (soundNode)
@@ -425,26 +445,26 @@ size_t SoundManager::ParseAlias(Script& script, SoundNode* soundNode)
 		soundNode->realName = p;
 	}
 
-	token = script.GetToken(false);
+	token = script.GetToken(true);
 	if (str::icmp(token, "soundparms"))
 	{
 		script.SkipToEOL();
 		return 0;
 	}
 
-	const float volume = script.GetFloat(false);
-	const float volumeMod = script.GetFloat(false);
-	const float pitch = script.GetFloat(false);
-	const float pitchMod = script.GetFloat(false);
-	const float dist = script.GetFloat(false);
-	const float maxDist = script.GetFloat(false);
+	const float volume = script.GetFloat(true);
+	const float volumeMod = script.GetFloat(true);
+	const float pitch = script.GetFloat(true);
+	const float pitchMod = script.GetFloat(true);
+	const float dist = script.GetFloat(true);
+	const float maxDist = script.GetFloat(true);
 
-	token = script.GetToken(false);
+	token = script.GetToken(true);
 	SoundChannel_e channel = S_ChannelNameToNum(token);
 
 	bool bStreamed = false;
 
-	token = script.GetToken(false);
+	token = script.GetToken(true);
 	if (!str::icmp(token, "streamed"))
 	{
 		bStreamed = true;
@@ -464,10 +484,16 @@ size_t SoundManager::ParseAlias(Script& script, SoundNode* soundNode)
 
 	size_t subtitleSize = 0;
 
-	token = script.GetToken(false);
-	if (!str::icmp(token, "subtitle"))
+	token = script.GetToken(true);
+	if(!str::icmp(token, "always"))
 	{
+		// it is used in SH/BT to indicate that the sound will be always loaded
 		token = script.GetToken(false);
+	}
+
+	if (!str::icmp(token, "subtitle") || !str::icmp(token, "forcesubtitle"))
+	{
+		token = script.GetString(true, true);
 		subtitleSize = strlen(token) + 1;
 
 		if (soundNode)
@@ -476,6 +502,14 @@ size_t SoundManager::ParseAlias(Script& script, SoundNode* soundNode)
 			memcpy(p, token, subtitleSize);
 			soundNode->subtitle = p;
 		}
+
+		token = script.GetToken(true);
+	}
+
+	if(!str::icmp(token, "maps"))
+	{
+		token = script.GetString(true, true);
+		// for now, ignore maps
 	}
 
 	return aliasNameSize + realNameSize + subtitleSize;

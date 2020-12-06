@@ -1076,11 +1076,12 @@ void ClientGameConnection::notifyAllConfigStringChanges()
 
 void ClientGameConnection::systemInfoChanged()
 {
-	ReadOnlyInfo serverSystemInfo = getServerSystemInfo();
-	ReadOnlyInfo serverGameInfo = getServerGameInfo();
+	const ReadOnlyInfo serverSystemInfo = getServerSystemInfo();
+	const ReadOnlyInfo serverGameInfo = getServerGameInfo();
 
 	serverId = serverSystemInfo.IntValueForKey("sv_serverid");
 	const uint32_t sv_fps = serverGameInfo.IntValueForKey("sv_fps");
+	// calculate the server frequency as milliseconds
 	serverDeltaFrequency = (uint64_t)(1.f / (float)sv_fps * 1000.f) * 2;
 }
 
@@ -1225,7 +1226,7 @@ void ClientGameConnection::writeUserInput(MSG& msg, uint64_t currentTime)
 		// write the number of commands
 		msg.WriteByte(count);
 		// write delta eyes
-		SerializableUserEyes oldEyeInfo(outPackets[oldPacketNum].p_eyeinfo);
+		const SerializableUserEyes oldEyeInfo(outPackets[oldPacketNum].p_eyeinfo);
 		SerializableUserEyes userEyesWrite(userEyes);
 		msg.WriteDeltaClass(&oldEyeInfo, &userEyesWrite);
 

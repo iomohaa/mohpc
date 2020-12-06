@@ -38,9 +38,9 @@ using namespace std::placeholders;
 class CNetworkUnitTest : public IUnitTest
 {
 public:
-	virtual unsigned int priority() override
+	virtual long priority() override
 	{
-		return 0;
+		return -1;
 	}
 
 	virtual const char* name() override

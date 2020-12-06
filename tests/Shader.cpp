@@ -9,7 +9,7 @@
 class CShaderTest : public IUnitTest
 {
 public:
-	virtual unsigned int priority() override
+	virtual long priority() override
 	{
 		return 1;
 	}

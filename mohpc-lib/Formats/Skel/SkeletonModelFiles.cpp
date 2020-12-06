@@ -101,22 +101,25 @@ void Skeleton::CreatePosRotBoneData(const char* newBoneName, const char* newBone
 	str rotChannelName;
 	str posChannelName;
 
-	boneData->channel = GetAssetManager()->GetManager<SkeletorManager>()->GetBoneNamesTable()->RegisterChannel(newBoneName);
+	SkeletonChannelNameTable* const boneNamesTable = GetAssetManager()->GetManager<SkeletorManager>()->GetBoneNamesTable();
+	SkeletonChannelNameTable* const channelNamesTable = GetAssetManager()->GetManager<SkeletorManager>()->GetChannelNamesTable();
 
-	if (!strcmp(newBoneParentName, "worldbone"))
+	boneData->channel = boneNamesTable->RegisterChannel(newBoneName);
+
+	if (!str::cmp(newBoneParentName, "worldbone"))
 	{
 		boneData->parent = -1;
 	}
 	else
 	{
-		boneData->parent = GetAssetManager()->GetManager<SkeletorManager>()->GetBoneNamesTable()->RegisterChannel(newBoneParentName);
+		boneData->parent = boneNamesTable->RegisterChannel(newBoneParentName);
 		assert(boneData->parent >= 0);
 	}
 
 	boneData->boneType = Skeleton::SKELBONE_POSROT;
 
 	ConvertToRotationName(newBoneName, rotChannelName);
-	boneData->channelIndex[0] = GetAssetManager()->GetManager<SkeletorManager>()->GetChannelNamesTable()->RegisterChannel(rotChannelName.c_str());
+	boneData->channelIndex[0] = channelNamesTable->RegisterChannel(rotChannelName.c_str());
 	if (boneData->channelIndex[0] < 0)
 	{
 		//SKEL_Warning( "Channel named %s not added. (Bone will not work without it)\n", rotChannelName );
@@ -124,7 +127,7 @@ void Skeleton::CreatePosRotBoneData(const char* newBoneName, const char* newBone
 	}
 
 	ConvertToPositionName(newBoneName, posChannelName);
-	boneData->channelIndex[1] = GetAssetManager()->GetManager<SkeletorManager>()->GetChannelNamesTable()->RegisterChannel(posChannelName.c_str());
+	boneData->channelIndex[1] = channelNamesTable->RegisterChannel(posChannelName.c_str());
 	if (boneData->channelIndex[1] < 0)
 	{
 		//SKEL_Warning( "Channel named %s not added. (Bone will not work without it)\n", posChannelName );

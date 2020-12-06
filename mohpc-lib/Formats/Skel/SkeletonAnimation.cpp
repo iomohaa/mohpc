@@ -249,11 +249,11 @@ void SkeletonAnimation::ConvertSkelFileToGame(const File_AnimDataHeader *pHeader
 
 		for (uint32_t j = 0; j < numChannels; j++)
 		{
-			vec4_t* const pChannels = (vec4_t*)((uint8_t*)pHeader + Endian.LittleInteger(pFileFrame->iOfsChannels));
-			pChannels[j][0] = Endian.LittleFloat(newFrame->pChannels[j][0]);
-			pChannels[j][1] = Endian.LittleFloat(newFrame->pChannels[j][1]);
-			pChannels[j][2] = Endian.LittleFloat(newFrame->pChannels[j][2]);
-			pChannels[j][3] = Endian.LittleFloat(newFrame->pChannels[j][3]);
+			const vec4_t* const pChannels = (vec4_t*)((uint8_t*)pHeader + Endian.LittleInteger(pFileFrame->iOfsChannels));
+			newFrame->pChannels[j][0] = Endian.LittleFloat(pChannels[j][0]);
+			newFrame->pChannels[j][1] = Endian.LittleFloat(pChannels[j][1]);
+			newFrame->pChannels[j][2] = Endian.LittleFloat(pChannels[j][2]);
+			newFrame->pChannels[j][3] = Endian.LittleFloat(pChannels[j][3]);
 		}
 
 		pFileFrame++;

@@ -10,6 +10,11 @@ public:
 		return "Sound alias";
 	}
 
+	virtual long priority() override
+	{
+		return 0;
+	}
+
 	virtual void run(const MOHPC::AssetManagerPtr& AM) override
 	{
 		MOHPC::SoundManagerPtr SoundManager = AM->GetManager<MOHPC::SoundManager>();

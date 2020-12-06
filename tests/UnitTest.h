@@ -15,7 +15,7 @@ public:
 	virtual ~IUnitTest();
 
 	/** Priority of the test, for faster testing. Higher = first */
-	virtual unsigned int priority() { return 0; }
+	virtual long priority() { return 0; }
 
 	/** Define the name of the unit test. */
 	virtual const char* name() = 0;

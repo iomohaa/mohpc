@@ -35,10 +35,10 @@ void Image::Load()
 
 	static ExtensionWrapper ExtensionWrappers[] =
 	{
-		{ ".jpg", &Image::LoadJPEG },
-		{ ".jpeg", &Image::LoadJPEG },
-		{ ".tga", &Image::LoadTGA },
-		{ ".dds", &Image::LoadDDS }
+		{ "jpg", &Image::LoadJPEG },
+		{ "jpeg", &Image::LoadJPEG },
+		{ "tga", &Image::LoadTGA },
+		{ "dds", &Image::LoadDDS }
 	};
 
 	const char* ext = GetFilename().GetExtension();

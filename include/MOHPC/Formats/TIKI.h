@@ -56,6 +56,8 @@ static constexpr unsigned int TIKI_FRAME_EVERY			= -1;
 static constexpr unsigned int TIKI_FRAME_FIRST			= 0;
 static constexpr unsigned int TIKI_FRAME_MAXFRAMERATE	= 60;
 
+using frameInt_t = unsigned int;
+
 //=
 // tiki surface flags
 //=
@@ -78,7 +80,7 @@ namespace MOHPC
 	public:
 		struct Command
 		{
-			intptr_t frame_num;
+			frameInt_t frame_num;
 			MOHPC::Container<MOHPC::str> args;
 		};
 
@@ -209,6 +211,7 @@ namespace MOHPC
 		bool LoadSetupCase(const char *filename, const dloaddef_t* ld, MOHPC::Container<dloadsurface_t>& loadsurfaces);
 		bool LoadSetup(const char *filename, const dloaddef_t* ld, MOHPC::Container<dloadsurface_t>& loadsurfaces);
 
+		bool IsValidFrame(size_t maxFrames, frameInt_t frameNum) const;
 		void FixFrameNum(const TIKIAnim *ptiki, const SkeletonAnimation *animData, TIKIAnim::Command *cmd, const char *alias);
 		void LoadAnim(const TIKIAnim *ptiki);
 		TIKIAnim* InitTiki(dloaddef_t *ld);

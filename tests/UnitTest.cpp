@@ -32,12 +32,12 @@ void IUnitTest::runAll(const MOHPC::AssetManagerPtr& AM)
 {
 	std::cout << "--- Running unit testing" << std::endl;
 
-	unsigned int higher = 0;
+	long higher = 0;
 
 	// Get the highest priority
 	for (IUnitTest* test = head; test; test = test->next)
 	{
-		unsigned int pri = test->priority();
+		long pri = test->priority();
 		if (pri > higher) {
 			higher = pri;
 		}
@@ -46,13 +46,13 @@ void IUnitTest::runAll(const MOHPC::AssetManagerPtr& AM)
 	bool remaining;
 	do
 	{
-		unsigned int nextPri = 0;
+		long nextPri = 0;
 		remaining = false;
 
 		// Check for next tests below higher priority
 		for (IUnitTest* test = head; test; test = test->next)
 		{
-			unsigned int pri = test->priority();
+			long pri = test->priority();
 			if (pri >= nextPri && pri < higher)
 			{
 				nextPri = pri;

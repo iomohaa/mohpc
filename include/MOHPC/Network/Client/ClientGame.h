@@ -32,10 +32,11 @@ namespace MOHPC
 		class Event;
 		class ClientSnapshot;
 
-		static constexpr unsigned long PACKET_BACKUP = (1 << 5); // 32
+		static constexpr unsigned long PACKET_BACKUP = (1 << 5);
 		static constexpr unsigned long PACKET_MASK = PACKET_BACKUP - 1;
 		static constexpr unsigned long MAX_PARSE_ENTITIES = 2048;
-		static constexpr unsigned long CMD_BACKUP = (1 << 8); // increased to 256
+		/** Previously 128, the number has been doubled. */
+		static constexpr unsigned long CMD_BACKUP = (1 << 8);
 		static constexpr unsigned long CMD_MASK = CMD_BACKUP - 1;
 		static constexpr unsigned long MAX_PACKET_USERCMDS = 32;
 

@@ -816,7 +816,7 @@ const char *Script::GetRaw( void )
 ==============
 */
 
-const char *Script::GetString( bool crossline )
+const char *Script::GetString(bool crossline, bool allowMultiLines)
 {
 	int startline;
 	
@@ -835,6 +835,7 @@ const char *Script::GetString( bool crossline )
 	if ( *script_p != '"' )
 	{
 		//glbs.Error( ERR_DROP, "Expecting string on line %i in file %s\n", line, filename.c_str() );
+		// FIXME: throw
 		return "";
 	}
 	
@@ -844,10 +845,17 @@ const char *Script::GetString( bool crossline )
 	token = "";
 	while( *script_p != '"' )
 	{
-		if ( *script_p == TOKENEOL )
+		if (*script_p == TOKENEOL)
 		{
 			//glbs.Error( ERR_DROP, "Line %i is incomplete while reading string in file %s\n", line, filename.c_str() );
-			return "";
+			if(!allowMultiLines)
+			{
+				// FIXME: throw
+				return "";
+			}
+
+			++script_p;
+			continue;
 		}
 		
 		if ( ( *script_p == '\\' ) && ( script_p < ( end_p - 1 ) ) )

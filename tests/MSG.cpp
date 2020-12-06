@@ -14,9 +14,9 @@
 class CMSGUnitTest : public IUnitTest
 {
 public:
-	virtual unsigned int priority() override
+	virtual long priority() override
 	{
-		return 2;
+		return 1;
 	}
 
 	virtual const char* name() override
