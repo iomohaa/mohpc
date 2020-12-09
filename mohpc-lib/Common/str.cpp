@@ -1242,17 +1242,22 @@ void str::DefaultExtension(const char* extension)
 
 const char* str::GetExtension() const
 {
-	size_t length, i;
+	if(!m_data || !m_data->len)
+	{
+		// empty string
+		return "";
+	}
 
-	length = m_data->len - 1;
-	i = length;
+	const size_t length = m_data->len - 1;
+	size_t i = length;
 
 	while (m_data->data[i] != '.')
 	{
 		i--;
 		if (m_data->data[i] == '/' || i == 0)
 		{
-			return ""; // no extension
+			// no extension
+			return "";
 		}
 	}
 
