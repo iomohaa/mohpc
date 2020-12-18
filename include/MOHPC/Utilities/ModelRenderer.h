@@ -27,7 +27,7 @@ namespace MOHPC
 
 	struct ModelWeight
 	{
-		int32_t boneIndex;
+		uintptr_t boneIndex;
 		float boneWeight;
 		Vector offset;
 	};

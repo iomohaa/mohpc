@@ -1000,7 +1000,7 @@ namespace MOHPC
 			MOHPC_EXPORTS uint64_t getTime() const;
 
 			/** Get the entity with the specified number. */
-			MOHPC_EXPORTS const EntityInfo* getEntity(entityNum_t num);
+			MOHPC_EXPORTS const EntityInfo* getEntity(entityNum_t num) const;
 
 			/** Return the current snapshot. */
 			MOHPC_EXPORTS SnapshotInfo* getCurrentSnapshot() const;

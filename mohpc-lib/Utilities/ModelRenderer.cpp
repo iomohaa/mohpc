@@ -66,7 +66,7 @@ void ModelRenderer::CacheBones()
 			ModelBone bone;
 			bone.boneName = boneList.ChannelName(GetManager<SkeletorManager>()->GetBoneNamesTable(), i);
 			bone.parentIndex = parentIndex;
-			bones.push_back(bone);
+			bones.AddObject(bone);
 		}
 	}
 }
@@ -129,7 +129,7 @@ void ModelRenderer::AddModel(const TIKI* Tiki)
 		for (size_t i = 0; i < numMeshes; i++)
 		{
 			const SkeletonPtr Skel = Tiki->GetMesh(i);
-			meshes.push_back(Skel);
+			meshes.AddObject(Skel);
 			LoadMorphTargetNames(Skel.get());
 		}
 
@@ -149,10 +149,10 @@ void ModelRenderer::AddModel(const TIKI* Tiki)
 				for (size_t j = 0; j < numShaders; j++)
 				{
 					const str& shaderName = Surface->shaders[j];
-					Mat.shaders.push_back(shaderMan->GetShader(shaderName.c_str()));
+					Mat.shaders.AddObject(shaderMan->GetShader(shaderName.c_str()));
 				}
 
-				materials.push_back(Mat);
+				materials.AddObject(Mat);
 			}
 		}
 	}
@@ -178,9 +178,9 @@ intptr_t ModelRenderer::AddModel(const SkeletonPtr& Skel)
 	}
 
 	intptr_t index = meshes.size();
-	meshes.push_back(Skel);
+	meshes.AddObject(Skel);
 	// Add a material for the mesh
-	materials.push_back(ModelSurfaceMaterial());
+	materials.AddObject(ModelSurfaceMaterial());
 	return index;
 }
 
@@ -431,7 +431,7 @@ void ModelRenderer::BuildRenderData()
 						morph.morphIndex = skelMorph->morphIndex;
 						morph.offset = skelMorph->offset;
 
-						Vertice.morphs.push_back(morph);
+						Vertice.morphs.AddObject(morph);
 					}
 
 					for (size_t weightNum = 0; weightNum < numWeights; weightNum++, skelWeight++)
@@ -448,11 +448,11 @@ void ModelRenderer::BuildRenderData()
 						}
 
 						ModelWeight weight;
-						weight.boneIndex = (int32_t)boneNum;
+						weight.boneIndex = boneNum;
 						weight.boneWeight = skelWeight->boneWeight;
 						weight.offset = skelWeight->offset;
 
-						Vertice.weights.push_back(weight);
+						Vertice.weights.AddObject(weight);
 					}
 				}
 				else
@@ -470,19 +470,19 @@ void ModelRenderer::BuildRenderData()
 						weight.boneWeight = skelWeight->boneWeight;
 						weight.offset = skelWeight->offset;
 
-						Vertice.weights.push_back(weight);
+						Vertice.weights.AddObject(weight);
 					}
 				}
 
-				Surface.vertices.push_back(Vertice);
+				Surface.vertices.AddObject(Vertice);
 			}
 
 			for (size_t indiceIdx = 0; indiceIdx < numIndexes; indiceIdx++)
 			{
-				Surface.indexes.push_back(skelSurface->Triangles[indiceIdx]);
+				Surface.indexes.AddObject(skelSurface->Triangles[indiceIdx]);
 			}
 
-			surfaces.push_back(Surface);
+			surfaces.AddObject(Surface);
 		}
 	}
 }

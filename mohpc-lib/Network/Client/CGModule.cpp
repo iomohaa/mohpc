@@ -217,13 +217,13 @@ float CGameModuleBase::getFrameInterpolation() const
 	return frameInterpolation;
 }
 
-const EntityInfo* CGameModuleBase::getEntity(entityNum_t num)
+const EntityInfo* CGameModuleBase::getEntity(entityNum_t num) const
 {
 	if (num >= MAX_GENTITIES) {
 		return nullptr;
 	}
 
-	EntityInfo& entInfo = clientEnts[num];
+	const EntityInfo& entInfo = clientEnts[num];
 	if (!entInfo.currentValid)
 	{
 		// invalid entity

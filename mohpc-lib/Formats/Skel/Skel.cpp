@@ -104,9 +104,9 @@ void Skeleton::LoadBoneFromBuffer2(const BoneFileData *fileData, BoneData *boneD
 	case Skeleton::SKELBONE_IKSHOULDER:
 	{
 		fileData->getBaseData(baseData, 3, 4);
-		boneData->offset[0] = baseData[4];
-		boneData->offset[1] = baseData[5];
-		boneData->offset[2] = baseData[6];
+		boneData->offset[0] = baseData[0];
+		boneData->offset[1] = baseData[1];
+		boneData->offset[2] = baseData[2];
 		break;
 	}
 	case Skeleton::SKELBONE_IKELBOW:

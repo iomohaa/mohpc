@@ -13,14 +13,15 @@ void Skeleton::LoadBoneFromBuffer(const SkeletonChannelList *boneList, const Ske
 	const char *boneName;
 	skelBone_Base *parentBone;
 
-	intptr_t newBoneIndex = boneList->GetLocalFromGlobal(boneData->channel);
-	intptr_t newBoneParent;
+	const intptr_t newBoneIndex = boneList->GetLocalFromGlobal(boneData->channel);
 
 	if (!bone[newBoneIndex])
 	{
-		SkeletonChannelNameTable* const nameTable = GetAssetManager()->GetManager<SkeletorManager>()->GetBoneNamesTable();
+		const SkeletorManagerPtr skeletorManager = GetManager<SkeletorManager>();
+		const SkeletonChannelNameTable* const nameTable = skeletorManager->GetBoneNamesTable();
 		boneName = nameTable->FindName(boneData->channel);
 
+		intptr_t newBoneParent;
 		if (boneData->parent < 0)
 		{
 			newBoneParent = -1;
@@ -126,7 +127,7 @@ void Skeleton::LoadBoneFromBuffer(const SkeletonChannelList *boneList, const Ske
 
 		if (newBoneParent < 0)
 		{
-			parentBone = GetManager<SkeletorManager>()->GetWorldBone();
+			parentBone = skeletorManager->GetWorldBone();
 		}
 		else
 		{
