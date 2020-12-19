@@ -427,7 +427,7 @@ void CGameModuleBase::setInitialSnapshot(SnapshotInfo* newSnap)
 	// Prepare entities that are present in this snapshot
 	for (uintptr_t i = 0; i < newSnap->numEntities; ++i)
 	{
-		entityState_t& state = newSnap->entities[i];
+		const entityState_t& state = newSnap->entities[i];
 		EntityInfo& entInfo = clientEnts[state.number];
 
 		entInfo.currentState = state;
@@ -436,7 +436,7 @@ void CGameModuleBase::setInitialSnapshot(SnapshotInfo* newSnap)
 		entInfo.currentValid = true;
 
 		// This is the first snapshot, notify about each entities
-		handlers().entityAddedHandler.broadcast(entInfo);
+		handlers().entityAddedHandler.broadcast(state);
 	}
 }
 
@@ -457,11 +457,10 @@ void CGameModuleBase::transitionSnapshot(bool differentServer)
 		for (size_t i = 0; i < target->numEntities; ++i)
 		{
 			const entityState_t& es = target->entities[i];
-			EntityInfo& entInfo = clientEnts[es.number];
 
 			const entityState_t* foundEnt = from->getEntityStateByNumber(es.number);
 			if (!foundEnt) {
-				handlers().entityAddedHandler.broadcast(entInfo);
+				handlers().entityAddedHandler.broadcast(es);
 			}
 		}
 	}
@@ -470,22 +469,23 @@ void CGameModuleBase::transitionSnapshot(bool differentServer)
 		// Check for new entities
 		for (size_t i = 0; i < target->numEntities; ++i)
 		{
-			EntityInfo& entInfo = clientEnts[target->entities[i].number];
-			handlers().entityAddedHandler.broadcast(entInfo);
+			const EntityInfo& entInfo = clientEnts[target->entities[i].number];
+			handlers().entityAddedHandler.broadcast(entInfo.getCurrentState());
 		}
 	}
 
-	for (uintptr_t i = 0; i < snap->numEntities; i++)
+	for (uintptr_t i = 0; i < from->numEntities; i++)
 	{
-		EntityInfo& entInfo = clientEnts[snap->entities[i].number];
+		const EntityInfo& entInfo = clientEnts[from->entities[i].number];
+		const entityState_t& current = entInfo.getCurrentState();
+		const entityState_t* next = target->getEntityStateByNumber(current.number);
 
 		// only check if the entity is present in snap
 		// otherwise it's useless
-		if (target->getEntityStateByNumber(entInfo.getNextState().number)
-			&& memcmp(&entInfo.currentState, &entInfo.nextState, sizeof(entityState_t)))
+		if (next && memcmp(&current, &next, sizeof(entityState_t)))
 		{
 			// notify about modification
-			handlers().entityModifiedHandler.broadcast(entInfo);
+			handlers().entityModifiedHandler.broadcast(current, *next);
 		}
 	}
 
@@ -502,11 +502,10 @@ void CGameModuleBase::transitionSnapshot(bool differentServer)
 		for (size_t i = 0; i < from->numEntities; ++i)
 		{
 			const entityState_t& es = from->entities[i];
-			EntityInfo& entInfo = clientEnts[es.number];
 
 			const entityState_t* foundEnt = target->getEntityStateByNumber(es.number);
 			if (!foundEnt) {
-				handlers().entityRemovedHandler.broadcast(entInfo);
+				handlers().entityRemovedHandler.broadcast(es);
 			}
 		}
 	}

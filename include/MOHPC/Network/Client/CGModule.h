@@ -18,6 +18,7 @@ namespace MOHPC
 	class MSG;
 	class StringMessage;
 	class TokenParser;
+	class entityState_t;
 
 	namespace DMFlags
 	{
@@ -386,21 +387,21 @@ namespace MOHPC
 			 *
 			 * @param	entity	The entity that was added.
 			 */
-			struct EntityAdded : public HandlerNotifyBase<void(const EntityInfo& entity)> {};
+			struct EntityAdded : public HandlerNotifyBase<void(const entityState_t& state)> {};
 
 			/**
 			 * Called when an entity has just been removed.
 			 *
 			 * @param	entity	The entity that was removed.
 			 */
-			struct EntityRemoved : public HandlerNotifyBase<void(const EntityInfo& entity)> {};
+			struct EntityRemoved : public HandlerNotifyBase<void(const entityState_t& state)> {};
 
 			/**
 			 * Called when an entity has just been modified.
 			 *
 			 * @param	entity	The entity that was modified.
 			 */
-			struct EntityModified : public HandlerNotifyBase<void(const EntityInfo& entity)> {};
+			struct EntityModified : public HandlerNotifyBase<void(const entityState_t& prev, const entityState_t& current)> {};
 
 			/**
 			 * Called each frame for replaying move that have not been executed yet on server.

@@ -186,16 +186,16 @@ public:
 						MOHPC_LOG(Info, "server restarted");
 					});
 
-				fnHandle_t cb = cgame->getHandlerList().entityAddedHandler.add([&connection](const EntityInfo& entity)
+				fnHandle_t cb = cgame->getHandlerList().entityAddedHandler.add([&connection](const entityState_t& state)
 					{
-						const char* modelName = connection->getGameState().getConfigString(CS_MODELS + entity.nextState.modelindex);
-						MOHPC_LOG(Trace, "new entity %d, model \"%s\"", entity.nextState.number, modelName);
+						const char* modelName = connection->getGameState().getConfigString(CS_MODELS + state.modelindex);
+						MOHPC_LOG(Trace, "new entity %d, model \"%s\"", state.number, modelName);
 					});
 
-				cgame->getHandlerList().entityRemovedHandler.add([&connection](const EntityInfo& entity)
+				cgame->getHandlerList().entityRemovedHandler.add([&connection](const entityState_t& state)
 					{
-						const char* modelName = connection->getGameState().getConfigString(CS_MODELS + entity.currentState.modelindex);
-						MOHPC_LOG(Trace, "entity %d deleted (was model \"%s\")", entity.currentState.number, modelName);
+						const char* modelName = connection->getGameState().getConfigString(CS_MODELS + state.modelindex);
+						MOHPC_LOG(Trace, "entity %d deleted (was model \"%s\")", state.number, modelName);
 					});
 
 				cgame->getHandlerList().makeBulletTracerHandler.add([](const Vector& barrel, const Vector& start, const Vector& end, uint32_t numBullets, uint32_t iLarge, uint32_t numTracersVisible, float bulletSize)
