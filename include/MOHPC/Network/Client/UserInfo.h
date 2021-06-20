@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../../Common/str.h"
-#include "../../Utilities/PropertyMap.h"
+#include <MOHPC/Common/str.h>
+#include "../../Utility/PropertyMap.h"
 
 namespace MOHPC
 {
@@ -14,7 +14,7 @@ namespace MOHPC
 		 */
 		class ClientInfo
 		{
-			MOHPC_OBJECT_DECLARATION(ClientInfo);
+			MOHPC_NET_OBJECT_DECLARATION(ClientInfo);
 
 		private:
 			str name;
@@ -23,7 +23,7 @@ namespace MOHPC
 			PropertyObject properties;
 
 		private:
-			MOHPC_EXPORTS ClientInfo();
+			MOHPC_NET_EXPORTS ClientInfo();
 			ClientInfo(ClientInfo&& other) = default;
 			ClientInfo& operator=(ClientInfo&& other) = default;
 			ClientInfo(const ClientInfo& other) = delete;
@@ -41,31 +41,31 @@ namespace MOHPC
 			 * - 25000 : xDSL
 			 * - 30000 : LAN
 			 */
-			MOHPC_EXPORTS void setRate(uint32_t inRate);
-			MOHPC_EXPORTS uint32_t getRate() const;
+			MOHPC_NET_EXPORTS void setRate(uint32_t inRate);
+			MOHPC_NET_EXPORTS uint32_t getRate() const;
 
 			/** Set/get the number of processed snapshots per second. */
-			MOHPC_EXPORTS void setSnaps(uint32_t inSnaps);
-			MOHPC_EXPORTS uint32_t getSnaps() const;
+			MOHPC_NET_EXPORTS void setSnaps(uint32_t inSnaps);
+			MOHPC_NET_EXPORTS uint32_t getSnaps() const;
 
 			/** Set/get the client name. */
-			MOHPC_EXPORTS void setName(const char* newName);
-			MOHPC_EXPORTS const char* getName() const;
+			MOHPC_NET_EXPORTS void setName(const char* newName);
+			MOHPC_NET_EXPORTS const char* getName() const;
 
 			/** Set/get the client deathmatch allied model. */
-			MOHPC_EXPORTS void setPlayerAlliedModel(const char* newModel);
-			MOHPC_EXPORTS const char* getPlayerAlliedModel() const;
+			MOHPC_NET_EXPORTS void setPlayerAlliedModel(const char* newModel);
+			MOHPC_NET_EXPORTS const char* getPlayerAlliedModel() const;
 
 			/** Set/get the client deathmatch german model. */
-			MOHPC_EXPORTS void setPlayerGermanModel(const char* newModel);
-			MOHPC_EXPORTS const char* getPlayerGermanModel() const;
+			MOHPC_NET_EXPORTS void setPlayerGermanModel(const char* newModel);
+			MOHPC_NET_EXPORTS const char* getPlayerGermanModel() const;
 
 			/** Set/get an user value. */
-			MOHPC_EXPORTS void setUserKeyValue(const char* key, const char* value);
-			MOHPC_EXPORTS const char* getUserKeyValue(const char* key) const;
+			MOHPC_NET_EXPORTS void setUserKeyValue(const char* key, const char* value);
+			MOHPC_NET_EXPORTS const char* getUserKeyValue(const char* key) const;
 
 			/** Return the list of properties. */
-			MOHPC_EXPORTS const PropertyObject& getPropertyObject() const;
+			MOHPC_NET_EXPORTS const PropertyObject& getPropertyObject() const;
 		};
 		using ClientInfoPtr = SharedPtr<ClientInfo>;
 		using ConstClientInfoPtr = SharedPtr<const ClientInfo>;

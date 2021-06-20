@@ -1,9 +1,9 @@
 #pragma once
 
 #include <stdint.h>
-#include "../Utilities/SharedPtr.h"
-#include "../Utilities/WeakPtr.h"
-#include "../Global.h"
+#include "../Utility/SharedPtr.h"
+#include "../Utility/WeakPtr.h"
+#include "NetGlobal.h"
 #include "Types.h"
 
 namespace MOHPC
@@ -181,10 +181,10 @@ namespace MOHPC
 			 virtual size_t wait(const ISocketPtr sockets[], ISocketPtr signaledSockets[], size_t num, size_t timeout) = 0;
 
 			/** Get the factory used to create sockets. */
-			MOHPC_EXPORTS static ISocketFactory* get();
+			MOHPC_NET_EXPORTS static ISocketFactory* get();
 
 			/** Set the factory used to create sockets. */
-			MOHPC_EXPORTS static void set(const ISocketFactoryWeakPtr& newFactory);
+			MOHPC_NET_EXPORTS static void set(const ISocketFactoryWeakPtr& newFactory);
 		};
 	}
 }

@@ -1,14 +1,13 @@
 #pragma once
 
-#include "../../Utilities/SharedPtr.h"
-#include "../../Utilities/RequestHandler.h"
+#include "../../Utility/SharedPtr.h"
+#include "../../Utility/RequestHandler.h"
 #include "../Types.h"
 #include "../Socket.h"
 
 namespace MOHPC
 {
 	class Info;
-	class str;
 	class IMessageStream;
 
 	namespace Network

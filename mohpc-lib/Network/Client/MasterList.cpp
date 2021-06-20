@@ -3,12 +3,12 @@
 #include <MOHPC/Network/Types.h>
 #include <MOHPC/Network/GameSpy/Encryption.h>
 #include <MOHPC/Network/UDPMessageDispatcher.h>
-#include <MOHPC/Misc/MSG/Stream.h>
-#include <MOHPC/Misc/MSG/MSG.h>
-#include <MOHPC/Misc/MSG/Codec.h>
-#include <MOHPC/Utilities/Info.h>
-#include <MOHPC/Log.h>
-#include <MOHPC/Math.h>
+#include <MOHPC/Utility/Misc/MSG/Stream.h>
+#include <MOHPC/Utility/Misc/MSG/MSG.h>
+#include <MOHPC/Utility/Misc/MSG/Codec.h>
+#include <MOHPC/Utility/Info.h>
+#include <MOHPC/Common/Log.h>
+#include <MOHPC/Common/Math.h>
 #include <vector>
 
 using namespace MOHPC;
@@ -304,14 +304,15 @@ void ServerList::Request_FetchServers::nullCallback(const IServerPtr& server)
 
 MOHPC_OBJECT_DEFINITION(ServerListLAN);
 
-ServerListLAN::ServerListLAN(const MessageDispatcherPtr& dispatcher, const ICommunicatorPtr& comm)
+ServerListLAN::ServerListLAN(const MessageDispatcherPtr& dispatcher, const ICommunicatorPtr& comm, uint64_t timeoutTimeValue)
 	: handler(dispatcher.get(), comm, nullptr)
+	, timeoutTime(timeoutTimeValue)
 {
 }
 
 void ServerListLAN::fetch(FoundServerCallback&& callback)
 {
-	handler.sendRequest(makeShared<Request_InfoBroadcast>(std::forward<FoundServerCallback>(callback)), 1000);
+	handler.sendRequest(makeShared<Request_InfoBroadcast>(std::forward<FoundServerCallback>(callback)), timeoutTime);
 }
 /*
 void ServerListLAN::tick(uint64_t deltaTime, uint64_t currentTime)
@@ -360,4 +361,38 @@ SharedPtr<IRequestBase> ServerListLAN::Request_InfoBroadcast::process(InputReque
 SharedPtr<IRequestBase> ServerList::Request_FetchServers::timedOut()
 {
 	return nullptr;
+}
+
+bool ServerListLAN::Request_InfoBroadcast::isThisRequest(InputRequest& data) const
+{
+	MSG msg(data.stream, msgMode_e::Reading);
+	msg.SetCodec(MessageCodecs::OOB);
+
+	const uint32_t marker = msg.ReadUInteger();
+	if (marker != -1)
+	{
+		// must be a connectionless packet
+		return false;
+	}
+
+	const netsrc_e dirByte = (netsrc_e)msg.ReadByte();
+	if (dirByte != netsrc_e::Client)
+	{
+		// this must be targeted at us, the client
+		return false;
+	}
+
+	StringMessage arg = msg.ReadString();
+	const size_t len = strlen(arg);
+	if (len <= 0)
+	{
+		// invalid length
+		return false;
+	}
+
+	TokenParser parser;
+	parser.Parse(arg, strlen(arg) + 1);
+
+	const char* command = parser.GetToken(false);
+	return !str::icmp(command, "infoResponse");
 }

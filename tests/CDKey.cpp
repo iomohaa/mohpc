@@ -1,87 +1,61 @@
-#include <MOHPC/Misc/cdkey.h>
-#include "UnitTest.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
-#include <string.h>
+#include <MOHPC/Utility/Misc/cdkey.h>
 
-class CCDKeyUnitTest : public IUnitTest
+#include <cassert>
+#include <cstdlib>
+#include <cstring>
+#include <iostream>
+#include <iterator>
+
+void copyKey(const char* start, size_t length, std::ostream& outStream, bool dash = true);
+
+int main(int argc, const char* argv[])
 {
-public:
-	virtual const char* name() override
+	std::ios::sync_with_stdio(false);
+
+	char CDKey[60];
+	std::ostream& outStream = std::cout;
+
+	size_t len = 0;
+
+	for (int i = 0; i < 100000; i++)
 	{
-		return "CD-Key";
-	}
-
-	virtual void run(const MOHPC::AssetManagerPtr& AM) override
-	{
-		srand((unsigned int)time(NULL));
-
-		char CDKey[60];
-		FILE* file = fopen("keys.txt", "wb");
-
-		char* buf = (char*)malloc(10000000 * 59);
-		size_t len = 0;
-		char* p = buf;
-
-		for (int i = 0; i < 100000; i++)
 		{
-			//char Base[20];
-			//sprintf(Base, "%0.18d", i);
-			MOHPC::CDKey::GenerateCDKey(CDKey, MOHPC::CDKey::GP_MOHAA);
-			//MOHPC::CDKey::VerifyCDKey(CDKey, MOHPC::CDKey::GP_MOHAA);
+			MOHPC::CDKey::ProductKeyGenerator generator(MOHPC::CDKey::productType_e::MOHAA);
+			generator.generate(CDKey);
+			//generator.generateFromBase("199165941647931721", CDKey);
 
 			//memcpy(p, "AA: ", 4);
-			*(int*)p = *(int*)"AA: ";
-			p += 4;
-			*(int*)p = *(int*)&CDKey[0];
-			//memcpy(p, &CDKey[0], 4);
-			p += 4;
-			*p++ = '-';
-			memcpy(p, &CDKey[4], 7);
-			p += 7;
-			*p++ = '-';
-			memcpy(p, &CDKey[11], 7);
-			p += 7;
-			*p++ = '-';
-			*(int*)p = *(int*)&CDKey[18];
-			//memcpy(p, &CDKey[18], 4);
-			p += 4;
-			*p++ = '\n';
-			len += 30;
+			outStream << "AA: ";
+			copyKey(CDKey, 4, outStream);
+			copyKey(CDKey + 4, 7, outStream);
+			copyKey(CDKey + 11, 7, outStream);
+			copyKey(CDKey + 18, 4, outStream, false);
+			outStream << std::endl;
 
-			//sprintf(Base, "%0.13d", i);
-			MOHPC::CDKey::GenerateCDKey2(CDKey, MOHPC::CDKey::GP_MOHAAB);
-
-			//memcpy(p, "BT: ", 4);
-			*(int*)p = *(int*)"BT: ";
-			p += 4;
-			*(int*)p = *(int*)&CDKey[0];
-			//memcpy(p, &CDKey[0], 4);
-			p += 4;
-			*p++ = '-';
-			*(int*)p = *(int*)&CDKey[4];
-			//memcpy(p, &CDKey[4], 4);
-			p += 4;
-			*p++ = '-';
-			*(int*)p = *(int*)&CDKey[8];
-			//memcpy(p, &CDKey[8], 4);
-			p += 4;
-			*p++ = '-';
-			*(int*)p = *(int*)&CDKey[12];
-			//memcpy(p, &CDKey[12], 4);
-			p += 4;
-			*p++ = '-';
-			*(int*)p = *(int*)&CDKey[16];
-			//memcpy(p, &CDKey[16], 4);
-			p += 4;
-			*p++ = '\n';
-			len += 29;
+			MOHPC::CDKey::Verifier verifier(MOHPC::CDKey::productType_e::MOHAA);
+			assert(verifier.verifyKey(CDKey));
 		}
 
-		fwrite(buf, len, 1, file);
-		fclose(file);
-		free(buf);
+		{
+			MOHPC::CDKey::ProductKeyExGenerator generator(MOHPC::CDKey::productTypeExtended_e::MOHAAB);
+			generator.generate(CDKey);
+
+			outStream << "BT: ";
+			copyKey(CDKey, 4, outStream);
+			copyKey(CDKey + 4, 4, outStream);
+			copyKey(CDKey + 8, 4, outStream);
+			copyKey(CDKey + 12, 4, outStream);
+			copyKey(CDKey + 16, 4, outStream, false);
+			outStream << std::endl;
+
+			MOHPC::CDKey::VerifierEx verifier(MOHPC::CDKey::productTypeExtended_e::MOHAAB);
+			assert(verifier.verifyKey(CDKey));
+		}
 	}
-};
-static CCDKeyUnitTest unitTest;
+}
+
+void copyKey(const char* start, size_t length, std::ostream& outStream, bool dash)
+{
+	std::copy(start, start + length, std::ostream_iterator<char>(outStream, ""));
+	if (dash) outStream << "-";
+}

@@ -1,14 +1,32 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.13)
+project(tests)
 
-project(test)
+enable_testing()
 
-file(GLOB_RECURSE SRC "*")
+file(GLOB SRCS "*.cpp")
+file(GLOB_RECURSE COMMON_SRCS "Common/*.cpp" "Common/*.h")
 
-add_executable(MOHPC-Tests ${SRC} "${CMAKE_SOURCE_DIR}/include/MOHPC/mohpc.natvis")
-target_link_libraries(MOHPC-Tests PUBLIC MOHPC)
+find_package(Threads REQUIRED)
 
-if(UNIX)
-	target_link_libraries(MOHPC-Tests PRIVATE ncurses pthread)
-endif()
+foreach(source ${SRCS})
+	get_filename_component(fileName ${source} NAME_WE)
 
-install(TARGETS MOHPC-Tests DESTINATION .)
+	# Add executable with only the source file
+	add_executable(${fileName} ${source} ${COMMON_SRCS})
+
+	target_link_libraries(${fileName} MOHPC-ALL Threads::Threads)
+
+	add_test(NAME ${fileName} COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/${fileName})
+
+	install(
+		TARGETS ${fileName}
+		DESTINATION ${CMAKE_INSTALL_PREFIX}
+		EXPORT test-Targets
+	)
+endforeach(source)
+
+install(
+	EXPORT MOHPC-Targets
+	DESTINATION .
+	NAMESPACE MOHPC::
+)

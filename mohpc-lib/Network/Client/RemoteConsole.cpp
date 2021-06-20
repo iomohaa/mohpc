@@ -1,9 +1,9 @@
 #include <MOHPC/Network/Client/RemoteConsole.h>
-#include <MOHPC/Misc/MSG/MSG.h>
-#include <MOHPC/Misc/MSG/Stream.h>
-#include <MOHPC/Misc/MSG/Codec.h>
-#include <MOHPC/Utilities/TokenParser.h>
-#include <MOHPC/Log.h>
+#include <MOHPC/Utility/Misc/MSG/MSG.h>
+#include <MOHPC/Utility/Misc/MSG/Stream.h>
+#include <MOHPC/Utility/Misc/MSG/Codec.h>
+#include <MOHPC/Utility/TokenParser.h>
+#include <MOHPC/Common/Log.h>
 
 using namespace MOHPC;
 using namespace MOHPC::Network;
@@ -59,7 +59,7 @@ void MOHPC::Network::RemoteConsole::tick(uint64_t deltaTime, uint64_t currentTim
 
 		const uint8_t dir = msg.ReadByte();
 
-		const StringMessage cmd = msg.ReadString();
+		const stringMessage cmd = msg.ReadString();
 
 		TokenParser parser;
 		parser.Parse(cmd, strlen(cmd));

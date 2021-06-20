@@ -1,5 +1,5 @@
 #include <MOHPC/Network/Client/Vote.h>
-#include <MOHPC/Utilities/TokenParser.h>
+#include <MOHPC/Utility/TokenParser.h>
 
 using namespace MOHPC;
 using namespace Network;

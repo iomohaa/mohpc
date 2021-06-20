@@ -1,11 +1,11 @@
 #include <MOHPC/Network/Client/Server.h>
 #include <MOHPC/Network/Client/ClientGame.h>
-#include <MOHPC/Misc/MSG/Codec.h>
-#include <MOHPC/Misc/MSG/MSG.h>
-#include <MOHPC/Utilities/Info.h>
-#include <MOHPC/Utilities/TokenParser.h>
-#include <MOHPC/Utilities/MessageDispatcher.h>
-#include <MOHPC/Log.h>
+#include <MOHPC/Utility/Misc/MSG/Codec.h>
+#include <MOHPC/Utility/Misc/MSG/MSG.h>
+#include <MOHPC/Utility/Info.h>
+#include <MOHPC/Utility/TokenParser.h>
+#include <MOHPC/Utility/MessageDispatcher.h>
+#include <MOHPC/Common/Log.h>
 
 using namespace MOHPC;
 using namespace Network;
@@ -37,12 +37,27 @@ const char* GSServer::Request_Query::generateQuery()
 	return "status";
 }
 
+bool GSServer::Request_Query::isThisRequest(InputRequest& data) const
+{
+	char c;
+	data.stream.Read(&c, 1);
+	if (c == '\\')
+	{
+		// the response doesn't correspond to what is expected
+		return true;
+	}
+
+	return false;
+}
+
 SharedPtr<IRequestBase> GSServer::Request_Query::process(InputRequest& data)
 {
 	const size_t len = data.stream.GetLength();
 
 	char* dataStr = new char[len + 1];
-	data.stream.Read(dataStr, len);
+	data.stream.Read(dataStr + 1, len);
+	// put what has been read before
+	dataStr[0] = '\\';
 	dataStr[len] = 0;
 
 	infoStr += dataStr;
@@ -175,9 +190,7 @@ void EngineServer::onConnect(const Callbacks::Connect result, uint16_t qport, ui
 			protoType,
 			cInfo
 		);
-		
-		// init the client time with the current time
-		connection->initTime(getCurrentTime());
+	
 		// Return the newly created client game connection
 		result(connection, nullptr);
 	}
@@ -246,9 +259,8 @@ void EngineServer::IEngineRequest::generateOutput(IMessageStream& output)
 	}
 }
 
-SharedPtr<IRequestBase> EngineServer::IEngineRequest::process(InputRequest& data)
+bool EngineServer::IEngineRequest::isThisRequest(InputRequest& data) const
 {
-	// Set in OOB mode to read one single byte each call
 	MSG msg(data.stream, msgMode_e::Reading);
 	msg.SetCodec(MessageCodecs::OOB);
 
@@ -256,23 +268,66 @@ SharedPtr<IRequestBase> EngineServer::IEngineRequest::process(InputRequest& data
 	if (marker != -1)
 	{
 		// must be a connectionless packet
-		MOHPC_LOG(Info, "Received a sequenced packet (%d)", marker);
-		return nullptr;
+		return false;
 	}
 
 	const netsrc_e dirByte = (netsrc_e)msg.ReadByte();
 	if (dirByte != netsrc_e::Client)
 	{
+		// this must be targeted at us, the client
+		return false;
+	}
+
+	StringMessage arg = msg.ReadString();
+	const size_t len = strlen(arg);
+	if (len <= 0)
+	{
+		// invalid length
+		return false;
+	}
+
+	TokenParser parser;
+	parser.Parse(arg, strlen(arg) + 1);
+
+	const char* command = parser.GetToken(false);
+	// now return if the request supports the command
+	return supportsEvent(command);
+}
+
+SharedPtr<IRequestBase> EngineServer::IEngineRequest::process(InputRequest& data)
+{
+	// Set in OOB mode to read one single byte each call
+	MSG msg(data.stream, msgMode_e::Reading);
+	msg.SetCodec(MessageCodecs::OOB);
+
+	const uint32_t marker = msg.ReadUInteger();
+	assert(marker == -1);
+	/*
+	if (marker != -1)
+	{
+		// must be a connectionless packet
+		MOHPC_LOG(Info, "Received a sequenced packet (%d)", marker);
+		return nullptr;
+	}
+	*/
+
+	const netsrc_e dirByte = (netsrc_e)msg.ReadByte();
+	assert(dirByte == netsrc_e::Client);
+	/*
+	if (dirByte != netsrc_e::Client)
+	{
 		MOHPC_LOG(Info, "Wrong direction for connectionLess packet (must be targeted at client, got %d)", dirByte);
 		return nullptr;
 	}
+	*/
 
 	IRequestPtr newRequest;
 
 	// Read request string from remote
 	StringMessage arg = msg.ReadString();
 	const size_t len = strlen(arg);
-	if (len > 0)
+	assert(len > 0);
+	//if (len > 0)
 	{
 		TokenParser parser;
 		parser.Parse(arg, strlen(arg) + 1);
@@ -290,6 +345,7 @@ SharedPtr<IRequestBase> EngineServer::IEngineRequest::process(InputRequest& data
 			);
 		}
 	}
+	/*
 	else
 	{
 		// Empty response
@@ -298,6 +354,7 @@ SharedPtr<IRequestBase> EngineServer::IEngineRequest::process(InputRequest& data
 			data.identifier->getString().c_str()
 		);
 	}
+	*/
 
 	return newRequest;
 }
@@ -362,3 +419,4 @@ size_t ConnectSettings::getDeferredConnectTime() const
 {
 	return deferredConnectTime;
 }
+

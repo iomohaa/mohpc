@@ -1,10 +1,14 @@
 #include <MOHPC/Network/Event.h>
 #include <MOHPC/Network/Client/ClientGame.h>
 #include <MOHPC/Network/Client/Server.h>
-#include <MOHPC/Utilities/Info.h>
-#include <MOHPC/Utilities/TokenParser.h>
-#include <MOHPC/Log.h>
+#include <MOHPC/Network/Client/Protocol.h>
+#include <MOHPC/Utility/Info.h>
+#include <MOHPC/Utility/TokenParser.h>
+#include <MOHPC/Utility/ClassList.h>
+#include <MOHPC/Common/Log.h>
 #include <GameSpy/gcdkey/gcdkeyc.h>
+
+#include <random>
 
 static constexpr char MOHPC_LOG_NAMESPACE[] = "server_cmd";
 
@@ -28,7 +32,7 @@ str EngineServer::VerBeforeChallengeRequest::generateRequest()
 	return "getinfo";
 }
 
-bool EngineServer::VerBeforeChallengeRequest::supportsEvent(const char* name)
+bool EngineServer::VerBeforeChallengeRequest::supportsEvent(const char* name) const
 {
 	return !str::icmp(name, "infoResponse");
 }
@@ -71,7 +75,7 @@ str EngineServer::ChallengeRequest::generateRequest()
 	return "getchallenge";
 }
 
-bool EngineServer::ChallengeRequest::supportsEvent(const char* name)
+bool EngineServer::ChallengeRequest::supportsEvent(const char* name) const
 {
 	return !str::icmp(name, "getKey") || !str::icmp(name, "challengeResponse");
 }
@@ -122,7 +126,7 @@ EngineServer::AuthorizeRequest::AuthorizeRequest(const protocolType_c& proto, Co
 {
 }
 
-bool EngineServer::AuthorizeRequest::supportsEvent(const char* name)
+bool EngineServer::AuthorizeRequest::supportsEvent(const char* name) const
 {
 	return !str::icmp(name, "getKey") || !str::icmp(name, "challengeResponse");
 }
@@ -182,8 +186,11 @@ EngineServer::ConnectRequest::ConnectRequest(const protocolType_c& proto, Connec
 	qport = data.settings ? data.settings->getQport() : 0;
 	if(!qport)
 	{
-		// choose a random port between 20000 and 65535
-		qport = (rand() % 45536) + 20000;
+		std::random_device dev;
+		std::mt19937 gen;
+		std::uniform_int_distribution<uint16_t> dist((1 << 15) + (1 << 14), (1 << 16) - 1);
+		// choose a random port
+		qport = dist(gen);
 	}
 }
 
@@ -199,19 +206,22 @@ str EngineServer::ConnectRequest::generateRequest()
 	// send the client version and the protocol
 	const char* version = data.settings ? data.settings->getVersion() : CLIENT_VERSION;
 	info.SetValueForKey("version", version);
-	info.SetValueForKey("protocol", str::printf("%i", protocol.getProtocolVersion()));
 
-	switch (protocol.getServerType())
+	for(const IClientProtocol* proto = IClientProtocol::getHead(); proto; proto = proto->getNext())
 	{
-	default:
-		// regular
-		break;
-	case serverType_e::breakthrough:
-		// in case it's connecting to a breakthrough server
-		info.SetValueForKey("clientType", "Breakthrough");
-		break;
-	}
+		if (proto->getServerProtocol() == protocol.getProtocolVersionNumber())
+		{
+			info.SetValueForKey("protocol", str::printf("%i", proto->getBestCompatibleProtocol()));
+			const char* clientType = proto->getClientType();
+			if (clientType)
+			{
+				// connecting to spearhead/breakthrough
+				info.SetValueForKey("clientType", clientType);
+			}
 
+			break;
+		}
+	}
 	// write the translated port
 	info.SetValueForKey("qport", str::printf("%i", qport));
 
@@ -238,9 +248,9 @@ bool EngineServer::ConnectRequest::shouldCompressRequest(size_t& offset)
 	return true;
 }
 
-bool EngineServer::ConnectRequest::supportsEvent(const char* name)
+bool EngineServer::ConnectRequest::supportsEvent(const char* name) const
 {
-	return !str::icmp(name, "connectResponse") || !str::icmp(name, "droperror") || !str::icmp(name, "print");
+	return !str::icmp(name, "connectResponse") || !str::icmp(name, "droperror") || !str::icmp(name, "print") || !str::icmp(name, "serverfull");
 }
 
 IRequestPtr EngineServer::ConnectRequest::handleResponse(const char* name, TokenParser& parser)
@@ -253,6 +263,13 @@ IRequestPtr EngineServer::ConnectRequest::handleResponse(const char* name, Token
 	}
 	else if(str::icmp(name, "connectResponse"))
 	{
+		if (!str::icmp(name, "serverfull"))
+		{
+			// Received other than connect response after multiple time, so don't connect again
+			MOHPC_LOG(Error, "server is full");
+			return nullptr;
+		}
+
 		const char* args = parser.GetLine(true);
 
 		if(numRetries < 5)
@@ -308,7 +325,7 @@ str EngineServer::StatusRequest::generateRequest()
 	return "getstatus";
 }
 
-bool EngineServer::StatusRequest::supportsEvent(const char* name)
+bool EngineServer::StatusRequest::supportsEvent(const char* name) const
 {
 	return !str::icmp(name, "statusResponse");
 }
@@ -341,7 +358,7 @@ str EngineServer::InfoRequest::generateRequest()
 	return "getinfo";
 }
 
-bool EngineServer::InfoRequest::supportsEvent(const char* name)
+bool EngineServer::InfoRequest::supportsEvent(const char* name) const
 {
 	return !str::icmp(name, "infoResponse");
 }

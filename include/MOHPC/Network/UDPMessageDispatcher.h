@@ -1,9 +1,9 @@
 #pragma once
 
-#include "../Global.h"
-#include "../Utilities/MessageDispatcher.h"
-#include "../Utilities/SharedPtr.h"
-#include "../Object.h"
+#include "NetGlobal.h"
+#include "NetObject.h"
+#include "../Utility/MessageDispatcher.h"
+#include "../Utility/SharedPtr.h"
 #include "IPRemoteIdentifier.h"
 #include "Socket.h"
 
@@ -13,10 +13,10 @@ namespace Network
 {
 	class UDPCommunicator : public ICommunicator
 	{
-		MOHPC_OBJECT_DECLARATION(UDPCommunicator);
+		MOHPC_NET_OBJECT_DECLARATION(UDPCommunicator);
 
 	public:
-		MOHPC_EXPORTS UDPCommunicator(const IUdpSocketPtr& inSocket = nullptr);
+		MOHPC_NET_EXPORTS UDPCommunicator(const IUdpSocketPtr& inSocket = nullptr);
 
 		size_t send(const IRemoteIdentifier& identifier, const uint8_t* data, size_t size) override;
 		size_t receive(IRemoteIdentifierPtr& remoteAddress, uint8_t* data, size_t size) override;
@@ -31,10 +31,10 @@ namespace Network
 
 	class UDPBroadcastCommunicator : public UDPCommunicator
 	{
-		MOHPC_OBJECT_DECLARATION(UDPBroadcastCommunicator);
+		MOHPC_NET_OBJECT_DECLARATION(UDPBroadcastCommunicator);
 
 	public:
-		MOHPC_EXPORTS UDPBroadcastCommunicator(const IUdpSocketPtr& inSocket = nullptr, uint16_t startPort = 12203, uint16_t endPort = 12218);
+		MOHPC_NET_EXPORTS UDPBroadcastCommunicator(const IUdpSocketPtr& inSocket = nullptr, uint16_t startPort = 12203, uint16_t endPort = 12218);
 
 		size_t send(const IRemoteIdentifier& identifier, const uint8_t* data, size_t size) override;
 

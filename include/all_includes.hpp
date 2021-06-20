@@ -37,12 +37,12 @@
 #include <MOHPC/Formats/TIKI.h>
 #include <MOHPC/Managers/AssetManager.h>
 #include <MOHPC/Managers/EmitterManager.h>
-#include <MOHPC/Managers/EventManager.h>
+#include <MOHPC/Script/EventSystem.h>
 #include <MOHPC/Managers/FileManager.h>
 #include <MOHPC/Managers/GameManager.h>
 #include <MOHPC/Managers/Manager.h>
 #include <MOHPC/Managers/NetworkManager.h>
-#include <MOHPC/Managers/ScriptManager.h>
+#include <MOHPC/Script/ScriptMaster.h>
 #include <MOHPC/Managers/ShaderManager.h>
 #include <MOHPC/Managers/SkeletorManager.h>
 #include <MOHPC/Managers/SoundManager.h>
@@ -75,8 +75,8 @@
 #include <MOHPC/Script/Archiver.h>
 #include <MOHPC/Script/Compiler.h>
 #include <MOHPC/Script/ConstStr.h>
-#include <MOHPC/Common/Container.h>
-#include <MOHPC/Script/ContainerClass.h>
+#include <MOHPC/Common/mfuse::con::Container.h>
+#include <MOHPC/Script/mfuse::con::ContainerClass.h>
 #include <MOHPC/Script/con_arrayset.h>
 #include <MOHPC/Common/con_set.h>
 #include <MOHPC/Script/con_timer.h>
@@ -89,8 +89,8 @@
 #include <MOHPC/Script/Parm.h>
 #include <MOHPC/Script/parser
 #include <MOHPC/Script/parser/parsetree.h>
+#include <MOHPC/Script/Class.h>
 #include <MOHPC/Script/ScriptClass.h>
-#include <MOHPC/Script/ScriptContainer.h>
 #include <MOHPC/Script/ScriptException.h>
 #include <MOHPC/Script/ScriptOpcodes.h>
 #include <MOHPC/Script/ScriptThread.h>

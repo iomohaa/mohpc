@@ -4,20 +4,23 @@
 #include "../InfoTypes.h"
 #include "../Channel.h"
 #include "../Encoding.h"
+#include "../Reliable.h"
 #include "../Event.h"
 #include "../Configstring.h"
-#include "../../Utilities/HandlerList.h"
-#include "../../Utilities/Info.h"
-#include "../../Utilities/PropertyMap.h"
-#include "../../Utilities/TokenParser.h"
-#include "../../Utilities/RemoteIdentifier.h"
-#include "../../Utilities/Tick.h"
-#include "../../Object.h"
-#include "../../Misc/MSG/MSG.h"
-#include "../../Managers/NetworkManager.h"
+#include "../Types/GameState.h"
+#include "../../Utility/HandlerList.h"
+#include "../../Utility/Info.h"
+#include "../../Utility/PropertyMap.h"
+#include "../../Utility/TokenParser.h"
+#include "../../Utility/RemoteIdentifier.h"
+#include "../../Utility/Tick.h"
+#include "../../Utility/Timeout.h"
+#include "../NetObject.h"
+#include "../../Utility/Misc/MSG/MSG.h"
 #include "UserInfo.h"
 #include "Imports.h"
-#include <stdint.h>
+#include "ProtocolParsing.h"
+#include <cstdint>
 #include <functional>
 #include <type_traits>
 #include <bitset>
@@ -31,6 +34,7 @@ namespace MOHPC
 		class CGameModuleBase;
 		class Event;
 		class ClientSnapshot;
+		class IClientGameProtocol;
 
 		static constexpr unsigned long PACKET_BACKUP = (1 << 5);
 		static constexpr unsigned long PACKET_MASK = PACKET_BACKUP - 1;
@@ -97,14 +101,14 @@ namespace MOHPC
 			/**
 			 * Called when the server sent a string to print at the center of the screen.
 			 *
-			 * @param	message		String message to print.
+			 * @param	message		string message to print.
 			 */
 			struct CenterPrint : public HandlerNotifyBase<void(const char* message)> {};
 
 			/**
 			 * Called when the server sent a string to print at a 2D location of the screen.
 			 *
-			 * @param	message		String message to print.
+			 * @param	message		string message to print.
 			 */
 			struct LocationPrint : public HandlerNotifyBase<void(uint16_t x, uint16_t y, const char* message)> {};
 
@@ -150,7 +154,7 @@ namespace MOHPC
 			 * @param   differentLevel  False if the client has to re-download game state for the current game.
 			 *                          True = new game session (but doesn't necessarily mean that it is a different map file).
 			 */
-			struct GameStateParsed : public HandlerNotifyBase<void(const gameState_t& gameState, bool differentLevel)> {};
+			struct GameStateParsed : public HandlerNotifyBase<void(const IGameState& gameState, bool differentLevel)> {};
 
 			/**
 			 * Called when a client is not visible to the player.
@@ -184,19 +188,13 @@ namespace MOHPC
 			outPacket_t();
 		};
 
-		/**
-		 * When the server is sending a download but it hasn't been requested by the client
-		 */
-		class MOHPC_EXPORTS UnexpectedDownloadException : public NetworkException
-		{
-		};
-
+#if 0
 		struct gameState_t
 		{
 			static constexpr size_t MAX_GAMESTATE_CHARS = 40000;
 
 		public:
-			MOHPC_EXPORTS gameState_t();
+			MOHPC_NET_EXPORTS gameState_t();
 
 			/**
 			 * Return the configstring at the specified number.
@@ -204,7 +202,7 @@ namespace MOHPC
 			 * @param	num		Config string ID. Must be < MAX_CONFIGSTRINGS
 			 * @return	The configstring. NULL if num is greater than MAX_CONFIGSTRINGS
 			 */
-			MOHPC_EXPORTS const char* getConfigString(csNum_t num) const;
+			MOHPC_NET_EXPORTS const char* getConfigString(csNum_t num) const;
 			const char* getConfigStringChecked(csNum_t num) const;
 
 			/**
@@ -214,7 +212,7 @@ namespace MOHPC
 			 * @param	configString	The value to put in.
 			 * @param	sz				Size of the config string
 			 */
-			MOHPC_EXPORTS void setConfigString(csNum_t num, const char* configString, size_t sz);
+			MOHPC_NET_EXPORTS void setConfigString(csNum_t num, const char* configString, size_t sz);
 
 		public:
 			size_t dataCount;
@@ -222,6 +220,7 @@ namespace MOHPC
 			// could have made stringData a dynamic buffer
 			char stringData[MAX_GAMESTATE_CHARS];
 		};
+#endif
 
 		class ClientSnapshot
 		{
@@ -309,7 +308,141 @@ namespace MOHPC
 			bool downloadRequested;
 		};
 
-		class MOHPC_EXPORTS clientGameSettings_t
+		class MOHPC_NET_EXPORTS ClientTime
+		{
+		public:
+			ClientTime();
+			~ClientTime();
+
+			void initRemoteTime(uint64_t currentTime, uint64_t remoteTimeValue);
+			void setStartTime(uint64_t currentTime);
+			void setRemoteStartTime(uint64_t remoteTimeValue);
+			uint64_t getStartTime() const;
+			uint64_t getRemoteStartTime() const;
+			uint64_t getRemoteTime() const;
+			void setTime(uint64_t newTime, uint64_t remoteTime, uint64_t remoteDeltaTime, bool adjust);
+			void setTimeNudge(int32_t timeNudgeValue);
+		
+		private:
+			void adjustTimeDelta(uint64_t realTime, uint64_t remoteTime, uint64_t remoteDeltaTime);
+			uint64_t getTimeDelta(uint64_t time, uint64_t remoteTime) const;
+		
+		private:
+			uint64_t realTimeStart;
+			uint64_t serverStartTime;
+			uint64_t serverTime;
+			uint64_t oldServerTime;
+			uint64_t oldFrameServerTime;
+			uint64_t oldRealTime;
+			int32_t timeNudge;
+			bool extrapolatedSnapshot;
+		};
+
+		template<size_t RELIABLE_COMMAND_SIZE>
+		class ClientSequenceTemplate : public IReliableSequence
+		{
+		public:
+			void set(rsequence_t index, const char* command) override;
+			const char* get(rsequence_t index) const override;
+			size_t getMaxElements() const override;
+
+		private:
+			char reliableCommands[MAX_RELIABLE_COMMANDS][RELIABLE_COMMAND_SIZE];
+		};
+
+		template<size_t RELIABLE_COMMAND_SIZE>
+		class ClientRemoteCommandSequenceTemplate : public ICommandSequence
+		{
+		public:
+			void set(rsequence_t index, const char* command) override;
+			const char* get(rsequence_t index) const override;
+			size_t getMaxElements() const override;
+
+		private:
+			char serverCommands[MAX_RELIABLE_COMMANDS][RELIABLE_COMMAND_SIZE];
+		};
+
+		class UserInput
+		{
+		public:
+			UserInput();
+
+			void reset();
+			void createCommand(uint64_t currentTime, uint64_t remoteTime, usercmd_t*& outCmd, usereyes_t*& outEyes);
+			uint32_t getCurrentCmdNumber() const;
+			const usercmd_t& getCommand(size_t index) const;
+			const usercmd_t& getCommandFromLast(size_t index) const;
+			const usercmd_t& getLastCommand() const;
+			usercmd_t& getLastCommand();
+			const usereyes_t& getEyeInfo() const;
+			usereyes_t& getEyeInfo();
+
+		private:
+			uint32_t cmdNumber;
+			usereyes_t eyeinfo;
+			usercmd_t cmds[CMD_BACKUP];
+		};
+
+		class UserPacket
+		{
+		public:
+			UserPacket();
+
+			void sendPacket(uint64_t currentTime);
+		};
+
+		class UserModule
+		{
+		private:
+			struct HandlerList
+			{
+				FunctionList<ClientHandlers::UserInput> userInputHandler;
+			};
+
+		public:
+			UserModule();
+
+			void write(MSG& msg, uint64_t currentTime);
+			HandlerList& getHandlerList() const;
+
+		private:
+			clc_ops_e getClientOperation() const;
+			uint32_t getCommandHashKey() const;
+			uint8_t getNumCommandsToWrite(uint32_t oldPacketNum) const;
+			void writeAllCommands(MSG& msg, const usercmd_t*& oldcmd, size_t count, uint32_t key);
+
+		private:
+			HandlerList handlerList;
+			UserInput input;
+			outPacket_t outPackets[CMD_BACKUP];
+		};
+
+		class PacketHeaderWriter
+		{
+		public:
+			PacketHeaderWriter(const IGameState& gameStateRef, const ICommandSequence& serverCommandsRef, uint32_t serverMessageSequenceValue);
+
+			void write(MSG& msg);
+
+		private:
+			const ICommandSequence& serverCommands;
+			const IGameState& gameState;
+			uint32_t serverMessageSequence;
+		};
+
+		class ReliableCommandsWriter
+		{
+		public:
+			ReliableCommandsWriter(const IReliableSequence& reliableCommandsRef, const IClientGameProtocol& clientProtoRef);
+
+			void write(MSG& msg);
+
+		private:
+			const IReliableSequence& reliableCommands;
+			const IClientGameProtocol& clientProto;
+		};
+
+		class MOHPC_NET_EXPORTS clientGameSettings_t
 		{
 		public:
 			clientGameSettings_t();
@@ -341,6 +474,25 @@ namespace MOHPC
 			float radarRange;
 			uint32_t timeNudge;
 		};
+
+		class UserInputWriter
+		{
+		public:
+			UserInputWriter(const UserInput& userInputRef, const IClientGameProtocol& clientProtoRef, const outPacket_t& oldPacketRef);
+
+			void write(MSG& msg, uint64_t currentTime);
+
+		private:
+			clc_ops_e getClientOperation() const;
+			uint32_t getCommandHashKey() const;
+			uint8_t getNumCommandsToWrite(uint32_t oldPacketNum) const;
+			void writeAllCommands(MSG& msg, const usercmd_t*& oldcmd, size_t count, uint32_t key);
+
+		private:
+			const UserInput& userInput;
+			const IClientGameProtocol& clientProto;
+			const outPacket_t& oldPacket;
+		};
 		
 		/**
 		 * Client game connection class.
@@ -351,7 +503,7 @@ namespace MOHPC
 		 */
 		class ClientGameConnection : public ITickable
 		{
-			MOHPC_OBJECT_DECLARATION(ClientGameConnection);
+			MOHPC_NET_OBJECT_DECLARATION(ClientGameConnection);
 
 		private:
 			struct HandlerListClient
@@ -375,74 +527,6 @@ namespace MOHPC
 				FunctionList<ClientHandlers::PreWritePacket> preWritePacketHandler;
 			};
 
-		private:
-			using parse_f = void (ClientGameConnection::*)(MSG& msg);
-			using readString_f = StringMessage(*)(MSG& msg);
-			using writeString_f = void (*)(MSG& msg, const char* s);
-			using hashKey_f = uint32_t (ClientGameConnection::*)(const char* string, size_t maxlen) const;
-			using readEntityNum_f = entityNum_t (ClientGameConnection::*)(MsgTypesHelper& msgHelper);
-			using readDeltaPlayerstate_f = void(ClientGameConnection::*)(MSG& msg, const playerState_t* from, playerState_t* to);
-			using readDeltaEntity_f = void(ClientGameConnection::*)(MSG& msg, const entityState_t* from, entityState_t* to, entityNum_t newNum);
-			using getNormalizedConfigstring_f = csNum_t(ClientGameConnection::*)(csNum_t num);
-			using readNonPVSClient_f = void(ClientGameConnection::*)(radarInfo_t radarInfo);
-			using getMaxCommandSize_f = size_t(ClientGameConnection::*)() const;
-
-		private:
-			std::chrono::steady_clock::time_point lastTimeoutTime;
-			HandlerListClient handlerList;
-			parse_f parseGameState_pf;
-			readString_f readStringMessage_pf;
-			writeString_f writeStringMessage_pf;
-			hashKey_f hashKey_pf;
-			readEntityNum_f readEntityNum_pf;
-			readDeltaPlayerstate_f readDeltaPlayerstate_pf;
-			readDeltaEntity_f readDeltaEntity_pf;
-			getNormalizedConfigstring_f getNormalizedConfigstring_pf;
-			readNonPVSClient_f readNonPVSClient_pf;
-			getMaxCommandSize_f getMaxCommandSize_pf;
-			CGameModuleBase* cgameModule;
-			EncodingPtr encoder;
-			INetchanPtr netchan;
-			ClientInfoPtr userInfo;
-			uint64_t realTimeStart;
-			uint64_t serverStartTime;
-			uint64_t serverTime;
-			uint64_t oldServerTime;
-			uint64_t oldFrameServerTime;
-			uint64_t oldRealTime;
-			uint64_t lastPacketSendTime;
-			uint64_t serverDeltaFrequency;
-			std::chrono::milliseconds timeoutTime;
-			uint32_t parseEntitiesNum;
-			uint32_t serverCommandSequence;
-			uint32_t serverMessageSequence;
-			uint32_t cmdNumber;
-			uint32_t clientNum;
-			uint32_t checksumFeed;
-			uint32_t serverId;
-			uint32_t reliableSequence;
-			uint32_t reliableAcknowledge;
-			uint32_t lastSnapFlags;
-			clientGameSettings_t settings;
-			IRemoteIdentifierPtr adr;
-			bool newSnapshots : 1;
-			bool extrapolatedSnapshot : 1;
-			bool isActive : 1;
-			bool isReady : 1;
-			char* reliableCommands[MAX_RELIABLE_COMMANDS];
-			char* serverCommands[MAX_RELIABLE_COMMANDS];
-			char reliableCmdStrings[MAX_STRING_CHARS * MAX_RELIABLE_COMMANDS];
-			char serverCmdStrings[MAX_STRING_CHARS * MAX_RELIABLE_COMMANDS];
-			usereyes_t userEyes;
-			gameState_t gameState;
-			DownloadManager downloadState;
-			ClientSnapshot currentSnap;
-			ClientSnapshot snapshots[PACKET_BACKUP];
-			usercmd_t cmds[CMD_BACKUP];
-			outPacket_t outPackets[CMD_BACKUP];
-			entityState_t entityBaselines[MAX_GENTITIES];
-			entityState_t parseEntities[MAX_PARSE_ENTITIES];
-
 		public:
 			/**
 			 * Construct the game client connection. This should not be called outside of server code.
@@ -457,52 +541,54 @@ namespace MOHPC
 
 			// ITickable
 			// ~
-			virtual void tick(uint64_t deltaTime, uint64_t currentTime) override;
+			void tick(uint64_t deltaTime, uint64_t currentTime) override;
 			// ~
 
-			/** Called to set the current time on start. */
-			void initTime(uint64_t currentTime);
-
 			/**
-			 * Set the timeout and the callback to be called when the client/server timeouts.
-			 *
-			 * @param	timeoutTime		Timeout in milliseconds before the game considers it timed out.
+			 * Get the timeout timer for the client.
 			 */
-			MOHPC_EXPORTS void setTimeout(size_t timeoutTime);
+			MOHPC_NET_EXPORTS TimeoutTimer& getTimeoutTimer();
+			MOHPC_NET_EXPORTS const TimeoutTimer& getTimeoutTimer() const;
+
+			/** Return the client time that manages client and remote time. */
+			MOHPC_NET_EXPORTS const ClientTime& getClientTime() const;
+
+			/** Return the client time that manages client and remote time. */
+			MOHPC_NET_EXPORTS const UserInput& getUserInput() const;
+
+			/** Return the client command object for managing commands. */
+			MOHPC_NET_EXPORTS IReliableSequence& getClientCommands() const;
+
+			/** Return the client command object for managing commands. */
+			MOHPC_NET_EXPORTS ICommandSequence& getServerCommands() const;
 
 			/** Return the handler list. */
-			MOHPC_EXPORTS HandlerListClient& getHandlerList();
+			MOHPC_NET_EXPORTS HandlerListClient& getHandlerList();
 
 			/** Return the IP address of the remote server. */
 			const IRemoteIdentifierPtr& getRemoteAddress() const;
 
 			/** Retrieve the current game state. */
-			MOHPC_EXPORTS const gameState_t& getGameState() const;
+			MOHPC_NET_EXPORTS IGameState& getGameState() const;
 
 			/** Retrieve the CGame module. */
-			MOHPC_EXPORTS CGameModuleBase* getCGModule();
-
-			/** Retrieve the server system info such as the serverid, the timescale, cheats allowed, ... */
-			MOHPC_EXPORTS ReadOnlyInfo getServerSystemInfo() const;
-
-			/** Retrieve the server game configuration, such as the hostname, gametype, force respawn, timelimit, ... */
-			MOHPC_EXPORTS ReadOnlyInfo getServerGameInfo() const;
+			MOHPC_NET_EXPORTS CGameModuleBase* getCGModule();
 
 			/** Return read-only user info. */
-			MOHPC_EXPORTS ConstClientInfoPtr getUserInfo() const;
+			MOHPC_NET_EXPORTS ConstClientInfoPtr getUserInfo() const;
 
 			/** Return modifiable user info. */
-			MOHPC_EXPORTS const ClientInfoPtr& getUserInfo();
+			MOHPC_NET_EXPORTS const ClientInfoPtr& getUserInfo();
 
 			/** Send the server a new user info string. Must be called when done modifying the userinfo. */
-			MOHPC_EXPORTS void updateUserInfo();
+			MOHPC_NET_EXPORTS void updateUserInfo();
 
-			MOHPC_EXPORTS clientGameSettings_t& getSettings();
-
-			MOHPC_EXPORTS const clientGameSettings_t& getSettings() const;
+			/** Return the settings that the connection is using. */
+			MOHPC_NET_EXPORTS clientGameSettings_t& getSettings();
+			MOHPC_NET_EXPORTS const clientGameSettings_t& getSettings() const;
 
 			/** Return the current snapshot number. */
-			MOHPC_EXPORTS uintptr_t getCurrentSnapshotNumber() const;
+			MOHPC_NET_EXPORTS uintptr_t getCurrentSnapshotNumber() const;
 
 			/**
 			 * Return snapshot data.
@@ -511,34 +597,25 @@ namespace MOHPC
 			 * @param	outSnapshot		Output data.
 			 * @return	true if the snap is valid.
 			 */
-			MOHPC_EXPORTS bool getSnapshot(uintptr_t snapshotNum, SnapshotInfo& outSnapshot) const;
+			MOHPC_NET_EXPORTS bool getSnapshot(uintptr_t snapshotNum, SnapshotInfo& outSnapshot) const;
 
-			/** Return the time at which the server started (in milliseconds). */
-			MOHPC_EXPORTS uint64_t getServerStartTime() const;
-
-			/** Return the current server time (in milliseconds). */
-			MOHPC_EXPORTS uint64_t getServerTime() const;
-
-			/** Return the frequency at which the game server is running (sv_fps). */
-			MOHPC_EXPORTS uint64_t getServerFrameFrequency() const;
-
-			/** Return the current user input number. */
-			MOHPC_EXPORTS uintptr_t getCurrentCmdNumber() const;
+			/** Return the frequency at which the game server is running (1 / sv_fps). */
+			MOHPC_NET_EXPORTS uint64_t getServerFrameTime() const;
 
 			/** Return the current client number. */
-			MOHPC_EXPORTS uint32_t getClientNum() const;
+			MOHPC_NET_EXPORTS uint32_t getClientNum() const;
 
 			/** Return the current server message sequence (the latest packet number). */
-			MOHPC_EXPORTS uint32_t getCurrentServerMessageSequence() const;
+			MOHPC_NET_EXPORTS uint32_t getCurrentServerMessageSequence() const;
 
 			/** Return the current server command sequence (the latest command number). */
-			MOHPC_EXPORTS uint32_t getCurrentServerCommandSequence() const;
+			MOHPC_NET_EXPORTS uint32_t getCurrentServerCommandSequence() const;
 
 			/** Return the current reliable sequence (the latest command number on the client). */
-			MOHPC_EXPORTS uint32_t getReliableSequence() const;
+			MOHPC_NET_EXPORTS uint32_t getReliableSequence() const;
 
 			/** Return the current reliable acknowledge (the latest command number on the server). */
-			MOHPC_EXPORTS uint32_t getReliableAcknowledge() const;
+			MOHPC_NET_EXPORTS uint32_t getReliableAcknowledge() const;
 
 			/**
 			 * Return user input data.
@@ -547,7 +624,7 @@ namespace MOHPC
 			 * @param	outCmd		Output data.
 			 * @return	true if the command is valid.
 			 */
-			MOHPC_EXPORTS bool getUserCmd(uintptr_t cmdNum, usercmd_t& outCmd) const;
+			MOHPC_NET_EXPORTS bool getUserCmd(uintptr_t cmdNum, usercmd_t& outCmd) const;
 
 			/**
 			 * Return parseable server command.
@@ -555,35 +632,35 @@ namespace MOHPC
 			 * @param	tokenized				Tokenized data.
 			 * @return	true if the command is valid.
 			 */
-			MOHPC_EXPORTS bool getServerCommand(uintptr_t serverCommandNumber, TokenParser& tokenized);
+			MOHPC_NET_EXPORTS bool getServerCommand(rsequence_t serverCommandNumber, TokenParser& tokenized);
 
 			/**
 			 * Disconnect the client.
 			 * Can also be called from the server.
 			 */
-			MOHPC_EXPORTS void disconnect();
+			MOHPC_NET_EXPORTS void disconnect();
 
 			/**
 			 * Return whether or not an user cmd can be created.
 			 */
-			MOHPC_EXPORTS bool canCreateCommand() const;
+			MOHPC_NET_EXPORTS bool canCreateCommand() const;
 
 			/**
 			 * Mark the client as ready (to send commands). Useful for loading maps.
 			 */
-			MOHPC_EXPORTS void markReady();
+			MOHPC_NET_EXPORTS void markReady();
 
 			/**
 			 * Make the client not ready (won't send new commands anymore).
 			 */
-			MOHPC_EXPORTS void unmarkReady();
+			MOHPC_NET_EXPORTS void unmarkReady();
 
 			/**
 			 * Send a command to server.
 			 *
 			 * @param command Command to send.
 			 */
-			MOHPC_EXPORTS void sendCommand(const char* command);
+			MOHPC_NET_EXPORTS void sendCommand(const char* command);
 
 		private:
 			const INetchanPtr& getNetchan() const;
@@ -605,75 +682,64 @@ namespace MOHPC
 			void parseCommandString(MSG& msg);
 			void parseCenterprint(MSG& msg);
 			void parseLocprint(MSG& msg);
-			void parseCGMessage(MSG& msg);
 			void parseClientCommand(const char* arguments);
 
 			void clearState();
 			bool isDifferentServer(uint32_t id);
 			void setCGameTime(uint64_t currentTime);
-			void adjustTimeDelta(uint64_t realTime);
-			uint64_t getTimeDelta(uint64_t time) const;
 			void firstSnapshot(uint64_t currentTime);
 			void serverRestarted();
 			void updateSnapFlags();
 			void calculatePing(uint64_t currentTime);
 
-			void configStringModified(csNum_t num, const char* newString, bool notify = true);
-			void notifyConfigStringChange(csNum_t num, const char* newString);
-			void notifyAllConfigStringChanges();
-			void systemInfoChanged();
-
 			bool readyToSendPacket(uint64_t currentTime) const;
-			void createNewCommands();
-			void createCmd(usercmd_t& outcmd);
 			bool sendCmd(uint64_t currentTime);
 			clc_ops_e getClientOperation() const;
 			uint32_t getCommandHashKey() const;
 			uint8_t getNumCommandsToWrite(uint32_t oldPacketNum) const;
 
 			void writePacket(uint64_t currentTime);
-			void writePacketHeader(MSG& msg);
-			void writeReliableCommands(MSG& msg);
 			void writeUserInput(MSG& msg, uint64_t currentTime);
 			void writeAllCommands(MSG& msg, const usercmd_t*& oldcmd, size_t count, uint32_t key);
 			void storeOutputPacket(uint64_t currentTime, uint32_t serverTime);
 
+			const IClientGameProtocol& getProtocol(uint32_t protocolNum) const;
 			void fillClientImports(ClientImports& imports);
-			StringMessage readStringMessage(MSG& msg);
-			void writeStringMessage(MSG& msg, const char* s);
-			uint32_t hashKey(const char* string, size_t maxlen) const;
-			entityNum_t readEntityNum(MsgTypesHelper& msgHelper);
-			void readDeltaPlayerstate(MSG& msg, const playerState_t* from, playerState_t* to);
-			void readDeltaEntity(MSG& msg, const entityState_t* from, entityState_t* to, uint16_t newNum);
-			csNum_t getNormalizedConfigstring(csNum_t num);
-			size_t getMaxCommandSize() const;
 			void readNonPVSClient(radarInfo_t radarInfo);
-			bool unpackNonPVSClient(radarInfo_t radarInfo, radarUnpacked_t& unpacked);
 			const ClientSnapshot* readOldSnapshot(MSG& msg, ClientSnapshot& snap) const;
 			void readAreaMask(MSG& msg, ClientSnapshot& snap);
 			void setNewSnap(ClientSnapshot& newSnap);
 
 		private:
-			static StringMessage readStringMessage_normal(MSG& msg);
-			static void writeStringMessage_normal(MSG& msg, const char* s);
-			static StringMessage readStringMessage_scrambled(MSG& msg);
-			static void writeStringMessage_scrambled(MSG& msg, const char* s);
-			uint32_t hashKey_ver6(const char* string, size_t maxlen) const;
-			uint32_t hashKey_ver15(const char* string, size_t maxlen) const;
-			entityNum_t readEntityNum_ver6(MsgTypesHelper& msgHelper);
-			entityNum_t readEntityNum_ver15(MsgTypesHelper& msgHelper);
-			void parseGameState_ver6(MSG& msg);
-			void parseGameState_ver15(MSG& msg);
-			void readDeltaPlayerstate_ver6(MSG& msg, const playerState_t* from, playerState_t* to);
-			void readDeltaPlayerstate_ver15(MSG& msg, const playerState_t* from, playerState_t* to);
-			void readDeltaEntity_ver6(MSG& msg, const entityState_t* from, entityState_t* to, entityNum_t newNum);
-			void readDeltaEntity_ver15(MSG& msg, const entityState_t* from, entityState_t* to, entityNum_t newNum);
-			csNum_t getNormalizedConfigstring_ver6(csNum_t num);
-			csNum_t getNormalizedConfigstring_ver15(csNum_t num);
-			size_t getMaxCommandSize_ver6() const;
-			size_t getMaxCommandSize_ver15() const;
-			void readNonPVSClient_ver6(radarInfo_t radarInfo);
-			void readNonPVSClient_ver15(radarInfo_t radarInfo);
+			HandlerListClient handlerList;
+			const IClientGameProtocol& clientProto;
+			CGameModuleBase* cgameModule;
+			EncodingPtr encoder;
+			INetchanPtr netchan;
+			ClientInfoPtr userInfo;
+			IGameState* gameStatePtr;
+			IReliableSequence* reliableCommands;
+			ICommandSequence* serverCommands;
+			ClientTime clientTime;
+			UserInput input;
+			TimeoutTimer timeout;
+			uint64_t lastPacketSendTime;
+			uint32_t parseEntitiesNum;
+			uint32_t serverMessageSequence;
+			uint32_t lastSnapFlags;
+			clientGameSettings_t settings;
+			IRemoteIdentifierPtr adr;
+			bool newSnapshots : 1;
+			bool extrapolatedSnapshot : 1;
+			bool isActive : 1;
+			bool isReady : 1;
+			gameState_t gameState;
+			DownloadManager downloadState;
+			ClientSnapshot currentSnap;
+			ClientSnapshot snapshots[PACKET_BACKUP];
+			outPacket_t outPackets[CMD_BACKUP];
+			entityState_t entityBaselines[MAX_GENTITIES];
+			entityState_t parseEntities[MAX_PARSE_ENTITIES];
 		};
 
 		using ClientGameConnectionPtr = SharedPtr<ClientGameConnection>;
@@ -683,30 +749,15 @@ namespace MOHPC
 			class Base : public NetworkException {};
 
 			/**
-			 * Invalid command while parsing game state.
-			 */
-			class BadCommandByteException : public Base
-			{
-			public:
-				BadCommandByteException(uint8_t inCmdNum);
-
-				MOHPC_EXPORTS uint8_t getLength() const;
-				MOHPC_EXPORTS str what() const override;
-
-			private:
-				uint8_t cmdNum;
-			};
-
-			/**
 			 * The protocol version does not exist.
 			 */
 			class BadProtocolVersionException : public Base
 			{
 			public:
-				BadProtocolVersionException(uint8_t inProtocolVersion);
+				BadProtocolVersionException(uint32_t inProtocolVersion);
 
-				MOHPC_EXPORTS uint32_t getProtocolVersion() const;
-				MOHPC_EXPORTS str what() const override;
+				MOHPC_NET_EXPORTS uint32_t getProtocolVersion() const;
+				MOHPC_NET_EXPORTS str what() const override;
 
 			private:
 				uint32_t protocolVersion;
@@ -720,8 +771,8 @@ namespace MOHPC
 			public:
 				IllegibleServerMessageException(uint8_t inCmdNum);
 
-				MOHPC_EXPORTS uint8_t getLength() const;
-				MOHPC_EXPORTS str what() const override;
+				MOHPC_NET_EXPORTS uint8_t getLength() const;
+				MOHPC_NET_EXPORTS str what() const override;
 
 			private:
 				uint8_t cmdNum;
@@ -735,46 +786,11 @@ namespace MOHPC
 			public:
 				BaselineOutOfRangeException(uint16_t inBaselineNum);
 
-				MOHPC_EXPORTS uint16_t getBaselineNum() const;
-				MOHPC_EXPORTS str what() const override;
+				MOHPC_NET_EXPORTS uint16_t getBaselineNum() const;
+				MOHPC_NET_EXPORTS str what() const override;
 
 			private:
 				uint16_t baselineNum;
-			};
-
-			/**
-			 * Bad configstring number.
-			 */
-			class MaxConfigStringException : public Base
-			{
-			public:
-				MaxConfigStringException(const char* inName, csNum_t inConfigStringNum);
-
-				/** Return the name of the code that tried to access the config string. */
-				MOHPC_EXPORTS const char* getName() const;
-				/** Return the config string number. */
-				MOHPC_EXPORTS csNum_t getConfigstringNum() const;
-				MOHPC_EXPORTS str what() const override;
-
-			private:
-				const char* name;
-				csNum_t configStringNum;
-			};
-
-			/**
-			 * MAX_GAMESTATE_CHARS was reached while parsing a configstring.
-			 */
-			class MaxGameStateCharsException : public Base
-			{
-			public:
-				MaxGameStateCharsException(size_t inStringLen);
-
-				/** Return the length of the string that was passed. */
-				MOHPC_EXPORTS size_t GetStringLength() const;
-				MOHPC_EXPORTS str what() const override;
-
-			private:
-				size_t stringLen;
 			};
 
 			/**
@@ -786,8 +802,8 @@ namespace MOHPC
 				AreaMaskBadSize(uint8_t inSize);
 
 				/** Return the size of the area mask. */
-				MOHPC_EXPORTS uint8_t getSize() const;
-				MOHPC_EXPORTS str what() const override;
+				MOHPC_NET_EXPORTS uint8_t getSize() const;
+				MOHPC_NET_EXPORTS str what() const override;
 
 			private:
 				uint8_t size;
@@ -802,8 +818,8 @@ namespace MOHPC
 				DownloadException(StringMessage&& inError);
 
 				/** Return the error the server sent. */
-				MOHPC_EXPORTS const char* getError() const;
-				MOHPC_EXPORTS str what() const override;
+				MOHPC_NET_EXPORTS const char* getError() const;
+				MOHPC_NET_EXPORTS str what() const override;
 
 			private:
 				StringMessage error;
@@ -814,7 +830,7 @@ namespace MOHPC
 			public:
 				DownloadSizeException(uint16_t inSize);
 
-				MOHPC_EXPORTS uint16_t getSize() const;
+				MOHPC_NET_EXPORTS uint16_t getSize() const;
 
 			private:
 				uint16_t size;
@@ -825,8 +841,8 @@ namespace MOHPC
 			public:
 				BadDownloadBlockException(uint16_t block, uint16_t expectedBlock);
 
-				MOHPC_EXPORTS uint16_t getBlock() const noexcept;
-				MOHPC_EXPORTS uint16_t getExpectedBlock() const noexcept;
+				MOHPC_NET_EXPORTS uint16_t getBlock() const noexcept;
+				MOHPC_NET_EXPORTS uint16_t getExpectedBlock() const noexcept;
 
 			private:
 				uint16_t block;
@@ -834,10 +850,53 @@ namespace MOHPC
 
 			};
 
+			/**
+			 * When the server is sending a download but it hasn't been requested by the client
+			 */
+			class MOHPC_NET_EXPORTS UnexpectedDownloadException : public NetworkException
+			{
+			};
+
 			class BadSoundNumberException : public Base
 			{
 
 			};
+		}
+
+		template<size_t RELIABLE_COMMAND_SIZE>
+		void ClientSequenceTemplate<RELIABLE_COMMAND_SIZE>::set(rsequence_t index, const char* command)
+		{
+			str::copyn(reliableCommands[index], command, RELIABLE_COMMAND_SIZE);
+		}
+
+		template<size_t RELIABLE_COMMAND_SIZE>
+		const char* ClientSequenceTemplate<RELIABLE_COMMAND_SIZE>::get(rsequence_t index) const
+		{
+			return reliableCommands[index];
+		}
+
+		template<size_t RELIABLE_COMMAND_SIZE>
+		size_t ClientSequenceTemplate<RELIABLE_COMMAND_SIZE>::getMaxElements() const
+		{
+			return RELIABLE_COMMAND_SIZE;
+		}
+
+		template<size_t RELIABLE_COMMAND_SIZE>
+		void ClientRemoteCommandSequenceTemplate<RELIABLE_COMMAND_SIZE>::set(rsequence_t index, const char* command)
+		{
+			str::copyn(serverCommands[index], command, RELIABLE_COMMAND_SIZE);
+		}
+
+		template<size_t RELIABLE_COMMAND_SIZE>
+		const char* ClientRemoteCommandSequenceTemplate<RELIABLE_COMMAND_SIZE>::get(rsequence_t index) const
+		{
+			return serverCommands[index];
+		}
+
+		template<size_t RELIABLE_COMMAND_SIZE>
+		size_t ClientRemoteCommandSequenceTemplate<RELIABLE_COMMAND_SIZE>::getMaxElements() const
+		{
+			return RELIABLE_COMMAND_SIZE;
 		}
 	}
 }

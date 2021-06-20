@@ -1,10 +1,10 @@
 #pragma once
 
-#include "../Global.h"
-#include "../Object.h"
-#include "../Utilities/SharedPtr.h"
-#include "../Utilities/Communicator.h"
-#include "../Misc/MSG/Stream.h"
+#include "NetGlobal.h"
+#include "NetObject.h"
+#include "../Utility/SharedPtr.h"
+#include "../Utility/Communicator.h"
+#include "../Utility/Misc/MSG/Stream.h"
 #include "Types.h"
 #include "Socket.h"
 #include <stdint.h>
@@ -65,7 +65,7 @@ namespace MOHPC
 
 		class Netchan : public INetchan
 		{
-			MOHPC_OBJECT_DECLARATION(Netchan);
+			MOHPC_NET_OBJECT_DECLARATION(Netchan);
 
 		protected:
 			uint16_t qport;
@@ -76,7 +76,7 @@ namespace MOHPC
 			DynamicDataMessageStream fragmentStream;
 
 		public:
-			MOHPC_EXPORTS Netchan(const ICommunicatorPtr& existingSocket, uint16_t inQport);
+			MOHPC_NET_EXPORTS Netchan(const ICommunicatorPtr& existingSocket, uint16_t inQport);
 			~Netchan();
 
 			virtual bool receive(IRemoteIdentifierPtr& from, IMessageStream& stream, uint32_t& sequenceNum) override;
@@ -94,11 +94,11 @@ namespace MOHPC
 
 		class ConnectionlessChan : public INetchan
 		{
-			MOHPC_OBJECT_DECLARATION(ConnectionlessChan);
+			MOHPC_NET_OBJECT_DECLARATION(ConnectionlessChan);
 
 		public:
-			MOHPC_EXPORTS ConnectionlessChan();
-			MOHPC_EXPORTS ConnectionlessChan(const ICommunicatorPtr& existingSocket);
+			MOHPC_NET_EXPORTS ConnectionlessChan();
+			MOHPC_NET_EXPORTS ConnectionlessChan(const ICommunicatorPtr& existingSocket);
 
 			virtual bool receive(IRemoteIdentifierPtr& from, IMessageStream& stream, uint32_t& sequenceNum) override;
 			virtual bool transmit(const IRemoteIdentifier& to, IMessageStream& stream) override;

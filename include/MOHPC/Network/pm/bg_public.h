@@ -27,9 +27,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #pragma once
 
-#include "../../Math.h"
+#include "../../Common/Math.h"
+#include "../../Utility/Function.h"
 #include "../InfoTypes.h"
-#include "../../Utilities/Function.h"
 
 namespace MOHPC
 {
@@ -202,16 +202,16 @@ namespace MOHPC
 	class Pmove
 	{
 	public:
-		MOHPC_EXPORTS Pmove();
+		MOHPC_NET_EXPORTS Pmove();
 		virtual ~Pmove() = default;
 
-		MOHPC_EXPORTS pmove_t& get();
+		MOHPC_NET_EXPORTS pmove_t& get();
 
 		// if a full pmove isn't done on the client, you can just update the angles
 		void PM_GetMove(float* pfForward, float* pfRight);
 		static void PM_UpdateViewAngles(playerState_t* ps, const usercmd_t* cmd);
 		void move_GroundTrace();
-		MOHPC_EXPORTS void move();
+		MOHPC_NET_EXPORTS void move();
 		void moveAdjustAngleSettings(Vector& vViewAngles, Vector& vAngles, playerState_t* pPlayerState, entityState_t* pEntState);
 		void moveAdjustAngleSettings_Client(Vector& vViewAngles, Vector& vAngles, playerState_t* pPlayerState, entityState_t* pEntState);
 
@@ -276,7 +276,7 @@ namespace MOHPC
 	//===================================================================================
 
 	// means of death
-	typedef enum {
+	enum meansOfDeath_e {
 		MOD_NONE,
 		MOD_SUICIDE,
 		MOD_CRUSH,
@@ -306,7 +306,7 @@ namespace MOHPC
 		MOD_BASH,
 		MOD_SHOTGUN,
 		MOD_TOTAL_NUMBER
-	} meansOfDeath_t;
+	};
 
 	//static constexpr unsigned int DM_FLAG = (flag)(g_gametype->integer && ((int)dmflags->integer & (flag)));
 
@@ -339,7 +339,4 @@ namespace MOHPC
 	static constexpr unsigned int MASK_LINE = (CONTENTS_SOLID | CONTENTS_BODY | CONTENTS_UNKNOWN2 | CONTENTS_NOBOTCLIP | CONTENTS_BBOX);
 	static constexpr unsigned int MASK_VEHICLETURRET = (CONTENTS_SOLID | CONTENTS_TRIGGER | CONTENTS_FENCE | CONTENTS_VEHICLECLIP | CONTENTS_MONSTERCLIP | CONTENTS_PLAYERCLIP);
 	*/
-
-	void BG_PlayerStateToEntityState( playerState_t *ps, entityState_t *s, bool snap );
-	void BG_PlayerStateToEntityStateExtraPolate( playerState_t *ps, entityState_t *s, int time, bool snap );
 };

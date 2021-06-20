@@ -5,10 +5,10 @@
 #include "../InfoTypes.h"
 #include "../Types.h"
 #include "../pm/bg_public.h"
-#include "../../Utilities/HandlerList.h"
-#include "../../Utilities/PropertyMap.h"
-#include "../../Utilities/Function.h"
-#include "../../Vector.h"
+#include "../../Utility/HandlerList.h"
+#include "../../Utility/PropertyMap.h"
+#include "../../Utility/Function.h"
+#include "../../Common/Vector.h"
 #include "Imports.h"
 #include "Vote.h"
 #include <type_traits>
@@ -184,7 +184,7 @@ namespace MOHPC
 		 * @param effect The client game module effect.
 		 * @return the model path, i.e "/models/fx/grenexp_mud.tik".
 		 */
-		MOHPC_EXPORTS const char* getEffectName(effects_e effect);
+		MOHPC_NET_EXPORTS const char* getEffectName(effects_e effect);
 
 		/**
 		 * List of valid game types.
@@ -353,7 +353,7 @@ namespace MOHPC
 			 * Set the string of the HUD element.
 			 *
 			 * @param	index	HUD index.
-			 * @param	string	String value.
+			 * @param	string	string value.
 			 */
 			struct HudDraw_String : public HandlerNotifyBase<void(uint8_t index, const char* string)> {};
 
@@ -499,16 +499,16 @@ namespace MOHPC
 			EntityInfo();
 
 			/** Get the current entity state. */
-			MOHPC_EXPORTS const entityState_t& getCurrentState() const;
+			MOHPC_NET_EXPORTS const entityState_t& getCurrentState() const;
 			/** Get the next entity state from the next incoming snap. */
-			MOHPC_EXPORTS const entityState_t& getNextState() const;
+			MOHPC_NET_EXPORTS const entityState_t& getNextState() const;
 			/** Get the last updated time (snapshot time). */
-			MOHPC_EXPORTS uint32_t getSnapshotTime() const;
+			MOHPC_NET_EXPORTS uint32_t getSnapshotTime() const;
 			/** Whether or not this entity info exists in world. */
-			MOHPC_EXPORTS bool isValid() const;
+			MOHPC_NET_EXPORTS bool isValid() const;
 			/** Whether or not this entity info should interpolate. */
-			MOHPC_EXPORTS bool isInterpolating() const;
-			MOHPC_EXPORTS bool hasTeleported() const;
+			MOHPC_NET_EXPORTS bool isInterpolating() const;
+			MOHPC_NET_EXPORTS bool hasTeleported() const;
 		};
 
 		struct rain_t
@@ -526,15 +526,15 @@ namespace MOHPC
 		public:
 			rain_t();
 
-			MOHPC_EXPORTS float getDensity() const;
-			MOHPC_EXPORTS float getSpeed() const;
-			MOHPC_EXPORTS uint32_t getSpeedVariation() const;
-			MOHPC_EXPORTS uint32_t getSlant() const;
-			MOHPC_EXPORTS float getLength() const;
-			MOHPC_EXPORTS float getMinimumDistance() const;
-			MOHPC_EXPORTS float getWidth() const;
-			MOHPC_EXPORTS uint32_t getNumShaders() const;
-			MOHPC_EXPORTS const char* getShader(uint8_t index) const;
+			MOHPC_NET_EXPORTS float getDensity() const;
+			MOHPC_NET_EXPORTS float getSpeed() const;
+			MOHPC_NET_EXPORTS uint32_t getSpeedVariation() const;
+			MOHPC_NET_EXPORTS uint32_t getSlant() const;
+			MOHPC_NET_EXPORTS float getLength() const;
+			MOHPC_NET_EXPORTS float getMinimumDistance() const;
+			MOHPC_NET_EXPORTS float getWidth() const;
+			MOHPC_NET_EXPORTS uint32_t getNumShaders() const;
+			MOHPC_NET_EXPORTS const char* getShader(uint8_t index) const;
 		};
 
 		struct objective_t
@@ -561,13 +561,13 @@ namespace MOHPC
 
 		public:
 			/** Objective flags. See above. */
-			MOHPC_EXPORTS uint32_t getFlags() const;
+			MOHPC_NET_EXPORTS uint32_t getFlags() const;
 
 			/** Objective text. */
-			MOHPC_EXPORTS const char* getText() const;
+			MOHPC_NET_EXPORTS const char* getText() const;
 
 			/** Objective location. */
-			MOHPC_EXPORTS const Vector& getLocation() const;
+			MOHPC_NET_EXPORTS const Vector& getLocation() const;
 		};
 
 		struct environment_t
@@ -589,37 +589,37 @@ namespace MOHPC
 			environment_t();
 
 			/** If the farplane culls distant objects. */
-			MOHPC_EXPORTS bool isFarplaneCulling() const;
+			MOHPC_NET_EXPORTS bool isFarplaneCulling() const;
 
 			/** The max distance of the fog. */
-			MOHPC_EXPORTS float getFarplane() const;
+			MOHPC_NET_EXPORTS float getFarplane() const;
 
 			/** Fog color. */
-			MOHPC_EXPORTS const Vector& getFarplaneColor() const;
+			MOHPC_NET_EXPORTS const Vector& getFarplaneColor() const;
 
 			/** SH/BT: Fog bias. */
-			MOHPC_EXPORTS float getFarplaneBias() const;
+			MOHPC_NET_EXPORTS float getFarplaneBias() const;
 
 			/** SH/BT: Farplane in the skybox. */
-			MOHPC_EXPORTS float getSkyboxFarplane() const;
+			MOHPC_NET_EXPORTS float getSkyboxFarplane() const;
 
 			/** SH/BT: Skybox movement speed. */
-			MOHPC_EXPORTS float getSkyboxSpeed() const;
+			MOHPC_NET_EXPORTS float getSkyboxSpeed() const;
 
 			/** SH/BT: Farclip override. */
-			MOHPC_EXPORTS float getFarclipOverride() const;
+			MOHPC_NET_EXPORTS float getFarclipOverride() const;
 
 			/** SH/BT: Colors for temporarily overriding fog. */
-			MOHPC_EXPORTS const Vector& getFarplaneColorOverride() const;
+			MOHPC_NET_EXPORTS const Vector& getFarplaneColorOverride() const;
 
 			/** SH/BT: True if terrain should be rendered. */
-			MOHPC_EXPORTS bool shouldRenderTerrain() const;
+			MOHPC_NET_EXPORTS bool shouldRenderTerrain() const;
 
 			/** Sky alpha. */
-			MOHPC_EXPORTS float getSkyAlpha() const;
+			MOHPC_NET_EXPORTS float getSkyAlpha() const;
 
 			/** True if this is a sky portal. */
-			MOHPC_EXPORTS bool isSkyPortal() const;
+			MOHPC_NET_EXPORTS bool isSkyPortal() const;
 		};
 
 		enum class teamType_e : unsigned char {
@@ -644,16 +644,16 @@ namespace MOHPC
 
 			public:
 				/** Team number. See teamType_e. */
-				MOHPC_EXPORTS uint32_t getTeamNum() const;
+				MOHPC_NET_EXPORTS uint32_t getTeamNum() const;
 
 				/** The number of kills (or score) the team has made. */
-				MOHPC_EXPORTS uint32_t getNumKills() const;
+				MOHPC_NET_EXPORTS uint32_t getNumKills() const;
 
 				/** The number of deaths from this team. */
-				MOHPC_EXPORTS uint32_t getNumDeaths() const;
+				MOHPC_NET_EXPORTS uint32_t getNumDeaths() const;
 
 				/** Team's ping (usually the average ping of players in team). */
-				MOHPC_EXPORTS uint32_t getPing() const;
+				MOHPC_NET_EXPORTS uint32_t getPing() const;
 			};
 
 			struct player_t
@@ -668,30 +668,30 @@ namespace MOHPC
 
 			public:
 				/** The client number. */
-				MOHPC_EXPORTS uint32_t getClientNum() const;
+				MOHPC_NET_EXPORTS uint32_t getClientNum() const;
 
 				/** Team number. See teamType_e. */
-				MOHPC_EXPORTS uint32_t getTeamNum() const;
+				MOHPC_NET_EXPORTS uint32_t getTeamNum() const;
 
 				/** The number of kills made by the player. */
-				MOHPC_EXPORTS uint32_t getNumKills() const;
+				MOHPC_NET_EXPORTS uint32_t getNumKills() const;
 
 				/** The number of time the player died. */
-				MOHPC_EXPORTS uint32_t getNumDeaths() const;
+				MOHPC_NET_EXPORTS uint32_t getNumDeaths() const;
 
 				/** Time in milliseconds since the player is in the match. */
-				MOHPC_EXPORTS uint64_t getTimeStamp() const;
+				MOHPC_NET_EXPORTS uint64_t getTimeStamp() const;
 
 				/** Player's ping. */
-				MOHPC_EXPORTS uint32_t getPing() const;
+				MOHPC_NET_EXPORTS uint32_t getPing() const;
 
 				/** Whether or not the player is currently alive. */
-				MOHPC_EXPORTS bool isAlive() const;
+				MOHPC_NET_EXPORTS bool isAlive() const;
 			};
 
 		private:
-			Container<teamEntry_t> teamEntries;
-			Container<player_t> playerList;
+			mfuse::con::Container<teamEntry_t> teamEntries;
+			mfuse::con::Container<player_t> playerList;
 
 		private:
 			gameType_e gameType;
@@ -700,19 +700,19 @@ namespace MOHPC
 			Scoreboard(gameType_e inGameType);
 
 			/** Return the number of team entries. */
-			MOHPC_EXPORTS size_t getNumTeams() const;
+			MOHPC_NET_EXPORTS size_t getNumTeams() const;
 
 			/** Return the team at the specified index. */
-			MOHPC_EXPORTS const teamEntry_t& getTeam(size_t index);
+			MOHPC_NET_EXPORTS const teamEntry_t& getTeam(size_t index);
 
 			/** Return the team by the specified type. */
-			MOHPC_EXPORTS const teamEntry_t* getTeamByType(teamType_e type);
+			MOHPC_NET_EXPORTS const teamEntry_t* getTeamByType(teamType_e type);
 
 			/** Return the number of players. */
-			MOHPC_EXPORTS size_t getNumPlayers() const;
+			MOHPC_NET_EXPORTS size_t getNumPlayers() const;
 
 			/** Return player at the specified index. */
-			MOHPC_EXPORTS const player_t& getPlayer(size_t index) const;
+			MOHPC_NET_EXPORTS const player_t& getPlayer(size_t index) const;
 
 		// Parsing functions
 		public:
@@ -760,13 +760,13 @@ namespace MOHPC
 			clientInfo_t();
 
 			/** Name of the client. */
-			MOHPC_EXPORTS const char* getName() const;
+			MOHPC_NET_EXPORTS const char* getName() const;
 
 			/** Client's current team. */
-			MOHPC_EXPORTS teamType_e getTeam() const;
+			MOHPC_NET_EXPORTS teamType_e getTeam() const;
 
 			/** List of misc client properties. */
-			MOHPC_EXPORTS const PropertyObject& getProperties() const;
+			MOHPC_NET_EXPORTS const PropertyObject& getProperties() const;
 		};
 
 		/**
@@ -778,22 +778,22 @@ namespace MOHPC
 			cgsInfo();
 
 			/** Return the server time at which the match has started. */
-			MOHPC_EXPORTS uint64_t getMatchStartTime() const;
+			MOHPC_NET_EXPORTS uint64_t getMatchStartTime() const;
 
 			/** Return the server time at which the match has ended. */
-			MOHPC_EXPORTS uint64_t getMatchEndTime() const;
+			MOHPC_NET_EXPORTS uint64_t getMatchEndTime() const;
 
 			/** Return the server time at which the level has started. */
-			MOHPC_EXPORTS uint64_t getLevelStartTime() const;
+			MOHPC_NET_EXPORTS uint64_t getLevelStartTime() const;
 
 			/** Get the last lag time. */
-			MOHPC_EXPORTS uint64_t getServerLagTime() const;
+			MOHPC_NET_EXPORTS uint64_t getServerLagTime() const;
 
 			/** Return the current game type. */
-			MOHPC_EXPORTS gameType_e getGameType() const;
+			MOHPC_NET_EXPORTS gameType_e getGameType() const;
 
 			/** Return current DF_ flags. */
-			MOHPC_EXPORTS uint32_t getDeathmatchFlags() const;
+			MOHPC_NET_EXPORTS uint32_t getDeathmatchFlags() const;
 
 			/** 
 			 * Return true if dmflags contain one or more of the specified flags.
@@ -801,7 +801,7 @@ namespace MOHPC
 			 * @param	flags	Flags to look for.
 			 * @return	true	if one of the following flags are valid.
 			 */
-			MOHPC_EXPORTS bool hasAnyDMFlags(uint32_t flags) const;
+			MOHPC_NET_EXPORTS bool hasAnyDMFlags(uint32_t flags) const;
 
 			/**
 			 * Return true if dmflags contain the specified flags.
@@ -809,7 +809,7 @@ namespace MOHPC
 			 * @param	flags	Flags to look for.
 			 * @return	true	if all of the flags are valid.
 			 */
-			MOHPC_EXPORTS bool hasAllDMFlags(uint32_t flags) const;
+			MOHPC_NET_EXPORTS bool hasAllDMFlags(uint32_t flags) const;
 
 			/**
 			 * User version of hasAnyDMFlags that split each flags by arguments.
@@ -834,45 +834,45 @@ namespace MOHPC
 			}
 
 			/** Return teamFlags (doesn't seem to be used). */
-			MOHPC_EXPORTS uint32_t getTeamFlags() const;
+			MOHPC_NET_EXPORTS uint32_t getTeamFlags() const;
 
 			/** Return the number of maximum clients that can be connected in the current server. */
-			MOHPC_EXPORTS uint32_t getMaxClients() const;
+			MOHPC_NET_EXPORTS uint32_t getMaxClients() const;
 
 			/** Return the frag limit before the match ends. */
-			MOHPC_EXPORTS int32_t getFragLimit() const;
+			MOHPC_NET_EXPORTS int32_t getFragLimit() const;
 
 			/** Returns the time limit before the match ends. */
-			MOHPC_EXPORTS int32_t getTimeLimit() const;
+			MOHPC_NET_EXPORTS int32_t getTimeLimit() const;
 
 			/** Return the server type the client is connected on. */
-			MOHPC_EXPORTS serverType_e getServerType() const;
+			MOHPC_NET_EXPORTS serverType_e getServerType() const;
 
 			/** Return whether or not voting is allowed. */
-			MOHPC_EXPORTS bool isVotingAllowed() const;
+			MOHPC_NET_EXPORTS bool isVotingAllowed() const;
 
 			/** Return the map checksum on the server. Useful to compare against the checksum of the map on the client. */
-			MOHPC_EXPORTS uint32_t getMapChecksum() const;
+			MOHPC_NET_EXPORTS uint32_t getMapChecksum() const;
 
 			/** Return the current map name. */
-			MOHPC_EXPORTS const char* getMapName() const;
-			MOHPC_EXPORTS const str& getMapNameStr() const;
+			MOHPC_NET_EXPORTS const char* getMapName() const;
+			MOHPC_NET_EXPORTS const str& getMapNameStr() const;
 
 			/** Return the path to the map name. */
-			MOHPC_EXPORTS const char* getMapFilename() const;
-			MOHPC_EXPORTS const str& getMapFilenameStr() const;
+			MOHPC_NET_EXPORTS const char* getMapFilename() const;
+			MOHPC_NET_EXPORTS const str& getMapFilenameStr() const;
 
 			/** Return the allied text NUM_TEAM_OBJECTIVES is the max. */
-			MOHPC_EXPORTS const char* getAlliedText(size_t index) const;
+			MOHPC_NET_EXPORTS const char* getAlliedText(size_t index) const;
 
 			/** Return the axis text. NUM_TEAM_OBJECTIVES is the max. */
-			MOHPC_EXPORTS const char* getAxisText(size_t index);
+			MOHPC_NET_EXPORTS const char* getAxisText(size_t index);
 
 			/** Return the scoreboard pic shader. */
-			MOHPC_EXPORTS const char* getScoreboardPic() const;
+			MOHPC_NET_EXPORTS const char* getScoreboardPic() const;
 
 			/** Return the scoreboard pic shader when game is over. */
-			MOHPC_EXPORTS const char* getScoreboardPicOver() const;
+			MOHPC_NET_EXPORTS const char* getScoreboardPicOver() const;
 
 		public:
 			uint64_t matchStartTime;
@@ -900,7 +900,7 @@ namespace MOHPC
 		/**
 		 * Client settings data structure.
 		 */
-		struct MOHPC_EXPORTS clientSettings_t
+		struct MOHPC_NET_EXPORTS clientSettings_t
 		{
 		public:
 			clientSettings_t();
@@ -986,52 +986,52 @@ namespace MOHPC
 			CGameModuleBase(const ClientImports& inImports);
 			virtual ~CGameModuleBase() = default;
 
-			virtual void init(uintptr_t serverMessageSequence, uintptr_t serverCommandSequence);
+			virtual void init(uintptr_t serverMessageSequence, rsequence_t serverCommandSequence);
 
 			/** Tick function for CGame module. */
 			virtual void tick(uint64_t deltaTime, uint64_t currentTime, uint64_t serverTime);
 
 			/** Return the handler list. */
-			MOHPC_EXPORTS HandlerListCGame& getHandlerList();
+			MOHPC_NET_EXPORTS HandlerListCGame& getHandlerList();
 
 			/** Return the alpha interpolation between the current frame and the next frame. */
-			MOHPC_EXPORTS float getFrameInterpolation() const;
+			MOHPC_NET_EXPORTS float getFrameInterpolation() const;
 			
 			/** Get the current client time. */
-			MOHPC_EXPORTS uint64_t getTime() const;
+			MOHPC_NET_EXPORTS uint64_t getTime() const;
 
 			/** Get the entity with the specified number. */
-			MOHPC_EXPORTS const EntityInfo* getEntity(entityNum_t num) const;
+			MOHPC_NET_EXPORTS const EntityInfo* getEntity(entityNum_t num) const;
 
 			/** Return the current snapshot. */
-			MOHPC_EXPORTS SnapshotInfo* getCurrentSnapshot() const;
+			MOHPC_NET_EXPORTS SnapshotInfo* getCurrentSnapshot() const;
 
 			/** Return the next snapshot. Useful for interpolations. */
-			MOHPC_EXPORTS SnapshotInfo* getNextSnapshot() const;
+			MOHPC_NET_EXPORTS SnapshotInfo* getNextSnapshot() const;
 
 			/** Return the predicted player state. */
-			MOHPC_EXPORTS const playerState_t& getPredictedPlayerState() const;
+			MOHPC_NET_EXPORTS const playerState_t& getPredictedPlayerState() const;
 
 			/**
 			 * Predict the player state movement.
 			 * It is not called in the tick() function. It gives a chance for the caller
 			 * to immediately predict player state after the input has been processed.
 			 */
-			MOHPC_EXPORTS void predictPlayerState();
+			MOHPC_NET_EXPORTS void predictPlayerState();
 
 			/**
 			 * Set the function used to trace through the world.
 			 *
 			 * @param	inTraceFunction		Custom function to use for tracing
 			 */
-			MOHPC_EXPORTS void setTraceFunction(TraceFunction&& inTraceFunction);
+			MOHPC_NET_EXPORTS void setTraceFunction(TraceFunction&& inTraceFunction);
 
 			/**
 			 * Set the function used to trace through the world.
 			 *
 			 * @param	inPointContentsFunction		Custom function to use getting content flags.
 			 */
-			MOHPC_EXPORTS void setPointContentsFunction(PointContentsFunction&& inPointContentsFunction);
+			MOHPC_NET_EXPORTS void setPointContentsFunction(PointContentsFunction&& inPointContentsFunction);
 
 			/**
 			 * Trace through various entities. This function should be used in conjunction to a previous trace.
@@ -1045,7 +1045,7 @@ namespace MOHPC
 			 * @param	mask		Trace mask.
 			 * @param	tr			Input/Output results.
 			 */
-			MOHPC_EXPORTS void clipMoveToEntities(CollisionWorld& cm, const Vector& start, const Vector& mins, const Vector& maxs, const Vector& end, uint16_t skipNumber, uint32_t mask, bool cylinder, trace_t& tr);
+			MOHPC_NET_EXPORTS void clipMoveToEntities(CollisionWorld& cm, const Vector& start, const Vector& mins, const Vector& maxs, const Vector& end, uint16_t skipNumber, uint32_t mask, bool cylinder, trace_t& tr);
 
 			/**
 			 * Perform a trace from start to the end, taking entities into account.
@@ -1059,7 +1059,7 @@ namespace MOHPC
 			 * @param	mask		Trace mask.
 			 * @param	tr			Input/Output results.
 			 */
-			MOHPC_EXPORTS void trace(CollisionWorld& cm, trace_t& tr, const Vector& start, const Vector& mins, const Vector& maxs, const Vector& end, uint16_t skipNumber, uint32_t mask, bool cylinder, bool cliptoentities);
+			MOHPC_NET_EXPORTS void trace(CollisionWorld& cm, trace_t& tr, const Vector& start, const Vector& mins, const Vector& maxs, const Vector& end, uint16_t skipNumber, uint32_t mask, bool cylinder, bool cliptoentities);
 
 			/**
 			 * Get contents of point.
@@ -1068,25 +1068,25 @@ namespace MOHPC
 			 * @param	point			Location to get contents from.
 			 * @param	passEntityNum	Entity number to skip.
 			 */
-			MOHPC_EXPORTS uint32_t pointContents(CollisionWorld& cm, const Vector& point, uintptr_t passEntityNum) const;
+			MOHPC_NET_EXPORTS uint32_t pointContents(CollisionWorld& cm, const Vector& point, uintptr_t passEntityNum) const;
 
 			/** Return server rain settings. */
-			MOHPC_EXPORTS const rain_t& getRain() const;
+			MOHPC_NET_EXPORTS const rain_t& getRain() const;
 
 			/** Return server environment settings. */
-			MOHPC_EXPORTS const environment_t& getEnvironment() const;
+			MOHPC_NET_EXPORTS const environment_t& getEnvironment() const;
 
 			/** Return the server info. */
-			MOHPC_EXPORTS const cgsInfo& getServerInfo() const;
+			MOHPC_NET_EXPORTS const cgsInfo& getServerInfo() const;
 
 			/** Get an objective in the interval of [0, MAX_OBJECTIVES]. */
-			MOHPC_EXPORTS const objective_t& getObjective(uint32_t objNum) const;
+			MOHPC_NET_EXPORTS const objective_t& getObjective(uint32_t objNum) const;
 
 			/** Get a client info in the interval of [0, MAX_CLIENTS]. */
-			MOHPC_EXPORTS const clientInfo_t& getClientInfo(uint32_t clientNum) const;
+			MOHPC_NET_EXPORTS const clientInfo_t& getClientInfo(uint32_t clientNum) const;
 
 			/** Return the client settings. */
-			MOHPC_EXPORTS clientSettings_t& getSettings();
+			MOHPC_NET_EXPORTS clientSettings_t& getSettings();
 
 			/** CG message notification. */
 			void parseCGMessage(MSG& msg);
@@ -1201,17 +1201,17 @@ namespace MOHPC
 			HandlerListCGame handlerList;
 			uintptr_t processedSnapshotNum;
 			uintptr_t latestSnapshotNum;
-			uintptr_t latestCommandSequence;
 			size_t numSolidEntities;
 			size_t numTriggerEntities;
 			uint32_t physicsTime;
+			rsequence_t latestCommandSequence;
 			float frameInterpolation;
 			float cameraFov;
 			Vector predictedError;
 			Vector cameraAngles;
 			Vector cameraOrigin;
 			playerState_t predictedPlayerState;
-			CollisionWorld boxHull;
+			CollisionWorldPtr boxHull;
 			clientSettings_t settings;
 			cgsInfo cgs;
 			environment_t environment;
@@ -1318,9 +1318,9 @@ namespace MOHPC
 				NextSnapTimeWentBackward(uint64_t inPrevTime, uint64_t inTime);
 
 				/** Return the client time. */
-				MOHPC_EXPORTS uint64_t getClientTime() const;
+				MOHPC_NET_EXPORTS uint64_t getClientTime() const;
 				/** Return the time of the snap. */
-				MOHPC_EXPORTS uint64_t getSnapTime() const;
+				MOHPC_NET_EXPORTS uint64_t getSnapTime() const;
 
 			private:
 				uint64_t oldTime;
@@ -1336,9 +1336,9 @@ namespace MOHPC
 				SnapNumWentBackward(uintptr_t newNum, uintptr_t latestNum);
 
 				/** Return the new snapshot number. */
-				MOHPC_EXPORTS uintptr_t getNewNum() const;
+				MOHPC_NET_EXPORTS uintptr_t getNewNum() const;
 				/** Return the latest snapshot number. */
-				MOHPC_EXPORTS uintptr_t getLatestNum() const;
+				MOHPC_NET_EXPORTS uintptr_t getLatestNum() const;
 
 			private:
 				uintptr_t newNum;

@@ -1,6 +1,6 @@
 <?xml version = "1.0" encoding = "utf-8"?>
 <AutoVisualizer xmlns = "http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
-  <Type Name="MOHPC::Container&lt;*&gt;">
+  <Type Name="mfuse::con::Container&lt;*&gt;">
     <DisplayString>{{ size = {numobjects} }}</DisplayString>
     <Expand>
       <Item Name="[size]">numobjects</Item>
@@ -39,7 +39,7 @@
     </Expand>
   </Type>
 
-  <Type Name="MOHPC::str">
+  <Type Name="str">
     <DisplayString Condition="m_data == 0">empty</DisplayString>
     <DisplayString Condition="m_data != 0">{{ {m_data->data} }}</DisplayString>
     <StringView Condition="m_data != 0">m_data->data</StringView>

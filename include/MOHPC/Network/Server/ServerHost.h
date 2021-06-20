@@ -1,14 +1,16 @@
 #pragma once
 
-#include "../../Global.h"
-#include "../../Object.h"
-#include "../../Managers/NetworkManager.h"
+#include "../NetGlobal.h"
+#include "../NetObject.h"
+#include "../../Utility/Tick.h"
 #include "../Types.h"
 #include "../Socket.h"
 #include "../Encoding.h"
 #include "../Channel.h"
 
-#include "../../Common/Container.h"
+#include <morfuse/Container/Container.h>
+
+#include <chrono>
 
 namespace MOHPC
 {
@@ -20,7 +22,7 @@ namespace MOHPC
 
 		class Challenge
 		{
-			MOHPC_OBJECT_DECLARATION(Challenge);
+			MOHPC_NET_OBJECT_DECLARATION(Challenge);
 
 		public:
 			Challenge(const NetAddrPtr& inFrom, clientNetTime inTime, uint32_t inChallenge);
@@ -37,7 +39,7 @@ namespace MOHPC
 
 		class ClientData
 		{
-			MOHPC_OBJECT_DECLARATION(ClientData);
+			MOHPC_NET_OBJECT_DECLARATION(ClientData);
 
 		public:
 			size_t numCommands;
@@ -65,12 +67,12 @@ namespace MOHPC
 		};
 		using ClientDataPtr = SharedPtr<ClientData>;
 
-		class ServerHost : public ITickableNetwork
+		class ServerHost : public ITickable
 		{
-			MOHPC_OBJECT_DECLARATION(ServerHost);
+			MOHPC_NET_OBJECT_DECLARATION(ServerHost);
 
 		public:
-			MOHPC_EXPORTS ServerHost(const NetworkManagerPtr& networkManager);
+			MOHPC_NET_EXPORTS ServerHost();
 
 			void tick(uint64_t deltaTime, uint64_t currentTime) override;
 
@@ -94,8 +96,8 @@ namespace MOHPC
 			uint32_t serverId;
 			IUdpSocketPtr serverSocket;
 			INetchanPtr conChan;
-			Container<ClientDataPtr> clientList;
-			Container<Challenge> challenges;
+			mfuse::con::Container<ClientDataPtr> clientList;
+			mfuse::con::Container<Challenge> challenges;
 		};
 		using ServerHostPtr = SharedPtr<ServerHost>;
 }

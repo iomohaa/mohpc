@@ -1,17 +1,18 @@
 #include <MOHPC/Network/Encoding.h>
-#include <MOHPC/Misc/MSG/MSG.h>
-#include <MOHPC/Misc/MSG/Codec.h>
-#include <MOHPC/Misc/MSG/Stream.h>
+#include <MOHPC/Network/Reliable.h>
+#include <MOHPC/Utility/Misc/MSG/MSG.h>
+#include <MOHPC/Utility/Misc/MSG/Codec.h>
+#include <MOHPC/Utility/Misc/MSG/Stream.h>
 
 using namespace MOHPC;
 using namespace Network;
 
 MOHPC_OBJECT_DEFINITION(Encoding);
 
-Encoding::Encoding(uint32_t inChallenge, const char** inReliableCommands, const char** inServerCommands)
+Encoding::Encoding(uint32_t inChallenge, const IReliableSequence& reliableCommandsValue, const ICommandSequence& serverCommandsValue)
 	: challenge(inChallenge)
-	, reliableCommands(inReliableCommands)
-	, serverCommands(inServerCommands)
+	, reliableCommands(reliableCommandsValue)
+	, serverCommands(serverCommandsValue)
 {
 
 }
@@ -24,7 +25,7 @@ void Encoding::encode(IMessageStream& in, IMessageStream& out)
 	const size_t len = in.GetLength();
 
 	// Ack index
-	const uint8_t* string = (const uint8_t*)serverCommands[reliableAcknowledge & (MAX_RELIABLE_COMMANDS - 1)];
+	const uint8_t* string = (const uint8_t*)serverCommands.getSequence(reliableAcknowledge);
 	// xor the client challenge with the netchan sequence number
 	uint8_t key = challenge ^ secretKey ^ messageAcknowledge;
 	// encode the message
@@ -47,7 +48,7 @@ void Encoding::decode(IMessageStream& in, IMessageStream& out)
 	const size_t len = in.GetLength();
 
 	// Ack index
-	const uint8_t* string = (const uint8_t*)reliableCommands[reliableAcknowledge & (MAX_RELIABLE_COMMANDS - 1)];
+	const uint8_t* string = (const uint8_t*)reliableCommands.getSequence(reliableAcknowledge);
 	// xor the client challenge with the netchan sequence number
 	uint8_t key = challenge ^ secretKey;
 	// decode the message

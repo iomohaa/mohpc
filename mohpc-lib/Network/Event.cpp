@@ -97,7 +97,7 @@ str EventData::GetString() const
 		assert(data.stringValue);
 		return *data.stringValue;
 	case dataType_e::Integer:
-		return data.intValue;
+		return str(data.intValue);
 	default:
 		return 0;
 	}

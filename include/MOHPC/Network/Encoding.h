@@ -1,10 +1,10 @@
 #pragma once
 
-#include "../Global.h"
+#include "NetGlobal.h"
 #include "Types.h"
 #include <stdint.h>
-#include "../Utilities/SharedPtr.h"
-#include "../Object.h"
+#include "../Utility/SharedPtr.h"
+#include "NetObject.h"
 
 namespace MOHPC
 {
@@ -12,7 +12,10 @@ namespace MOHPC
 
 	namespace Network
 	{
-		class MOHPC_EXPORTS IEncoding
+		class IReliableSequence;
+		class ICommandSequence;
+
+		class MOHPC_NET_EXPORTS IEncoding
 		{
 		public:
 			virtual ~IEncoding() = default;
@@ -28,28 +31,29 @@ namespace MOHPC
 
 		class Encoding : public IEncoding
 		{
-			MOHPC_OBJECT_DECLARATION(Encoding);
+			MOHPC_NET_OBJECT_DECLARATION(Encoding);
 
 		private:
 			uint32_t challenge;
 			uint32_t secretKey;
 			uint32_t messageAcknowledge;
 			uint32_t reliableAcknowledge;
-			const char** reliableCommands;
-			const char** serverCommands;
+			const IReliableSequence& reliableCommands;
+			const ICommandSequence& serverCommands;
 
 		public:
-			MOHPC_EXPORTS Encoding(uint32_t challenge, const char** reliableCommands, const char** serverCommands);
+			//MOHPC_NET_EXPORTS Encoding(uint32_t challenge, const char** reliableCommands, const char** serverCommands);
+			MOHPC_NET_EXPORTS Encoding(uint32_t challenge, const IReliableSequence& reliableCommands, const ICommandSequence& serverCommands);
 
 			virtual void encode(IMessageStream& in, IMessageStream& out) override;
 			virtual void decode(IMessageStream& in, IMessageStream& out) override;
 
-			MOHPC_EXPORTS void setMessageAcknowledge(uint32_t num);
-			MOHPC_EXPORTS uint32_t getMessageAcknowledge() const;
-			MOHPC_EXPORTS void setReliableAcknowledge(uint32_t num);
-			MOHPC_EXPORTS uint32_t getReliableAcknowledge() const;
-			MOHPC_EXPORTS void setSecretKey(uint32_t num);
-			MOHPC_EXPORTS uint32_t getSecretKey() const;
+			MOHPC_NET_EXPORTS void setMessageAcknowledge(uint32_t num);
+			MOHPC_NET_EXPORTS uint32_t getMessageAcknowledge() const;
+			MOHPC_NET_EXPORTS void setReliableAcknowledge(uint32_t num);
+			MOHPC_NET_EXPORTS uint32_t getReliableAcknowledge() const;
+			MOHPC_NET_EXPORTS void setSecretKey(uint32_t num);
+			MOHPC_NET_EXPORTS uint32_t getSecretKey() const;
 
 		private:
 			uint32_t XORKeyIndex(size_t i, size_t& index, const uint8_t* string);

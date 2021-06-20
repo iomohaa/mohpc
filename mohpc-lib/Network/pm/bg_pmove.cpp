@@ -26,7 +26,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <MOHPC/Network/pm/bg_public.h>
 #include "bg_local.h"
 #include <MOHPC/Network/InfoTypes.h>
-#include <MOHPC/Managers/ShaderManager.h>
+#include <MOHPC/Assets/Managers/ShaderManager.h>
 
 using namespace MOHPC;
 using namespace Network;

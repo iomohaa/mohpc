@@ -2,51 +2,46 @@ cmake_minimum_required(VERSION 3.13)
 
 project(mohpc-lib VERSION 1.0)
 
-#file(GLOB_RECURSE SRC_ASSETS "Formats/*.cpp")
-#file(GLOB_RECURSE SRC_COLLISION "Collision/*.cpp")
-#file(GLOB_RECURSE SRC_COMMON "Common/*.cpp")
-#file(GLOB_RECURSE SRC_NETWORK "Network/*.cpp")
-#file(GLOB_RECURSE SRC_SCRIPT "Script/*.cpp")
-#file(GLOB_RECURSE SRC_MISC "Utilities/*.cpp" "Platform/*.cpp" "Misc/*.cpp" "Managers/*.cpp")
-#file(GLOB SRC_MISC "*.cpp" "*.h")
-file(GLOB_RECURSE SRC "*.cpp")
-list(FILTER SRC EXCLUDE REGEX "Platform/(.*)")
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-file(GLOB SRC ${SRC} "Platform/*.cpp")
-file(GLOB SRC ${SRC} "Platform/Network/*.cpp")
+add_subdirectory(Assets)
+add_subdirectory(Files)
+add_subdirectory(Utility)
+add_subdirectory(Network)
 
-file(GLOB_RECURSE HEADERS "${CMAKE_SOURCE_DIR}/include/*.h")
+find_package(morfuse)
 
-if(UNIX)
-	file(GLOB_RECURSE SRC ${SRC} "Platform/Network/unix/*.cpp")
-elseif(WIN32)
-	file(GLOB_RECURSE SRC ${SRC} "Platform/Network/win32/*.cpp")
-endif()
+file(GLOB_RECURSE SRC "Common/*.cpp")
 
 add_library(MOHPC SHARED ${SRC} "${CMAKE_SOURCE_DIR}/include/MOHPC/mohpc.natvis")
+target_sources(MOHPC PRIVATE $<TARGET_OBJECTS:MOHPC-Assets>)
+target_sources(MOHPC PRIVATE $<TARGET_OBJECTS:MOHPC-Files>)
+target_sources(MOHPC PRIVATE $<TARGET_OBJECTS:MOHPC-Utility>)
+target_sources(MOHPC PRIVATE $<TARGET_OBJECTS:MOHPC-Net>)
 
 # Add support for std c++ filesystem on Unix
 if(UNIX)
 	target_link_libraries(MOHPC PUBLIC stdc++fs)
 elseif(WIN32)
-	target_compile_options(MOHPC PRIVATE /W3)
+	target_compile_options(MOHPC PRIVATE "/W3")
+	# disable warnings about defined symbol imported by other objects
+	target_link_options(MOHPC PRIVATE "/ignore:4217" "/ignore:4286")
 endif()
+
+add_library(MOHPC-ALL INTERFACE)
+target_link_libraries(MOHPC-ALL INTERFACE MOHPC)
 
 # Add our third-party library
 target_link_libraries(MOHPC PRIVATE MOHPC-3PT)
+target_link_libraries(MOHPC PUBLIC mfuse::morfuse)
 add_dependencies(MOHPC MOHPC-3PT)
 
-target_compile_definitions(MOHPC PRIVATE MOHPC_DLL=1 FPM_64BIT)
+target_compile_definitions(MOHPC PRIVATE MOHPC_DLL=1)
 
+target_include_directories(MOHPC PUBLIC ${morfuse_INCLUDE_DIR})
 target_include_directories(MOHPC PRIVATE ${PROJECT_SOURCE_DIR})
 target_include_directories(MOHPC PRIVATE ${PROJECT_SOURCE_DIR}/../thirdparty)
-target_include_directories(MOHPC PRIVATE ${PROJECT_SOURCE_DIR}/../thirdparty/zlib)
-target_include_directories(MOHPC PRIVATE ${PROJECT_SOURCE_DIR}/../thirdparty/GameSpy/src)
 target_include_directories(MOHPC PUBLIC $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include> $<INSTALL_INTERFACE:${CMAKE_INSTALL_PREFIX}/include>)
-
-set_property(TARGET MOHPC PROPERTY CMAKE_CXX_STANDARD 17)
-set_property(TARGET MOHPC PROPERTY CMAKE_CXX_STANDARD_REQUIRED ON)
-set_property(TARGET MOHPC PROPERTY CMAKE_CXX_EXTENSIONS OFF)
 target_compile_features(MOHPC PUBLIC cxx_std_17)
 
 add_custom_target(versioning ${CMAKE_COMMAND} -D VERSION_FILE=${CMAKE_SOURCE_DIR}/include/MOHPC/Version.h -P ${CMAKE_SOURCE_DIR}/mohpc-lib/version.cmake)

@@ -1,5 +1,5 @@
 #include <MOHPC/Network/Socket.h>
-#include "../Platform/Network/network.h"
+#include "../Network/Platform/network.h"
 
 using namespace MOHPC;
 using namespace Network;

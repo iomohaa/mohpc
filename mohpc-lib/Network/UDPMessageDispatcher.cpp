@@ -39,10 +39,9 @@ size_t UDPCommunicator::receive(IRemoteIdentifierPtr& remoteAddress, uint8_t* da
 	{
 		// set the remote identifier from the ip address and return
 		remoteAddress = makeShared<IPRemoteIdentifier>(addressPtr);
-		return result;
 	}
 
-	return result;
+	return result != -1 ? result : 0;
 }
 
 size_t UDPCommunicator::getIncomingSize()

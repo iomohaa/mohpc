@@ -1,7 +1,8 @@
 #pragma once
 
-#include "../common/str.h"
-#include "../Utilities/RemoteIdentifier.h"
+#include <MOHPC/Common/str.h>
+#include "NetGlobal.h"
+#include "../Utility/RemoteIdentifier.h"
 #include "Types.h"
 
 namespace MOHPC
@@ -10,10 +11,10 @@ namespace Network
 {
 	class IPRemoteIdentifier : public IRemoteIdentifier
 	{
-		MOHPC_OBJECT_DECLARATION(IPRemoteIdentifier);
+		MOHPC_NET_OBJECT_DECLARATION(IPRemoteIdentifier);
 
 	public:
-		MOHPC_EXPORTS IPRemoteIdentifier(const NetAddrPtr& inAddress);
+		MOHPC_NET_EXPORTS IPRemoteIdentifier(const NetAddrPtr& inAddress);
 
 		str getString() const override;
 		const NetAddrPtr& getAddress() const;

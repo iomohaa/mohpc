@@ -6,8 +6,9 @@
 
 #pragma once
 
-#include "../../Common/Container.h"
+#include "../NetGlobal.h"
 #include "../../Common/str.h"
+#include <morfuse/Container/Container.h>
 
 #include <list>
 
@@ -52,19 +53,19 @@ namespace MOHPC
 			voteInfo_t();
 
 			/** Return the last time vote has started. */
-			MOHPC_EXPORTS uint64_t getVoteTime() const;
+			MOHPC_NET_EXPORTS uint64_t getVoteTime() const;
 
 			/** Return the number of players that voted yes. */
-			MOHPC_EXPORTS uint32_t getNumVotesYes() const;
+			MOHPC_NET_EXPORTS uint32_t getNumVotesYes() const;
 
 			/** Return the number of players that voted no. */
-			MOHPC_EXPORTS uint32_t getNumVotesNo() const;
+			MOHPC_NET_EXPORTS uint32_t getNumVotesNo() const;
 
 			/** Return the number of players that didn't vote. */
-			MOHPC_EXPORTS uint32_t getNumVotesUndecided() const;
+			MOHPC_NET_EXPORTS uint32_t getNumVotesUndecided() const;
 
 			/** Return the vote name/text. */
-			MOHPC_EXPORTS const char* getVoteString() const;
+			MOHPC_NET_EXPORTS const char* getVoteString() const;
 
 		public:
 			uint64_t voteTime;
@@ -85,10 +86,10 @@ namespace MOHPC
 			VoteOption(const str& inName, const str& inCommand);
 
 			/** Return the option name. */
-			MOHPC_EXPORTS const char* getName() const;
+			MOHPC_NET_EXPORTS const char* getName() const;
 
 			/** Return the command to use when calling a vote. */
-			MOHPC_EXPORTS const char* getCommand() const;
+			MOHPC_NET_EXPORTS const char* getCommand() const;
 
 		private:
 			str optionName;
@@ -104,14 +105,14 @@ namespace MOHPC
 			VoteOptionList(const str& inName, const str& inCommand, TokenParser& parser);
 
 			/** Return the number of choices. */
-			MOHPC_EXPORTS size_t getNumChoices() const;
+			MOHPC_NET_EXPORTS size_t getNumChoices() const;
 
 			/**
 			 * Return the choice at the specified index.
 			 *
 			 * @param index The index to get the choice from.
 			 */
-			MOHPC_EXPORTS const VoteListChoice* getChoice(uintptr_t index) const;
+			MOHPC_NET_EXPORTS const VoteListChoice* getChoice(uintptr_t index) const;
 
 		public:
 			void parseChoiceList(TokenParser& parser);
@@ -120,7 +121,7 @@ namespace MOHPC
 			void createVoteOption(const str& choiceName, const str& voteString);
 
 		private:
-			Container<VoteListChoice> choiceList;
+			mfuse::con::Container<VoteListChoice> choiceList;
 		};
 
 		/**
@@ -132,10 +133,10 @@ namespace MOHPC
 			VoteListChoice(const str& inChoiceName, const str& inVoteString);
 
 			/** Return the name of the choice. */
-			MOHPC_EXPORTS const char* getName() const;
+			MOHPC_NET_EXPORTS const char* getName() const;
 
 			/** Return the command for the choice. */
-			MOHPC_EXPORTS const char* getVoteString() const;
+			MOHPC_NET_EXPORTS const char* getVoteString() const;
 
 		private:
 			str choiceName;
@@ -153,7 +154,7 @@ namespace MOHPC
 			 *
 			 * @param type The option type.
 			 */
-			MOHPC_EXPORTS size_t getNumOptions(optionType_e type) const;
+			MOHPC_NET_EXPORTS size_t getNumOptions(optionType_e type) const;
 
 			/**
 			 * Return the number of options for the specified option type.
@@ -162,7 +163,7 @@ namespace MOHPC
 			 * @param index The index to get the option from.
 			 * @return A vote option.
 			 */
-			MOHPC_EXPORTS const VoteOption* getOption(optionType_e type, uintptr_t index) const;
+			MOHPC_NET_EXPORTS const VoteOption* getOption(optionType_e type, uintptr_t index) const;
 
 		public:
 			void parseVoteOptions(const char* options, size_t len);
@@ -170,13 +171,13 @@ namespace MOHPC
 
 		private:
 			// using contiguous memory for every type.
-			Container<VoteOption> noChoicesOptionsList;
-			Container<VoteOptionList> listOptionsList;
-			Container<VoteOption> textOptionsList;
-			Container<VoteOption> intOptionsList;
-			Container<VoteOption> floatOptionsList;
-			Container<VoteOption> clientOptionsList;
-			Container<VoteOption> clientNotSelfOptionsList;
+			mfuse::con::Container<VoteOption> noChoicesOptionsList;
+			mfuse::con::Container<VoteOptionList> listOptionsList;
+			mfuse::con::Container<VoteOption> textOptionsList;
+			mfuse::con::Container<VoteOption> intOptionsList;
+			mfuse::con::Container<VoteOption> floatOptionsList;
+			mfuse::con::Container<VoteOption> clientOptionsList;
+			mfuse::con::Container<VoteOption> clientNotSelfOptionsList;
 		};
 
 		//=============================
@@ -191,7 +192,7 @@ namespace MOHPC
 			virtual ~VoteException() = default;
 
 			/** Return the line number that caused the error. */
-			MOHPC_EXPORTS size_t getLineNumber() const;
+			MOHPC_NET_EXPORTS size_t getLineNumber() const;
 
 		public:
 			size_t lineNumber;
@@ -204,7 +205,7 @@ namespace MOHPC
 			VoteOptionException(const TokenParser& parser, const str& inOptionName);
 
 			/** Return the option name responsible for the error. */
-			MOHPC_EXPORTS const char* getOptionName() const;
+			MOHPC_NET_EXPORTS const char* getOptionName() const;
 
 		private:
 			str optionName;
@@ -262,7 +263,7 @@ namespace MOHPC
 			IllegalOptionTypeException(const TokenParser& parser, const str& inOptionName, const char* optionType);
 
 			/** Return the option type that is invalid. */
-			MOHPC_EXPORTS const char* getOptionType() const;
+			MOHPC_NET_EXPORTS const char* getOptionType() const;
 			const char* what() const noexcept override;
 
 		private:

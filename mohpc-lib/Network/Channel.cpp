@@ -2,10 +2,10 @@
 #include <MOHPC/Network/InfoTypes.h>
 #include <MOHPC/Network/Socket.h>
 #include <MOHPC/Network/UDPMessageDispatcher.h>
-#include <MOHPC/Misc/MSG/MSG.h>
-#include <MOHPC/Misc/MSG/Serializable.h>
-#include <MOHPC/Misc/MSG/Stream.h>
-#include <MOHPC/Misc/MSG/Codec.h>
+#include <MOHPC/Utility/Misc/MSG/MSG.h>
+#include <MOHPC/Utility/Misc/MSG/Serializable.h>
+#include <MOHPC/Utility/Misc/MSG/Stream.h>
+#include <MOHPC/Utility/Misc/MSG/Codec.h>
 
 using namespace MOHPC;
 using namespace Network;
@@ -125,7 +125,7 @@ bool Network::Netchan::receive(IRemoteIdentifierPtr& from, IMessageStream& strea
 		//stream.Read(fragmentBuffer + this->fragmentLength, fragmentLength);
 		fragmentStream.Seek(fragmentLength);
 		fragmentStream.Seek(currentFragmentLength);
-		StreamHelpers::Copy<FRAGMENT_SIZE>(fragmentStream, stream, fragmentLength + stream.GetPosition());
+		streamHelpers::Copy<FRAGMENT_SIZE>(fragmentStream, stream, fragmentLength + stream.GetPosition());
 
 		if (fragmentLength == FRAGMENT_SIZE) {
 			return false;
@@ -143,7 +143,7 @@ bool Network::Netchan::receive(IRemoteIdentifierPtr& from, IMessageStream& strea
 		const size_t savedPos = stream.GetPosition();
 		// set the fragment to the beginning and copy it to the message stream
 		fragmentStream.Seek(0);
-		StreamHelpers::Copy<FRAGMENT_SIZE>(stream, fragmentStream, fragmentStream.GetLength());
+		streamHelpers::Copy<FRAGMENT_SIZE>(stream, fragmentStream, fragmentStream.GetLength());
 		// return to the beginning of the message
 		stream.Seek(savedPos);
 		// now get rid of the fragment buffer
@@ -194,7 +194,7 @@ bool Network::Netchan::transmit(const IRemoteIdentifier& to, IMessageStream& str
 		newStream.Seek(headerLen, IMessageStream::SeekPos::Begin);
 
 		// read the data and save it
-		StreamHelpers::Copy<MAX_PACKETLEN>(newStream, stream, bufLen);
+		streamHelpers::Copy<MAX_PACKETLEN>(newStream, stream, bufLen);
 
 		// send the packet now
 		getSocket()->send(to, newStream.getStorage(), newStream.GetLength());
@@ -232,7 +232,7 @@ void Netchan::transmitNextFragment(const IRemoteIdentifier& to, IMessageStream& 
 	outputPacket.Seek(offset, IMessageStream::SeekPos::Begin);
 
 	// now copy the fragment to the output packet
-	StreamHelpers::Copy<FRAGMENT_SIZE>(outputPacket, stream, fragmentLength);
+	streamHelpers::Copy<FRAGMENT_SIZE>(outputPacket, stream, fragmentLength);
 
 	const uint8_t* sendBuf = outputPacket.getStorage();
 	getSocket()->send(to, sendBuf, outputPacket.GetLength());

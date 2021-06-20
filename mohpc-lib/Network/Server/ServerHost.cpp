@@ -6,12 +6,12 @@
 #include <MOHPC/Network/Configstring.h>
 #include <MOHPC/Network/IPRemoteIdentifier.h>
 #include <MOHPC/Network/UDPMessageDispatcher.h>
-#include <MOHPC/Misc/MSG/Codec.h>
-#include <MOHPC/Misc/MSG/MSG.h>
-#include <MOHPC/Misc/MSG/Stream.h>
-#include <MOHPC/Utilities/Info.h>
-#include <MOHPC/Utilities/TokenParser.h>
-#include <MOHPC/Log.h>
+#include <MOHPC/Utility/Misc/MSG/Codec.h>
+#include <MOHPC/Utility/Misc/MSG/MSG.h>
+#include <MOHPC/Utility/Misc/MSG/Stream.h>
+#include <MOHPC/Utility/Info.h>
+#include <MOHPC/Utility/TokenParser.h>
+#include <MOHPC/Common/Log.h>
 
 #include <chrono>
 
@@ -64,7 +64,8 @@ ClientData::ClientData(const IUdpSocketPtr& inSocket, const NetAddrPtr& from, ui
 		serverCommandList[i] = &serverCommands[i * MAX_STRING_CHARS];
 	}
 
-	encoding = Encoding::create(challengeNum, (const char**)serverCommandList, (const char**)reliableCommandList);
+	// FIXME: NULL
+	//encoding = Encoding::create(challengeNum, (const char**)serverCommandList, (const char**)reliableCommandList);
 }
 
 const NetAddr& ClientData::getAddress() const
@@ -89,8 +90,7 @@ uint32_t ClientData::newSequence()
 
 MOHPC_OBJECT_DEFINITION(ServerHost);
 
-ServerHost::ServerHost(const NetworkManagerPtr& networkManager)
-	: ITickableNetwork(networkManager)
+ServerHost::ServerHost()
 {
 	NetAddr4 bindAddress;
 	bindAddress.port = 12203;

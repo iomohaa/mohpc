@@ -1,36 +1,28 @@
-#include <MOHPC/Formats/TIKI.h>
-#include <MOHPC/Managers/AssetManager.h>
-#include <MOHPC/Managers/SkeletorManager.h>
-#include <MOHPC/Utilities/ModelRenderer.h>
-#include "UnitTest.h"
+#include <MOHPC/Assets/Formats/TIKI.h>
+#include <MOHPC/Assets/Managers/AssetManager.h>
+#include <MOHPC/Utility/Managers/SkeletorManager.h>
+#include <MOHPC/Utility/ModelRenderer.h>
+#include "Common/Common.h"
 
-class CAnimRenderingTest : public IUnitTest
+int main(int argc, const char* argv[])
 {
-public:
-	virtual const char* name() override
-	{
-		return "Anim rendering";
-	}
+	const MOHPC::AssetManagerPtr AM = AssetLoad();
 
-	virtual void run(const MOHPC::AssetManagerPtr& AM) override
-	{
-		MOHPC::SkeletonAnimationPtr Animation = AM->LoadAsset<MOHPC::SkeletonAnimation>("/models/human/animation/deaths/death_chest.skc");
-		MOHPC::TIKIPtr Tiki = AM->LoadAsset<MOHPC::TIKI>("/models/player/american_army.tik");
-		MOHPC::SkeletonPtr TikiArms = AM->LoadAsset<MOHPC::Skeleton>("/models/player/us_army/USarmyplyr.skd");
+	MOHPC::SkeletonAnimationPtr Animation = AM->LoadAsset<MOHPC::SkeletonAnimation>("/models/human/animation/deaths/death_chest.skc");
+	MOHPC::TIKIPtr Tiki = AM->LoadAsset<MOHPC::TIKI>("/models/player/american_army.tik");
+	MOHPC::SkeletonPtr TikiArms = AM->LoadAsset<MOHPC::Skeleton>("/models/player/us_army/USarmyplyr.skd");
 
-		if (Tiki)
+	if (Tiki)
+	{
+		MOHPC::ModelRendererPtr ModelRenderer = MOHPC::ModelRenderer::create(AM);
+		ModelRenderer->AddModel(Tiki.get());
+		ModelRenderer->AddModel(TikiArms);
+
+		for (size_t i = 0; i < Animation->GetNumFrames(); i++)
 		{
-			MOHPC::ModelRendererPtr ModelRenderer = MOHPC::ModelRenderer::create(AM);
-			ModelRenderer->AddModel(Tiki.get());
-			ModelRenderer->AddModel(TikiArms);
-
-			for (size_t i = 0; i < Animation->GetNumFrames(); i++)
-			{
-				ModelRenderer->SetActionPose(Animation, 0, i);
-				ModelRenderer->BuildBonesTransform();
-				ModelRenderer->BuildRenderData();
-			}
+			ModelRenderer->SetActionPose(Animation, 0, i);
+			ModelRenderer->BuildBonesTransform();
+			ModelRenderer->BuildRenderData();
 		}
 	}
-};
-static CAnimRenderingTest unitTest;
+}

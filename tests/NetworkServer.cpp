@@ -1,40 +1,27 @@
-#include "UnitTest.h"
-
-#include <MOHPC/Managers/NetworkManager.h>
 #include <MOHPC/Network/Server/ServerHost.h>
-#include "platform.h"
+#include "Common/Common.h"
+#include "Common/platform.h"
 
 #define MOHPC_LOG_NAMESPACE "testsrv"
 
 using namespace MOHPC;
 using namespace MOHPC::Network;
 
-class CNetworkServerUnitTest : public IUnitTest, public TAutoInst<CNetworkServerUnitTest>
+int main(int argc, const char* argv[])
 {
-private:
-	virtual long priority() override
+	const MOHPC::AssetManagerPtr AM = AssetLoad();
+
+	srand((unsigned int)time(NULL));
+
+	const TickableObjectsPtr tickableObjects = TickableObjects::create();
+	ServerHostPtr host = ServerHost::create();
+	tickableObjects->addTickable(host.get());
+
+	for (;;)
 	{
-		return -2;
+		tickableObjects->processTicks();
+		sleepTime(50);
 	}
-
-	virtual const char* name() override
-	{
-		return "Networking (Server)";
-	}
-
-	virtual void run(const MOHPC::AssetManagerPtr& AM) override
-	{
-		NetworkManagerPtr netMan = AM->GetManager<NetworkManager>();
-
-		srand((unsigned int)time(NULL));
-
-		ServerHostPtr host = ServerHost::create(netMan);
-		
-		for(;;)
-		{
-			netMan->processTicks();
-			sleepTime(50);
-		}
-	}
-};
-static CNetworkServerUnitTest unitTest;
+	
+	return 0;
+}

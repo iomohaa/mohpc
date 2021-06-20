@@ -1,35 +1,22 @@
-#include <MOHPC/Formats/Image.h>
-#include <MOHPC/Managers/AssetManager.h>
-#include <MOHPC/Managers/ShaderManager.h>
-#include <MOHPC/Log.h>
-#include "UnitTest.h"
+#include <MOHPC/Assets/Formats/Image.h>
+#include <MOHPC/Assets/Managers/AssetManager.h>
+#include <MOHPC/Assets/Managers/ShaderManager.h>
+#include <MOHPC/Common/Log.h>
+#include "Common/Common.h"
 
 #define MOHPC_LOG_NAMESPACE "test_shader"
 
-class CShaderTest : public IUnitTest
+int main(int argc, const char* argv[])
 {
-public:
-	virtual long priority() override
+	const MOHPC::AssetManagerPtr AM = AssetLoad();
+
+	MOHPC_LOG(Info, "Loading shaders...");
+
+	MOHPC::ShaderManagerPtr SM = AM->GetManager<MOHPC::ShaderManager>();
+
+	auto Shader = SM->GetShader("textures/common/caulk");
+	if (Shader && Shader->GetNumStages())
 	{
-		return 1;
+		const MOHPC::Image* img = Shader->GetStage(0)->bundle[0].image[0]->GetImage();
 	}
-
-	virtual const char* name() override
-	{
-		return "Shader";
-	}
-
-	virtual void run(const MOHPC::AssetManagerPtr& AM) override
-	{
-		MOHPC_LOG(Info, "Loading shaders...");
-
-		MOHPC::ShaderManagerPtr SM = AM->GetManager<MOHPC::ShaderManager>();
-
-		auto Shader = SM->GetShader("textures/common/caulk");
-		if (Shader && Shader->GetNumStages())
-		{
-			const MOHPC::Image* img = Shader->GetStage(0)->bundle[0].image[0]->GetImage();
-		}
-	}
-};
-static CShaderTest unitTest;
+}

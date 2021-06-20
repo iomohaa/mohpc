@@ -1,24 +1,15 @@
-#include <MOHPC/Managers/AssetManager.h>
-#include <MOHPC/Managers/SoundManager.h>
-#include "UnitTest.h"
+#include <MOHPC/Assets/Managers/AssetManager.h>
+#include <MOHPC/Assets/Managers/SoundManager.h>
+#include "Common/Common.h"
 
-class CSoundAliasTest : public IUnitTest
+#include <cassert>
+
+int main(int argc, const char* argv[])
 {
-public:
-	virtual const char* name() override
-	{
-		return "Sound alias";
-	}
+	const MOHPC::AssetManagerPtr AM = AssetLoad();
 
-	virtual long priority() override
-	{
-		return 0;
-	}
+	MOHPC::SoundManagerPtr SoundManager = AM->GetManager<MOHPC::SoundManager>();
 
-	virtual void run(const MOHPC::AssetManagerPtr& AM) override
-	{
-		MOHPC::SoundManagerPtr SoundManager = AM->GetManager<MOHPC::SoundManager>();
-		const MOHPC::SoundNode* Alias = SoundManager->FindAlias("30cal_leftwing");
-	}
-};
-static CSoundAliasTest unitTest;
+	const MOHPC::SoundNode* Alias = SoundManager->FindAlias("30cal_leftwing");
+	assert(Alias);
+}

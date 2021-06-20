@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.1)
 
 project(jpeg9d)
 
-set(SOURCE_DIR "jpeg-9d")
+set(SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/jpeg-9d")
 
 set(SRCS
 ${SOURCE_DIR}/cdjpeg.c
@@ -92,6 +92,19 @@ list(FILTER SRCS EXCLUDE REGEX "(.*)/jpegtran.c$")
 list(FILTER SRCS EXCLUDE REGEX "(.*)/rdjpgcom.c$")
 list(FILTER SRCS EXCLUDE REGEX "(.*)/wrjpgcom.c$")
 
+if(NOT EXISTS ${SOURCE_DIR}/jconfig.h)
+endif()
+
+
+add_custom_command(OUTPUT ${SOURCE_DIR}/jconfig.h
+                   DEPENDS ${SOURCE_DIR}/jconfig.txt
+                   COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                   ${SOURCE_DIR}/jconfig.txt ${SOURCE_DIR}/jconfig.h
+)
+
+add_custom_target(stupid_cmake_complications DEPENDS ${SOURCE_DIR}/jconfig.h)
+
 add_library(jpeg9d STATIC ${SRCS})
+add_dependencies(jpeg9d stupid_cmake_complications)
 target_compile_definitions(jpeg9d PRIVATE _CRT_SECURE_NO_WARNINGS)
 set_property(TARGET jpeg9d PROPERTY POSITION_INDEPENDENT_CODE ON)

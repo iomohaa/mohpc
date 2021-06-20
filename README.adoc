@@ -40,7 +40,7 @@ Unix::
 - GCC 8.x or higher (C++17 compiler)
 - stdc++fs library on Unix
 
-This library relies between STL and custom containers.
+This library relies between STL and custom mfuse::con::Containers.
 Third-party components are downloaded and compiled automatically.
 
 For any issue about missing thirdparty libraries:

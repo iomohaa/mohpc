@@ -22,7 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 //
 // bg_slidemove.c -- part of bg_pmove functionality
 
-#include <MOHPC/Math.h>
+#include <MOHPC/Common/Math.h>
 #include <MOHPC/Network/InfoTypes.h>
 #include <MOHPC/Network/pm/bg_public.h>
 #include "bg_local.h"

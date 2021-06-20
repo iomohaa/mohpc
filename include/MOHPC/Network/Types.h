@@ -2,10 +2,11 @@
 
 #include <stdint.h>
 #include <exception>
-#include "../Utilities/SharedPtr.h"
-#include "../Utilities/WeakPtr.h"
-#include "../Common/str.h"
-#include "../Object.h"
+#include "../Utility/SharedPtr.h"
+#include "../Utility/WeakPtr.h"
+#include "NetObject.h"
+#include "NetGlobal.h"
+#include <MOHPC/Common/str.h>
 
 namespace MOHPC
 {
@@ -36,22 +37,28 @@ namespace MOHPC
 		};
 
 		//==
-		// Protocol versions
+		// Supported protocol versions
 		// 6	=> MOHAA 1.0
 		// 8	=> MOHAA 1.1
-		// 15	=> MOHSH 2.0
-		// 17	=> MOHSH 2.11 / 2.15 | MOHBT 2.30 / 2.40b
-		// Breakthrough adds a "clientType breakthrough" when connecting
+		// 15	=> Spearhead 2.0
+		// 16	=> Spearhead 2.11 Demo | Breakthrough 0.30 Demo
+		// 17	=> Spearhead 2.11 / 2.15 | Breakthrough / 2.40b
+		// Unsupported protocol versions
+		// 5	=> MOHAA 0.05 (SP Demo)
+		// 21	=> MOHPA 1.0
+		// 23	=> MOHPA 1.1
+		// 24	=> MOHPA 1.2
+		// Breakthrough clients specifies that its a breakthrough client when connecting to a server
 
-		// Changes of protocol 17 since version 8
+		// Changes of protocol 15 since version 8
 		// - Each time a client connects to a server, the server sends a GameSpy authorization challenge
-		//   So the client have to send back a response with his key that will be checked by GameSpy auth server
+		//    So the client have to send back a response with his key that will be checked by GameSpy auth server
 		// - Server sends the frametime with the game state
 		// - New field type for entity for reading medium coords
 		// - Coords are packed into a small integer
 		// - Changed coordinates bits
 		// - Chars can be scrambled using a table map of bytes
-		// - Playerstate has 2 new fields called 'radarInfo' and 'bVoted' + pm_runtime is not sent anymore
+		// - Playerstate has 2 new fields called 'radarInfo' and 'bVoted', and pm_runtime is not sent anymore
 		//==
 
 		enum class protocolVersion_e : unsigned char
@@ -71,7 +78,7 @@ namespace MOHPC
 			/** Spearhead 2.0. */
 			ver200 = 15,
 
-			/** Spearhead 2.11 and Breakthrough demo 0.30. */
+			/** Spearhead 2.11 demo and Breakthrough demo 0.30. */
 			ver211_demo = 16,
 
 			/** Spearhead 2.11 and above. */
@@ -98,7 +105,7 @@ namespace MOHPC
 			return (unsigned int)version;
 		}
 
-		class MOHPC_EXPORTS protocolType_c
+		class MOHPC_NET_EXPORTS protocolType_c
 		{
 		public:
 			serverType_e serverType;
@@ -164,21 +171,21 @@ namespace MOHPC
 			uint16_t port;
 
 		public:
-			MOHPC_EXPORTS NetAddr();
+			MOHPC_NET_EXPORTS NetAddr();
 
 			/**
 			 * Set the address port.
 			 *
 			 * @param value Port.
 			 */
-			MOHPC_EXPORTS void setPort(uint16_t value);
+			MOHPC_NET_EXPORTS void setPort(uint16_t value);
 			/** Return this address port. */
-			MOHPC_EXPORTS uint16_t getPort() const;
+			MOHPC_NET_EXPORTS uint16_t getPort() const;
 
 			/** Return whether or not this address equals to another one. */
-			MOHPC_EXPORTS bool operator==(const NetAddr& other) const;
+			MOHPC_NET_EXPORTS bool operator==(const NetAddr& other) const;
 			/** Return whether or not this address differs from another one. */
-			MOHPC_EXPORTS bool operator!=(const NetAddr& other) const;
+			MOHPC_NET_EXPORTS bool operator!=(const NetAddr& other) const;
 
 		public:
 			/** Return the address size. */
@@ -195,12 +202,12 @@ namespace MOHPC
 		 */
 		struct NetAddr4 : public NetAddr
 		{
-			MOHPC_OBJECT_DECLARATION(NetAddr4);
+			MOHPC_NET_OBJECT_DECLARATION(NetAddr4);
 		public:
-			MOHPC_EXPORTS NetAddr4();
+			MOHPC_NET_EXPORTS NetAddr4();
 
 			/** Set the IPv4 address. */
-			MOHPC_EXPORTS void setIp(uint8_t a, uint8_t b, uint8_t c, uint8_t d);
+			MOHPC_NET_EXPORTS void setIp(uint8_t a, uint8_t b, uint8_t c, uint8_t d);
 
 		public:
 			size_t getAddrSize() const override;
@@ -217,13 +224,13 @@ namespace MOHPC
 		 */
 		struct NetAddr6 : public NetAddr
 		{
-			MOHPC_OBJECT_DECLARATION(NetAddr6);
+			MOHPC_NET_OBJECT_DECLARATION(NetAddr6);
 
 		public:
-			MOHPC_EXPORTS NetAddr6();
+			MOHPC_NET_EXPORTS NetAddr6();
 
 			/** Set the IPv6 address. */
-			MOHPC_EXPORTS void setIp(uint16_t a, uint16_t b, uint16_t c, uint16_t d, uint16_t e, uint16_t f, uint16_t g, uint16_t h);
+			MOHPC_NET_EXPORTS void setIp(uint16_t a, uint16_t b, uint16_t c, uint16_t d, uint16_t e, uint16_t f, uint16_t g, uint16_t h);
 
 		public:
 			size_t getAddrSize() const override;
@@ -235,13 +242,13 @@ namespace MOHPC
 		};
 		using NetAddr6Ptr = SharedPtr<NetAddr6>;
 
-		class MOHPC_EXPORTS NetworkException
+		class MOHPC_NET_EXPORTS NetworkException
 		{
 		public:
 			virtual ~NetworkException() = default;
 			virtual str what() const { return str(); };
 		};
 
-		class MOHPC_EXPORTS RuntPacketNetException : public NetworkException {};
+		class MOHPC_NET_EXPORTS RuntPacketNetException : public NetworkException {};
 	}
 }

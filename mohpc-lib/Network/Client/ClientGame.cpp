@@ -1,13 +1,15 @@
 #include <MOHPC/Network/Client/ClientGame.h>
 #include <MOHPC/Network/Client/CGModule.h>
-#include <MOHPC/Misc/MSG/MSG.h>
-#include <MOHPC/Misc/MSG/Stream.h>
-#include <MOHPC/Misc/MSG/Codec.h>
+#include <MOHPC/Network/Client/ProtocolParsing.h>
+#include <MOHPC/Utility/Misc/MSG/MSG.h>
+#include <MOHPC/Utility/Misc/MSG/Stream.h>
+#include <MOHPC/Utility/Misc/MSG/Codec.h>
 #include <MOHPC/Network/Channel.h>
 #include <MOHPC/Network/SerializableTypes.h>
-#include <MOHPC/Utilities/Info.h>
-#include <MOHPC/Utilities/TokenParser.h>
-#include <MOHPC/Log.h>
+#include <MOHPC/Utility/Info.h>
+#include <MOHPC/Utility/TokenParser.h>
+#include <MOHPC/Common/Log.h>
+
 #include <typeinfo>
 #include <filesystem>
 #include <fstream>
@@ -21,70 +23,10 @@ static constexpr size_t MAX_MSGLEN = 49152;
 static constexpr size_t MINIMUM_RECEIVE_BUFFER_SIZE = 1024;
 static constexpr char MOHPC_LOG_NAMESPACE[] = "network_cgame";
 
-constexpr uint8_t charByteMapping[256] =
-{
-	254, 120, 89, 13, 27, 73, 103, 78, 74, 102, 21, 117, 76, 86, 238, 96, 88, 62, 59, 60,
-	40, 84, 52, 119, 251, 51, 75, 121, 192, 85, 44, 54, 114, 87, 25, 53, 35, 224, 67, 31,
-	82, 41, 45, 99, 233, 112, 255, 11, 46, 115, 8, 32, 19, 100, 110, 95, 116, 48, 58, 107,
-	70, 91, 104, 81, 118, 109, 36, 24, 17, 39, 43, 65, 49, 83, 56, 57, 33, 64, 80, 28,
-	184, 160, 18, 105, 42, 20, 194, 38, 29, 26, 61, 50, 9, 90, 37, 128, 79, 2, 108, 34,
-	4, 0, 47, 12, 101, 10, 92, 15, 5, 7, 22, 55, 23, 14, 3, 1, 66, 16, 63, 30,
-	6, 97, 111, 248, 72, 197, 191, 122, 176, 245, 250, 68, 195, 77, 232, 106, 228, 93, 240, 98,
-	208, 69, 164, 144, 186, 222, 94, 246, 148, 170, 244, 190, 205, 234, 252, 202, 230, 239, 174, 225,
-	226, 209, 236, 216, 237, 151, 149, 231, 129, 188, 200, 172, 204, 154, 168, 71, 133, 217, 196, 223,
-	134, 253, 173, 177, 219, 235, 214, 182, 132, 227, 183, 175, 137, 152, 158, 221, 243, 150, 210, 136,
-	167, 211, 179, 193, 218, 124, 140, 178, 213, 249, 185, 113, 127, 220, 180, 145, 138, 198, 123, 162,
-	189, 203, 166, 126, 159, 156, 212, 207, 146, 181, 247, 139, 142, 169, 242, 241, 171, 187, 153, 135,
-	201, 155, 161, 125, 163, 130, 229, 206, 165, 157, 141, 147, 143, 199, 215, 131
-};
-
-namespace MOHPC
-{
-	class byteCharMapping_c
-	{
-	private:
-		char mapping[256];
-
-	public:
-		constexpr byteCharMapping_c()
-			: mapping{ 0 }
-		{
-			for (uint16_t i = 0; i < 256; ++i)
-			{
-				for (uint16_t j = 0; j < 256; ++j)
-				{
-					if (charByteMapping[j] == i)
-					{
-						mapping[i] = (char)j;
-						break;
-					}
-				}
-			}
-		}
-
-		constexpr operator const char* () const { return mapping; }
-	};
-	byteCharMapping_c byteCharMapping;
-}
-
-/*
-const char byteCharMapping[256] =
-{
-	101, 115, 97, 114, 100, 108, 120, 109, 50, 92, 105, 47, 103, 3, 113, 107, 117, 68, 82, 52,
-	85, 10, 110, 112, 67, 34, 89, 4, 79, 88, 119, 39, 51, 76, 99, 36, 66, 94, 87, 69,
-	20, 41, 84, 70, 30, 42, 48, 102, 57, 72, 91, 25, 22, 35, 31, 111, 74, 75, 58, 18,
-	19, 90, 17, 118, 77, 71, 116, 38, 131, 141, 60, 175, 124, 5, 8, 26, 12, 133, 7, 96,
-	78, 63, 40, 73, 21, 29, 13, 33, 16, 2, 93, 61, 106, 137, 146, 55, 15, 121, 139, 43,
-	53, 104, 9, 6, 62, 83, 135, 59, 98, 65, 54, 122, 45, 211, 32, 49, 56, 11, 64, 23,
-	1, 27, 127, 218, 205, 243, 223, 212, 95, 168, 245, 255, 188, 176, 180, 239, 199, 192, 216, 231,
-	206, 250, 232, 252, 143, 215, 228, 251, 148, 166, 197, 165, 193, 238, 173, 241, 225, 249, 194, 224,
-	81, 242, 219, 244, 142, 248, 222, 200, 174, 233, 149, 236, 171, 182, 158, 191, 128, 183, 207, 202,
-	214, 229, 187, 190, 80, 210, 144, 237, 169, 220, 151, 126, 28, 203, 86, 132, 178, 125, 217, 253,
-	170, 240, 155, 221, 172, 152, 247, 227, 140, 161, 198, 201, 226, 208, 186, 254, 163, 177, 204, 184,
-	213, 195, 145, 179, 37, 159, 160, 189, 136, 246, 156, 167, 134, 44, 153, 185, 162, 164, 14, 157,
-	138, 235, 234, 196, 150, 129, 147, 230, 123, 209, 130, 24, 154, 181, 0, 46
-};
-*/
+class ClientSequenceTemplate_ver6 : public ClientSequenceTemplate<1024> {};
+class ClientRemoteCommandSequenceTemplate_ver6 : public ClientRemoteCommandSequenceTemplate<1024> {};
+class ClientSequenceTemplate_ver15 : public ClientSequenceTemplate<2048> {};
+class ClientRemoteCommandSequenceTemplate_ver15 : public ClientRemoteCommandSequenceTemplate<2048> {};
 
 outPacket_t::outPacket_t()
 	: p_cmdNumber(0)
@@ -94,69 +36,63 @@ outPacket_t::outPacket_t()
 
 }
 
-gameState_t::gameState_t()
-	: stringOffsets{ 0 }
-	, stringData{ 0 }
-	, dataCount(1)
-{}
-
-const char* gameState_t::getConfigString(csNum_t num) const
+UserInput::UserInput()
+	: cmdNumber(0)
 {
-	if (num > MAX_CONFIGSTRINGS) {
-		return nullptr;
-	}
-
-	return &stringData[stringOffsets[num]];
 }
 
-const char* gameState_t::getConfigStringChecked(csNum_t num) const
+void UserInput::reset()
 {
-	return &stringData[stringOffsets[num]];
+	cmdNumber = 0;
 }
 
-void gameState_t::setConfigString(csNum_t num, const char* configString, size_t len)
+void UserInput::createCommand(uint64_t currentTime, uint64_t remoteTime, usercmd_t*& outCmd, usereyes_t*& outEyes)
 {
-	const size_t newSz = dataCount + len;
-	if (num > MAX_CONFIGSTRINGS) {
-		throw ClientError::MaxConfigStringException("gameState_t::setConfigString", num);
-	}
+	++cmdNumber;
+	const uint32_t cmdNum = cmdNumber % CMD_BACKUP;
 
-	// going to  
-	// backup the game state
-	gameState_t oldGs = *this;
+	usercmd_t& cmd = cmds[cmdNum];
+	cmd = usercmd_t((uint32_t)remoteTime);
+	eyeinfo = usereyes_t();
 
-	// leave the first 0 for empty/uninitialized strings
-	dataCount = 1;
+	outCmd = &cmd;
+	outEyes = &eyeinfo;
+}
 
-	// shrink the game state
-	for (size_t i = 0; i < MAX_CONFIGSTRINGS; i++)
-	{
-		const char* dup;
+uint32_t UserInput::getCurrentCmdNumber() const
+{
+	return cmdNumber;
+}
 
-		if (i == num) {
-			dup = configString;
-		}
-		else {
-			dup = oldGs.stringData + oldGs.stringOffsets[i];
-		}
+const MOHPC::usercmd_t& UserInput::getCommand(size_t index) const
+{
+	return cmds[index % CMD_BACKUP];
+}
 
-		if (!dup[0])
-		{
-			// leave with the default empty string
-			continue;
-		}
+const usercmd_t& UserInput::getCommandFromLast(size_t index) const
+{
+	const size_t elem = cmdNumber - index;
+	return getCommand(elem);
+}
 
-		len = strlen(dup);
+const usereyes_t& UserInput::getEyeInfo() const
+{
+	return eyeinfo;
+}
 
-		if (len + dataCount >= MAX_GAMESTATE_CHARS) {
-			throw ClientError::MaxGameStateCharsException(newSz);
-		}
+usereyes_t& UserInput::getEyeInfo()
+{
+	return eyeinfo;
+}
 
-		// the string is correct, append it to the gameState string buffer
-		stringOffsets[i] = dataCount;
-		std::memcpy(stringData + dataCount, dup, len + 1);
-		dataCount += len + 1;
-	}
+const usercmd_t& UserInput::getLastCommand() const
+{
+	return cmds[cmdNumber % CMD_BACKUP];
+}
+
+usercmd_t& UserInput::getLastCommand()
+{
+	return cmds[cmdNumber % CMD_BACKUP];
 }
 
 ClientSnapshot::ClientSnapshot()
@@ -175,35 +111,141 @@ ClientSnapshot::ClientSnapshot()
 {
 }
 
-MOHPC_OBJECT_DEFINITION(ClientGameConnection);
-
-ClientGameConnection::ClientGameConnection(const INetchanPtr& inNetchan, const IRemoteIdentifierPtr& inAdr, uint32_t challengeResponse, const protocolType_c& protoType, const ClientInfoPtr& cInfo)
-	: netchan(inNetchan)	
-	, adr(inAdr)
-	, realTimeStart(0)
+ClientTime::ClientTime()
+	: realTimeStart(0)
 	, serverStartTime(0)
 	, serverTime(0)
 	, oldServerTime(0)
 	, oldFrameServerTime(0)
+	, oldRealTime(0)
+	, timeNudge(0)
+{
+}
+
+ClientTime::~ClientTime()
+{
+
+}
+
+void ClientTime::setTimeNudge(int32_t timeNudgeValue)
+{
+	timeNudge = timeNudgeValue;
+}
+
+void ClientTime::initRemoteTime(uint64_t currentTime, uint64_t remoteTimeValue)
+{
+	serverStartTime = remoteTimeValue;
+	//serverTime = (uint32_t)(currentSnap.serverTime - currentTime);
+	serverTime = serverStartTime + (currentTime - realTimeStart);
+}
+
+void ClientTime::setStartTime(uint64_t currentTime)
+{
+	realTimeStart = currentTime;
+}
+
+void ClientTime::setRemoteStartTime(uint64_t remoteTimeValue)
+{
+	serverStartTime = remoteTimeValue;
+}
+
+uint64_t ClientTime::getStartTime() const
+{
+	return realTimeStart;
+}
+
+uint64_t ClientTime::getRemoteStartTime() const
+{
+	return serverStartTime;
+}
+
+uint64_t ClientTime::getRemoteTime() const
+{
+	return serverTime;
+}
+
+void ClientTime::setTime(uint64_t newTime, uint64_t remoteTime, uint64_t remoteDeltaTime, bool adjust)
+{
+	// FIXME: throw if snap remote time went backward
+
+	oldFrameServerTime = remoteTime;
+
+	const uint64_t realTime = newTime;
+	const uint64_t realServerTime = realTime - realTimeStart + oldServerTime;
+	serverTime = realServerTime - timeNudge;
+	oldRealTime = newTime;
+
+	// guarantee that time will never flow backwards, even if
+	// serverTimeDelta made an adjustment or cl_timeNudge was changed
+	if (serverTime < oldServerTime) {
+		serverTime = oldServerTime;
+	}
+
+	if (realServerTime + 5 >= remoteTime) {
+		extrapolatedSnapshot = true;
+	}
+
+	if (adjust) {
+		adjustTimeDelta(realTime, remoteTime, remoteDeltaTime);
+	}
+}
+
+void ClientTime::adjustTimeDelta(uint64_t realTime, uint64_t remoteTime, uint64_t remoteDeltaTime)
+{
+	constexpr size_t BASE_RESET_TIME = 400;
+
+	const uint64_t maxDeltaTime = remoteDeltaTime * 2;
+	const uint64_t resetTime = BASE_RESET_TIME + maxDeltaTime;
+	const uint64_t deltaDelta = getTimeDelta(serverTime, remoteTime);
+
+	if (deltaDelta > resetTime)
+	{
+		realTimeStart = realTime;
+		oldServerTime = remoteTime;
+		serverTime = remoteTime;
+	}
+	else if (deltaDelta > maxDeltaTime)
+	{
+		// fast adjust
+		realTimeStart += maxDeltaTime - deltaDelta;
+	}
+	else
+	{
+		if (extrapolatedSnapshot)
+		{
+			extrapolatedSnapshot = false;
+			realTimeStart += 2;
+		}
+		else {
+			realTimeStart -= 1;
+		}
+	}
+}
+
+uint64_t ClientTime::getTimeDelta(uint64_t time, uint64_t remoteTime) const
+{
+	if (remoteTime < time) {
+		return time - remoteTime;
+	}
+	else {
+		return remoteTime - time;
+	}
+}
+
+MOHPC_OBJECT_DEFINITION(ClientGameConnection);
+
+ClientGameConnection::ClientGameConnection(const INetchanPtr& inNetchan, const IRemoteIdentifierPtr& inAdr, uint32_t challengeResponse, const protocolType_c& protoType, const ClientInfoPtr& cInfo)
+	: netchan(inNetchan)	
+	, clientProto(getProtocol(protoType.getProtocolVersionNumber()))
+	, adr(inAdr)
 	, lastPacketSendTime(0)
-	, timeoutTime(60000)
+	, timeout(std::chrono::milliseconds(60000))
 	, parseEntitiesNum(0)
-	, serverCommandSequence(0)
-	, cmdNumber(0)
-	, clientNum(0)
-	, checksumFeed(0)
-	, serverId(0)
-	, reliableSequence(0)
-	, reliableAcknowledge(0)
 	, lastSnapFlags(0)
 	, newSnapshots(false)
 	, extrapolatedSnapshot(false)
 	, isActive(false)
 	, isReady(false)
-	, reliableCommands{ nullptr }
-	, serverCommands{ nullptr }
-	, reliableCmdStrings{ 0 }
-	, serverCmdStrings{ 0 }
 	, userInfo(cInfo)
 {
 	ClientImports imports;
@@ -211,57 +253,64 @@ ClientGameConnection::ClientGameConnection(const INetchanPtr& inNetchan, const I
 
 	downloadState.setImports(imports);
 
+	const IGameStateInstancier* gameStateInstancier = IGameStateInstancier::get(protoType.getProtocolVersionNumber());
+	if (gameStateInstancier)
+	{
+		// create the game state
+		gameStatePtr = gameStateInstancier->createInstance();
+	}
+
 	switch (protoType.getProtocolVersion())
 	{
 	case protocolVersion_e::ver005:
 	case protocolVersion_e::ver100:
 	case protocolVersion_e::ver111:
-		readStringMessage_pf = &ClientGameConnection::readStringMessage_normal;
-		writeStringMessage_pf = &ClientGameConnection::writeStringMessage_normal;
-		parseGameState_pf = &ClientGameConnection::parseGameState_ver6;
-		hashKey_pf = &ClientGameConnection::hashKey_ver6;
-		readEntityNum_pf = &ClientGameConnection::readEntityNum_ver6;
-		readDeltaPlayerstate_pf = &ClientGameConnection::readDeltaPlayerstate_ver6;
-		readDeltaEntity_pf = &ClientGameConnection::readDeltaEntity_ver6;
-		getNormalizedConfigstring_pf = &ClientGameConnection::getNormalizedConfigstring_ver6;
-		getMaxCommandSize_pf = &ClientGameConnection::getMaxCommandSize_ver6;
-		readNonPVSClient_pf = &ClientGameConnection::readNonPVSClient_ver6;
-
 		cgameModule = new CGameModule6(imports);
+		reliableCommands = new ClientSequenceTemplate_ver6();
+		serverCommands = new ClientRemoteCommandSequenceTemplate_ver6();
 		break;
 	case protocolVersion_e::ver200:
 	case protocolVersion_e::ver211_demo:
 	case protocolVersion_e::ver211:
-		readStringMessage_pf = &ClientGameConnection::readStringMessage_scrambled;
-		writeStringMessage_pf = &ClientGameConnection::writeStringMessage_scrambled;
-		parseGameState_pf = &ClientGameConnection::parseGameState_ver15;
-		hashKey_pf = &ClientGameConnection::hashKey_ver15;
-		readEntityNum_pf = &ClientGameConnection::readEntityNum_ver15;
-		readDeltaPlayerstate_pf = &ClientGameConnection::readDeltaPlayerstate_ver15;
-		readDeltaEntity_pf = &ClientGameConnection::readDeltaEntity_ver15;
-		getNormalizedConfigstring_pf = &ClientGameConnection::getNormalizedConfigstring_ver15;
-		getMaxCommandSize_pf = &ClientGameConnection::getMaxCommandSize_ver15;
-		readNonPVSClient_pf = &ClientGameConnection::readNonPVSClient_ver15;
-
 		cgameModule = new CGameModule15(imports);
+		reliableCommands = new ClientSequenceTemplate_ver15();
+		serverCommands = new ClientRemoteCommandSequenceTemplate_ver15();
 		break;
 	default:
 		throw ClientError::BadProtocolVersionException((uint8_t)protoType.getProtocolVersion());
 		break;
 	}
 
-	for (size_t i = 0; i < MAX_RELIABLE_COMMANDS; ++i)
-	{
-		reliableCommands[i] = &reliableCmdStrings[i * MAX_STRING_CHARS];
-		serverCommands[i] = &serverCmdStrings[i * MAX_STRING_CHARS];
-	}
+	encoder = std::make_shared<Encoding>(challengeResponse, *reliableCommands, *serverCommands);
 
-	encoder = std::make_shared<Encoding>(challengeResponse, (const char**)reliableCommands, (const char**)serverCommands);
+	using namespace std::chrono;
+	const steady_clock::time_point currentTime = steady_clock::now();
+	clientTime.setStartTime(currentTime.time_since_epoch().count());
+
+	timeout.update();
 }
 
 ClientGameConnection::~ClientGameConnection()
 {
 	disconnect();
+	delete gameStatePtr;
+	delete reliableCommands;
+	delete serverCommands;
+}
+
+const IClientGameProtocol& ClientGameConnection::getProtocol(uint32_t protocolNum) const
+{
+	for(const IClientGameProtocol* proto = IClientGameProtocol::getHead(); proto; proto = proto->getNext())
+	{
+		if (proto->getProtocolVersion() == protocolNum)
+		{
+			// found it
+			return *proto;
+		}
+	}
+
+	// unsupported protocol
+	throw ClientError::BadProtocolVersionException(protocolNum);
 }
 
 ClientGameConnection::HandlerListClient& ClientGameConnection::getHandlerList()
@@ -275,22 +324,14 @@ void ClientGameConnection::tick(uint64_t deltaTime, uint64_t currentTime)
 		return;
 	}
 
-	using namespace std::chrono;
-	// Check if there is a timeout time
-	if (timeoutTime > milliseconds::zero())
+	if (timeout.hasTimedOut())
 	{
-		steady_clock::time_point clockTime = steady_clock::now();
-		steady_clock::time_point nextTimeoutTime = lastTimeoutTime + timeoutTime;
-		// Check if the clock has reached the timeout point
-		if (clockTime >= nextTimeoutTime)
-		{
-			// The server or the client has timed out
-			handlerList.timeoutHandler.broadcast();
+		// The server or the client has timed out
+		handlerList.timeoutHandler.broadcast();
 
-			// Disconnect from server
-			serverDisconnected(nullptr);
-			return;
-		}
+		// Disconnect from server
+		serverDisconnected(nullptr);
+		return;
 	}
 
 	size_t count = 0;
@@ -336,7 +377,7 @@ void ClientGameConnection::tick(uint64_t deltaTime, uint64_t currentTime)
 	try
 	{
 		if (cgameModule) {
-			cgameModule->tick(deltaTime, currentTime, serverTime);
+			cgameModule->tick(deltaTime, currentTime, clientTime.getRemoteTime());
 		}
 	}
 	catch (NetworkException& e)
@@ -348,10 +389,14 @@ void ClientGameConnection::tick(uint64_t deltaTime, uint64_t currentTime)
 	}
 }
 
-void ClientGameConnection::setTimeout(size_t inTimeoutTime)
+TimeoutTimer& ClientGameConnection::getTimeoutTimer()
 {
-	using namespace std::chrono;
-	timeoutTime = milliseconds(inTimeoutTime);
+	return timeout;
+}
+
+const TimeoutTimer& ClientGameConnection::getTimeoutTimer() const
+{
+	return timeout;
 }
 
 const INetchanPtr& ClientGameConnection::getNetchan() const
@@ -366,29 +411,26 @@ void ClientGameConnection::receive(const IRemoteIdentifierPtr& from, MSG& msg, u
 	msg.SetCodec(MessageCodecs::Bit);
 
 	// Read the ack
-	reliableAcknowledge = msg.ReadUInteger();
-	if (reliableAcknowledge + MAX_RELIABLE_COMMANDS < reliableSequence) {
-		reliableAcknowledge = reliableSequence;
-	}
+	reliableCommands->updateAcknowledge(msg.ReadUInteger());
 
 	static constexpr size_t decodeStart = sizeof(uint32_t) + sizeof(uint32_t);
 
 	// decode the stream itself
 	IMessageStream& stream = msg.stream();
 	stream.Seek(decodeStart, IMessageStream::SeekPos::Begin);
-	encoder->setReliableAcknowledge(reliableAcknowledge);
+	encoder->setReliableAcknowledge(reliableCommands->getReliableAcknowledge());
 	encoder->setSecretKey(serverMessageSequence);
 	encoder->decode(stream, stream);
 	// seek after sequence number
 	stream.Seek(sizeof(uint32_t));
 
-	// Needs to be reset as the stream has been decoded
+	// needs to be reset as the stream has been decoded
 	msg.Reset();
-	// Serialize again to read the proper number of bits
+	// read again to get the right bits
 	msg.ReadInteger();
 
-	using namespace std::chrono;
-	lastTimeoutTime = steady_clock::now();
+	// as data has been received, update the last timeout time
+	timeout.update();
 
 	try
 	{
@@ -450,18 +492,7 @@ void ClientGameConnection::receiveConnectionLess(const IRemoteIdentifierPtr& fro
 
 void ClientGameConnection::addReliableCommand(const char* cmd)
 {
-	if (reliableAcknowledge + MAX_RELIABLE_COMMANDS < reliableSequence)
-	{
-		// FIXME: throw?
-		return;
-	}
-
-	++reliableSequence;
-	const size_t index = reliableSequence & (MAX_RELIABLE_COMMANDS - 1);
-	const size_t maxSize = getMaxCommandSize();
-
-	//reliableCommands[index] = &reliableCmdStrings[MAX_STRING_CHARS * index];
-	strncpy(reliableCommands[index], cmd, sizeof(reliableCmdStrings[maxSize * index]) * maxSize);
+	return reliableCommands->addCommand(cmd);
 }
 
 void ClientGameConnection::parseServerMessage(MSG& msg, uint64_t currentTime)
@@ -481,13 +512,13 @@ void ClientGameConnection::parseServerMessage(MSG& msg, uint64_t currentTime)
 			parseCommandString(msg);
 			break;
 		case svc_ops_e::Gamestate:
-			parseGameState(msg);
+			clientProto.readGameState(msg, *gameStatePtr);
 			break;
 		case svc_ops_e::Snapshot:
 			parseSnapshot(msg, currentTime);
 			break;
 		case svc_ops_e::Download:
-			parseDownload(msg);
+			downloadState.processDownload(msg);
 			break;
 		case svc_ops_e::Centerprint:
 			parseCenterprint(msg);
@@ -496,7 +527,7 @@ void ClientGameConnection::parseServerMessage(MSG& msg, uint64_t currentTime)
 			parseLocprint(msg);
 			break;
 		case svc_ops_e::CGameMessage:
-			parseCGMessage(msg);
+			cgameModule->parseCGMessage(msg);
 			break;
 		default:
 			throw ClientError::IllegibleServerMessageException((uint8_t)cmd);
@@ -522,6 +553,9 @@ void GetNullEntityState(entityState_t* nullState) {
 
 void ClientGameConnection::parseGameState(MSG& msg)
 {
+	clientProto.readGameState(msg, *gameStatePtr);
+
+#if 0
 	MOHPC_LOG(Debug, "Received gamestate");
 
 	MsgTypesHelper msgHelper(msg);
@@ -574,11 +608,13 @@ void ClientGameConnection::parseGameState(MSG& msg)
 	clientNum = msg.ReadUInteger();
 	checksumFeed = msg.ReadUInteger();
 
-	(this->*parseGameState_pf)(msg);
-	
 	// save the server id for later
 	// it may be changed when parsing the system info
 	const uint32_t oldServerId = serverId;
+
+	systemInfoChanged();
+
+	(this->*parseGameState_pf)(msg);
 
 	// now notify about all received config strings
 	notifyAllConfigStringChanges();
@@ -594,12 +630,13 @@ void ClientGameConnection::parseGameState(MSG& msg)
 
 	// notify about the new game state
 	getHandlerList().gameStateParsedHandler.broadcast(getGameState(), isDiff);
+#endif
 }
 
 void ClientGameConnection::parseSnapshot(MSG& msg, uint64_t currentTime)
 {
 	ClientSnapshot newSnap;
-	newSnap.serverCommandNum = serverCommandSequence;
+	newSnap.serverCommandNum = serverCommands->getCommandSequence();
 
 	newSnap.serverTime = msg.ReadUInteger();
 	newSnap.serverTimeResidual = msg.ReadByte();
@@ -616,7 +653,7 @@ void ClientGameConnection::parseSnapshot(MSG& msg, uint64_t currentTime)
 
 	// Read player state
 	const playerState_t* oldps = old ? &old->ps : nullptr;
-	readDeltaPlayerstate(msg, oldps, &newSnap.ps);
+	clientProto.readDeltaPlayerstate(msg, oldps, &newSnap.ps);
 	handlerList.playerStateReadHandler.broadcast(const_cast<const playerState_t*>(oldps), const_cast<const playerState_t*>(&newSnap.ps));
 
 	// Read all entities in this snap
@@ -631,8 +668,9 @@ void ClientGameConnection::parseSnapshot(MSG& msg, uint64_t currentTime)
 
 	if (currentSnap.valid && ((currentSnap.snapFlags ^ newSnap.snapFlags) & SNAPFLAG_SERVERCOUNT))
 	{
-		serverStartTime = newSnap.serverTime;
-		realTimeStart = currentTime;
+		// server time starts from here
+		clientTime.setStartTime(currentTime);
+		clientTime.setRemoteStartTime(newSnap.serverTime);
 	}
 
 	// set the new snap and calculate the ping
@@ -640,7 +678,13 @@ void ClientGameConnection::parseSnapshot(MSG& msg, uint64_t currentTime)
 	calculatePing(currentTime);
 
 	// read and unpack radar info on SH/BT
-	readNonPVSClient(currentSnap.ps.getRadarInfo());
+	//readNonPVSClient(currentSnap.ps.getRadarInfo());
+	radarUnpacked_t unpacked;
+	if (clientProto.readNonPVSClient(currentSnap.ps.getRadarInfo(), currentSnap, settings.getRadarRange(), unpacked))
+	{
+		handlerList.readNonPVSClientHandler.broadcast(unpacked);
+	}
+
 
 	getHandlerList().snapshotReceivedHandler.broadcast(currentSnap);
 }
@@ -663,10 +707,9 @@ void ClientGameConnection::parsePacketEntities(MSG& msg, const ClientSnapshot* o
 		oldNum = oldState->number;
 	}
 
-	MsgTypesHelper msgHelper(msg);
 	for (;;)
 	{
-		const uint16_t newNum = readEntityNum(msgHelper);
+		const uint16_t newNum = clientProto.readEntityNum(msg);
 
 		if (newNum == ENTITYNUM_NONE) {
 			break;
@@ -739,7 +782,7 @@ void ClientGameConnection::parseDeltaEntity(MSG& msg, ClientSnapshot* frame, uin
 		*state = *old;
 	}
 	else {
-		readDeltaEntity(msg, old, state, newNum);
+		clientProto.readDeltaEntity(msg, *gameStatePtr, old, state, newNum);
 	}
 
 	if (state->number == ENTITYNUM_NONE)
@@ -775,7 +818,7 @@ void ClientGameConnection::parseSounds(MSG& msg, ClientSnapshot* newFrame)
 
 		if (sound.hasStopped)
 		{
-			const uint16_t entityNum = readEntityNum(msgHelper);
+			const uint16_t entityNum = clientProto.readEntityNum(msg);
 			sound.entity = &entityBaselines[entityNum];
 
 			const uint8_t channel = msg.ReadNumber<uint8_t>(7);
@@ -794,7 +837,7 @@ void ClientGameConnection::parseSounds(MSG& msg, ClientSnapshot* newFrame)
 			sound.entity = &entityBaselines[entityNum];
 
 			if (entityNum >= MAX_GENTITIES) {
-				throw BadEntityNumberException("sound", entityNum);
+				throw SerializableErrors::BadEntityNumberException("sound", entityNum);
 			}
 
 			const uint8_t channel = msg.ReadNumber<uint8_t>(7);
@@ -805,7 +848,7 @@ void ClientGameConnection::parseSounds(MSG& msg, ClientSnapshot* newFrame)
 			if (soundIndex < MAX_SOUNDS)
 			{
 				// Get the sound name from configstrings
-				sound.soundName = gameState.getConfigString(soundIndex);
+				sound.soundName = gameState.getConfigstringManager().getConfigString(soundIndex);
 			}
 			else {
 				// FIXME: Throw?
@@ -860,7 +903,7 @@ void DownloadManager::processDownload(MSG& msg)
 	{
 		// not requested
 		imports.addReliableCommand("stopdl");
-		throw UnexpectedDownloadException();
+		throw ClientError::UnexpectedDownloadException();
 	}
 
 	uint8_t data[MAX_MSGLEN];
@@ -874,6 +917,7 @@ void DownloadManager::processDownload(MSG& msg)
 		if (!fileSize || fileSize == -1)
 		{
 			// not a valid file size
+			imports.addReliableCommand("stopdl");
 			throw ClientError::DownloadException(imports.readStringMessage(msg));
 		}
 
@@ -997,20 +1041,14 @@ void ClientGameConnection::parseDownload(MSG& msg)
 void ClientGameConnection::parseCommandString(MSG& msg)
 {
 	const uint32_t seq = msg.ReadUInteger();
+	const StringMessage s = clientProto.readString(msg);
 
-	const StringMessage s = readStringMessage(msg);
+	serverCommands->addCommand(s, seq);
 
 	// check if it is already stored
-	if (serverCommandSequence >= seq) {
+	if (serverCommands->getCommandSequence() >= seq) {
 		return;
 	}
-
-	serverCommandSequence = seq;
-
-	const uint32_t index = seq & (MAX_RELIABLE_COMMANDS - 1);
-
-	//serverCommands[index] = &serverCmdStrings[MAX_STRING_CHARS * index];
-	strncpy(serverCommands[index], s, sizeof(serverCmdStrings[index * MAX_STRING_CHARS]) * MAX_STRING_CHARS);
 
 	Event ev;
 	TokenParser parser;
@@ -1025,8 +1063,6 @@ void ClientGameConnection::parseCommandString(MSG& msg)
 		MOHPC_LOG(Warn, "Stufftext command detected. Handle it with high precautions. Arguments : %s", s.getData() + 10);
 	}
 #endif
-	// notify about the new command
-	handlerList.serverCommandHandler.broadcast(commandName.c_str(), parser);
 
 	if (!str::icmp(commandName, "disconnect"))
 	{
@@ -1037,11 +1073,14 @@ void ClientGameConnection::parseCommandString(MSG& msg)
 		// Disconnect the client
 		disconnect();
 	}
+
+	// notify about the new command
+	handlerList.serverCommandHandler.broadcast(commandName.c_str(), parser);
 }
 
 void ClientGameConnection::parseCenterprint(MSG& msg)
 {
-	const StringMessage s = readStringMessage(msg);
+	const StringMessage s = clientProto.readString(msg);
 	handlerList.centerPrintHandler.broadcast(const_cast<const char*>(s.getData()));
 }
 
@@ -1050,67 +1089,23 @@ void ClientGameConnection::parseLocprint(MSG& msg)
 	const uint16_t x = msg.ReadUShort();
 	const uint16_t y = msg.ReadUShort();
 
-	const StringMessage string = readStringMessage(msg);
+	const StringMessage string = clientProto.readString(msg);
 	handlerList.locationPrintHandler.broadcast(x, y, const_cast<const char*>(string.getData()));
-}
-
-void ClientGameConnection::parseCGMessage(MSG& msg)
-{
-	// Let the module handle messages
-	cgameModule->parseCGMessage(msg);
-}
-
-void ClientGameConnection::notifyAllConfigStringChanges()
-{
-	systemInfoChanged();
-
-	// notify about configstrings that are not empty
-	for (csNum_t i = 0; i < MAX_CONFIGSTRINGS; ++i)
-	{
-		const char* cs = gameState.getConfigStringChecked(i);
-		if (*cs) {
-			notifyConfigStringChange(i, cs);
-		}
-	}
-}
-
-void ClientGameConnection::systemInfoChanged()
-{
-	const ReadOnlyInfo serverSystemInfo = getServerSystemInfo();
-	const ReadOnlyInfo serverGameInfo = getServerGameInfo();
-
-	serverId = serverSystemInfo.IntValueForKey("sv_serverid");
-	const uint32_t sv_fps = serverGameInfo.IntValueForKey("sv_fps");
-	// calculate the server frequency as milliseconds
-	serverDeltaFrequency = (uint64_t)(1.f / (float)sv_fps * 1000.f) * 2;
-}
-
-void ClientGameConnection::createNewCommands()
-{
-	++cmdNumber;
-	const uint32_t cmdNum = cmdNumber & CMD_MASK;
-
-	usercmd_t& cmd = cmds[cmdNum];
-	createCmd(cmd);
-
-	userEyes = usereyes_t();
-
-	// all movement will happen through the event notification
-	// the callee is responsible for making user input
-	handlerList.userInputHandler.broadcast(cmd, userEyes);
-}
-
-void ClientGameConnection::createCmd(usercmd_t& outcmd)
-{
-	outcmd = usercmd_t((uint32_t)serverTime);
 }
 
 bool ClientGameConnection::sendCmd(uint64_t currentTime)
 {
-	if (canCreateCommand())
+	if (cgameModule && canCreateCommand())
 	{
 		// only create commands if the client is completely ready
-		createNewCommands();
+
+		usercmd_t* newCmd;
+		usereyes_t* newEyes;
+		input.createCommand(currentTime, clientTime.getRemoteTime(), newCmd, newEyes);
+
+		// all movement will happen through the event notification
+		// the callee is responsible for making user input
+		getHandlerList().userInputHandler.broadcast(*newCmd, *newEyes);
 	}
 
 	if (!readyToSendPacket(currentTime)) {
@@ -1132,21 +1127,22 @@ clc_ops_e ClientGameConnection::getClientOperation() const
 
 uint32_t ClientGameConnection::getCommandHashKey() const
 {
-	uint32_t key = checksumFeed;
+	uint32_t key = gameStatePtr->checksumFeed;
 	// also use the message acknowledge
 	key ^= serverMessageSequence;
 	// also use the last acknowledged server command in the key
-	key ^= hashKey(serverCommands[serverCommandSequence & (MAX_RELIABLE_COMMANDS - 1)], 32);
+	key ^= clientProto.hashKey(serverCommands->getLastSequence(), 32);
 
 	return key;
 }
 
 uint8_t ClientGameConnection::getNumCommandsToWrite(uint32_t oldPacketNum) const
 {
+	const uint32_t cmdNumber = input.getCurrentCmdNumber();
 	if (cmdNumber > outPackets[oldPacketNum].p_cmdNumber + MAX_PACKET_USERCMDS)
 	{
-		return MAX_PACKET_USERCMDS;
 		MOHPC_LOG(Warn, "MAX_PACKET_USERCMDS");
+		return MAX_PACKET_USERCMDS;
 	}
 
 	return cmdNumber - outPackets[oldPacketNum].p_cmdNumber;
@@ -1159,12 +1155,15 @@ void ClientGameConnection::writePacket(uint64_t currentTime)
 	DynamicDataMessageStream stream;
 	MSG msg(stream, msgMode_e::Writing);
 
-	// a packet is around 10 and 30 bytes
+	// a packet is between 10 and 30 bytes
 	stream.reserve(32);
 
-	writePacketHeader(msg);
+	// write the packet header
+	PacketHeaderWriter headerWriter(*gameStatePtr, *serverCommands, serverMessageSequence);
+	headerWriter.write(msg);
 	// write commands the server didn't acknowledge
-	writeReliableCommands(msg);
+	ReliableCommandsWriter cmdWriter(*reliableCommands, clientProto);
+	cmdWriter.write(msg);
 	// write user commands
 	writeUserInput(msg, currentTime);
 
@@ -1177,9 +1176,9 @@ void ClientGameConnection::writePacket(uint64_t currentTime)
 	static constexpr size_t encodeStart = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t);
 
 	stream.Seek(encodeStart, IMessageStream::SeekPos::Begin);
-	encoder->setSecretKey(serverId);
+	encoder->setSecretKey(gameStatePtr->serverId);
 	encoder->setMessageAcknowledge(serverMessageSequence);
-	encoder->setReliableAcknowledge(serverCommandSequence);
+	encoder->setReliableAcknowledge(serverCommands->getCommandSequence());
 	encoder->encode(stream, stream);
 	stream.Seek(0, IMessageStream::SeekPos::Begin);
 	
@@ -1189,29 +1188,9 @@ void ClientGameConnection::writePacket(uint64_t currentTime)
 	lastPacketSendTime = currentTime;
 }
 
-void ClientGameConnection::writePacketHeader(MSG& msg)
-{
-	// write the server id (given with the gameState)
-	msg.WriteUInteger(serverId);
-	// write the server sequence number (packet number)
-	msg.WriteUInteger(serverMessageSequence);
-	// write the command sequence acknowledge
-	msg.WriteUInteger(serverCommandSequence);
-}
-
-void ClientGameConnection::writeReliableCommands(MSG& msg)
-{
-	for (uint32_t i = reliableAcknowledge + 1; i <= reliableSequence; ++i)
-	{
-		msg.WriteByte(clc_ops_e::ClientCommand);
-		msg.WriteInteger(i);
-		writeStringMessage(msg, reliableCommands[i & (MAX_RELIABLE_COMMANDS - 1)]);
-	}
-}
-
 void ClientGameConnection::writeUserInput(MSG& msg, uint64_t currentTime)
 {
-	const uint32_t oldPacketNum = (getNetchan()->getOutgoingSequence() - 1) & PACKET_MASK;
+	const uint32_t oldPacketNum = (getNetchan()->getOutgoingSequence() - 1) % PACKET_BACKUP;
 	const uint8_t count = getNumCommandsToWrite(oldPacketNum);
 
 	static const usercmd_t nullcmd;
@@ -1227,7 +1206,7 @@ void ClientGameConnection::writeUserInput(MSG& msg, uint64_t currentTime)
 		msg.WriteByte(count);
 		// write delta eyes
 		const SerializableUserEyes oldEyeInfo(outPackets[oldPacketNum].p_eyeinfo);
-		SerializableUserEyes userEyesWrite(userEyes);
+		SerializableUserEyes userEyesWrite(input.getEyeInfo());
 		msg.WriteDeltaClass(&oldEyeInfo, &userEyesWrite);
 
 		// get the key used to xor user command data
@@ -1249,14 +1228,13 @@ void ClientGameConnection::writeAllCommands(MSG& msg, const usercmd_t*& oldcmd, 
 	// write all the commands, including the predicted command
 	for (size_t i = 0; i < count; i++)
 	{
-		const size_t j = (cmdNumber - count + i + 1) & CMD_MASK;
-		const usercmd_t* cmd = &cmds[j];
+		const usercmd_t& cmd = input.getCommandFromLast(count + i + 1);
 		// write a delta of the command by using the old
 		SerializableUsercmd oldCmdRead(*const_cast<usercmd_t*>(oldcmd));
-		SerializableUsercmd inputCmd(*const_cast<usercmd_t*>(cmd));
+		SerializableUsercmd inputCmd(const_cast<usercmd_t&>(cmd));
 		msg.WriteDeltaClass(&oldCmdRead, &inputCmd, key);
 
-		oldcmd = cmd;
+		oldcmd = &cmd;
 	}
 }
 
@@ -1265,73 +1243,8 @@ void ClientGameConnection::storeOutputPacket(uint64_t currentTime, uint32_t serv
 	const uint32_t packetNum = getNetchan()->getOutgoingSequence() & PACKET_MASK;
 	outPackets[packetNum].p_currentTime = currentTime;
 	outPackets[packetNum].p_serverTime = serverTime;
-	outPackets[packetNum].p_cmdNumber = cmdNumber;
-	outPackets[packetNum].p_eyeinfo = userEyes;
-}
-
-StringMessage ClientGameConnection::readStringMessage(MSG& msg)
-{
-	return (*readStringMessage_pf)(msg);
-}
-
-void ClientGameConnection::writeStringMessage(MSG& msg, const char* s)
-{
-	return (*writeStringMessage_pf)(msg, s);
-}
-
-uint32_t ClientGameConnection::hashKey(const char* string, size_t maxlen) const
-{
-	return (this->*hashKey_pf)(string, maxlen);
-}
-
-entityNum_t ClientGameConnection::readEntityNum(MsgTypesHelper& msgHelper)
-{
-	return (this->*readEntityNum_pf)(msgHelper);
-}
-
-void ClientGameConnection::readDeltaPlayerstate(MSG& msg, const playerState_t* from, playerState_t* to)
-{
-	(this->*readDeltaPlayerstate_pf)(msg, from, to);
-}
-
-void ClientGameConnection::readDeltaEntity(MSG& msg, const entityState_t* from, entityState_t* to, entityNum_t newNum)
-{
-	(this->*readDeltaEntity_pf)(msg, from, to, newNum);
-}
-
-StringMessage ClientGameConnection::readStringMessage_normal(MSG& msg)
-{
-	return msg.ReadString();
-}
-
-void ClientGameConnection::writeStringMessage_normal(MSG& msg, const char* s)
-{
-	msg.WriteString(s);
-}
-
-StringMessage ClientGameConnection::readStringMessage_scrambled(MSG& msg)
-{
-	return msg.ReadScrambledString(byteCharMapping);
-}
-
-void ClientGameConnection::writeStringMessage_scrambled(MSG& msg, const char* s)
-{
-	msg.WriteScrambledString(s, charByteMapping);
-}
-
-csNum_t ClientGameConnection::getNormalizedConfigstring(csNum_t num)
-{
-	return (this->*getNormalizedConfigstring_pf)(num);
-}
-
-size_t ClientGameConnection::getMaxCommandSize() const
-{
-	return (this->*getMaxCommandSize_pf)();
-}
-
-void ClientGameConnection::readNonPVSClient(radarInfo_t radarInfo)
-{
-	return (this->*readNonPVSClient_pf)(radarInfo);
+	outPackets[packetNum].p_cmdNumber = input.getCurrentCmdNumber();
+	outPackets[packetNum].p_eyeinfo = input.getEyeInfo();
 }
 
 const ClientSnapshot* ClientGameConnection::readOldSnapshot(MSG& msg, ClientSnapshot& snap) const
@@ -1404,154 +1317,6 @@ void ClientGameConnection::setNewSnap(ClientSnapshot& newSnap)
 	newSnapshots = true;
 }
 
-uint32_t ClientGameConnection::hashKey_ver6(const char* string, size_t maxlen) const
-{
-	uint32_t hash = 0;
-
-	for (size_t i = 0; i < maxlen && string[i]; i++) {
-		hash += string[i] * (119 + (uint32_t)i);
-	}
-
-	hash = (hash ^ (hash >> 10) ^ (hash >> 20));
-	return hash;
-}
-
-uint32_t ClientGameConnection::hashKey_ver15(const char* string, size_t maxlen) const
-{
-	uint32_t hash = 0;
-
-	for (size_t i = 0; i < maxlen && string[i]; i++) {
-		hash += string[i] * (119 + (uint32_t)i);
-	}
-
-	hash = (hash ^ ((hash ^ (hash >> 10)) >> 10));
-	return hash;
-}
-
-entityNum_t ClientGameConnection::readEntityNum_ver6(MsgTypesHelper& msgHelper)
-{
-	return msgHelper.ReadEntityNum();
-}
-
-entityNum_t ClientGameConnection::readEntityNum_ver15(MsgTypesHelper& msgHelper)
-{
-	return msgHelper.ReadEntityNum2();
-}
-
-void ClientGameConnection::parseGameState_ver6(MSG& msg)
-{
-}
-
-void ClientGameConnection::parseGameState_ver15(MSG& msg)
-{
-	// this is the frameTime of the server (sv_fps)
-	// it is practically useless because the delta frequency is already calculated earlier
-	const float serverFrameTime = msg.ReadFloat();
-}
-
-void ClientGameConnection::readDeltaPlayerstate_ver6(MSG& msg, const playerState_t* from, playerState_t* to)
-{
-	SerializablePlayerState toSerialize(*to);
-	if(from)
-	{
-		SerializablePlayerState fromSerialize(*const_cast<playerState_t*>(from));
-		msg.ReadDeltaClass(&fromSerialize, &toSerialize);
-	}
-	else
-	{
-		// no delta
-		msg.ReadDeltaClass(nullptr, &toSerialize);
-	}
-}
-
-void ClientGameConnection::readDeltaPlayerstate_ver15(MSG& msg, const playerState_t* from, playerState_t* to)
-{
-	SerializablePlayerState_ver15 toSerialize(*to);
-	if (from)
-	{
-		SerializablePlayerState_ver15 fromSerialize(*const_cast<playerState_t*>(from));
-		msg.ReadDeltaClass(&fromSerialize, &toSerialize);
-	}
-	else
-	{
-		// no delta
-		msg.ReadDeltaClass(nullptr, &toSerialize);
-	}
-}
-
-void ClientGameConnection::readDeltaEntity_ver6(MSG& msg, const entityState_t* from, entityState_t* to, entityNum_t newNum)
-{
-	SerializableEntityState toSerialize(*to, newNum);
-	if (from)
-	{
-		SerializableEntityState fromSerialize(*const_cast<entityState_t*>(from), newNum);
-		msg.ReadDeltaClass(&fromSerialize, &toSerialize);
-	}
-	else
-	{
-		// no delta
-		msg.ReadDeltaClass(nullptr, &toSerialize);
-	}
-}
-
-void ClientGameConnection::readDeltaEntity_ver15(MSG& msg, const entityState_t* from, entityState_t* to, entityNum_t newNum)
-{
-	SerializableEntityState_ver15 toSerialize(*to, newNum);
-	if (from)
-	{
-		SerializableEntityState_ver15 fromSerialize(*const_cast<entityState_t*>(from), newNum);
-		msg.ReadDeltaClass(&fromSerialize, &toSerialize);
-	}
-	else
-	{
-		// no delta
-		msg.ReadDeltaClass(nullptr, &toSerialize);
-	}
-}
-
-csNum_t ClientGameConnection::getNormalizedConfigstring_ver6(csNum_t num)
-{
-	if (num <= CS_WARMUP || num >= 26) {
-		return num;
-	}
-
-	return num - 2;
-}
-
-csNum_t ClientGameConnection::getNormalizedConfigstring_ver15(csNum_t num)
-{
-	return num;
-}
-
-size_t ClientGameConnection::getMaxCommandSize_ver6() const
-{
-	return 1024;
-}
-
-size_t ClientGameConnection::getMaxCommandSize_ver15() const
-{
-	return MAX_STRING_CHARS;
-}
-
-void ClientGameConnection::readNonPVSClient_ver6(radarInfo_t radarInfo)
-{
-	// unsupported in AA
-}
-
-void ClientGameConnection::readNonPVSClient_ver15(radarInfo_t radarInfo)
-{
-	radarUnpacked_t unpacked;
-
-	if (unpackNonPVSClient(radarInfo, unpacked))
-	{
-		const Vector& origin = currentSnap.ps.getOrigin();
-		unpacked.x += origin[0];
-		unpacked.y += origin[1];
-
-		handlerList.readNonPVSClientHandler.broadcast(unpacked);
-	}
-}
-
 CGameModuleBase* ClientGameConnection::getCGModule()
 {
 	return cgameModule;
@@ -1562,19 +1327,9 @@ const IRemoteIdentifierPtr& ClientGameConnection::getRemoteAddress() const
 	return adr;
 }
 
-const gameState_t& ClientGameConnection::getGameState() const
+IGameState& ClientGameConnection::getGameState() const
 {
-	return gameState;
-}
-
-ReadOnlyInfo ClientGameConnection::getServerSystemInfo() const
-{
-	return gameState.getConfigString(CS_SYSTEMINFO);
-}
-
-ReadOnlyInfo ClientGameConnection::getServerGameInfo() const
-{
-	return gameState.getConfigString(CS_SERVERINFO);
+	return *gameStatePtr;
 }
 
 ConstClientInfoPtr ClientGameConnection::getUserInfo() const
@@ -1603,14 +1358,6 @@ clientGameSettings_t& ClientGameConnection::getSettings()
 const clientGameSettings_t& ClientGameConnection::getSettings() const
 {
 	return settings;
-}
-
-void ClientGameConnection::initTime(uint64_t currentTime)
-{
-	realTimeStart = currentTime;
-
-	using namespace std::chrono;
-	lastTimeoutTime = steady_clock::time_point(milliseconds(currentTime));
 }
 
 uintptr_t ClientGameConnection::getCurrentSnapshotNumber() const
@@ -1665,46 +1412,54 @@ bool ClientGameConnection::getSnapshot(uintptr_t snapshotNum, SnapshotInfo& outS
 	return true;
 }
 
-uint64_t ClientGameConnection::getServerStartTime() const
+const ClientTime& ClientGameConnection::getClientTime() const
 {
-	return serverStartTime;
+	return clientTime;
 }
 
-uint64_t ClientGameConnection::getServerTime() const
+const UserInput& ClientGameConnection::getUserInput() const
 {
-	return serverTime;
+	return input;
 }
 
-uint64_t ClientGameConnection::getServerFrameFrequency() const
+IReliableSequence& ClientGameConnection::getClientCommands() const
 {
-	return serverDeltaFrequency;
+	assert(reliableCommands);
+	return *reliableCommands;
 }
 
-uintptr_t ClientGameConnection::getCurrentCmdNumber() const
+ICommandSequence& ClientGameConnection::getServerCommands() const
 {
-	return cmdNumber;
+	assert(serverCommands);
+	return *serverCommands;
+}
+
+uint64_t ClientGameConnection::getServerFrameTime() const
+{
+	return gameStatePtr->serverDeltaTime;
 }
 
 uint32_t ClientGameConnection::getClientNum() const
 {
-	return clientNum;
+	return gameStatePtr->clientNum;
 }
 
 bool ClientGameConnection::getUserCmd(uintptr_t cmdNum, usercmd_t& outCmd) const
 {
 	// the usercmd has been overwritten in the wrapping
 	// buffer because it is too far out of date
-	if (cmdNum + CMD_BACKUP < this->cmdNumber) {
+	const uint32_t cmdNumber = input.getCurrentCmdNumber();
+	if (cmdNum + CMD_BACKUP < cmdNumber) {
 		return false;
 	}
 
-	outCmd = cmds[cmdNum & CMD_MASK];
+	outCmd = input.getCommand(cmdNum);
 	return true;
 }
 
-bool ClientGameConnection::getServerCommand(uintptr_t serverCommandNumber, TokenParser& tokenized)
+bool ClientGameConnection::getServerCommand(rsequence_t serverCommandNumber, TokenParser& tokenized)
 {
-	const char* cmdString = serverCommands[serverCommandNumber % MAX_RELIABLE_COMMANDS];
+	const char* cmdString = serverCommands->getSequence(serverCommandNumber);
 	if (!cmdString) {
 		return false;
 	}
@@ -1722,12 +1477,12 @@ bool ClientGameConnection::getServerCommand(uintptr_t serverCommandNumber, Token
 		const char* csString = tokenized.GetString(true, false);
 
 		// Notify about modification
-		configStringModified(getNormalizedConfigstring(num), csString);
+		gameStatePtr->configStringModified(num, csString, true);
 
 		if (num == CS_SYSTEMINFO || num == CS_SERVERINFO)
 		{
 			// Notify when system info has changed
-			systemInfoChanged();
+			gameStatePtr->systemInfoChanged();
 		}
 
 		return false;
@@ -1743,17 +1498,17 @@ uint32_t ClientGameConnection::getCurrentServerMessageSequence() const
 
 uint32_t ClientGameConnection::getCurrentServerCommandSequence() const
 {
-	return serverCommandSequence;
+	return serverCommands->getCommandSequence();
 }
 
 uint32_t Network::ClientGameConnection::getReliableSequence() const
 {
-	return reliableSequence;
+	return reliableCommands->getReliableSequence();
 }
 
 uint32_t Network::ClientGameConnection::getReliableAcknowledge() const
 {
-	return reliableAcknowledge;
+	return reliableCommands->getReliableAcknowledge();
 }
 
 void ClientGameConnection::disconnect()
@@ -1806,7 +1561,7 @@ void ClientGameConnection::serverDisconnected(const char* reason)
 void ClientGameConnection::terminateConnection(const char* reason)
 {
 	// Clear out the server id
-	serverId = 0;
+	gameStatePtr->serverId = 0;
 
 	if (cgameModule)
 	{
@@ -1818,27 +1573,6 @@ void ClientGameConnection::terminateConnection(const char* reason)
 	}
 }
 
-void ClientGameConnection::configStringModified(csNum_t num, const char* newString, bool notify)
-{
-	// set the config string in gamestate
-	gameState.setConfigString(num, newString, strlen(newString));
-
-	if(notify)
-	{
-		// propagate the change
-		notifyConfigStringChange(num, newString);
-	}
-}
-
-void ClientGameConnection::notifyConfigStringChange(csNum_t num, const char* newString)
-{
-	// notify the client module about cs modification
-	if (cgameModule) cgameModule->configStringModified(num, newString);
-
-	// notify about the change
-	handlerList.configStringHandler.broadcast(num, newString);
-}
-
 void ClientGameConnection::wipeChannel()
 {
 	netchan = nullptr;
@@ -1846,20 +1580,20 @@ void ClientGameConnection::wipeChannel()
 
 bool ClientGameConnection::isChannelValid() const
 {
-	return netchan != nullptr;
+	return netchan != nullptr && cgameModule != nullptr;
 }
 
 void ClientGameConnection::clearState()
 {
 	parseEntitiesNum = 0;
-	cmdNumber = 0;
+	input.reset();
 	isActive = false;
 	isReady = false;
 }
 
 bool ClientGameConnection::isDifferentServer(uint32_t id)
 {
-	return id != serverId;
+	return id != gameStatePtr->serverId;
 }
 
 void ClientGameConnection::parseClientCommand(const char* arguments)
@@ -1895,7 +1629,7 @@ void ClientGameConnection::setCGameTime(uint64_t currentTime)
 	// if we have gotten to this point, cl.snap is guaranteed to be valid
 	if (!currentSnap.valid)
 	{
-		realTimeStart = currentTime;
+		clientTime.setStartTime(currentTime);
 		return;
 	}
 
@@ -1905,78 +1639,7 @@ void ClientGameConnection::setCGameTime(uint64_t currentTime)
 	}
 
 	// FIXME: throw if snap server time went backward
-
-	oldFrameServerTime = currentSnap.serverTime;
-
-	int32_t tn = settings.getTimeNudge();
-	if (tn < -30) {
-		tn = -30;
-	}
-	else if (tn > 30) {
-		tn = 30;
-	}
-
-	const uint64_t realTime = currentTime;
-	const uint64_t realServerTime = realTime - realTimeStart + oldServerTime;
-	serverTime = realServerTime - tn;
-	oldRealTime = currentTime;
-
-	// guarantee that time will never flow backwards, even if
-	// serverTimeDelta made an adjustment or cl_timeNudge was changed
-	if (serverTime < oldServerTime) {
-		serverTime = oldServerTime;
-	}
-
-	if (realServerTime + 5 >= currentSnap.serverTime) {
-		extrapolatedSnapshot = true;
-	}
-
-	if(newSnapshots) {
-		adjustTimeDelta(realTime);
-	}
-}
-
-void ClientGameConnection::adjustTimeDelta(uint64_t realTime)
-{
-	newSnapshots = false;
-
-	constexpr size_t BASE_RESET_TIME = 400;
-
-	const uint64_t resetTime = BASE_RESET_TIME + serverDeltaFrequency;
-	const uint64_t deltaDelta = getTimeDelta(serverTime);
-
-	if (deltaDelta > resetTime)
-	{
-		realTimeStart = realTime;
-		oldServerTime = currentSnap.serverTime;
-		serverTime = currentSnap.serverTime;
-	}
-	else if (deltaDelta > serverDeltaFrequency)
-	{
-		// fast adjust
-		realTimeStart += serverDeltaFrequency - deltaDelta;
-	}
-	else
-	{
-		if (extrapolatedSnapshot)
-		{
-			extrapolatedSnapshot = false;
-			realTimeStart += 2;
-		}
-		else {
-			realTimeStart -= 1;
-		}
-	}
-}
-
-uint64_t ClientGameConnection::getTimeDelta(uint64_t time) const
-{
-	if (currentSnap.serverTime < time) {
-		return time - currentSnap.serverTime;
-	}
-	else {
-		return currentSnap.serverTime - time;
-	}
+	clientTime.setTime(currentTime, currentSnap.serverTime, gameStatePtr->serverDeltaTime, newSnapshots);
 }
 
 void ClientGameConnection::firstSnapshot(uint64_t currentTime)
@@ -1987,12 +1650,10 @@ void ClientGameConnection::firstSnapshot(uint64_t currentTime)
 
 	updateSnapFlags();
 
-	serverStartTime = currentSnap.serverTime;
-	//serverTime = (uint32_t)(currentSnap.serverTime - currentTime);
-	serverTime = serverStartTime + (currentTime - realTimeStart);
+	clientTime.initRemoteTime(currentSnap.serverTime, currentTime);
 	isActive = true;
 
-	cgameModule->init(serverMessageSequence, serverCommandSequence);
+	cgameModule->init(serverMessageSequence, serverCommands->getCommandSequence());
 
 	// Notify about the snapshot
 	getHandlerList().firstSnapshotHandler.broadcast(currentSnap);
@@ -2033,17 +1694,17 @@ bool ClientGameConnection::readyToSendPacket(uint64_t currentTime) const
 {
 	if (!cgameModule)
 	{
-		// Disconnected from server
+		// it happens if disconnected from server
 		return false;
 	}
 
-	if (!serverId || !canCreateCommand())
+	if (!gameStatePtr->serverId || !canCreateCommand())
 	{
 		// allow one packet per second when not entered
 		return currentTime >= lastPacketSendTime + 1000;
 	}
 
-	const size_t oldPacketNum = (getNetchan()->getOutgoingSequence() - 1) & PACKET_MASK;
+	const size_t oldPacketNum = getNetchan()->getOutgoingSequence() % PACKET_BACKUP;
 	const uint64_t delta = currentTime - outPackets[oldPacketNum].p_currentTime;
 	if (delta < 1000 / settings.getMaxPackets()) {
 		return false;
@@ -2052,48 +1713,18 @@ bool ClientGameConnection::readyToSendPacket(uint64_t currentTime) const
 	return true;
 }
 
-bool ClientGameConnection::unpackNonPVSClient(radarInfo_t radarInfo, radarUnpacked_t& unpacked)
-{
-	unpacked.clientNum = radarInfo.clientNum();
-
-	if (unpacked.clientNum == currentSnap.ps.getClientNum()) {
-		return false;
-	}
-
-	const float radarRange = settings.getRadarRange();
-	const float radarScaled = radarRange / 63.f;
-
-	unpacked.x = radarInfo.x() * radarScaled;
-	unpacked.y = radarInfo.y() * radarScaled;
-
-	if (radarInfo.flags() & RADAR_PLAYER_FAR)
-	{
-		// when it's too far it needs to be scaled to make it look very far away
-		unpacked.x = unpacked.x * 1024.f;
-		unpacked.y = unpacked.y * 1024.f;
-	}
-
-	// retrieve the yaw from 5-bits value
-	unpacked.yaw = radarInfo.yaw() * (360.f / 32.f);
-
-	return true;
-}
-
-
 void ClientGameConnection::fillClientImports(ClientImports& imports)
 {
 	using namespace std::placeholders;
 	imports.getClientNum				= std::bind(&ClientGameConnection::getClientNum, this);
 	imports.getCurrentSnapshotNumber	= std::bind(&ClientGameConnection::getCurrentSnapshotNumber, this);
 	imports.getSnapshot					= std::bind(&ClientGameConnection::getSnapshot, this, _1, _2);
-	imports.getServerStartTime			= std::bind(&ClientGameConnection::getServerStartTime, this);
-	imports.getServerTime				= std::bind(&ClientGameConnection::getServerTime, this);
-	imports.getServerFrameFrequency		= std::bind(&ClientGameConnection::getServerFrameFrequency, this);
+	imports.getClientTime				= std::bind(&ClientGameConnection::getClientTime, this);
 	imports.getUserCmd					= std::bind(&ClientGameConnection::getUserCmd, this, _1, _2);
-	imports.getCurrentCmdNumber			= std::bind(&ClientGameConnection::getCurrentCmdNumber, this);
+	imports.getUserInput				= std::bind(&ClientGameConnection::getUserInput, this);
 	imports.getServerCommand			= std::bind(&ClientGameConnection::getServerCommand, this, _1, _2);
 	imports.getGameState				= std::bind(&ClientGameConnection::getGameState, this);
-	imports.readStringMessage			= std::bind(&ClientGameConnection::readStringMessage, this, _1);
+	imports.readStringMessage			= std::bind(&IClientGameProtocol::readString, &clientProto, _1);
 	imports.addReliableCommand			= std::bind(&ClientGameConnection::addReliableCommand, this, _1);
 	imports.getUserInfo					= std::bind(static_cast<const ClientInfoPtr&(ClientGameConnection::*)()>(&ClientGameConnection::getUserInfo), this);
 }
@@ -2250,21 +1881,7 @@ uint32_t clientGameSettings_t::getTimeNudge() const
 	return timeNudge;
 }
 
-ClientError::BadCommandByteException::BadCommandByteException(uint8_t inCmdNum)
-	: cmdNum(inCmdNum)
-{}
-
-uint8_t ClientError::BadCommandByteException::getLength() const
-{
-	return cmdNum;
-}
-
-str ClientError::BadCommandByteException::what() const
-{
-	return str((int)getLength());
-}
-
-ClientError::BadProtocolVersionException::BadProtocolVersionException(uint8_t inProtocolVersion)
+ClientError::BadProtocolVersionException::BadProtocolVersionException(uint32_t inProtocolVersion)
 	: protocolVersion(inProtocolVersion)
 {}
 
@@ -2304,40 +1921,6 @@ uint16_t ClientError::BaselineOutOfRangeException::getBaselineNum() const
 str ClientError::BaselineOutOfRangeException::what() const
 {
 	return str((int)getBaselineNum());
-}
-
-ClientError::MaxConfigStringException::MaxConfigStringException(const char* inName, csNum_t inConfigStringNum)
-	: name(inName)
-	, configStringNum(inConfigStringNum)
-{}
-
-const char* ClientError::MaxConfigStringException::getName() const
-{
-	return name;
-}
-
-csNum_t ClientError::MaxConfigStringException::getConfigstringNum() const
-{
-	return configStringNum;
-}
-
-str ClientError::MaxConfigStringException::what() const
-{
-	return str((int)getConfigstringNum());
-}
-
-ClientError::MaxGameStateCharsException::MaxGameStateCharsException(size_t inStringLen)
-	: stringLen(inStringLen)
-{}
-
-size_t ClientError::MaxGameStateCharsException::GetStringLength() const
-{
-	return stringLen;
-}
-
-str ClientError::MaxGameStateCharsException::what() const
-{
-	return str((int)GetStringLength());
 }
 
 ClientError::AreaMaskBadSize::AreaMaskBadSize(uint8_t inSize)
@@ -2390,4 +1973,39 @@ uint16_t ClientError::BadDownloadBlockException::getBlock() const noexcept
 uint16_t ClientError::BadDownloadBlockException::getExpectedBlock() const noexcept
 {
 	return expectedBlock;
+}
+
+PacketHeaderWriter::PacketHeaderWriter(const IGameState& gameStateRef, const ICommandSequence& serverCommandsRef, uint32_t serverMessageSequenceValue)
+	: gameState(gameStateRef)
+	, serverCommands(serverCommandsRef)
+	, serverMessageSequence(serverMessageSequenceValue)
+{
+}
+
+void PacketHeaderWriter::write(MSG& msg)
+{
+	// write the server id (given with the gameState)
+	msg.WriteUInteger(gameState.serverId);
+	// write the server sequence number (packet number)
+	msg.WriteUInteger(serverMessageSequence);
+	// write the command sequence acknowledge
+	msg.WriteUInteger(serverCommands.getCommandSequence());
+}
+
+ReliableCommandsWriter::ReliableCommandsWriter(const IReliableSequence& reliableCommandsRef, const IClientGameProtocol& clientProtoRef)
+	: reliableCommands(reliableCommandsRef)
+	, clientProto(clientProtoRef)
+{
+}
+
+void ReliableCommandsWriter::write(MSG& msg)
+{
+	const rsequence_t reliableAcknowledge = reliableCommands.getReliableAcknowledge();
+	const rsequence_t reliableSequence = reliableCommands.getReliableSequence();
+	for (uint32_t i = reliableAcknowledge + 1; i <= reliableSequence; ++i)
+	{
+		msg.WriteByte(clc_ops_e::ClientCommand);
+		msg.WriteInteger(i);
+		clientProto.writeString(msg, reliableCommands.getSequence(i));
+	}
 }

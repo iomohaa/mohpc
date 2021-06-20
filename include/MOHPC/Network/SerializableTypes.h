@@ -2,8 +2,10 @@
 
 #include <stdint.h>
 #include <exception>
-#include "../Misc/MSG/Serializable.h"
+#include "../Utility/Misc/MSG/Serializable.h"
 #include "Types.h"
+
+#include <type_traits>
 
 namespace MOHPC
 {
@@ -17,32 +19,44 @@ namespace MOHPC
 	 */
 	enum class fieldType_ver6_e
 	{
-		number,
+		regular,
 		angle,
 		animTime,
 		animWeight,
 		scale,
 		alpha,
-		largeCoord,
-		smallCoord,
+		coord,
+		velocity,
+		/**
+		 * Simple number type field that use field->bits.
+		 * This field is only present and used in Mac builds in moh.
+		 */
+		simple
 	};
 
 	/**
 	 * Field type for protocol version 15.
-	 * Introduced mediumCoord, presumably to provide something between large and medium
+	 * Introduced coordExtra, for more precise coordinates.
 	 */
 	enum class fieldType_ver15_e
 	{
-		number,
+		regular,
 		angle,
 		animTime,
 		animWeight,
 		scale,
 		alpha,
-		mediumCoord,
-		largeCoord,
-		smallCoord,
+		coord,
+		coordExtra,
+		velocity,
+		/**
+		 * Simple number type field that use field->bits.
+		 * This field is only present and used in Mac builds in moh.
+		 */
+		simple
 	};
+
+	static constexpr uint32_t MAX_COORDS = 1 << 19;
 
 	struct netField_t
 	{
@@ -77,14 +91,47 @@ namespace MOHPC
 		{}
 	};
 
+	template<size_t maxBits, intptr_t minCoord, intptr_t maxCoord>
+	class NetCoord
+	{
+		static_assert(maxBits < 64, "Bits must be under 64");
+	public:
+		using packedint_t = std::conditional_t<maxBits <= 8, uint8_t,
+			std::conditional_t<maxBits <= 16, uint16_t,
+			std::conditional_t<maxBits <= 32, uint32_t,
+			std::conditional_t<maxBits <= 64, uint64_t, uint64_t>>>>;
+
+	public:
+		packedint_t pack(float val)
+		{
+			return (packedint_t)roundf(maxBitCoordSigned + val * precision);
+		}
+
+		float unpack(packedint_t packedValue)
+		{
+			return (float)(int64_t)(packedValue - maxBitCoordSigned) / precision;
+		}
+
+	public:
+		static constexpr uint64_t maxBitCoord = (1ull << maxBits);
+		static constexpr uint64_t maxBitCoordSigned = maxBitCoord / 2;
+		static constexpr uint64_t coordMask = maxBitCoord - 1;
+		static constexpr uint64_t maxDelta = (maxCoord - minCoord);
+		static constexpr uint64_t precision = maxBitCoord / maxDelta;
+	};
+
 	namespace EntityField
 	{
 		void ReadNumberPlayerStateField(MSG& msg, intptr_t bits, void* toF, size_t size);
 		void WriteNumberPlayerStateField(MSG& msg, intptr_t bits, const void* toF, size_t size);
 
 		void ReadRegular(MSG& msg, intptr_t bits, void* toF, size_t size);
-		void ReadRegular2(MSG& msg, intptr_t bits, void* toF, size_t size);
 		void WriteNumberEntityField(MSG& msg, intptr_t bits, const void* toF, size_t size);
+		void ReadRegular2(MSG& msg, intptr_t bits, void* toF, size_t size);
+		void WriteRegular2(MSG& msg, intptr_t bits, const void* toF, size_t size);
+
+		void ReadSimple(MSG& msg, intptr_t bits, void* toF, size_t size);
+		void WriteSimple(MSG& msg, intptr_t bits, const void* toF, size_t size);
 
 		float ReadAngleField(MSG& msg, size_t bits);
 		void WriteAngleField(MSG& msg, size_t bits, float angle);
@@ -92,22 +139,39 @@ namespace MOHPC
 		float ReadTimeField(MSG& msg, size_t bits);
 		void WriteTimeField(MSG& msg, float time);
 
-		float ReadSmallTimeField(MSG& msg, size_t bits);
-		void WriteSmallTimeField(MSG& msg, float time);
+		float ReadScaleField(MSG& msg, size_t bits);
+		void WriteScaleField(MSG& msg, float time);
 
+		uint32_t PackAngle(float angle, intptr_t bits);
 		float UnpackAngle(int result, intptr_t bits, bool isNeg);
+		uint32_t PackAngle2(float angle, intptr_t bits);
+		float UnpackAngle2(uint32_t result, intptr_t bits);
+
+		uint32_t PackAnimTime(float time, size_t bits);
 		float UnpackAnimTime(int result);
+
+		uint32_t PackAnimWeight(float weight, size_t bits);
 		float UnpackAnimWeight(int result, intptr_t bits);
-		float UnpackScale(int result);
+
+		uint32_t PackScale(float scale, size_t bits);
+		float UnpackScale(int16_t result);
+
+		uint32_t PackAlpha(float alpha, size_t bits);
 		float UnpackAlpha(int result, intptr_t bits);
-		void CopyFields(entityState_t* other, entityState_t* target, size_t from, size_t to, const netField_t* fieldlist);
+
+		void CopyFields(const entityState_t* other, entityState_t* target, size_t from, size_t to, const netField_t* fieldlist);
 		int32_t PackCoord(float val);
-		int32_t PackCoordExtra(float val);
 		float UnpackCoord(int32_t val);
+
+		int32_t PackCoordExtra(float val);
 		float UnpackCoordExtra(int32_t val);
+
+
+		bool DeltaNeeded(const void* fromField, const void* toField, const netField_t* field);
+		bool DeltaNeeded_ver15(const void* fromField, const void* toField, const netField_t* field);
 	}
 
-	class MOHPC_EXPORTS SerializableUsercmd : public ISerializableMessage
+	class MOHPC_NET_EXPORTS SerializableUsercmd : public ISerializableMessage
 	{
 	private:
 		usercmd_t& ucmd;
@@ -117,11 +181,11 @@ namespace MOHPC
 			: ucmd(inCmd)
 		{}
 
-		virtual void LoadDelta(MSG& msg, const ISerializableMessage* from, intptr_t key) override;
-		virtual void SaveDelta(MSG& msg, const ISerializableMessage* from, intptr_t key) const override;
+		void LoadDelta(MSG& msg, const ISerializableMessage* from, intptr_t key) override;
+		void SaveDelta(MSG& msg, const ISerializableMessage* from, intptr_t key) const override;
 	};
 
-	class MOHPC_EXPORTS SerializableUserEyes : public ISerializableMessage
+	class MOHPC_NET_EXPORTS SerializableUserEyes : public ISerializableMessage
 	{
 	private:
 		usereyes_t& eyesInfo;
@@ -131,11 +195,11 @@ namespace MOHPC
 			: eyesInfo(inEyesInfo)
 		{}
 
-		virtual void SaveDelta(MSG& msg, const ISerializableMessage* from) const override;
-		virtual void LoadDelta(MSG& msg, const ISerializableMessage* from) override;
+		void SaveDelta(MSG& msg, const ISerializableMessage* from) const override;
+		void LoadDelta(MSG& msg, const ISerializableMessage* from) override;
 	};
 
-	class MOHPC_EXPORTS SerializablePlayerState : public ISerializableMessage
+	class MOHPC_NET_EXPORTS SerializablePlayerState : public ISerializableMessage
 	{
 	protected:
 		playerState_t& state;
@@ -145,24 +209,24 @@ namespace MOHPC
 			: state(inState)
 		{}
 
-		virtual void SaveDelta(MSG& msg, const ISerializableMessage* from) const override;
-		virtual void LoadDelta(MSG& msg, const ISerializableMessage* from) override;
+		void SaveDelta(MSG& msg, const ISerializableMessage* from) const override;
+		void LoadDelta(MSG& msg, const ISerializableMessage* from) override;
 
 		playerState_t* GetState() const { return &state; }
 	};
 
-	class MOHPC_EXPORTS SerializablePlayerState_ver15 : public SerializablePlayerState
+	class MOHPC_NET_EXPORTS SerializablePlayerState_ver15 : public SerializablePlayerState
 	{
 	public:
 		SerializablePlayerState_ver15(playerState_t& inState)
 			: SerializablePlayerState(inState)
 		{}
 
-		virtual void SaveDelta(MSG& msg, const ISerializableMessage* from) const override;
-		virtual void LoadDelta(MSG& msg, const ISerializableMessage* from) override;
+		void SaveDelta(MSG& msg, const ISerializableMessage* from) const override;
+		void LoadDelta(MSG& msg, const ISerializableMessage* from) override;
 	};
 
-	class MOHPC_EXPORTS SerializableEntityState : public ISerializableMessage
+	class MOHPC_NET_EXPORTS SerializableEntityState : public ISerializableMessage
 	{
 	protected:
 		entityState_t& state;
@@ -174,61 +238,81 @@ namespace MOHPC
 			, entNum(newNum)
 		{}
 
-		virtual void SaveDelta(MSG& msg, const ISerializableMessage* from) const override;
-		virtual void LoadDelta(MSG& msg, const ISerializableMessage* from) override;
+		void SaveDelta(MSG& msg, const ISerializableMessage* from) const override;
+		void LoadDelta(MSG& msg, const ISerializableMessage* from) override;
 		entityState_t* GetState() const { return &state; }
 	};
 
-	class MOHPC_EXPORTS SerializableEntityState_ver15 : public SerializableEntityState
+	class MOHPC_NET_EXPORTS SerializableEntityState_ver15 : public SerializableEntityState
 	{
 	public:
-		SerializableEntityState_ver15(entityState_t& inState, entityNum_t newNum)
-			: SerializableEntityState(inState, newNum)
-		{}
+		SerializableEntityState_ver15(entityState_t& inState, entityNum_t newNum, float timeDeltaValue);
 
-		virtual void SaveDelta(MSG& msg, const ISerializableMessage* from) const override;
-		virtual void LoadDelta(MSG& msg, const ISerializableMessage* from) override;
-	};
-
-	class MOHPC_EXPORTS EntityException : public Network::NetworkException {};
-
-	class MOHPC_EXPORTS BadEntityNumberException : public EntityException
-	{
-	public:
-		BadEntityNumberException(const char* name, size_t inBadNumber);
-
-		const char* getName() const;
-		size_t getNumber() const;
-		str what() const override;
+		void SaveDelta(MSG& msg, const ISerializableMessage* from) const override;
+		void LoadDelta(MSG& msg, const ISerializableMessage* from) override;
 
 	private:
-		const char* name;
-		size_t badNumber;
+		float timeDelta;
 	};
 
-	class MOHPC_EXPORTS BadEntityFieldException : public EntityException
+	namespace SerializableErrors
 	{
-	private:
-		uint8_t fieldType;
-		const char* fieldName;
+		class Base : public Network::NetworkException {};
 
-	public:
-		BadEntityFieldException(uint8_t inFieldType, const char* inFieldName);
+		class BadEntityNumberException : public Base
+		{
+		public:
+			BadEntityNumberException(const char* name, size_t inBadNumber);
 
-		uint8_t getFieldType() const;
-		const char* getFieldName() const;
-		str what() const override;
-	};
+			MOHPC_NET_EXPORTS const char* getName() const;
+			MOHPC_NET_EXPORTS size_t getNumber() const;
+			MOHPC_NET_EXPORTS str what() const override;
 
-	class MOHPC_EXPORTS BadEntityFieldCountException : public EntityException
-	{
-	private:
-		uint8_t count;
+		private:
+			const char* name;
+			size_t badNumber;
+		};
 
-	public:
-		BadEntityFieldCountException(uint8_t inCount);
+		class BadEntityFieldException : public Base
+		{
+		private:
+			uint8_t fieldType;
+			const char* fieldName;
 
-		uint8_t getCount() const;
-		str what() const override;
-	};
+		public:
+			BadEntityFieldException(uint8_t inFieldType, const char* inFieldName);
+
+			MOHPC_NET_EXPORTS uint8_t getFieldType() const;
+			MOHPC_NET_EXPORTS const char* getFieldName() const;
+			MOHPC_NET_EXPORTS str what() const override;
+		};
+
+		class BadEntityFieldCountException : public Base
+		{
+		private:
+			uint8_t count;
+
+		public:
+			BadEntityFieldCountException(uint8_t inCount);
+
+			MOHPC_NET_EXPORTS uint8_t getCount() const;
+			MOHPC_NET_EXPORTS str what() const override;
+		};
+
+
+		/**
+		 * Invalid command while parsing game state.
+		 */
+		class BadCommandByteException : public Base
+		{
+		public:
+			BadCommandByteException(uint8_t inCmdNum);
+
+			MOHPC_NET_EXPORTS uint8_t getLength() const;
+			MOHPC_NET_EXPORTS str what() const override;
+
+		private:
+			uint8_t cmdNum;
+		};
+	}
 }

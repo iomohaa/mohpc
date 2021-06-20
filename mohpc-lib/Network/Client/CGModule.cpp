@@ -1,10 +1,10 @@
 #include <MOHPC/Network/Client/CGModule.h>
 #include <MOHPC/Network/Client/ClientGame.h>
-#include <MOHPC/Managers/ShaderManager.h>
-#include <MOHPC/Misc/MSG/MSG.h>
-#include <MOHPC/Vector.h>
-#include <MOHPC/Log.h>
-#include <MOHPC/Utilities/TokenParser.h>
+#include <MOHPC/Assets/Managers/ShaderManager.h>
+#include <MOHPC/Utility/Misc/MSG/MSG.h>
+#include <MOHPC/Common/Vector.h>
+#include <MOHPC/Common/Log.h>
+#include <MOHPC/Utility/TokenParser.h>
 
 #include <bitset>
 
@@ -149,11 +149,15 @@ CGameModuleBase::CGameModuleBase(const ClientImports& inImports)
 	traceFunction = stubTrace;
 	pointContentsFunction = stubPointContents;
 
+	using namespace std::placeholders;
+	imports.getGameState().getHandlerList().configStringHandler.add(std::bind(&CGameModuleBase::configStringModified, this, _1, _2));
+
 	// Create predefined box hull
-	boxHull.CM_InitBoxHull();
+	boxHull = CollisionWorld::create();
+	boxHull->InitBoxHull();
 }
 
-void CGameModuleBase::init(uintptr_t serverMessageSequence, uintptr_t serverCommandSequence)
+void CGameModuleBase::init(uintptr_t serverMessageSequence, rsequence_t serverCommandSequence)
 {
 	processedSnapshotNum = serverMessageSequence;
 	latestCommandSequence = serverCommandSequence;
@@ -328,7 +332,7 @@ void CGameModuleBase::processSnapshots()
 			}
 		}
 
-		const uint64_t serverStartTime = getImports().getServerStartTime();
+		const uint64_t serverStartTime = getImports().getClientTime().getStartTime();
 		// if our time is < nextFrame's, we have a nice interpolating state
 		if (svTime >= snap->serverTime && svTime < nextSnap->serverTime && snap->serverTime > serverStartTime) {
 			break;
@@ -407,7 +411,7 @@ void CGameModuleBase::setNextSnap(SnapshotInfo* newSnap)
 		nextFrameCameraCut = false;
 	}
 
-	if (snap->serverTime < getImports().getServerStartTime()) {
+	if (snap->serverTime < getImports().getClientTime().getRemoteStartTime()) {
 		nextFrameTeleport = true;
 	}
 
@@ -580,7 +584,7 @@ void CGameModuleBase::predictPlayerState()
 		{
 			const float f = frameInterpolation - 1.f;
 
-			predictedPlayerState.origin = predictedPlayerState.origin + (entInfo.nextState.origin - entInfo.currentState.origin) * f;
+			predictedPlayerState.origin = predictedPlayerState.origin + (entInfo.nextState.netorigin - entInfo.currentState.netorigin) * f;
 		}
 	}
 }
@@ -597,7 +601,7 @@ void CGameModuleBase::interpolatePlayerState(bool grabAngles)
 	// if we are still allowing local input, short circuit the view angles
 	if (grabAngles)
 	{
-		const uintptr_t cmdNum = getImports().getCurrentCmdNumber();
+		const uintptr_t cmdNum = getImports().getUserInput().getCurrentCmdNumber();
 
 		usercmd_t cmd;
 		getImports().getUserCmd(cmdNum, cmd);
@@ -739,17 +743,17 @@ void CGameModuleBase::clipMoveToEntities(CollisionWorld& cm, const Vector& start
 		{
 			// encoded bbox
 			IntegerToBoundingBox(ent->solid, bmins, bmaxs);
-			cmodel = boxHull.CM_TempBoxModel(bmins, bmaxs, ContentFlags::CONTENTS_BODY);
+			cmodel = boxHull->TempBoxModel(bmins, bmaxs, ContentFlags::CONTENTS_BODY);
 			angles = vec3_origin;
 			origin = cent->currentState.netorigin;
 			// trace to the boxhull instead
 			// entities with a boundingbox use a boxhull
-			world = &boxHull;
+			world = boxHull.get();
 		}
 
 		trace_t trace;
 		// trace through the entity's submodel
-		world->CM_TransformedBoxTrace(&trace, start, end,
+		world->TransformedBoxTrace(&trace, start, end,
 			mins, maxs, cmodel, mask, origin, angles, cylinder);
 
 		if (trace.allsolid || trace.fraction < tr.fraction) {
@@ -823,7 +827,7 @@ void CGameModuleBase::processServerCommand(TokenParser& tokenized)
 void CGameModuleBase::trace(CollisionWorld& cm, trace_t& tr, const Vector& start, const Vector& mins, const Vector& maxs, const Vector& end, uint16_t skipNumber, uint32_t mask, bool cylinder, bool cliptoentities)
 {
 	// if there is a loaded collision from the game, use it instead
-	cm.CM_BoxTrace(&tr, start, end, mins, maxs, 0, mask, cylinder);
+	cm.BoxTrace(&tr, start, end, mins, maxs, 0, mask, cylinder);
 	// collision defaults to world
 	tr.entityNum = tr.fraction != 1.0 ? ENTITYNUM_WORLD : ENTITYNUM_NONE;
 
@@ -841,7 +845,7 @@ void CGameModuleBase::trace(CollisionWorld& cm, trace_t& tr, const Vector& start
 uint32_t CGameModuleBase::pointContents(CollisionWorld& cm, const Vector& point, uintptr_t passEntityNum) const
 {
 	// get the contents in world
-	uint32_t contents = cm.CM_PointContents(point, 0);
+	uint32_t contents = cm.PointContents(point, 0);
 
 	// also iterate through entities (that are using a submodel) to check if the point is inside
 	for (size_t i = 0; i < numSolidEntities; i++)
@@ -863,7 +867,7 @@ uint32_t CGameModuleBase::pointContents(CollisionWorld& cm, const Vector& point,
 			continue;
 		}
 
-		contents |= cm.CM_TransformedPointContents(point, cmodel, ent->origin, ent->angles);
+		contents |= cm.TransformedPointContents(point, cmodel, ent->netorigin, ent->netangles);
 	}
 
 	return contents;
@@ -905,7 +909,7 @@ bool CGameModuleBase::replayAllCommands()
 	setupMove(pmove);
 
 	const playerState_t oldPlayerState = predictedPlayerState;
-	const uintptr_t current = getImports().getCurrentCmdNumber();
+	const uintptr_t current = getImports().getUserInput().getCurrentCmdNumber();
 
 	// Grab the latest cmd
 	usercmd_t latestCmd;

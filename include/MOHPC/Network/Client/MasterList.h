@@ -2,11 +2,10 @@
 
 #include "Server.h"
 #include "GamespyRequest.h"
-#include "../../Utilities/RequestHandler.h"
-#include "../../Utilities/MessageDispatcher.h"
-#include "../../Managers/NetworkManager.h"
-#include "../../Global.h"
-#include "../../Object.h"
+#include "../../Utility/RequestHandler.h"
+#include "../../Utility/MessageDispatcher.h"
+#include "../NetGlobal.h"
+#include "../NetObject.h"
 #include "../Socket.h"
 #include <stdint.h>
 #include  <queue>
@@ -47,7 +46,7 @@ namespace MOHPC
 
 		class ServerList : public IServerList
 		{
-			MOHPC_OBJECT_DECLARATION(ServerList);
+			MOHPC_NET_OBJECT_DECLARATION(ServerList);
 
 		private:
 			class Request_SendCon : public IGamespyRequest
@@ -113,9 +112,9 @@ namespace MOHPC
 			gameListType_e gameType;
 
 		public:
-			MOHPC_EXPORTS ServerList(const MessageDispatcherPtr& dispatcher, const ICommunicatorPtr& masterComm, const ICommunicatorPtr& comm, const IRemoteIdentifierPtr& masterId, gameListType_e type);
+			MOHPC_NET_EXPORTS ServerList(const MessageDispatcherPtr& dispatcher, const ICommunicatorPtr& masterComm, const ICommunicatorPtr& comm, const IRemoteIdentifierPtr& masterId, gameListType_e type);
 
-			MOHPC_EXPORTS virtual void fetch(FoundServerCallback&& callback) override;
+			MOHPC_NET_EXPORTS virtual void fetch(FoundServerCallback&& callback) override;
 
 		private:
 			void sendRequest(IGamespyRequestPtr&& newRequest);
@@ -124,7 +123,7 @@ namespace MOHPC
 
 		class ServerListLAN : public IServerList
 		{
-			MOHPC_OBJECT_DECLARATION(ServerListLAN);
+			MOHPC_NET_OBJECT_DECLARATION(ServerListLAN);
 
 		private:
 			class Request_InfoBroadcast : public IRequestBase, public std::enable_shared_from_this<Request_InfoBroadcast>
@@ -137,17 +136,19 @@ namespace MOHPC
 
 				virtual void generateOutput(IMessageStream& output) override;
 				virtual SharedPtr<IRequestBase> process(InputRequest& data) override;
+				virtual bool isThisRequest(InputRequest& data) const override;
 			};
+
+		public:
+			MOHPC_NET_EXPORTS ServerListLAN(const MessageDispatcherPtr& dispatcher, const ICommunicatorPtr& comm, uint64_t timeoutTimeValue = 1000);
+
+			void fetch(FoundServerCallback&& callback) override;
 
 		private:
 			IUdpSocketPtr socket;
 			//RequestHandler<IRequestBase, GamespyUDPBroadcastRequestParam> handler;
 			IncomingMessageHandler handler;
-
-		public:
-			MOHPC_EXPORTS ServerListLAN(const MessageDispatcherPtr& dispatcher, const ICommunicatorPtr& comm);
-
-			void fetch(FoundServerCallback&& callback) override;
+			uint64_t timeoutTime;
 		};
 		using ServerListLANPtr = SharedPtr<ServerListLAN>;
 	}

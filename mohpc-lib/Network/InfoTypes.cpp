@@ -1,5 +1,6 @@
 #include <MOHPC/Network/InfoTypes.h>
 #include <MOHPC/Network/Types.h>
+#include <cmath>
 
 using namespace MOHPC;
 using namespace Network;
@@ -38,6 +39,11 @@ bool NetAddr::operator!=(const NetAddr& other) const
 
 MOHPC_OBJECT_DEFINITION(NetAddr4);
 
+uint32_t numDigits(uint32_t number)
+{
+	return (uint32_t)floorf(log10f((float)number) + 1);
+}
+
 NetAddr4::NetAddr4()
 	: ip{ 0 }
 {
@@ -63,13 +69,20 @@ const uint8_t* NetAddr4::getAddress() const
 
 str NetAddr4::asString() const
 {
+	size_t ipNums = 0;
+	for (size_t i = 0; i < sizeof(ip); ++i) {
+		ipNums += numDigits(ip[i]) + 1;
+	}
+
 	str adrBuf;
-	adrBuf.reserve(sizeof(ip));
+	adrBuf.reserve(ipNums + 1 + numDigits(port));
 	for (size_t i = 0; i < sizeof(ip); ++i)
 	{
 		if (i != 0) adrBuf += '.';
 		adrBuf += ip[i];
 	}
+
+	adrBuf += ":" + str(port);
 
 	return adrBuf;
 }
@@ -105,11 +118,16 @@ const uint8_t* NetAddr6::getAddress() const
 
 str NetAddr6::asString() const
 {
+	size_t ipNums = 0;
+	for (size_t i = 0; i < sizeof(ip); ++i) {
+		ipNums += numDigits(ip[i]) + 1;
+	}
+
 	str adrBuf;
-	adrBuf.reserve(sizeof(ip));
+	adrBuf.reserve(ipNums + 1 + numDigits(port));
 	for (size_t i = 0; i < sizeof(ip); ++i)
 	{
-		if (i != 0) adrBuf += '.';
+		if (i != 0) adrBuf += '::';
 		adrBuf += ip[i];
 	}
 
@@ -223,7 +241,7 @@ void usereyes_t::setOffset(int8_t x, int8_t y, int8_t z)
 {
 	ofs[0] = x;
 	ofs[1] = y;
-	ofs[1] = z;
+	ofs[2] = z;
 }
 
 void usereyes_t::getOffset(int8_t xyz[3])
@@ -256,7 +274,17 @@ radarInfo_t::radarInfo_t(uint32_t value)
 {
 }
 
-int8_t radarInfo_t::clientNum() const
+radarInfo_t::radarInfo_t(uint8_t clientNum, int8_t x, int8_t y, int8_t yaw, int8_t flags)
+{
+	radarValue = 0;
+	radarValue |= clientNum & BIT_CLIENT;
+	radarValue |= (((x + BIT_CLIENT) & BIT_COORD) << 6);
+	radarValue |= (((y + BIT_CLIENT) & BIT_COORD) << 13);
+	radarValue |= ((yaw & BIT_YAW) << 20);
+	radarValue |= flags << 25;
+}
+
+uint8_t radarInfo_t::clientNum() const
 {
 	return radarValue & 0x3F;
 }
@@ -284,6 +312,26 @@ int8_t radarInfo_t::flags() const
 uint32_t radarInfo_t::getRaw() const
 {
 	return radarValue;
+}
+
+int8_t radarInfo_t::getMinCoord()
+{
+	return -(BIT_COORD >> 1);
+}
+
+int8_t radarInfo_t::getMaxCoord()
+{
+	return BIT_COORD >> 1;
+}
+
+float radarInfo_t::getCoordPrecision()
+{
+	return float(BIT_COORD >> 1);
+}
+
+float radarInfo_t::getYawPrecision()
+{
+	return 360.f / (BIT_YAW + 1);
 }
 
 playerState_t::playerState_t()
@@ -986,6 +1034,23 @@ const entityState_t* MOHPC::Network::SnapshotInfo::getEntityStateByNumber(entity
 	}
 
 	return nullptr;
+}
+
+entityState_t MOHPC::getNullEntityState()
+{
+	entityState_t nullState;
+	nullState.alpha = 1.0f;
+	nullState.scale = 1.0f;
+	nullState.parent = ENTITYNUM_NONE;
+	nullState.tag_num = -1;
+	nullState.constantLight = -1;
+	nullState.renderfx = 16;
+	nullState.bone_tag[4] = -1;
+	nullState.bone_tag[3] = -1;
+	nullState.bone_tag[2] = -1;
+	nullState.bone_tag[1] = -1;
+	nullState.bone_tag[0] = -1;
+	return nullState;
 }
 
 const sound_t& SnapshotInfo::getSound(uint8_t index) const

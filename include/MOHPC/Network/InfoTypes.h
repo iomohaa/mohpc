@@ -1,9 +1,9 @@
 #pragma once
 
-#include "../Global.h"
-#include "../Vector.h"
-#include <stdint.h>
-#include "../Collision/Collision.h"
+#include "NetGlobal.h"
+#include "../Common/Vector.h"
+#include "../Utility/Collision/Collision.h"
+#include <cstdint>
 
 namespace MOHPC
 {
@@ -109,7 +109,7 @@ static constexpr unsigned int RF_ALWAYSDRAW			= (1<<30);
 
 	class playerState_t;
 
-	class MOHPC_EXPORTS usercmd_t
+	class MOHPC_NET_EXPORTS usercmd_t
 	{
 	public:
 		uint32_t serverTime;
@@ -164,7 +164,7 @@ static constexpr unsigned int RF_ALWAYSDRAW			= (1<<30);
 		void removeButtonFlags(uint32_t flags);
 	};
 
-	class MOHPC_EXPORTS usereyes_t
+	class MOHPC_NET_EXPORTS usereyes_t
 	{
 	public:
 		/** Pitch and yaw of eyes. */
@@ -403,14 +403,20 @@ static constexpr unsigned int RF_ALWAYSDRAW			= (1<<30);
 	/**
 	 * Radar info, packed into one 32-bit value.
 	 */
-	struct MOHPC_EXPORTS radarInfo_t
+	struct MOHPC_NET_EXPORTS radarInfo_t
 	{
+	public:
+		static constexpr unsigned int BIT_CLIENT = (1 << 6) - 1;
+		static constexpr unsigned int BIT_COORD = (1 << 7) - 1;
+		static constexpr unsigned int BIT_YAW = (1 << 5) - 1;
+
 	public:
 		radarInfo_t();
 		radarInfo_t(uint32_t value);
+		radarInfo_t(uint8_t clientNum, int8_t x, int8_t y, int8_t yaw, int8_t flags);
 
 		/** Get the clientnum targetted by this radar. */
-		int8_t clientNum() const;
+		uint8_t clientNum() const;
 
 		/** Return the compass-space horizontal value. Range is [-63, 63]. */
 		int8_t x() const;
@@ -430,6 +436,18 @@ static constexpr unsigned int RF_ALWAYSDRAW			= (1<<30);
 		/** Return the raw radar info value. */
 		uint32_t getRaw() const;
 
+		/** Return the minimum coord value. */
+		static int8_t getMinCoord();
+
+		/** Return the maximum coord value. */
+		static int8_t getMaxCoord();
+
+		/** Return the coord precision for radar info. */
+		static float getCoordPrecision();
+
+		/** Return the yaw precision for radar info. */
+		static float getYawPrecision();
+
 	private:
 		uint32_t radarValue;
 	};
@@ -445,7 +463,7 @@ static constexpr unsigned int RF_ALWAYSDRAW			= (1<<30);
 		float yaw;
 	};
 
-	class MOHPC_EXPORTS playerState_t
+	class MOHPC_NET_EXPORTS playerState_t
 	{
 	public:
 		static constexpr unsigned long MAX_STATS = 32;
@@ -624,7 +642,7 @@ static constexpr unsigned int RF_ALWAYSDRAW			= (1<<30);
 		bool hasVoted() const;
 	};
 
-	struct MOHPC_EXPORTS trajectory_t
+	struct MOHPC_NET_EXPORTS trajectory_t
 	{
 	public:
 		Vector trDelta;
@@ -637,7 +655,7 @@ static constexpr unsigned int RF_ALWAYSDRAW			= (1<<30);
 		uint32_t getTime() const;
 	};
 
-	struct MOHPC_EXPORTS frameInfo_t
+	struct MOHPC_NET_EXPORTS frameInfo_t
 	{
 	public:
 		uint32_t index;
@@ -719,7 +737,7 @@ static constexpr unsigned int RF_ALWAYSDRAW			= (1<<30);
 		mouth
 	};
 
-	class MOHPC_EXPORTS entityState_t
+	class MOHPC_NET_EXPORTS entityState_t
 	{
 	public:
 		static constexpr unsigned long MAX_FRAMEINFOS = 16;
@@ -728,10 +746,8 @@ static constexpr unsigned int RF_ALWAYSDRAW			= (1<<30);
 	public:
 		trajectory_t pos;
 		Vector netorigin;
-		Vector origin;
 		Vector origin2;
 		Vector netangles;
-		Vector angles;
 		Vector attach_offset;
 		Vector eyeVector;
 		Vector bone_angles[NUM_BONE_CONTROLLERS];
@@ -871,6 +887,8 @@ static constexpr unsigned int RF_ALWAYSDRAW			= (1<<30);
 		float getShaderTime() const;
 	};
 
+	entityState_t getNullEntityState();
+
 	struct sound_t
 	{
 	public:
@@ -893,36 +911,36 @@ static constexpr unsigned int RF_ALWAYSDRAW			= (1<<30);
 		sound_t();
 
 		/** The entity that the sound is playing on. */
-		MOHPC_EXPORTS const entityState_t* getEntityState() const;
+		MOHPC_NET_EXPORTS const entityState_t* getEntityState() const;
 		/** The name of the sound (retrieved from configstrings). */
-		MOHPC_EXPORTS const char* getName() const;
+		MOHPC_NET_EXPORTS const char* getName() const;
 		/** The sound origin if it's spatialized. */
-		MOHPC_EXPORTS const Vector& getOrigin() const;
+		MOHPC_NET_EXPORTS const Vector& getOrigin() const;
 
 		/** Sound's volume. */
-		MOHPC_EXPORTS float getVolume() const;
+		MOHPC_NET_EXPORTS float getVolume() const;
 		/** The minimum distance the sound will play at full volume. */
-		MOHPC_EXPORTS float getMinimumDistance() const;
+		MOHPC_NET_EXPORTS float getMinimumDistance() const;
 		/** The maximum distance before the sound stops playing. */
-		MOHPC_EXPORTS float getMaximumDistance() const;
+		MOHPC_NET_EXPORTS float getMaximumDistance() const;
 		/** The pitch of the sound. */
-		MOHPC_EXPORTS float getPitch();
+		MOHPC_NET_EXPORTS float getPitch();
 		/** The channel the sound is playing on. */
-		MOHPC_EXPORTS uint8_t getChannel() const;
+		MOHPC_NET_EXPORTS uint8_t getChannel() const;
 
 		/** Whether or not the sound has stopped playing. */
-		MOHPC_EXPORTS bool hasSoundStopped() const;
+		MOHPC_NET_EXPORTS bool hasSoundStopped() const;
 		/** If the whole sound is not into memory. */
-		MOHPC_EXPORTS bool isStreamedSound() const;
+		MOHPC_NET_EXPORTS bool isStreamedSound() const;
 		/** If the sound is spatialized (check origin).*/
-		MOHPC_EXPORTS bool isSpatializedSound() const;
+		MOHPC_NET_EXPORTS bool isSpatializedSound() const;
 
 		/** Volume is assigned if yes. */
-		MOHPC_EXPORTS bool hasSoundVolume() const;
+		MOHPC_NET_EXPORTS bool hasSoundVolume() const;
 		/** minDist is assigned if yes. */
-		MOHPC_EXPORTS bool hasSoundDistance() const;
+		MOHPC_NET_EXPORTS bool hasSoundDistance() const;
 		/** pitch is assigned if yes. */
-		MOHPC_EXPORTS bool hasSoundPitch() const;
+		MOHPC_NET_EXPORTS bool hasSoundPitch() const;
 	};
 
 	namespace Network
@@ -963,35 +981,35 @@ static constexpr unsigned int RF_ALWAYSDRAW			= (1<<30);
 			SnapshotInfo();
 
 			/** Flags of the snap (see SNAPFLAG_* values). */
-			MOHPC_EXPORTS uint32_t getSnapFlags() const;
+			MOHPC_NET_EXPORTS uint32_t getSnapFlags() const;
 			/** Ping of the client in snap. */
-			MOHPC_EXPORTS uint32_t getPing() const;
+			MOHPC_NET_EXPORTS uint32_t getPing() const;
 
 			/** Server time when the server sent the snap. */
-			MOHPC_EXPORTS uint32_t getServerTime() const;
+			MOHPC_NET_EXPORTS uint32_t getServerTime() const;
 
 			/** Area mask at index (for visibility). */
-			MOHPC_EXPORTS uint8_t getAreaMask(uint8_t index) const;
+			MOHPC_NET_EXPORTS uint8_t getAreaMask(uint8_t index) const;
 
 			/** Current playerState in snap. */
-			MOHPC_EXPORTS const playerState_t& getPlayerState() const;
+			MOHPC_NET_EXPORTS const playerState_t& getPlayerState() const;
 
 			/** Number of entities in this snap. */
-			MOHPC_EXPORTS size_t getNumEntities() const;
+			MOHPC_NET_EXPORTS size_t getNumEntities() const;
 			/** Entity at the specified index. */
-			MOHPC_EXPORTS const entityState_t& getEntityState(entityNum_t index) const;
+			MOHPC_NET_EXPORTS const entityState_t& getEntityState(entityNum_t index) const;
 			/** Search for an entity by a global entity number. */
-			MOHPC_EXPORTS const entityState_t* getEntityStateByNumber(entityNum_t entityNum) const;
+			MOHPC_NET_EXPORTS const entityState_t* getEntityStateByNumber(entityNum_t entityNum) const;
 
 			/** Number of server commands that was received in this snap. */
-			MOHPC_EXPORTS size_t getNumServerCommands();
+			MOHPC_NET_EXPORTS size_t getNumServerCommands();
 			/** Start sequence number of the command in list. */
-			MOHPC_EXPORTS size_t getServerCommandSequence() const;
+			MOHPC_NET_EXPORTS size_t getServerCommandSequence() const;
 
 			/** Number of sounds in this snap*/
-			MOHPC_EXPORTS size_t getNumSounds() const;
+			MOHPC_NET_EXPORTS size_t getNumSounds() const;
 			/** Sound at the specified index. */
-			MOHPC_EXPORTS const sound_t& getSound(uint8_t index) const;
+			MOHPC_NET_EXPORTS const sound_t& getSound(uint8_t index) const;
 		};
 	}
 }

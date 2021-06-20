@@ -2,12 +2,11 @@
 
 #include "../Types.h"
 #include "../Socket.h"
-#include "../../Managers/NetworkManager.h"
-#include "../../Object.h"
-#include "../../Utilities/SharedPtr.h"
-#include "../../Utilities/HandlerList.h"
-#include "../../Utilities/RequestHandler.h"
-#include "../../Utilities/MessageDispatcher.h"
+#include "../NetObject.h"
+#include "../../Utility/SharedPtr.h"
+#include "../../Utility/HandlerList.h"
+#include "../../Utility/RequestHandler.h"
+#include "../../Utility/MessageDispatcher.h"
 
 namespace MOHPC
 {
@@ -28,7 +27,7 @@ namespace MOHPC
 		 */
 		class RemoteConsole
 		{
-			MOHPC_OBJECT_DECLARATION(RemoteConsole);
+			MOHPC_NET_OBJECT_DECLARATION(RemoteConsole);
 
 		private:
 			struct RConHandlerList
@@ -43,14 +42,14 @@ namespace MOHPC
 			IncomingMessageHandler handler;
 
 		public:
-			MOHPC_EXPORTS RemoteConsole(const MessageDispatcherPtr& dispatcher, const ICommunicatorPtr& comm, const IRemoteIdentifierPtr& remoteIdentifier, const char* password);
+			MOHPC_NET_EXPORTS RemoteConsole(const MessageDispatcherPtr& dispatcher, const ICommunicatorPtr& comm, const IRemoteIdentifierPtr& remoteIdentifier, const char* password);
 			~RemoteConsole();
 
 			/** Return the handler list. */
-			MOHPC_EXPORTS RConHandlerList& getHandlerList();
+			MOHPC_NET_EXPORTS RConHandlerList& getHandlerList();
 
 			/** Send a remote console command. */
-			MOHPC_EXPORTS void send(const char* command, uint64_t timeoutValue = 5000);
+			MOHPC_NET_EXPORTS void send(const char* command, uint64_t timeoutValue = 5000);
 
 		private:
 			class RConMessageRequest : public IRequestBase

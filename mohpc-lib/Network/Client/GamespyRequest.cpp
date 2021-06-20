@@ -1,5 +1,5 @@
 #include <MOHPC/Network/Client/GamespyRequest.h>
-#include <MOHPC/Utilities/Info.h>
+#include <MOHPC/Utility/Info.h>
 
 using namespace MOHPC;
 using namespace Network;

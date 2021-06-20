@@ -1,19 +1,18 @@
 #pragma once
 
-#include "../Global.h"
-#include <stdint.h>
-#include "../Common/Container.h"
+#include "NetGlobal.h"
+#include <cstdint>
+#include "../Common/str.h"
+#include <morfuse/Container/Container.h>
 
 namespace MOHPC
 {
-	class str;
-
 	namespace Network
 	{
 		/**
 		 * Class for a parameter
 		 */
-		class MOHPC_EXPORTS EventData
+		class MOHPC_NET_EXPORTS EventData
 		{
 		public:
 			enum class dataType_e : uint8_t
@@ -53,18 +52,18 @@ namespace MOHPC
 		class Event
 		{
 		private:
-			Container<EventData> data;
+			mfuse::con::Container<EventData> data;
 
 		public:
-			MOHPC_EXPORTS Event();
+			MOHPC_NET_EXPORTS Event();
 
-			MOHPC_EXPORTS void AddInteger(int32_t value);
-			MOHPC_EXPORTS void AddString(const char* value);
+			MOHPC_NET_EXPORTS void AddInteger(int32_t value);
+			MOHPC_NET_EXPORTS void AddString(const char* value);
 
-			MOHPC_EXPORTS int32_t GetInteger(size_t index) const;
-			MOHPC_EXPORTS str GetString(size_t index) const;
+			MOHPC_NET_EXPORTS int32_t GetInteger(size_t index) const;
+			MOHPC_NET_EXPORTS str GetString(size_t index) const;
 
-			MOHPC_EXPORTS size_t numArgs() const;
+			MOHPC_NET_EXPORTS size_t numArgs() const;
 		};
 
 		class INetworkResponse
