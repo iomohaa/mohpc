@@ -16,20 +16,6 @@ namespace MOHPC
 		{
 			MOHPC_NET_OBJECT_DECLARATION(ClientInfo);
 
-		private:
-			str name;
-			uint32_t rate;
-			uint32_t snaps;
-			PropertyObject properties;
-
-		private:
-			MOHPC_NET_EXPORTS ClientInfo();
-			ClientInfo(ClientInfo&& other) = default;
-			ClientInfo& operator=(ClientInfo&& other) = default;
-			ClientInfo(const ClientInfo& other) = delete;
-			ClientInfo& operator=(const ClientInfo& other) = delete;
-			~ClientInfo() = default;
-
 		public:
 			/**
 			 * Set/get the client rate, in kbps. Common rates are :
@@ -66,6 +52,20 @@ namespace MOHPC
 
 			/** Return the list of properties. */
 			MOHPC_NET_EXPORTS const PropertyObject& getPropertyObject() const;
+
+		private:
+			MOHPC_NET_EXPORTS ClientInfo();
+			ClientInfo(ClientInfo&& other) = default;
+			ClientInfo& operator=(ClientInfo && other) = default;
+			ClientInfo(const ClientInfo & other) = delete;
+			ClientInfo& operator=(const ClientInfo & other) = delete;
+			~ClientInfo() = default;
+
+		private:
+			str name;
+			uint32_t rate;
+			uint32_t snaps;
+			PropertyObject properties;
 		};
 		using ClientInfoPtr = SharedPtr<ClientInfo>;
 		using ConstClientInfoPtr = SharedPtr<const ClientInfo>;

@@ -4,63 +4,63 @@
 using namespace MOHPC;
 using namespace MOHPC::Network;
 
-BaseLines::BaseLines()
-	: entityBaselines(nullptr)
-	, maxBaselines(0)
+EntityList::EntityList()
+	: entityList(nullptr)
+	, maxEntities(0)
 {
 }
 
-BaseLines::BaseLines(baselineNum_t maxBaselinesValue)
-	: maxBaselines(maxBaselinesValue)
+EntityList::EntityList(entityNum_t maxEntitiesValue)
+	: maxEntities(maxEntitiesValue)
 {
-	if (maxBaselines)
+	if (maxEntities)
 	{
-		// assign an array of baselines
-		entityBaselines = new entityState_t[maxBaselines];
+		// assign an array of EntityList
+		entityList = new entityState_t[maxEntities];
 	}
 	else
 	{
 		// no entities
-		entityBaselines = nullptr;
+		entityList = nullptr;
 	}
 }
 
-BaseLines::~BaseLines()
+EntityList::~EntityList()
 {
-	if (entityBaselines)
+	if (entityList)
 	{
-		delete[] entityBaselines;
+		delete[] entityList;
 	}
 }
 
-const entityState_t& BaseLines::getBaseline(baselineNum_t index) const
+const entityState_t& EntityList::getEntity(entityNum_t index) const
 {
-	if (index >= getMaxBaselines()) {
-		throw GameStateErrors::BaselineOutOfRangeException(index);
+	if (index >= getMaxEntities()) {
+		throw GameStateErrors::EntityOutOfRangeException(index);
 	}
 
-	return entityBaselines[index];
+	return entityList[index];
 }
 
-entityState_t& BaseLines::getBaseline(baselineNum_t index)
+entityState_t& EntityList::getEntity(entityNum_t index)
 {
-	if (index >= getMaxBaselines()) {
-		throw GameStateErrors::BaselineOutOfRangeException(index);
+	if (index >= getMaxEntities()) {
+		throw GameStateErrors::EntityOutOfRangeException(index);
 	}
 
-	return entityBaselines[index];
+	return entityList[index];
 }
 
-baselineNum_t BaseLines::getMaxBaselines() const
+entityNum_t EntityList::getMaxEntities() const
 {
-	return maxBaselines;
+	return maxEntities;
 }
 
-void BaseLines::reset()
+void EntityList::reset()
 {
-	for (size_t i = 0; i < maxBaselines; ++i)
+	for (size_t i = 0; i < maxEntities; ++i)
 	{
-		entityBaselines[i] = entityState_t();
+		entityList[i] = entityState_t();
 	}
 }
 
@@ -68,7 +68,7 @@ gameState_t::gameState_t()
 {
 }
 
-gameState_t::gameState_t(const size_t numConfigStrings, const size_t maxChars, const baselineNum_t maxBaselines)
+gameState_t::gameState_t(const size_t numConfigStrings, const size_t maxChars, const entityNum_t maxBaselines)
 	: csMan(numConfigStrings, maxChars)
 	, entityBaselines(maxBaselines)
 {
@@ -88,12 +88,12 @@ const ConfigStringManager& gameState_t::getConfigstringManager() const
 	return csMan;
 }
 
-BaseLines& gameState_t::getEntityBaselines()
+EntityList& gameState_t::getEntityBaselines()
 {
 	return entityBaselines;
 }
 
-const BaseLines& gameState_t::getEntityBaselines() const
+const EntityList& gameState_t::getEntityBaselines() const
 {
 	return entityBaselines;
 }
@@ -104,16 +104,16 @@ void gameState_t::reset()
 	entityBaselines.reset();
 }
 
-GameStateErrors::BaselineOutOfRangeException::BaselineOutOfRangeException(baselineNum_t inBaselineNum)
-	: baselineNum(inBaselineNum)
+GameStateErrors::EntityOutOfRangeException::EntityOutOfRangeException(entityNum_t inEntityNum)
+	: entityNum(inEntityNum)
 {}
 
-baselineNum_t GameStateErrors::BaselineOutOfRangeException::getBaselineNum() const
+entityNum_t GameStateErrors::EntityOutOfRangeException::getEntityNum() const
 {
-	return baselineNum;
+	return entityNum;
 }
 
-str GameStateErrors::BaselineOutOfRangeException::what() const
+str GameStateErrors::EntityOutOfRangeException::what() const
 {
-	return str((int)getBaselineNum());
+	return str((entityNum_t)getEntityNum());
 }

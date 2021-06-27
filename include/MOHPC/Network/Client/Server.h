@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ClientGame.h"
+#include "ServerConnection.h"
 #include "GamespyRequest.h"
 #include "../Types.h"
 #include "../../Utility/Info.h"
@@ -18,7 +18,7 @@ namespace MOHPC
 		{
 			using Query = std::function<void(const ReadOnlyInfo& Info)>;
 
-			using Connect = std::function<void(const ClientGameConnectionPtr& client, const char* errorMessage)>;
+			using Connect = std::function<void(const ServerConnectionPtr& client, const char* errorMessage)>;
 			using Response = std::function<void(const ReadOnlyInfo* info)>;
 			using ServerTimeout = std::function<void()>;
 		}

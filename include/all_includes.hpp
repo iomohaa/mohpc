@@ -56,7 +56,7 @@
 #include <MOHPC/Misc/SHA256.h>
 #include <MOHPC/Network/CGModule.h>
 #include <MOHPC/Network/Channel.h>
-#include <MOHPC/Network/ClientGame.h>
+#include <MOHPC/Network/ServerConnection.h>
 #include <MOHPC/Network/Commands.h>
 #include <MOHPC/Network/Configstring.h>
 #include <MOHPC/Network/Encoding.h>

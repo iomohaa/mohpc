@@ -4,9 +4,9 @@
 #include "../NetObject.h"
 #include "../../Utility/Tick.h"
 #include "../Types.h"
-#include "../Socket.h"
-#include "../Encoding.h"
-#include "../Channel.h"
+#include "../Remote/Socket.h"
+#include "../Remote/Encoding.h"
+#include "../Remote/Channel.h"
 
 #include <morfuse/Container/Container.h>
 
@@ -19,6 +19,9 @@ namespace MOHPC
 	namespace Network
 	{
 		using clientNetTime = std::chrono::time_point<std::chrono::steady_clock>;
+
+		static constexpr size_t MAX_RELIABLE_COMMANDS = 64;
+		static constexpr size_t MAX_STRING_CHARS = 2048;
 
 		class Challenge
 		{

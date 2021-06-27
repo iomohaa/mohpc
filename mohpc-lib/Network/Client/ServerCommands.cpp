@@ -1,5 +1,4 @@
-#include <MOHPC/Network/Event.h>
-#include <MOHPC/Network/Client/ClientGame.h>
+#include <MOHPC/Network/Client/ServerConnection.h>
 #include <MOHPC/Network/Client/Server.h>
 #include <MOHPC/Network/Client/Protocol.h>
 #include <MOHPC/Utility/Info.h>

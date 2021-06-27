@@ -47,7 +47,7 @@ public:
 		return 1.f / sv_fps;
 	}
 
-	void parseGameState(MSG& msg, gameState_t& gameState, gameStateResults_t& results) const override
+	void parseGameState(MSG& msg, gameState_t& gameState, gameStateClient_t& results) const override
 	{
 		uint32_t minProto = 0, maxProto = 0;
 		getProtocol(minProto, maxProto);
@@ -61,7 +61,7 @@ public:
 
 		MOHPC_LOG(Debug, "Parsing gamestate");
 
-		results.client.commandSequence = msg.ReadInteger();
+		results.commandSequence = msg.ReadInteger();
 
 		// reset the game state
 		gameState.reset();
@@ -92,7 +92,7 @@ public:
 			{
 				const entityNum_t newNum = entityParser->readEntityNum(msg);
 
-				entityState_t& es = gameState.getEntityBaselines().getBaseline(newNum);
+				entityState_t& es = gameState.getEntityBaselines().getEntity(newNum);
 
 				entityParser->readDeltaEntity(
 					msg,
@@ -109,8 +109,13 @@ public:
 			}
 		}
 
-		results.client.clientNum = msg.ReadInteger();
-		results.client.checksumFeed = msg.ReadInteger();
+		results.clientNum = msg.ReadInteger();
+		results.checksumFeed = msg.ReadInteger();
+	}
+
+	void parseConfig(gameState_t& gameState, gameStateResults_t& results) const override
+	{
+		ConfigStringManager& csMan = gameState.getConfigstringManager();
 
 		ReadOnlyInfo systemInfo(csMan.getConfigString(CS_SYSTEMINFO));
 		ReadOnlyInfo serverInfo(csMan.getConfigString(CS_SERVERINFO));
@@ -123,6 +128,11 @@ public:
 		results.serverDeltaTime = (uint64_t)floorf(results.serverDeltaTimeSeconds * 1000.f);
 	}
 
+	serverType_e parseServerType(const char* version, size_t len) const override
+	{
+		return serverType_e::normal;
+	}
+
 	void saveGameState(MSG& msg, gameState_t& gameState, const gameStateClient_t& client) const
 	{
 		uint32_t minProto = 0, maxProto = 0;
@@ -133,7 +143,7 @@ public:
 		const IConfigStringTranslator* translator = IConfigStringTranslator::get(maxProto);
 
 		ConfigStringManager& csMan = gameState.getConfigstringManager();
-		BaseLines& baselines = gameState.getEntityBaselines();
+		EntityList& baselines = gameState.getEntityBaselines();
 
 		msg.WriteInteger(client.commandSequence);
 
@@ -147,11 +157,11 @@ public:
 			stringParser->writeString(msg, it.getConfigString());
 		}
 
-		for (baselineNum_t i = 0; i < baselines.getMaxBaselines(); ++i)
+		for (entityNum_t i = 0; i < baselines.getMaxEntities(); ++i)
 		{
 			msg.WriteByteEnum<svc_ops_e>(svc_ops_e::Baseline);
 
-			const entityState_t& ent = baselines.getBaseline(i);
+			const entityState_t& ent = baselines.getEntity(i);
 
 			entityParser->writeEntityNum(msg, ent.number);
 
@@ -183,17 +193,34 @@ public:
 		maxRange = 17;
 	}
 
-	void parseGameState(MSG& msg, gameState_t& gameState, gameStateResults_t& results) const override
+	void parseGameState(MSG& msg, gameState_t& gameState, gameStateClient_t& results) const override
 	{
 		GameState_ver8::parseGameState(msg, gameState, results);
+
+		const ReadOnlyInfo serverInfo(gameState.getConfigstringManager().getConfigString(CS_SERVERINFO));
 
 		// this is the frame time of the server set by **sv_fps**
 		// it is practically useless because the delta frequency can be calculated with 1 / sv_fps
 		const float receivedFrameTimeSec = msg.ReadFloat();
-		if (receivedFrameTimeSec != results.serverDeltaTimeSeconds)
+		if (receivedFrameTimeSec != getFrameTime(serverInfo))
 		{
 			// the server frame time is 1 / sv_fps, it shouldn't be any other value
 			MOHPC_LOG(Warn, "Server has sent a frame time that doesn't match sv_fps");
+		}
+	}
+
+	serverType_e parseServerType(const char* version, size_t len) const override
+	{
+		if (str::ifindn(version, "spearhead", len)) {
+			return serverType_e::spearhead;
+		}
+		else if (str::ifindn(version, "breakthrough", len)) {
+			return serverType_e::breakthrough;
+		}
+		else
+		{
+			MOHPC_LOG(Warn, "Can't find the server type. Defaulting to Spearhead server type. (Server game version = \"%.*s\")", len, version);
+			return serverType_e::spearhead;
 		}
 	}
 

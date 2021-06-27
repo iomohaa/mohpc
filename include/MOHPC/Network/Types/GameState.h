@@ -2,6 +2,7 @@
 
 #include "../NetGlobal.h"
 #include "../Types.h"
+#include "../InfoTypes.h"
 #include "Configstring.h"
 
 #include <cstddef>
@@ -12,42 +13,40 @@ class entityState_t;
 
 namespace Network
 {
-	using baselineNum_t = uint32_t;
-
 	/**
 	 * Contains an array of base entities, used for diffing over the network.
 	 */
-	class BaseLines
+	class EntityList
 	{
 	public:
 		/** Initialize the baseline, empty */
-		MOHPC_NET_EXPORTS BaseLines();
+		MOHPC_NET_EXPORTS EntityList();
 		/**
 		 * Initialize the fixed-size baselines with the maximum
 		 * number of elements.
 		 *
 		 * @param maxBaselines maximum number of baseline entities
 		 */
-		MOHPC_NET_EXPORTS BaseLines(baselineNum_t maxBaselines);
-		MOHPC_NET_EXPORTS ~BaseLines();
+		MOHPC_NET_EXPORTS EntityList(entityNum_t maxEntities);
+		MOHPC_NET_EXPORTS ~EntityList();
 
 		/**
 		 * Return the baseline at the specified index.
 		 *
 		 * @param index The baseline index.
 		 */
-		MOHPC_NET_EXPORTS const entityState_t& getBaseline(baselineNum_t index) const;
-		MOHPC_NET_EXPORTS entityState_t& getBaseline(baselineNum_t index);
+		MOHPC_NET_EXPORTS const entityState_t& getEntity(entityNum_t index) const;
+		MOHPC_NET_EXPORTS entityState_t& getEntity(entityNum_t index);
 
 		/** Return the maximum number of baselines. */
-		MOHPC_NET_EXPORTS baselineNum_t getMaxBaselines() const;
+		MOHPC_NET_EXPORTS entityNum_t getMaxEntities() const;
 
 		/** Empty the baseline list. */
 		MOHPC_NET_EXPORTS void reset();
 
 	private:
-		entityState_t* entityBaselines;
-		baselineNum_t maxBaselines;
+		entityState_t* entityList;
+		entityNum_t maxEntities;
 	};
 
 	/**
@@ -57,19 +56,19 @@ namespace Network
 	{
 	public:
 		MOHPC_NET_EXPORTS gameState_t();
-		MOHPC_NET_EXPORTS gameState_t(const size_t numConfigStrings, const size_t maxChars, const baselineNum_t maxBaselines);
+		MOHPC_NET_EXPORTS gameState_t(const size_t numConfigStrings, const size_t maxChars, const entityNum_t maxBaselines);
 		MOHPC_NET_EXPORTS ~gameState_t();
 
 		MOHPC_NET_EXPORTS ConfigStringManager& getConfigstringManager();
 		MOHPC_NET_EXPORTS const ConfigStringManager& getConfigstringManager() const;
-		MOHPC_NET_EXPORTS BaseLines& getEntityBaselines();
-		MOHPC_NET_EXPORTS const BaseLines& getEntityBaselines() const;
+		MOHPC_NET_EXPORTS EntityList& getEntityBaselines();
+		MOHPC_NET_EXPORTS const EntityList& getEntityBaselines() const;
 
 		MOHPC_NET_EXPORTS void reset();
 
 	private:
 		ConfigStringManager csMan;
-		BaseLines entityBaselines;
+		EntityList entityBaselines;
 	};
 
 	namespace GameStateErrors
@@ -79,16 +78,16 @@ namespace Network
 		/**
 		 * Invalid baseline entity number while parsing gamestate.
 		 */
-		class BaselineOutOfRangeException : public Base
+		class EntityOutOfRangeException : public Base
 		{
 		public:
-			BaselineOutOfRangeException(baselineNum_t inBaselineNum);
+			EntityOutOfRangeException(entityNum_t inEntityNum);
 
-			MOHPC_NET_EXPORTS baselineNum_t getBaselineNum() const;
+			MOHPC_NET_EXPORTS entityNum_t getEntityNum() const;
 			MOHPC_NET_EXPORTS str what() const override;
 
 		private:
-			baselineNum_t baselineNum;
+			entityNum_t entityNum;
 		};
 	}
 }

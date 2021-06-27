@@ -199,28 +199,35 @@ namespace MOHPC
 		void LoadDelta(MSG& msg, const ISerializableMessage* from) override;
 	};
 
-	class MOHPC_NET_EXPORTS SerializablePlayerState : public ISerializableMessage
+	class MOHPC_NET_EXPORTS SerializablePlayerStateBase : public ISerializableMessage
 	{
-	protected:
-		playerState_t& state;
+	public:
+		SerializablePlayerStateBase(playerState_t& inState);
 
 	public:
-		SerializablePlayerState(playerState_t& inState)
-			: state(inState)
-		{}
+		playerState_t* GetState() const { return &state; }
+
+	protected:
+		playerState_t& state;
+	};
+
+	class MOHPC_NET_EXPORTS SerializablePlayerState : public SerializablePlayerStateBase
+	{
+	public:
+		SerializablePlayerState(playerState_t& inState);
 
 		void SaveDelta(MSG& msg, const ISerializableMessage* from) const override;
 		void LoadDelta(MSG& msg, const ISerializableMessage* from) override;
+		void NormalizePlayerState(playerState_t* ps) const;
+		void UnNormalizePlayerState(playerState_t* ps) const;
 
 		playerState_t* GetState() const { return &state; }
 	};
 
-	class MOHPC_NET_EXPORTS SerializablePlayerState_ver15 : public SerializablePlayerState
+	class MOHPC_NET_EXPORTS SerializablePlayerState_ver15 : public SerializablePlayerStateBase
 	{
 	public:
-		SerializablePlayerState_ver15(playerState_t& inState)
-			: SerializablePlayerState(inState)
-		{}
+		SerializablePlayerState_ver15(playerState_t& inState);
 
 		void SaveDelta(MSG& msg, const ISerializableMessage* from) const override;
 		void LoadDelta(MSG& msg, const ISerializableMessage* from) override;

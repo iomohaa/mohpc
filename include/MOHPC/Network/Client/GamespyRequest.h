@@ -3,7 +3,7 @@
 #include "../../Utility/SharedPtr.h"
 #include "../../Utility/RequestHandler.h"
 #include "../Types.h"
-#include "../Socket.h"
+#include "../Remote/Socket.h"
 
 namespace MOHPC
 {

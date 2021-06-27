@@ -219,12 +219,15 @@ void gameStateTestInternal(uint32_t version)
 
 		MSG msg(stream, msgMode_e::Reading);
 
-		Parsing::gameStateResults_t results;
-		gameStateParsing->parseGameState(msg, gs, results);
+		Parsing::gameStateClient_t clResults;
+		gameStateParsing->parseGameState(msg, gs, clResults);
 
-		assert(results.client.commandSequence == 98765);
-		assert(results.client.clientNum == 1);
-		assert(results.client.checksumFeed == 0xABCDEF00);
+		Parsing::gameStateResults_t results;
+		gameStateParsing->parseConfig(gs, results);
+
+		assert(clResults.commandSequence == 98765);
+		assert(clResults.clientNum == 1);
+		assert(clResults.checksumFeed == 0xABCDEF00);
 		assert(results.serverId == 1234567890);
 		assert(results.serverDeltaTime == 50);
 		assert(results.serverDeltaTimeSeconds == 0.05f);

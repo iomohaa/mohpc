@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../Utility/ClassList.h"
+#include "../Utility/ClassList.h"
 
 #include <cstdint>
 
@@ -91,7 +91,7 @@ namespace Network
 	{
 	public:
 		void getProtocol(uint32_t& minRange, uint32_t& maxRange) const { minRange = minProtocolVersion; maxRange = maxProtocolVersion; }
-		Base* createInstance() const { return new T(); }
+		T* createInstance() const override { return new T(); }
 	};
 }
 }

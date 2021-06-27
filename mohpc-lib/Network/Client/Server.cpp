@@ -1,5 +1,5 @@
 #include <MOHPC/Network/Client/Server.h>
-#include <MOHPC/Network/Client/ClientGame.h>
+#include <MOHPC/Network/Client/ServerConnection.h>
 #include <MOHPC/Utility/Misc/MSG/Codec.h>
 #include <MOHPC/Utility/Misc/MSG/MSG.h>
 #include <MOHPC/Utility/Info.h>
@@ -183,7 +183,7 @@ void EngineServer::onConnect(const Callbacks::Connect result, uint16_t qport, ui
 		INetchanPtr newChannel = makeShared<Netchan>(handler.getComm(), qport);
 		// and pass it to the new client game connection
 		// using a shared ptr, to be able to use the deleter from the library itself
-		ClientGameConnectionPtr connection = ClientGameConnection::create(
+		ServerConnectionPtr connection = ServerConnection::create(
 			newChannel,
 			handler.getRemoteId(),
 			challengeResponse,

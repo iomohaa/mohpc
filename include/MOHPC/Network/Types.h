@@ -12,10 +12,6 @@ namespace MOHPC
 {
 	namespace Network
 	{
-		static constexpr unsigned long MAX_RELIABLE_COMMANDS	= 64u;
-		static constexpr unsigned long MAX_INFO_STRING			= 1350u;
-		static constexpr unsigned long MAX_INFO_KEY				= 1024u;
-		static constexpr unsigned long MAX_INFO_VALUE			= 1024u;
 		static constexpr unsigned long MAX_STRING_CHARS			= 2048u;
 		static constexpr unsigned long MAX_UDP_DATA_SIZE		= 65507u;
 

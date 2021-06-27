@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../Types.h"
-#include "../Socket.h"
+#include "../Remote/Socket.h"
 #include "../NetObject.h"
 #include "../../Utility/SharedPtr.h"
 #include "../../Utility/HandlerList.h"

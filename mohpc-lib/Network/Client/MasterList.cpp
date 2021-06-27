@@ -2,7 +2,7 @@
 #include <MOHPC/Network/Client/Server.h>
 #include <MOHPC/Network/Types.h>
 #include <MOHPC/Network/GameSpy/Encryption.h>
-#include <MOHPC/Network/UDPMessageDispatcher.h>
+#include <MOHPC/Network/Remote/UDPMessageDispatcher.h>
 #include <MOHPC/Utility/Misc/MSG/Stream.h>
 #include <MOHPC/Utility/Misc/MSG/MSG.h>
 #include <MOHPC/Utility/Misc/MSG/Codec.h>

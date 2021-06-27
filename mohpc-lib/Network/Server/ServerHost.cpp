@@ -1,11 +1,11 @@
 #include <MOHPC/Network/Server/ServerHost.h>
-#include <MOHPC/Network/Socket.h>
+#include <MOHPC/Network/Remote/Socket.h>
 #include <MOHPC/Network/Types.h>
-#include <MOHPC/Network/Channel.h>
-#include <MOHPC/Network/Encoding.h>
+#include <MOHPC/Network/Remote/Channel.h>
+#include <MOHPC/Network/Remote/Encoding.h>
 #include <MOHPC/Network/Configstring.h>
-#include <MOHPC/Network/IPRemoteIdentifier.h>
-#include <MOHPC/Network/UDPMessageDispatcher.h>
+#include <MOHPC/Network/Remote/IPRemoteIdentifier.h>
+#include <MOHPC/Network/Remote/UDPMessageDispatcher.h>
 #include <MOHPC/Utility/Misc/MSG/Codec.h>
 #include <MOHPC/Utility/Misc/MSG/MSG.h>
 #include <MOHPC/Utility/Misc/MSG/Stream.h>

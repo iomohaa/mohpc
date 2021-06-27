@@ -3,6 +3,7 @@
 #include "../NetGlobal.h"
 #include "../ProtocolSingleton.h"
 #include "../../Utility/Misc/MSG/Serializable.h"
+#include "../Types.h"
 
 namespace MOHPC
 {
@@ -49,14 +50,15 @@ namespace Network
 			uint64_t serverDeltaTime;
 			float serverDeltaTimeSeconds;
 			uint32_t serverId;
-			gameStateClient_t client;
 		};
 
 		class MOHPC_NET_EXPORTS IGameState : public IProtocolSingleton<IGameState>
 		{
 		public:
 			virtual gameState_t create() const = 0;
-			virtual void parseGameState(MSG& msg, gameState_t& gameState, gameStateResults_t& results) const = 0;
+			virtual void parseGameState(MSG& msg, gameState_t& gameState, gameStateClient_t& results) const = 0;
+			virtual void parseConfig(gameState_t& gameState, gameStateResults_t& results) const = 0;
+			virtual serverType_e parseServerType(const char* version, size_t len) const = 0;
 			virtual void saveGameState(MSG& msg, gameState_t& gameState, const gameStateClient_t& client) const = 0;
 		};
 	}

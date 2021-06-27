@@ -6,9 +6,10 @@
 #include "../../Utility/MessageDispatcher.h"
 #include "../NetGlobal.h"
 #include "../NetObject.h"
-#include "../Socket.h"
-#include <stdint.h>
-#include  <queue>
+#include "../Remote/Socket.h"
+
+#include <cstdint>
+#include <queue>
 
 namespace MOHPC
 {

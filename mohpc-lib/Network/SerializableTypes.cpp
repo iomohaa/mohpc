@@ -573,6 +573,50 @@ static_assert(sizeof(entityStateFields_ver15) == sizeof(netField_t) * 146);
 static const entityState_t nullstate;
 static const playerState_t nullPS;
 
+SerializablePlayerStateBase::SerializablePlayerStateBase(playerState_t& inState)
+	: state(inState)
+{}
+
+SerializablePlayerState::SerializablePlayerState(playerState_t& inState)
+	: SerializablePlayerStateBase(inState)
+{}
+
+void SerializablePlayerState::NormalizePlayerState(playerState_t * ps) const
+{
+	const uint32_t pmFlags = ps->pm_flags;
+	uint32_t newPmFlags = 0;
+
+	// Convert AA PlayerMove flags to SH/BT flags
+	newPmFlags |= pmFlags & PMF_DUCKED;
+	for (size_t i = 2; i < 32; ++i)
+	{
+		if (pmFlags & (1 << (i + 2))) {
+			newPmFlags |= (1 << i);
+		}
+	}
+
+	// So that flags are normalized across modules
+	ps->pm_flags = newPmFlags;
+}
+
+void SerializablePlayerState::UnNormalizePlayerState(playerState_t * ps) const
+{
+	const uint32_t pmFlags = ps->pm_flags;
+	uint32_t newPmFlags = 0;
+
+	// Convert new flags flag to old AA pmflags
+	newPmFlags |= pmFlags & PMF_DUCKED;
+	for (size_t i = 2; i < 32; ++i)
+	{
+		if (pmFlags & (1 << i)) {
+			newPmFlags |= (1 << (i + 2));
+		}
+	}
+
+	// So that flags are normalized across modules
+	ps->pm_flags = newPmFlags;
+}
+
 void SerializablePlayerState::SaveDelta(MSG& msg, const ISerializableMessage* from) const
 {
 	MsgTypesHelper msgHelper(msg);
@@ -598,6 +642,9 @@ void SerializablePlayerState::SaveDelta(MSG& msg, const ISerializableMessage* fr
 			lc = i + 1;
 		}
 	}
+
+	const uint32_t pm_flags = GetState()->pm_flags;
+	UnNormalizePlayerState(GetState());
 
 	// Serialize the number of changes
 	msg.WriteByte(lc);
@@ -632,6 +679,8 @@ void SerializablePlayerState::SaveDelta(MSG& msg, const ISerializableMessage* fr
 			break;
 		}
 	}
+
+	GetState()->pm_flags = pm_flags;
 
 	uint32_t statsBits = 0;
 	uint32_t activeItemsBits = 0;
@@ -767,6 +816,8 @@ void SerializablePlayerState::LoadDelta(MSG& msg, const ISerializableMessage* fr
 	// Serialize the number of changes
 	const uint8_t lc = msg.ReadByte();
 
+	const uint32_t pm_flags = GetState()->pm_flags;
+
 	size_t i;
 	const netField_t* field;
 	for (i = 0, field = playerStateFields; i < lc; ++i, ++field)
@@ -800,6 +851,12 @@ void SerializablePlayerState::LoadDelta(MSG& msg, const ISerializableMessage* fr
 		default:
 			break;
 		}
+	}
+
+	if (GetState()->pm_flags != pm_flags)
+	{
+		// got a new flags so normalize it correctly
+		NormalizePlayerState(GetState());
 	}
 
 	if (fromPS)
@@ -891,6 +948,10 @@ void SerializablePlayerState::LoadDelta(MSG& msg, const ISerializableMessage* fr
 		}
 	}
 }
+
+SerializablePlayerState_ver15::SerializablePlayerState_ver15(playerState_t& inState)
+	: SerializablePlayerStateBase(inState)
+{}
 
 void SerializablePlayerState_ver15::SaveDelta(MSG& msg, const ISerializableMessage* from) const
 {

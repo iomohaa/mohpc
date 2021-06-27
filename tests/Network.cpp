@@ -1,14 +1,13 @@
 #include <MOHPC/Assets/Managers/AssetManager.h>
-#include <MOHPC/Network/Client/ClientGame.h>
-#include <MOHPC/Network/Client/CGModule.h>
+#include <MOHPC/Network/Client/ServerConnection.h>
+#include <MOHPC/Network/Client/CGame/Module.h>
 #include <MOHPC/Network/Client/MasterList.h>
 #include <MOHPC/Network/Client/RemoteConsole.h>
 #include <MOHPC/Network/Client/ServerQuery.h>
 #include <MOHPC/Network/Client/Protocol.h>
-#include <MOHPC/Network/Event.h>
 #include <MOHPC/Network/Types.h>
-#include <MOHPC/Network/TCPMessageDispatcher.h>
-#include <MOHPC/Network/UDPMessageDispatcher.h>
+#include <MOHPC/Network/Remote/TCPMessageDispatcher.h>
+#include <MOHPC/Network/Remote/UDPMessageDispatcher.h>
 #include <MOHPC/Common/str.h>
 #include <MOHPC/Utility/Misc/MSG/Stream.h>
 #include <MOHPC/Utility/Info.h>
@@ -147,7 +146,7 @@ int main(int argc, const char* argv[])
 	// process server info command (can be batched)
 	dispatcher->processIncomingMessages();
 
-	Network::ClientGameConnectionPtr connection;
+	Network::ServerConnectionPtr connection;
 
 	float forwardValue = 0.f;
 	float rightValue = 0.f;
@@ -175,7 +174,7 @@ int main(int argc, const char* argv[])
 
 	const TickableObjectsPtr tickableObjects = TickableObjects::create();
 
-	clientBase->connect(clientInfo, connectSettings, [&](const Network::ClientGameConnectionPtr& cg, const char* errorMessage)
+	clientBase->connect(clientInfo, connectSettings, [&](const Network::ServerConnectionPtr& cg, const char* errorMessage)
 		{
 			if (errorMessage)
 			{
@@ -194,7 +193,7 @@ int main(int argc, const char* argv[])
 					MOHPC_LOG(Info, "Exception of type \"%s\": \"%s\"", typeid(exception).name(), exception.what().c_str());
 				});
 
-			connection->getGameState().getHandlerList().gameStateParsedHandler.add([&AM, &connection, cgame, &cm, &mapfilename](const Network::IGameState& gameState, bool differentLevel)
+			connection->getGameState().getHandlers().gameStateParsedHandler.add([&AM, &connection, cgame, &cm, &mapfilename](const Network::ServerGameState& gameState, bool differentLevel)
 				{
 					const cgsInfo& cgs = cgame->getServerInfo();
 					const str& loadedMap = cgs.getMapFilenameStr();
@@ -216,102 +215,105 @@ int main(int argc, const char* argv[])
 					connection->markReady();
 				});
 
-			connection->getHandlerList().serverRestartedHandler.add([]()
+			connection->getSnapshotManager().getHandlers().serverRestartedHandler.add([]()
 				{
 					MOHPC_LOG(Info, "server restarted");
 				});
 
-			connection->getHandlerList().configStringHandler.add([](csNum_t csNum, const char* configString)
+			connection->getGameState().getHandlers().configStringHandler.add([](csNum_t csNum, const char* configString)
 				{
 					MOHPC_LOG(Info, "cs %d modified: %s", csNum, configString);
 				});
 
-			fnHandle_t cb = cgame->getHandlerList().entityAddedHandler.add([&connection](const entityState_t& state)
+			fnHandle_t cb = cgame->getSnapshotProcessor().handlers().entityAddedHandler.add([&connection](const entityState_t& state)
 				{
-					const char* modelName = connection->getGameState().getConfigString(CS_MODELS + state.modelindex);
+					const char* modelName = connection->getGameState().get().getConfigstringManager().getConfigString(CS_MODELS + state.modelindex);
 					MOHPC_LOG(Trace, "new entity %d, model \"%s\"", state.number, modelName);
 				});
 
-			cgame->getHandlerList().entityRemovedHandler.add([&connection](const entityState_t& state)
+			cgame->getSnapshotProcessor().handlers().entityRemovedHandler.add([&connection](const entityState_t& state)
 				{
-					const char* modelName = connection->getGameState().getConfigString(CS_MODELS + state.modelindex);
+					const char* modelName = connection->getGameState().get().getConfigstringManager().getConfigString(CS_MODELS + state.modelindex);
 					MOHPC_LOG(Trace, "entity %d deleted (was model \"%s\")", state.number, modelName);
 				});
 
-			cgame->getHandlerList().makeBulletTracerHandler.add([](const Vector& barrel, const Vector& start, const Vector& end, uint32_t numBullets, uint32_t iLarge, uint32_t numTracersVisible, float bulletSize)
+			cgame->handlers().makeBulletTracerHandler.add([](const Vector& barrel, const Vector& start, const Vector& end, uint32_t numBullets, uint32_t iLarge, uint32_t numTracersVisible, float bulletSize)
 				{
 					static size_t num = 0;
 					//MOHPC_LOG(Trace, "bullet %zu", num++);
 				});
 
-			cgame->getHandlerList().impactHandler.add([](const Vector& origin, const Vector& normal, uint32_t large)
+			cgame->handlers().impactHandler.add([](const Vector& origin, const Vector& normal, uint32_t large)
 				{
 					static size_t num = 0;
 					//MOHPC_LOG(Trace, "impact %zu", num++);
 				});
 
-			cgame->getHandlerList().makeExplosionEffectHandler.add([](const Vector& origin, effects_e type)
+			cgame->handlers().makeExplosionEffectHandler.add([](const Vector& origin, const char* modelName)
 				{
 					static size_t num = 0;
 					//MOHPC_LOG(Trace, "explosionfx %zu: type \"%s\"", num++, getEffectName(type));
 				});
 
-			cgame->getHandlerList().makeEffectHandler.add([](const Vector& origin, const Vector& normal, effects_e type)
+			cgame->handlers().makeEffectHandler.add([](const Vector& origin, const Vector& normal, const char* modelName)
 				{
 					static size_t num = 0;
 					//MOHPC_LOG(Trace, "effect %zu: type \"%s\"", num++, getEffectName(type));
 				});
 
-			cgame->getHandlerList().spawnDebrisHandler.add([](CGameHandlers::debrisType_e debrisType, const Vector& origin, uint32_t numDebris)
+			cgame->handlers().spawnDebrisHandler.add([](CGameHandlers::debrisType_e debrisType, const Vector& origin, uint32_t numDebris)
 				{
 					static size_t num = 0;
 					//MOHPC_LOG(Trace, "debris %zu: type %d", num++, debrisType);
 				});
 
-			cgame->getHandlerList().hitNotifyHandler.add([]()
+			cgame->handlers().hitNotifyHandler.add([]()
 				{
 					static size_t num = 0;
 					//MOHPC_LOG(Trace, "hit %zu", num++);
 				});
 
-			cgame->getHandlerList().killNotifyHandler.add([]()
+			cgame->handlers().killNotifyHandler.add([]()
 				{
 					static size_t num = 0;
 					//MOHPC_LOG(Trace, "kill %zu", num++);
 				});
 
-			cgame->getHandlerList().voiceMessageHandler.add([](const Vector& origin, bool local, uint8_t clientNum, const char* soundName)
+			cgame->handlers().voiceMessageHandler.add([](const Vector& origin, bool local, uint8_t clientNum, const char* soundName)
 				{
 					static size_t num = 0;
 					//MOHPC_LOG(Trace, "voice %d: sound \"%s\"", num++, soundName);
 				});
 
-			cgame->getHandlerList().printHandler.add([](hudMessage_e hudMessage, const char* text)
+			cgame->handlers().printHandler.add([](hudMessage_e hudMessage, const char* text)
 				{
 					MOHPC_LOG(Trace, "server print (%d): \"%s\"", hudMessage, text);
 				});
 
-			cgame->getHandlerList().hudPrintHandler.add([](const char* text)
+			cgame->handlers().hudPrintHandler.add([](const char* text)
 				{
 					MOHPC_LOG(Trace, "server print \"%s\"", text);
 				});
 
-			cgame->getHandlerList().huddrawShaderHandler.add([](uint8_t index, const char* shaderName)
+			cgame->handlers().huddrawShaderHandler.add([](uint8_t index, const char* shaderName)
 				{
 					MOHPC_LOG(Debug, "huddraw_shader : %d \"%s\"", index, shaderName);
 				});
 
-			cgame->getHandlerList().voteModifiedHandler.add([](const voteInfo_t& voteInfo)
+			cgame->getVoteManager().handlers().voteModifiedHandler.add([](const VoteManager& voteInfo)
 				{
 					if (voteInfo.getVoteTime())
 					{
 						MOHPC_LOG(Debug, "vote: \"%s\"", voteInfo.getVoteString());
+
+						uint32_t numVotesYes = 0, numVotesNo = 0, numVotesUndecided = 0;
+						voteInfo.getVotesCount(numVotesYes, numVotesNo, numVotesUndecided);
 						MOHPC_LOG(
 							Debug,
 							"vote: yes %d no %d undecided %d",
-							voteInfo.getNumVotesYes(),
-							voteInfo.getNumVotesNo(),
-							voteInfo.getNumVotesUndecided()
+							numVotesYes,
+							numVotesNo,
+							numVotesUndecided
 						);
 					}
 					else {

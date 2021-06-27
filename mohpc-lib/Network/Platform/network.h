@@ -1,4 +1,4 @@
-#include <MOHPC/Network/Socket.h>
+#include <MOHPC/Network/Remote/Socket.h>
 
 namespace MOHPC
 {
