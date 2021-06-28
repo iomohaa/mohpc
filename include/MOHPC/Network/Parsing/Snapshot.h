@@ -2,15 +2,14 @@
 
 #include "../NetGlobal.h"
 #include "../ProtocolSingleton.h"
-#include "../Types.h"
+#include "../Exception.h"
 #include "../../Utility/Misc/MSG/Serializable.h"
 
 namespace MOHPC
 {
-class entityState_t;
-
 namespace Network
 {
+	class entityState_t;
 	struct rawSnapshot_t;
 	struct gameState_t;
 	class ICommandSequence;

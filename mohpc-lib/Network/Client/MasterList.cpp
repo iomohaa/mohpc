@@ -1,6 +1,5 @@
 #include <MOHPC/Network/Client/MasterList.h>
 #include <MOHPC/Network/Client/Server.h>
-#include <MOHPC/Network/Types.h>
 #include <MOHPC/Network/GameSpy/Encryption.h>
 #include <MOHPC/Network/Remote/UDPMessageDispatcher.h>
 #include <MOHPC/Utility/Misc/MSG/Stream.h>

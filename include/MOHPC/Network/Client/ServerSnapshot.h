@@ -2,10 +2,10 @@
 
 #include "../../Utility/HandlerList.h"
 #include "../Types/Snapshot.h"
-#include "../InfoTypes.h"
-#include "../Types.h"
+#include "../Types/Protocol.h"
 
 #include "../Parsing/Entity.h"
+#include "../Parsing/PlayerState.h"
 #include "../Parsing/PVS.h"
 #include "../Parsing/Snapshot.h"
 

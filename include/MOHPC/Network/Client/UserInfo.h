@@ -1,7 +1,9 @@
 #pragma once
 
-#include <MOHPC/Common/str.h>
+#include "../NetGlobal.h"
+#include "../NetObject.h"
 #include "../../Utility/PropertyMap.h"
+#include "../../Common/str.h"
 
 namespace MOHPC
 {

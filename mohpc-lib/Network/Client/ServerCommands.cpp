@@ -1,6 +1,7 @@
 #include <MOHPC/Network/Client/ServerConnection.h>
 #include <MOHPC/Network/Client/Server.h>
 #include <MOHPC/Network/Client/Protocol.h>
+#include <MOHPC/Network/Version.h>
 #include <MOHPC/Utility/Info.h>
 #include <MOHPC/Utility/TokenParser.h>
 #include <MOHPC/Utility/ClassList.h>
@@ -203,7 +204,7 @@ str EngineServer::ConnectRequest::generateRequest()
 	// append the challenge
 	info.SetValueForKey("challenge", str::printf("%i", challenge));
 	// send the client version and the protocol
-	const char* version = data.settings ? data.settings->getVersion() : CLIENT_VERSION;
+	const char* version = data.settings ? data.settings->getVersion() : NETWORK_VERSION;
 	info.SetValueForKey("version", version);
 
 	for(const IClientProtocol* proto = IClientProtocol::getHead(); proto; proto = proto->getNext())

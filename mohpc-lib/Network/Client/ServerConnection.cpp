@@ -1,10 +1,10 @@
 #include <MOHPC/Network/Client/ServerConnection.h>
 #include <MOHPC/Network/Client/CGame/Module.h>
+#include <MOHPC/Network/Remote/Channel.h>
+#include <MOHPC/Network/Serializable/UserInput.h>
 #include <MOHPC/Utility/Misc/MSG/MSG.h>
 #include <MOHPC/Utility/Misc/MSG/Stream.h>
 #include <MOHPC/Utility/Misc/MSG/Codec.h>
-#include <MOHPC/Network/Remote/Channel.h>
-#include <MOHPC/Network/SerializableTypes.h>
 #include <MOHPC/Utility/Info.h>
 #include <MOHPC/Utility/TokenParser.h>
 #include <MOHPC/Common/Log.h>

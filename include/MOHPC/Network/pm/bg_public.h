@@ -29,9 +29,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "../../Common/Math.h"
 #include "../../Utility/Function.h"
-#include "../InfoTypes.h"
+#include "../../Utility/Collision/Collision.h"
+#include "../Types/UserInput.h"
 
 namespace MOHPC
+{
+namespace Network
 {
 	static constexpr unsigned int DEFAULT_GRAVITY = 800;
 	static constexpr unsigned int SCORE_NOT_PRESENT = -9999;	// for the CS_SCORES[12] when only one player is present
@@ -119,6 +122,7 @@ namespace MOHPC
 	static constexpr unsigned int SOLID_BMODEL = 0xffffff;
 
 	class playerState_t;
+	class entityState_t;
 
 	using TraceFunction = Function<void(trace_t* results, const Vector& start, const Vector& mins, const Vector& maxs, const Vector& end, uintptr_t passEntityNum, uintptr_t contentMask, bool capsule, bool traceDeep)>;
 	using PointContentsFunction = Function<uint32_t(const Vector& point, uintptr_t passEntityNum)>;
@@ -339,4 +343,5 @@ namespace MOHPC
 	static constexpr unsigned int MASK_LINE = (CONTENTS_SOLID | CONTENTS_BODY | CONTENTS_UNKNOWN2 | CONTENTS_NOBOTCLIP | CONTENTS_BBOX);
 	static constexpr unsigned int MASK_VEHICLETURRET = (CONTENTS_SOLID | CONTENTS_TRIGGER | CONTENTS_FENCE | CONTENTS_VEHICLECLIP | CONTENTS_MONSTERCLIP | CONTENTS_PLAYERCLIP);
 	*/
+}
 };

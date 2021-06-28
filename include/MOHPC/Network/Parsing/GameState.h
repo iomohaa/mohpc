@@ -3,7 +3,7 @@
 #include "../NetGlobal.h"
 #include "../ProtocolSingleton.h"
 #include "../../Utility/Misc/MSG/Serializable.h"
-#include "../Types.h"
+#include "../Types/Protocol.h"
 
 namespace MOHPC
 {

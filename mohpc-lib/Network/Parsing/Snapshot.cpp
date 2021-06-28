@@ -1,9 +1,11 @@
 #include <MOHPC/Network/Parsing/Snapshot.h>
 #include <MOHPC/Network/Parsing/Entity.h>
+#include <MOHPC/Network/Parsing/PlayerState.h>
 #include <MOHPC/Network/Types/Snapshot.h>
 #include <MOHPC/Network/Types/GameState.h>
 #include <MOHPC/Network/Types/Reliable.h>
-#include <MOHPC/Network/SerializableTypes.h>
+#include <MOHPC/Network/Serializable/Entity.h>
+#include <MOHPC/Network/Serializable/EntityField.h>
 #include <MOHPC/Utility/Misc/MSG/MSG.h>
 #include <MOHPC/Common/Log.h>
 

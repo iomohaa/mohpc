@@ -5,7 +5,6 @@
 #include <MOHPC/Network/Client/RemoteConsole.h>
 #include <MOHPC/Network/Client/ServerQuery.h>
 #include <MOHPC/Network/Client/Protocol.h>
-#include <MOHPC/Network/Types.h>
 #include <MOHPC/Network/Remote/TCPMessageDispatcher.h>
 #include <MOHPC/Network/Remote/UDPMessageDispatcher.h>
 #include <MOHPC/Common/str.h>
@@ -52,8 +51,6 @@ int main(int argc, const char* argv[])
 {
 	InitCommon();
 
-	MOHPC_LOG(Info, "MOHPC %s %s", VERSION_STRING, VERSION_ARCHITECTURE);
-
 	MOHPC_LOG(Info, "Supported protocol(s):");
 	for (const IClientProtocol* proto = IClientProtocol::getHead(); proto; proto = proto->getNext())
 	{
@@ -66,24 +63,6 @@ int main(int argc, const char* argv[])
 	memset(buf, 0, sizeof(buf));
 	count = 0;
 	wantsDisconnect = false;
-
-	{
-		Info info;
-		info.SetValueForKey("testKey1", "value");
-		info.SetValueForKey("testKey2", "value2");
-		info.SetValueForKey("somekey", "somevalue");
-		info.SetValueForKey("keyToBe", "deleted");
-		info.SetValueForKey("foo", "bar");
-		info.SetValueForKey("fu", "boor");
-		info.RemoveKey("keyToBe");
-		info.SetValueForKey("afterkey", "deletion");
-
-		str someKeyVal = info.ValueForKey("somekey");
-		assert(someKeyVal == "somevalue");
-
-		someKeyVal = info.ValueForKey("keyToBe");
-		assert(someKeyVal.isEmpty());
-	}
 
 	// create a message dispatcher for server list
 	NetAddr4Ptr bindAdr = NetAddr4::create();

@@ -1,9 +1,9 @@
 #pragma once
 
+#include "../NetGlobal.h"
 #include "../../Utility/SharedPtr.h"
 #include "../../Utility/WeakPtr.h"
-#include "../NetGlobal.h"
-#include "../Types.h"
+#include "Address.h"
 
 #include <cstdint>
 
@@ -12,6 +12,8 @@ namespace MOHPC
 	namespace Network
 	{
 		struct NetAddr;
+
+		static constexpr unsigned long MAX_UDP_DATA_SIZE = 65507u;
 
 		enum class addressType_e : unsigned char {
 			IPv4,

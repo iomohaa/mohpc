@@ -1,6 +1,6 @@
 #include <MOHPC/Network/Remote/Channel.h>
-#include <MOHPC/Network/InfoTypes.h>
 #include <MOHPC/Network/Remote/Socket.h>
+#include <MOHPC/Network/Remote/Ops.h>
 #include <MOHPC/Network/Remote/UDPMessageDispatcher.h>
 #include <MOHPC/Utility/Misc/MSG/MSG.h>
 #include <MOHPC/Utility/Misc/MSG/Serializable.h>
@@ -9,6 +9,11 @@
 
 using namespace MOHPC;
 using namespace Network;
+
+// max size of a network packet
+static constexpr unsigned long MAX_PACKETLEN	= 1400u;
+static constexpr unsigned long FRAGMENT_SIZE	= (MAX_PACKETLEN - 100u);
+static constexpr unsigned long FRAGMENT_BIT		= (1u << 31u);
 
 INetchan::INetchan(const ICommunicatorPtr& inSocket)
 	: socket(inSocket)
@@ -268,7 +273,7 @@ void Netchan::writePacketServerHeader(IMessageStream& stream, uint32_t sequenceN
 void Netchan::clearFragment()
 {
 	// free memory if it's above the max message size
-	fragmentStream.clear(fragmentStream.GetLength() >= MAX_MSGLEN);
+	fragmentStream.clear(true);
 }
 
 void MOHPC::Network::Netchan::writePacketHeader(IMessageStream& stream, bool fragmented)

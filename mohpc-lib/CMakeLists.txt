@@ -44,7 +44,7 @@ target_include_directories(MOHPC PRIVATE ${PROJECT_SOURCE_DIR}/../thirdparty)
 target_include_directories(MOHPC PUBLIC $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include> $<INSTALL_INTERFACE:${CMAKE_INSTALL_PREFIX}/include>)
 target_compile_features(MOHPC PUBLIC cxx_std_17)
 
-add_custom_target(versioning ${CMAKE_COMMAND} -D VERSION_FILE=${CMAKE_SOURCE_DIR}/include/MOHPC/Version.h -P ${CMAKE_SOURCE_DIR}/mohpc-lib/version.cmake)
+add_custom_target(versioning ${CMAKE_COMMAND} -D VERSION_FILE=${CMAKE_SOURCE_DIR}/mohpc-lib/Common/Version.cpp -P ${CMAKE_SOURCE_DIR}/mohpc-lib/version.cmake)
 add_dependencies(MOHPC versioning)
 
 install(

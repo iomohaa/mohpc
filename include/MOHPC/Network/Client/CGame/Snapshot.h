@@ -3,8 +3,8 @@
 #include "../../../Utility/HandlerList.h"
 #include "../../../Utility/Function.h"
 #include "../../Types/Reliable.h"
-#include "../../InfoTypes.h"
-#include "../../Types.h"
+#include "../../Types/Snapshot.h"
+#include "../../Exception.h"
 
 #include <functional>
 #include <cstdint>
@@ -13,11 +13,11 @@
 namespace MOHPC
 {
 class CommandManager;
-class entityState_t;
 class TokenParser;
 
 namespace Network
 {
+	class entityState_t;
 	class ServerSnapshotManager;
 	class ClientTime;
 	class SnapshotInfo;

@@ -2,7 +2,7 @@
 
 #include "../NetGlobal.h"
 #include "../Configstring.h"
-#include "../Types.h"
+#include "../Exception.h"
 #include "../ProtocolSingleton.h"
 
 #include <cstdint>

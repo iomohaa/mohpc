@@ -4,7 +4,6 @@
 #include <MOHPC/Utility/Misc/MSG/Stream.h>
 #include <MOHPC/Utility/Misc/MSG/Serializable.h>
 #include <MOHPC/Utility/Misc/MSG/HuffmanTree.h>
-#include <MOHPC/Network/InfoTypes.h>
 #include <MOHPC/Utility/Misc/Endian.h>
 #include <cstring>
 #include <cassert>
@@ -1193,18 +1192,6 @@ Vector MsgTypesHelper::ReadDir()
 	return dir;
 }
 
-uint32_t MsgTypesHelper::ReadEntityNum()
-{
-	const entityNum_t entNum = msg.ReadNumber<entityNum_t>(GENTITYNUM_BITS);
-	return entNum & (MAX_GENTITIES - 1);
-}
-
-uint32_t MsgTypesHelper::ReadEntityNum2()
-{
-	const entityNum_t entNum = msg.ReadNumber<entityNum_t>(GENTITYNUM_BITS);
-	return (entNum - 1) & (MAX_GENTITIES - 1);
-}
-
 void MsgTypesHelper::WriteCoord(float value)
 {
 	int32_t bits = int32_t(value * 16.0f);
@@ -1289,14 +1276,4 @@ void MsgTypesHelper::WriteDir(Vector& dir)
 	uint8_t byteValue = 0;
 	ByteToDir(byteValue, dir);
 	msg.WriteByte(byteValue);
-}
-
-void MsgTypesHelper::WriteEntityNum(uint32_t num)
-{
-	msg.WriteNumber<entityNum_t>(num, GENTITYNUM_BITS);
-}
-
-void MsgTypesHelper::WriteEntityNum2(uint32_t num)
-{
-	msg.WriteNumber<entityNum_t>(num + 1, GENTITYNUM_BITS);
 }

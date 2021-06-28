@@ -3,7 +3,6 @@
 #include "../NetGlobal.h"
 #include "../NetObject.h"
 #include "../../Utility/Tick.h"
-#include "../Types.h"
 #include "../Remote/Socket.h"
 #include "../Remote/Encoding.h"
 #include "../Remote/Channel.h"

@@ -2,8 +2,7 @@
 
 #include <cstdint>
 #include "../../Configstring.h"
-#include "../../InfoTypes.h"
-#include "../../Types.h"
+#include "../../Exception.h"
 #include "../../pm/bg_public.h"
 #include "../../../Utility/HandlerList.h"
 #include "../../../Utility/PropertyMap.h"
@@ -29,78 +28,77 @@ namespace MOHPC
 	class StringMessage;
 	class TokenParser;
 	class ReadOnlyInfo;
-	class entityState_t;
-
-	namespace DMFlags
-	{
-		/**
-		 * Values for dmflags
-		 */
-		/** Players don't drop health on death. */
-		static constexpr unsigned int DF_NO_HEALTH				= (1 << 0);
-		/** Players don't drop powerups on death. */
-		static constexpr unsigned int DF_NO_POWERUPS			= (1 << 1);
-		/** Whether or not weapons in the level stays available on player pick up. */
-		static constexpr unsigned int DF_WEAPONS_STAY			= (1 << 2);
-		/** Prevent falling damage. */
-		static constexpr unsigned int DF_NO_FALLING				= (1 << 3);
-		/** This flag doesn't seem to be used at all. */
-		static constexpr unsigned int DF_INSTANT_ITEMS			= (1 << 4);
-		/** TriggerChangeLevel won't switch level. */
-		static constexpr unsigned int DF_SAME_LEVEL				= (1 << 5);
-		/** Prevent players from having an armor. */
-		static constexpr unsigned int DF_NO_ARMOR				= (1 << 11);
-		/** MOH:AA: Infinite clip ammo. MOH:SH/MOH:BT: Infinite magazines. */
-		static constexpr unsigned int DF_INFINITE_AMMO			= (1 << 14);
-		/** This should prevent footstep sounds to play. */
-		static constexpr unsigned int DF_NO_FOOTSTEPS			= (1 << 17);
-
-		/**
-		 * protocol version >= 15
-		 * (SH)
-		 */
-
-		/** Allow leaning while in movement. */
-		static constexpr unsigned int DF_ALLOW_LEAN				= (1 << 18);
-		/** Specify that G43 is replaced with Kar98. */
-		static constexpr unsigned int DF_OLD_SNIPERRIFLE		= (1 << 19);
-
-		/**
-		 * protocol version >= 17
-		 * (BT)
-		 */
-
-		/** Axis use a shotgun rather than kar98 mortar. */
-		static constexpr unsigned int DF_GERMAN_SHOTGUN			= (1 << 20);
-		/** Allow landmine to be used on AA maps. */
-		static constexpr unsigned int DF_ALLOW_OLDMAP_MINES		= (1 << 21);
-
-		/**
-		 * [BT]
-		 * Weapon type filtering
-		 */
-		/** Disallow the usage of rifles. */
-		static constexpr unsigned int DF_BAN_WEAP_RIFLE			= (1 << 22);
-		/** Disallow the usage of rifles. */
-		static constexpr unsigned int DF_BAN_WEAP_SNIPER		= (1 << 23);
-		/** Disallow the usage of snipers. */
-		static constexpr unsigned int DF_BAN_WEAP_SMG			= (1 << 24);
-		/** Disallow the usage of sub-machine guns. */
-		static constexpr unsigned int DF_BAN_WEAP_MG			= (1 << 25);
-		/** Disallow the usage of machine guns. */
-		static constexpr unsigned int DF_BAN_WEAP_HEAVY			= (1 << 26);
-		/** Disallow the usage of shotgun. */
-		static constexpr unsigned int DF_BAN_WEAP_SHOTGUN		= (1 << 27);
-		/** Disallow the usage of landmine. */
-		static constexpr unsigned int DF_BAN_WEAP_LANDMINE		= (1 << 28);
-	}
-
-	class Pmove;
 
 	namespace Network
 	{
+		namespace DMFlags
+		{
+			/**
+			 * Values for dmflags
+			 */
+			/** Players don't drop health on death. */
+			static constexpr unsigned int DF_NO_HEALTH				= (1 << 0);
+			/** Players don't drop powerups on death. */
+			static constexpr unsigned int DF_NO_POWERUPS			= (1 << 1);
+			/** Whether or not weapons in the level stays available on player pick up. */
+			static constexpr unsigned int DF_WEAPONS_STAY			= (1 << 2);
+			/** Prevent falling damage. */
+			static constexpr unsigned int DF_NO_FALLING				= (1 << 3);
+			/** This flag doesn't seem to be used at all. */
+			static constexpr unsigned int DF_INSTANT_ITEMS			= (1 << 4);
+			/** TriggerChangeLevel won't switch level. */
+			static constexpr unsigned int DF_SAME_LEVEL				= (1 << 5);
+			/** Prevent players from having an armor. */
+			static constexpr unsigned int DF_NO_ARMOR				= (1 << 11);
+			/** MOH:AA: Infinite clip ammo. MOH:SH/MOH:BT: Infinite magazines. */
+			static constexpr unsigned int DF_INFINITE_AMMO			= (1 << 14);
+			/** This should prevent footstep sounds to play. */
+			static constexpr unsigned int DF_NO_FOOTSTEPS			= (1 << 17);
+	
+			/**
+			 * protocol version >= 15
+			 * (SH)
+			 */
+	
+			/** Allow leaning while in movement. */
+			static constexpr unsigned int DF_ALLOW_LEAN				= (1 << 18);
+			/** Specify that G43 is replaced with Kar98. */
+			static constexpr unsigned int DF_OLD_SNIPERRIFLE		= (1 << 19);
+	
+			/**
+			 * protocol version >= 17
+			 * (BT)
+			 */
+	
+			/** Axis use a shotgun rather than kar98 mortar. */
+			static constexpr unsigned int DF_GERMAN_SHOTGUN			= (1 << 20);
+			/** Allow landmine to be used on AA maps. */
+			static constexpr unsigned int DF_ALLOW_OLDMAP_MINES		= (1 << 21);
+	
+			/**
+			 * [BT]
+			 * Weapon type filtering
+			 */
+			/** Disallow the usage of rifles. */
+			static constexpr unsigned int DF_BAN_WEAP_RIFLE			= (1 << 22);
+			/** Disallow the usage of rifles. */
+			static constexpr unsigned int DF_BAN_WEAP_SNIPER		= (1 << 23);
+			/** Disallow the usage of snipers. */
+			static constexpr unsigned int DF_BAN_WEAP_SMG			= (1 << 24);
+			/** Disallow the usage of sub-machine guns. */
+			static constexpr unsigned int DF_BAN_WEAP_MG			= (1 << 25);
+			/** Disallow the usage of machine guns. */
+			static constexpr unsigned int DF_BAN_WEAP_HEAVY			= (1 << 26);
+			/** Disallow the usage of shotgun. */
+			static constexpr unsigned int DF_BAN_WEAP_SHOTGUN		= (1 << 27);
+			/** Disallow the usage of landmine. */
+			static constexpr unsigned int DF_BAN_WEAP_LANDMINE		= (1 << 28);
+		}
+
+		class entityState_t;
 		class ServerConnection;
 		struct gameState_t;
+		class Pmove;
 
 		static constexpr size_t NUM_TEAM_OBJECTIVES = 5;
 

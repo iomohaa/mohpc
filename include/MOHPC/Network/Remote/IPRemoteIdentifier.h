@@ -2,7 +2,7 @@
 
 #include "../NetGlobal.h"
 #include "../../Utility/RemoteIdentifier.h"
-#include "../Types.h"
+#include "Address.h"
 
 #include <MOHPC/Common/str.h>
 

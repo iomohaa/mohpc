@@ -1,5 +1,7 @@
 #include <MOHPC/Network/Parsing/Entity.h>
-#include <MOHPC/Network/SerializableTypes.h>
+#include <MOHPC/Network/Types/Entity.h>
+#include <MOHPC/Network/Serializable/Entity.h>
+#include <MOHPC/Network/Serializable/EntityField.h>
 #include <MOHPC/Utility/Misc/MSG/MSG.h>
 
 using namespace MOHPC;
@@ -17,13 +19,13 @@ public:
 
 	entityNum_t readEntityNum(MSG& msg) const override
 	{
-		MsgTypesHelper helper(msg);
+		MsgTypesEntityHelper helper(msg);
 		return helper.ReadEntityNum();
 	}
 
 	void writeEntityNum(MSG& msg, entityNum_t num) const override
 	{
-		MsgTypesHelper helper(msg);
+		MsgTypesEntityHelper helper(msg);
 		return helper.WriteEntityNum(num);
 	}
 
@@ -69,13 +71,13 @@ public:
 
 	entityNum_t readEntityNum(MSG& msg) const override
 	{
-		MsgTypesHelper helper(msg);
+		MsgTypesEntityHelper helper(msg);
 		return helper.ReadEntityNum2();
 	}
 
 	void writeEntityNum(MSG& msg, entityNum_t num) const override
 	{
-		MsgTypesHelper helper(msg);
+		MsgTypesEntityHelper helper(msg);
 		return helper.WriteEntityNum2(num);
 	}
 
@@ -112,92 +114,6 @@ public:
 
 using EntityDefault = ProtocolSingletonInherit<Entity17, 0>;
 
-class PlayerState8 : public Parsing::IPlayerState
-{
-public:
-	void getProtocol(uint32_t& minRange, uint32_t& maxRange) const override
-	{
-		minRange = 5;
-		maxRange = 8;
-	}
-
-	void readDeltaPlayerState(MSG& msg, const playerState_t* from, playerState_t* to) const override
-	{
-		SerializablePlayerState toSerialize(*to);
-		if (from)
-		{
-			SerializablePlayerState fromSerialize(*const_cast<playerState_t*>(from));
-			msg.ReadDeltaClass(&fromSerialize, &toSerialize);
-		}
-		else
-		{
-			// no delta
-			msg.ReadDeltaClass(nullptr, &toSerialize);
-		}
-	}
-
-	void writeDeltaPlayerState(MSG& msg, const playerState_t* from, const playerState_t* to) const override
-	{
-		SerializablePlayerState toSerialize(*const_cast<playerState_t*>(to));
-		if (from)
-		{
-			SerializablePlayerState fromSerialize(*const_cast<playerState_t*>(from));
-			msg.WriteDeltaClass(&fromSerialize, &toSerialize);
-		}
-		else
-		{
-			// no delta
-			msg.WriteDeltaClass(nullptr, &toSerialize);
-		}
-	}
-};
-
-class PlayerState17 : public PlayerState8
-{
-public:
-	void getProtocol(uint32_t& minRange, uint32_t& maxRange) const override
-	{
-		minRange = 15;
-		maxRange = 17;
-	}
-
-	void readDeltaPlayerState(MSG& msg, const playerState_t* from, playerState_t* to) const override
-	{
-		SerializablePlayerState_ver15 toSerialize(*to);
-		if (from)
-		{
-			SerializablePlayerState_ver15 fromSerialize(*const_cast<playerState_t*>(from));
-			msg.ReadDeltaClass(&fromSerialize, &toSerialize);
-		}
-		else
-		{
-			// no delta
-			msg.ReadDeltaClass(nullptr, &toSerialize);
-		}
-	}
-
-	void writeDeltaPlayerState(MSG& msg, const playerState_t* from, const playerState_t* to) const override
-	{
-		SerializablePlayerState_ver15 toSerialize(*const_cast<playerState_t*>(to));
-		if (from)
-		{
-			SerializablePlayerState_ver15 fromSerialize(*const_cast<playerState_t*>(from));
-			msg.WriteDeltaClass(&fromSerialize, &toSerialize);
-		}
-		else
-		{
-			// no delta
-			msg.WriteDeltaClass(nullptr, &toSerialize);
-		}
-	}
-};
-
-using PlayerStateDefault = ProtocolSingletonInherit<PlayerState17, 0>;
-
 static Entity8 entityVersion8;
 static Entity17 entityVersion17;
 static EntityDefault entityDefaultVersion;
-
-static PlayerState8 playerStateVersion8;
-static PlayerState17 playerStateVersion17;
-static PlayerStateDefault playerStateDefaultVersion;

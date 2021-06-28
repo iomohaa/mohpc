@@ -24,36 +24,38 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // takes a playerstate and a usercmd as input and returns a modifed playerstate
 
 #include <MOHPC/Network/pm/bg_public.h>
-#include "bg_local.h"
-#include <MOHPC/Network/InfoTypes.h>
+#include <MOHPC/Network/Types/Entity.h>
+#include <MOHPC/Network/Types/PlayerState.h>
 #include <MOHPC/Assets/Managers/ShaderManager.h>
 
+#include "bg_local.h"
+
 using namespace MOHPC;
-using namespace Network;
+using namespace MOHPC::Network;
 
 #define PITCH 0
 #define YAW 1
 #define ROLL 2
 
 // movement parameters
-float MOHPC::pm_stopspeed = 50.0f;
-float MOHPC::pm_duckScale = 0.25f;
-float MOHPC::pm_swimScale = 1.0f;
-float MOHPC::pm_wadeScale = 0.70f;
+float Network::pm_stopspeed = 50.0f;
+float Network::pm_duckScale = 0.25f;
+float Network::pm_swimScale = 1.0f;
+float Network::pm_wadeScale = 0.70f;
 
-float MOHPC::pm_accelerate = 8.0f;
-float MOHPC::pm_airaccelerate = 1.0f;
-float MOHPC::pm_wateraccelerate = 8.0f;
+float Network::pm_accelerate = 8.0f;
+float Network::pm_airaccelerate = 1.0f;
+float Network::pm_wateraccelerate = 8.0f;
 
-float MOHPC::pm_friction = 6.0f;
-float MOHPC::pm_waterfriction = 2.0f;
+float Network::pm_friction = 6.0f;
+float Network::pm_waterfriction = 2.0f;
 float pm_slipperyfriction = 0.25f;
 float pm_strafespeed = 0.85f;
 float pm_backspeed = 0.80f;
-float MOHPC::pm_flightfriction = 3.0f;
+float Network::pm_flightfriction = 3.0f;
 float PM_NOCLIPfriction = 5.0f;
 
-void MOHPC::stubTrace(trace_t* results, const Vector& start, const Vector& mins, const Vector& maxs, const Vector& end, uintptr_t passEntityNum, uintptr_t contentMask, bool capsule, bool traceDeep)
+void Network::stubTrace(trace_t* results, const Vector& start, const Vector& mins, const Vector& maxs, const Vector& end, uintptr_t passEntityNum, uintptr_t contentMask, bool capsule, bool traceDeep)
 {
 	memset(results, 0, sizeof(trace_t));
 
@@ -61,7 +63,7 @@ void MOHPC::stubTrace(trace_t* results, const Vector& start, const Vector& mins,
 	results->fraction = 1.f;
 }
 
-int MOHPC::stubPointContents(const Vector& point, uintptr_t passEntityNum)
+int Network::stubPointContents(const Vector& point, uintptr_t passEntityNum)
 {
 	return 0;
 }

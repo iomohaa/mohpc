@@ -3,8 +3,10 @@
 #include <MOHPC/Utility/Misc/MSG/Stream.h>
 #include <MOHPC/Utility/Misc/MSG/Serializable.h>
 #include <MOHPC/Utility/Misc/Endian.h>
-#include <MOHPC/Network/InfoTypes.h>
-#include <MOHPC/Network/SerializableTypes.h>
+#include <MOHPC/Network/Types/Entity.h>
+#include <MOHPC/Network/Types/PlayerState.h>
+#include <MOHPC/Network/Serializable/Entity.h>
+#include <MOHPC/Network/Serializable/PlayerState.h>
 #include "Common/Common.h"
 
 #include <vector>
@@ -13,13 +15,16 @@
 #include <ctime>
 #include <random>
 
+using namespace MOHPC;
+using namespace Network;
+
 void TestShift();
 void TestMSG();
 void TestCompression();
 void TestPlayerState();
 void TestEntityState();
-void AssertEntity(const MOHPC::entityState_t& to, const MOHPC::entityState_t& from);
-void AssertPlayerState(const MOHPC::playerState_t& to, const MOHPC::playerState_t& from);
+void AssertEntity(const entityState_t& to, const entityState_t& from);
+void AssertPlayerState(const playerState_t& to, const playerState_t& from);
 
 int main(int argc, const char* argv[])
 {
@@ -75,8 +80,8 @@ void TestMSG()
 
 	// Writing data
 	{
-		MOHPC::FixedDataMessageStream stream1(msgBuffer, sizeof(msgBuffer));
-		MOHPC::MSG msg1(stream1, MOHPC::msgMode_e::Writing);
+		FixedDataMessageStream stream1(msgBuffer, sizeof(msgBuffer));
+		MSG msg1(stream1, msgMode_e::Writing);
 
 		const uint8_t byteVal = 250;
 		const uint16_t shortVal = 3;
@@ -114,13 +119,13 @@ void TestMSG()
 				msg1.WriteNumber<uint64_t>(1ull << (j - 1), j);
 			}
 
-			const MOHPC::SerializableAngle16 serializableAngle(180.f);
+			const SerializableAngle16 serializableAngle(180.f);
 			msg1.WriteClass(serializableAngle);
 			msg1.WriteDeltaType(deltaVal1, deltaVal2);
 		}
 
-		MOHPC::FixedDataMessageStream stream1bit(msgBuffer2, sizeof(msgBuffer2));
-		MOHPC::MSG msg1bit(stream1bit, MOHPC::msgMode_e::Writing);
+		FixedDataMessageStream stream1bit(msgBuffer2, sizeof(msgBuffer2));
+		MSG msg1bit(stream1bit, msgMode_e::Writing);
 		const uint8_t sb = 1;
 		msg1bit.WriteBits(&sb, 1);
 	}
@@ -134,10 +139,10 @@ void TestMSG()
 		uint32_t deltaVal1 = 6;
 		uint32_t deltaVal2 = 0;
 
-		MOHPC::StringMessage testString;
+		StringMessage testString;
 
-		MOHPC::FixedDataMessageStream stream2(msgBuffer, sizeof(msgBuffer));
-		MOHPC::MSG msg2(stream2, MOHPC::msgMode_e::Reading);
+		FixedDataMessageStream stream2(msgBuffer, sizeof(msgBuffer));
+		MSG msg2(stream2, msgMode_e::Reading);
 
 		for (int i = 0; i < 100; i++)
 		{
@@ -173,13 +178,13 @@ void TestMSG()
 				assert(byteVal == (1ull << (j - 1)));
 			}
 
-			MOHPC::SerializableAngle16 ang;
+			SerializableAngle16 ang;
 			msg2.ReadClass(ang); assert(ang == 180.f);
 			deltaVal2 = msg2.ReadDeltaType(deltaVal1);
 		}
 
-		MOHPC::FixedDataMessageStream stream2bit(msgBuffer2, sizeof(msgBuffer2));
-		MOHPC::MSG msg2bit(stream2bit, MOHPC::msgMode_e::Reading);
+		FixedDataMessageStream stream2bit(msgBuffer2, sizeof(msgBuffer2));
+		MSG msg2bit(stream2bit, msgMode_e::Reading);
 		uint8_t sb = 0;
 		msg2bit.ReadBits(&sb, 1); assert(sb == 1);
 	}
@@ -194,22 +199,22 @@ void TestCompression()
 
 	size_t compressedLen = 0;
 	{
-		MOHPC::FixedDataMessageStream instream(rawBuffer, sizeof(rawBuffer));
-		MOHPC::FixedDataMessageStream outstream(compressedBuffer, sizeof(compressedBuffer));
+		FixedDataMessageStream instream(rawBuffer, sizeof(rawBuffer));
+		FixedDataMessageStream outstream(compressedBuffer, sizeof(compressedBuffer));
 
 		instream.Write("Hello, world", 12);
 
-		MOHPC::CompressedMessage compressed(instream, outstream);
+		CompressedMessage compressed(instream, outstream);
 		compressed.Compress(0, 13);
 
 		compressedLen = outstream.GetPosition();
 	}
 
 	{
-		MOHPC::FixedDataMessageStream instream(compressedBuffer, sizeof(compressedBuffer), compressedLen);
-		MOHPC::FixedDataMessageStream outstream(decompressedBuffer, sizeof(decompressedBuffer));
+		FixedDataMessageStream instream(compressedBuffer, sizeof(compressedBuffer), compressedLen);
+		FixedDataMessageStream outstream(decompressedBuffer, sizeof(decompressedBuffer));
 
-		MOHPC::CompressedMessage decompressed(instream, outstream);
+		CompressedMessage decompressed(instream, outstream);
 		decompressed.Decompress(0, instream.GetLength());
 
 		assert(!memcmp(decompressedBuffer, rawBuffer, sizeof(decompressedBuffer)));
@@ -218,13 +223,13 @@ void TestCompression()
 
 void TestPlayerState()
 {
-	MOHPC::playerState_t ps1, ps2;
+	playerState_t ps1, ps2;
 	uint8_t msgBuffer[32768];
 
 	// Writing
 	{
-		MOHPC::FixedDataMessageStream streamWriter(msgBuffer, sizeof(msgBuffer));
-		MOHPC::MSG writer(streamWriter, MOHPC::msgMode_e::Writing);
+		FixedDataMessageStream streamWriter(msgBuffer, sizeof(msgBuffer));
+		MSG writer(streamWriter, msgMode_e::Writing);
 
 
 		std::random_device rd;
@@ -232,7 +237,7 @@ void TestPlayerState()
 		std::uniform_real_distribution originDistrib(-8192.f, 8192.f);
 		std::uniform_real_distribution angleDistrib(0.f, 360.f);
 		std::uniform_real_distribution alphaDistrib(-1.f, 1.f);
-		std::uniform_int_distribution<> entityNumDistrib(0, MOHPC::MAX_GENTITIES - 1);
+		std::uniform_int_distribution<> entityNumDistrib(0, MAX_GENTITIES - 1);
 		std::uniform_int_distribution<> miscDistrib(0, 255);
 
 		ps2.origin[0] = originDistrib(gen);
@@ -258,34 +263,34 @@ void TestPlayerState()
 		}
 
 		{
-			MOHPC::SerializablePlayerState sps1(ps1);
-			MOHPC::SerializablePlayerState sps2(ps2);
+			SerializablePlayerState sps1(ps1);
+			SerializablePlayerState sps2(ps2);
 			writer.WriteDeltaClass(&sps1, &sps2);
 		}
 		{
-			MOHPC::SerializablePlayerState_ver15 sps1(ps1);
-			MOHPC::SerializablePlayerState_ver15 sps2(ps2);
+			SerializablePlayerState_ver15 sps1(ps1);
+			SerializablePlayerState_ver15 sps2(ps2);
 			writer.WriteDeltaClass(&sps1, &sps2);
 		}
 	}
 
 	// Reading
 	{
-		MOHPC::FixedDataMessageStream streamReader(msgBuffer, sizeof(msgBuffer));
-		MOHPC::MSG reader(streamReader, MOHPC::msgMode_e::Reading);
+		FixedDataMessageStream streamReader(msgBuffer, sizeof(msgBuffer));
+		MSG reader(streamReader, msgMode_e::Reading);
 
-		MOHPC::playerState_t serializedPS;
+		playerState_t serializedPS;
 
 		{
-			MOHPC::SerializablePlayerState sps1(ps1);
-			MOHPC::SerializablePlayerState sps2(serializedPS);
+			SerializablePlayerState sps1(ps1);
+			SerializablePlayerState sps2(serializedPS);
 			reader.ReadDeltaClass(&sps1, &sps2);
 
 			AssertPlayerState(serializedPS, ps2);
 		}
 		{
-			MOHPC::SerializablePlayerState_ver15 sps1(ps1);
-			MOHPC::SerializablePlayerState_ver15 sps2(serializedPS);
+			SerializablePlayerState_ver15 sps1(ps1);
+			SerializablePlayerState_ver15 sps2(serializedPS);
 			reader.ReadDeltaClass(&sps1, &sps2);
 
 			AssertPlayerState(serializedPS, ps2);
@@ -295,20 +300,20 @@ void TestPlayerState()
 
 void TestEntityState()
 {
-	MOHPC::entityState_t en1, en2;
+	entityState_t en1, en2;
 	uint8_t msgBuffer[32768];
 
 	// Writing
 	{
-		MOHPC::FixedDataMessageStream streamWriter(msgBuffer, sizeof(msgBuffer));
-		MOHPC::MSG writer(streamWriter, MOHPC::msgMode_e::Writing);
+		FixedDataMessageStream streamWriter(msgBuffer, sizeof(msgBuffer));
+		MSG writer(streamWriter, msgMode_e::Writing);
 
 		std::random_device rd;
 		std::mt19937 gen(rd());
 		std::uniform_real_distribution originDistrib(-8192.f, 8192.f);
 		std::uniform_real_distribution anglesDistrib(0.f, 360.f);
 		std::uniform_real_distribution alphaDistrib(0.f, 1.f);
-		std::uniform_int_distribution<> entityNumDistrib(0, MOHPC::MAX_GENTITIES - 1);
+		std::uniform_int_distribution<> entityNumDistrib(0, MAX_GENTITIES - 1);
 		std::uniform_int_distribution<> miscDistrib(0, 255);
 
 		en2.alpha = alphaDistrib(gen);
@@ -327,9 +332,9 @@ void TestEntityState()
 		en2.clientNum = miscDistrib(gen);
 		en2.groundEntityNum = entityNumDistrib(gen);
 		en2.surfaces[31] = miscDistrib(gen);
-		en2.pos.trDelta = MOHPC::Vector((float)miscDistrib(gen), (float)miscDistrib(gen), (float)miscDistrib(gen));
+		en2.pos.trDelta = Vector((float)miscDistrib(gen), (float)miscDistrib(gen), (float)miscDistrib(gen));
 
-		for (size_t i = 0; i < MOHPC::entityState_t::MAX_FRAMEINFOS; ++i)
+		for (size_t i = 0; i < entityState_t::MAX_FRAMEINFOS; ++i)
 		{
 			en2.frameInfo[i].index = uint8_t(rand());
 			en2.frameInfo[i].time = float(rand() % 65535) / 16387.f;
@@ -337,34 +342,34 @@ void TestEntityState()
 		}
 
 		{
-			MOHPC::SerializableEntityState sen1(en1, 0);
-			MOHPC::SerializableEntityState sen2(en2, 0);
+			SerializableEntityState sen1(en1, 0);
+			SerializableEntityState sen2(en2, 0);
 			writer.WriteDeltaClass(&sen1, &sen2);
 		}
 		{
-			MOHPC::SerializableEntityState_ver15 sen1(en1, 0, 0.f);
-			MOHPC::SerializableEntityState_ver15 sen2(en2, 0, 0.f);
+			SerializableEntityState_ver15 sen1(en1, 0, 0.f);
+			SerializableEntityState_ver15 sen2(en2, 0, 0.f);
 			writer.WriteDeltaClass(&sen1, &sen2);
 		}
 	}
 
 	// Reading
 	{
-		MOHPC::FixedDataMessageStream streamReader(msgBuffer, sizeof(msgBuffer));
-		MOHPC::MSG reader(streamReader, MOHPC::msgMode_e::Reading);
+		FixedDataMessageStream streamReader(msgBuffer, sizeof(msgBuffer));
+		MSG reader(streamReader, msgMode_e::Reading);
 
 		{
-			MOHPC::entityState_t sEnt;
-			MOHPC::SerializableEntityState sen1(en1, 0);
-			MOHPC::SerializableEntityState sen2(sEnt, 0);
+			entityState_t sEnt;
+			SerializableEntityState sen1(en1, 0);
+			SerializableEntityState sen2(sEnt, 0);
 			reader.ReadDeltaClass(&sen1, &sen2);
 
 			AssertEntity(sEnt, en2);
 		}
 		{
-			MOHPC::entityState_t sEnt;
-			MOHPC::SerializableEntityState_ver15 sen1(en1, 0, 0.f);
-			MOHPC::SerializableEntityState_ver15 sen2(sEnt, 0, 0.f);
+			entityState_t sEnt;
+			SerializableEntityState_ver15 sen1(en1, 0, 0.f);
+			SerializableEntityState_ver15 sen2(sEnt, 0, 0.f);
 			reader.ReadDeltaClass(&sen1, &sen2);
 
 			// FIXME: Implement serialization
@@ -373,7 +378,7 @@ void TestEntityState()
 	}
 }
 
-void AssertEntity(const MOHPC::entityState_t& to, const MOHPC::entityState_t& from)
+void AssertEntity(const entityState_t& to, const entityState_t& from)
 {
 	assert(to.alpha >= from.alpha - 0.01f && to.alpha <= from.alpha + 0.01f);
 	assert(to.netorigin.FuzzyEqual(from.netorigin, 0.25f));
@@ -386,10 +391,10 @@ void AssertEntity(const MOHPC::entityState_t& to, const MOHPC::entityState_t& fr
 	assert(to.groundEntityNum == from.groundEntityNum);
 	assert(to.surfaces[31] == from.surfaces[31]);
 
-	for (size_t i = 0; i < MOHPC::entityState_t::MAX_FRAMEINFOS; ++i)
+	for (size_t i = 0; i < entityState_t::MAX_FRAMEINFOS; ++i)
 	{
-		const MOHPC::frameInfo_t& toFrameInfo = to.frameInfo[i];
-		const MOHPC::frameInfo_t& fromFrameInfo = from.frameInfo[i];
+		const frameInfo_t& toFrameInfo = to.frameInfo[i];
+		const frameInfo_t& fromFrameInfo = from.frameInfo[i];
 
 		assert(toFrameInfo.index == fromFrameInfo.index);
 		assert(fabsf(toFrameInfo.time - fromFrameInfo.time) <= 0.05);
@@ -397,7 +402,7 @@ void AssertEntity(const MOHPC::entityState_t& to, const MOHPC::entityState_t& fr
 	}
 }
 
-void AssertPlayerState(const MOHPC::playerState_t& to, const MOHPC::playerState_t& from)
+void AssertPlayerState(const playerState_t& to, const playerState_t& from)
 {
 	assert(to.origin.FuzzyEqual(from.origin, 0.25f));
 	assert(to.commandTime == from.commandTime);

@@ -1,7 +1,7 @@
 #include <MOHPC/Network/Remote/Socket.h>
-#include <MOHPC/Network/Types.h>
 #include "network.h"
 #include "generic_sockets.h"
+
 #include <type_traits>
 
 using namespace MOHPC;

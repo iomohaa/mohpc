@@ -1,6 +1,7 @@
 #include <MOHPC/Network/Parsing/String.h>
 #include <MOHPC/Network/Parsing/Hash.h>
 #include <MOHPC/Network/Parsing/Entity.h>
+#include <MOHPC/Network/Parsing/PlayerState.h>
 #include <MOHPC/Network/Parsing/GameState.h>
 #include <MOHPC/Network/Parsing/PVS.h>
 #include <MOHPC/Network/Types/GameState.h>

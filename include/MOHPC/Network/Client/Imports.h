@@ -14,6 +14,7 @@ namespace MOHPC
 	namespace Network
 	{
 		struct gameState_t;
+		class usercmd_t;
 		class ClientTime;
 		class UserInput;
 		class ServerGameState;

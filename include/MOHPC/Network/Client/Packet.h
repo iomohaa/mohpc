@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../InfoTypes.h"
+#include "../Types/UserInput.h"
 
 #include <cstdint>
 #include <cstddef>

@@ -1,8 +1,8 @@
 #include <MOHPC/Network/Server/ServerHost.h>
 #include <MOHPC/Network/Remote/Socket.h>
-#include <MOHPC/Network/Types.h>
 #include <MOHPC/Network/Remote/Channel.h>
 #include <MOHPC/Network/Remote/Encoding.h>
+#include <MOHPC/Network/Remote/Ops.h>
 #include <MOHPC/Network/Configstring.h>
 #include <MOHPC/Network/Remote/IPRemoteIdentifier.h>
 #include <MOHPC/Network/Remote/UDPMessageDispatcher.h>

@@ -1,18 +1,18 @@
 #pragma once
 
 #include "../NetGlobal.h"
-#include "../Types.h"
-#include "../InfoTypes.h"
+#include "../Exception.h"
+#include "../Types/Entity.h"
 #include "Configstring.h"
 
 #include <cstddef>
 
 namespace MOHPC
 {
-class entityState_t;
-
 namespace Network
 {
+	class entityState_t;
+
 	/**
 	 * Contains an array of base entities, used for diffing over the network.
 	 */

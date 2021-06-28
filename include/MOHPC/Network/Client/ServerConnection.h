@@ -1,9 +1,12 @@
 #pragma once
 
-#include "../Types.h"
-#include "../InfoTypes.h"
+#include "../NetGlobal.h"
+#include "../NetObject.h"
+
+#include "../Exception.h"
 #include "../Remote/Channel.h"
 #include "../Remote/Encoding.h"
+#include "../Remote/Ops.h"
 #include "../Configstring.h"
 #include "../Parsing/String.h"
 #include "../Parsing/Hash.h"
@@ -16,7 +19,6 @@
 #include "../../Utility/RemoteIdentifier.h"
 #include "../../Utility/Tick.h"
 #include "../../Utility/Timeout.h"
-#include "../NetObject.h"
 #include "../../Utility/Misc/MSG/MSG.h"
 #include "UserInfo.h"
 #include "Imports.h"

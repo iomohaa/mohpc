@@ -2,7 +2,6 @@
 
 #include "ServerConnection.h"
 #include "GamespyRequest.h"
-#include "../Types.h"
 #include "../../Utility/Info.h"
 #include "../../Utility/LazyPtr.h"
 #include "../../Utility/RequestHandler.h"

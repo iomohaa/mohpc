@@ -1,9 +1,8 @@
 #pragma once
 
 #include "../NetGlobal.h"
-#include "../Types.h"
-#include "../../Utility/SharedPtr.h"
 #include "../NetObject.h"
+#include "../../Utility/SharedPtr.h"
 
 #include <cstdint>
 

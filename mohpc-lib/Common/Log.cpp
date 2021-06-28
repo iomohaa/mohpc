@@ -1,7 +1,8 @@
 #include <MOHPC/Common/Log.h>
-#include <cstdlib>
 #include <MOHPC/Utility/SharedPtr.h>
 #include <MOHPC/Utility/WeakPtr.h>
+
+#include <cstdlib>
 
 using namespace MOHPC;
 using namespace Log;

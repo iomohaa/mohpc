@@ -1,5 +1,4 @@
 #include <MOHPC/Network/Types/GameState.h>
-#include <MOHPC/Network/InfoTypes.h>
 
 using namespace MOHPC;
 using namespace MOHPC::Network;

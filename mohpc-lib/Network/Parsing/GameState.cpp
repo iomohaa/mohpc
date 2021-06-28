@@ -1,8 +1,8 @@
 #include <MOHPC/Network/Parsing/GameState.h>
 #include <MOHPC/Network/Types/GameState.h>
+#include <MOHPC/Network/Remote/Ops.h>
 #include <MOHPC/Network/Parsing/String.h>
 #include <MOHPC/Network/Parsing/Entity.h>
-#include <MOHPC/Network/SerializableTypes.h>
 #include <MOHPC/Common/Log.h>
 #include <MOHPC/Utility/Misc/MSG/MSG.h>
 #include <MOHPC/Utility/Info.h>
@@ -105,7 +105,7 @@ public:
 			}
 			break;
 			default:
-				throw SerializableErrors::BadCommandByteException((uint8_t)cmd);
+				throw OpsErrors::BadCommandByteException((uint8_t)cmd);
 			}
 		}
 

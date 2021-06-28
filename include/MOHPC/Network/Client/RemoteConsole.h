@@ -1,6 +1,5 @@
 #pragma once
 
-#include "../Types.h"
 #include "../Remote/Socket.h"
 #include "../NetObject.h"
 #include "../../Utility/SharedPtr.h"

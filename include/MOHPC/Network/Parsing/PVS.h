@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../ProtocolSingleton.h"
-#include "../InfoTypes.h"
+#include "../Types/PlayerState.h"
 
 namespace MOHPC
 {

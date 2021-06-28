@@ -550,12 +550,6 @@ public:
 		/** Read a coordinate value. */
 		Vector ReadDir();
 
-		/** Read an entity number. */
-		uint32_t ReadEntityNum();
-
-		/** Read an entity number (protocol >= 15). */
-		uint32_t ReadEntityNum2();
-
 		/** Write a coordinate value. */
 		void WriteCoord(float value);
 
@@ -573,12 +567,6 @@ public:
 
 		/** Write a coordinate value. */
 		void WriteDir(Vector& dir);
-
-		/** Read an entity number. */
-		void WriteEntityNum(uint32_t num);
-
-		/** Read an entity number (protocol >= 15). */
-		void WriteEntityNum2(uint32_t num);
 	};
 };
 

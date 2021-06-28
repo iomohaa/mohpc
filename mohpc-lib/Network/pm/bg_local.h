@@ -26,6 +26,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 namespace MOHPC
 {
+namespace Network
+{
 	static constexpr unsigned int JUMP_VELOCITY		= 270;
 
 	static constexpr unsigned int TIMER_LAND		= 130;
@@ -51,6 +53,7 @@ namespace MOHPC
 	extern	float	pm_friction;
 	extern	float	pm_waterfriction;
 	extern	float	pm_flightfriction;
+}
 }
 
 

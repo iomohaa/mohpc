@@ -1,7 +1,7 @@
 #include <MOHPC/Network/Types/Reliable.h>
 
 using namespace MOHPC;
-using namespace Network;
+using namespace MOHPC::Network;
 
 IAbstractSequence::~IAbstractSequence()
 {

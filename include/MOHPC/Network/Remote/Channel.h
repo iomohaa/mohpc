@@ -5,7 +5,7 @@
 #include "../../Utility/SharedPtr.h"
 #include "../../Utility/Communicator.h"
 #include "../../Utility/Misc/MSG/Stream.h"
-#include "../Types.h"
+#include "../Exception.h"
 #include "../Remote/Socket.h"
 
 #include <cstdint>

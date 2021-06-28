@@ -1,5 +1,6 @@
 #include <MOHPC/Network/Client/Server.h>
 #include <MOHPC/Network/Client/ServerConnection.h>
+#include <MOHPC/Network/Version.h>
 #include <MOHPC/Utility/Misc/MSG/Codec.h>
 #include <MOHPC/Utility/Misc/MSG/MSG.h>
 #include <MOHPC/Utility/Info.h>
@@ -234,13 +235,13 @@ void EngineServer::IEngineRequest::generateOutput(IMessageStream& output)
 		DynamicDataMessageStream uncompressedStream;
 
 		// copy existing data into the new stream
-		compressedStream.reserve(MAX_INFO_STRING);
+		compressedStream.reserve(2000);
 		compressedStream.Seek(0, IMessageStream::SeekPos::Begin);
 		// write the uncompressed data first into the stream
 		compressedStream.Write(reqstr.c_str(), compressionOffset);
 
 		// copy existing data into the new stream
-		uncompressedStream.reserve(MAX_INFO_STRING);
+		uncompressedStream.reserve(2000);
 		uncompressedStream.Seek(0, IMessageStream::SeekPos::Begin);
 		uncompressedStream.Write(reqstr.c_str() + compressionOffset, reqstr.length() - compressionOffset);
 
@@ -362,7 +363,7 @@ SharedPtr<IRequestBase> EngineServer::IEngineRequest::process(InputRequest& data
 MOHPC_OBJECT_DEFINITION(ConnectSettings);
 
 ConnectSettings::ConnectSettings()
-	: version(CLIENT_VERSION)
+	: version(NETWORK_VERSION)
 	, cdKey("")
 	, deferredChallengeTime(100)
 	, deferredConnectTime(100)
@@ -392,7 +393,7 @@ const char* ConnectSettings::getVersion() const
 
 void ConnectSettings::setVersion(const char* value)
 {
-	version = value && *value ? value : CLIENT_VERSION;
+	version = value && *value ? value : NETWORK_VERSION;
 }
 
 uint16_t ConnectSettings::getQport() const
