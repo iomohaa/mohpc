@@ -55,18 +55,37 @@ float pm_backspeed = 0.80f;
 float Network::pm_flightfriction = 3.0f;
 float PM_NOCLIPfriction = 5.0f;
 
-void Network::stubTrace(trace_t* results, const Vector& start, const Vector& mins, const Vector& maxs, const Vector& end, uintptr_t passEntityNum, uintptr_t contentMask, bool capsule, bool traceDeep)
+ITraceFunction::~ITraceFunction()
 {
-	memset(results, 0, sizeof(trace_t));
-
-	VecCopy(end, results->endpos);
-	results->fraction = 1.f;
 }
 
-int Network::stubPointContents(const Vector& point, uintptr_t passEntityNum)
+class StubTrace : public ITraceFunction
 {
-	return 0;
-}
+public:
+	void trace(
+		trace_t* results,
+		const Vector& start,
+		const Vector& mins,
+		const Vector& maxs,
+		const Vector& end,
+		uintptr_t passEntityNum,
+		uintptr_t contentMask,
+		bool capsule,
+		bool traceDeep
+	) override
+	{
+		memset(results, 0, sizeof(trace_t));
+
+		VecCopy(end, results->endpos);
+		results->fraction = 1.f;
+	}
+
+	int pointContents(const Vector& point, uintptr_t passEntityNum) override
+	{
+		return 0;
+	}
+};
+static StubTrace stubTrace;
 
 pmove_t::pmove_t()
 	: ps(nullptr)
@@ -85,6 +104,7 @@ pmove_t::pmove_t()
 	, xyspeed(0)
 	, pmove_fixed(0)
 	, pmove_msec(0)
+	, traceInterface(&stubTrace)
 {
 
 }
@@ -537,7 +557,7 @@ bool Pmove::PM_FeetOnGround(const Vector& pos)
 	// Some fixes not present in Quake3/OpenMOHAA
 	end[2] -= 16.1f;
 
-	pm.trace( &trace, start, min4x4, max4x4, end, pm.ps->clientNum, pm.tracemask, true, false );
+	pm.traceInterface->trace( &trace, start, min4x4, max4x4, end, pm.ps->clientNum, pm.tracemask, true, false );
 
 	return trace.fraction != 1.0f;
 }
@@ -569,16 +589,16 @@ bool Pmove::PM_FindBestFallPos(const Vector& pos, Vector& bestdir)
 		AngleVectorsLeft( ang, dir, NULL, NULL );
 		VectorMA( pos, radius, dir, move );
 
-		pm.trace( &trace, pos, pm.mins, pm.maxs, move, pm.ps->clientNum, pm.tracemask, true, false );
+		pm.traceInterface->trace( &trace, pos, pm.mins, pm.maxs, move, pm.ps->clientNum, pm.tracemask, true, false );
 
 		VecCopy( trace.endpos, end );
 		end[ 2 ] = start[ 2 ];
 
-		pm.trace( &trace, trace.endpos, pm.mins, pm.maxs, end, pm.ps->clientNum, pm.tracemask, true, false );
+		pm.traceInterface->trace( &trace, trace.endpos, pm.mins, pm.maxs, end, pm.ps->clientNum, pm.tracemask, true, false );
 		if( trace.fraction == 1.0f )
 		{
 			VecCopy( trace.endpos, end );
-			pm.trace( &trace, end, pm.mins, pm.maxs, start, pm.ps->clientNum, pm.tracemask, true, false );
+			pm.traceInterface->trace( &trace, end, pm.mins, pm.maxs, start, pm.ps->clientNum, pm.tracemask, true, false );
 
 			if( trace.fraction < 1.0f )
 			{
@@ -636,7 +656,7 @@ void Pmove::PM_CheckFeet(const Vector& vWishdir)
 
 	VectorMA( pm.ps->origin, 15.0f * pml.frametime, pm.ps->falldir, temp );
 
-	pm.trace( &trace, pm.ps->origin, pm.mins, pm.maxs, temp, pm.ps->clientNum, pm.tracemask, true, false );
+	pm.traceInterface->trace( &trace, pm.ps->origin, pm.mins, pm.maxs, temp, pm.ps->clientNum, pm.tracemask, true, false );
 	if( trace.fraction == 0 )
 	{
 		pm.ps->feetfalling = 0;
@@ -932,7 +952,7 @@ PM_CheckStuck
 void PM_CheckStuck(void) {
 	trace_t trace;
 
-	pm.trace (&trace, pm.ps->origin, pm.mins, pm.maxs, pm.ps->origin, pm.ps->clientNum, pm.tracemask);
+	pm.traceInterface->trace (&trace, pm.ps->origin, pm.mins, pm.maxs, pm.ps->origin, pm.ps->clientNum, pm.tracemask);
 	if (trace.allsolid) {
 		//int shit = true;
 	}
@@ -963,7 +983,7 @@ int Pmove::PM_CorrectAllSolid()
 				point[0] += (float) i;
 				point[1] += (float) j;
 				point[2] += (float) k;
-				pm.trace( &trace, point, pm.mins, pm.maxs, point, pm.ps->clientNum, pm.tracemask, true, false );
+				pm.traceInterface->trace( &trace, point, pm.mins, pm.maxs, point, pm.ps->clientNum, pm.tracemask, true, false );
 				if ( !trace.allsolid && !trace.startsolid ) {
 					pm.ps->origin[0] = point[0];
 					pm.ps->origin[1] = point[1];
@@ -971,7 +991,7 @@ int Pmove::PM_CorrectAllSolid()
 					point2 = point;
 					point2[2] -= 0.25f;
 
-					pm.trace( &trace2, point, pm.mins, pm.maxs, point2, pm.ps->clientNum, pm.tracemask, true, false );
+					pm.traceInterface->trace( &trace2, point, pm.mins, pm.maxs, point2, pm.ps->clientNum, pm.tracemask, true, false );
 					pml.groundTrace = trace2;
 					pm.ps->groundTrace = trace2;
 					return true;
@@ -1000,7 +1020,7 @@ void Pmove::PM_GroundTrace( void ) {
 	point[ 1 ] = pm.ps->origin[ 1 ];
 	point[ 2 ] = pm.ps->origin[ 2 ] - 0.25f;
 
-	pm.trace( &trace, pm.ps->origin, pm.mins, pm.maxs, point, pm.ps->clientNum, pm.tracemask, true, false );
+	pm.traceInterface->trace( &trace, pm.ps->origin, pm.mins, pm.maxs, point, pm.ps->clientNum, pm.tracemask, true, false );
 
 	pml.groundTrace = trace;
 	pm.ps->groundTrace = trace;
@@ -1112,7 +1132,7 @@ void Pmove::PM_SetWaterLevel( void ) {
 	point[0] = pm.ps->origin[0];
 	point[1] = pm.ps->origin[1];
 	point[2] = pm.ps->origin[2] + MINS_Z + 1;
-	cont = pm.pointcontents( point, pm.ps->clientNum );
+	cont = pm.traceInterface->pointContents( point, pm.ps->clientNum );
 
 	if ( cont & MASK_WATER ) {
 		sample2 = pm.ps->viewheight - MINS_Z;
@@ -1121,11 +1141,11 @@ void Pmove::PM_SetWaterLevel( void ) {
 		pm.watertype = cont;
 		pm.waterlevel = 1;
 		point[2] = pm.ps->origin[2] + MINS_Z + sample1;
-		cont = pm.pointcontents (point, pm.ps->clientNum );
+		cont = pm.traceInterface->pointContents (point, pm.ps->clientNum );
 		if ( cont & MASK_WATER ) {
 			pm.waterlevel = 2;
 			point[2] = pm.ps->origin[2] + MINS_Z + sample2;
-			cont = pm.pointcontents (point, pm.ps->clientNum );
+			cont = pm.traceInterface->pointContents (point, pm.ps->clientNum );
 			if ( cont & MASK_WATER ){
 				pm.waterlevel = 3;
 			}
@@ -1572,7 +1592,7 @@ void Pmove::moveSingle()
 		point[ 1 ] = pm.ps->origin[ 1 ];
 		point[ 2 ] = pm.ps->origin[ 2 ] - STEPSIZE;
 
-		pm.trace( &trace, pm.ps->origin, pm.mins, pm.maxs, point, pm.ps->clientNum, pm.tracemask, true, false );
+		pm.traceInterface->trace( &trace, pm.ps->origin, pm.mins, pm.maxs, point, pm.ps->clientNum, pm.tracemask, true, false );
 		if( ( trace.fraction < 1.0f ) && ( !trace.allsolid ) )
 		{
 			VecCopy( trace.endpos, pm.ps->origin );

@@ -26,6 +26,7 @@
 #include "GameState.h"
 #include "ServerSnapshot.h"
 #include "Time.h"
+#include "UserInput.h"
 #include <cstdint>
 #include <functional>
 #include <type_traits>
@@ -37,13 +38,15 @@ namespace MOHPC
 
 	namespace Network
 	{
-		class CGameModuleBase;
+		namespace CGame
+		{
+			class ModuleBase;
+		}
+
 		class Event;
 		class IClientGameProtocol;
 
 		/** Previously 128, the number has been doubled. */
-		static constexpr unsigned long CMD_BACKUP = (1 << 8);
-		static constexpr unsigned long CMD_MASK = CMD_BACKUP - 1;
 		static constexpr unsigned long MAX_PACKET_USERCMDS = 32;
 
 		class INetchan;
@@ -221,27 +224,6 @@ namespace MOHPC
 
 		private:
 			char serverCommands[MAX_RELIABLE_COMMANDS][RELIABLE_COMMAND_SIZE];
-		};
-
-		class UserInput
-		{
-		public:
-			UserInput();
-
-			void reset();
-			void createCommand(uint64_t currentTime, uint64_t remoteTime, usercmd_t*& outCmd, usereyes_t*& outEyes);
-			uint32_t getCurrentCmdNumber() const;
-			const usercmd_t& getCommand(size_t index) const;
-			const usercmd_t& getCommandFromLast(size_t index) const;
-			const usercmd_t& getLastCommand() const;
-			usercmd_t& getLastCommand();
-			const usereyes_t& getEyeInfo() const;
-			usereyes_t& getEyeInfo();
-
-		private:
-			uint32_t cmdNumber;
-			usereyes_t eyeinfo;
-			usercmd_t cmds[CMD_BACKUP];
 		};
 
 		class UserPacket
@@ -437,7 +419,7 @@ namespace MOHPC
 			MOHPC_NET_EXPORTS const ServerGameState& getGameState() const;
 
 			/** Retrieve the CGame module. */
-			MOHPC_NET_EXPORTS CGameModuleBase* getCGModule();
+			MOHPC_NET_EXPORTS CGame::ModuleBase* getCGModule();
 
 			/** Return read-only user info. */
 			MOHPC_NET_EXPORTS ConstClientInfoPtr getUserInfo() const;
@@ -464,23 +446,6 @@ namespace MOHPC
 
 			/** Return the current reliable sequence (the latest command number on the client). */
 			MOHPC_NET_EXPORTS const IReliableSequence* getReliableSequence() const;
-
-			/**
-			 * Return user input data.
-			 *
-			 * @param	cmdNum		The cmd number to get data from.
-			 * @param	outCmd		Output data.
-			 * @return	true if the command is valid.
-			 */
-			MOHPC_NET_EXPORTS bool getUserCmd(uintptr_t cmdNum, usercmd_t& outCmd) const;
-
-			/**
-			 * Return parseable server command.
-			 * @param	serverCommandNumber		The command num to get.
-			 * @param	tokenized				Tokenized data.
-			 * @return	true if the command is valid.
-			 */
-			MOHPC_NET_EXPORTS bool getServerCommand(rsequence_t serverCommandNumber, TokenParser& tokenized);
 
 			/**
 			 * Disconnect the client.
@@ -539,7 +504,7 @@ namespace MOHPC
 
 		private:
 			HandlerListClient handlerList;
-			CGameModuleBase* cgameModule;
+			CGame::ModuleBase* cgameModule;
 			const Parsing::IString* stringParser;
 			const Parsing::IHash* hashParser;
 			IRemoteIdentifierPtr adr;

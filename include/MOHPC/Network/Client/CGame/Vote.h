@@ -16,10 +16,12 @@
 
 namespace MOHPC
 {
-	class TokenParser;
-	class CommandManager;
+class TokenParser;
+class CommandManager;
 
-	namespace Network
+namespace Network
+{
+	namespace CGame
 	{
 		class VoteListChoice;
 		class VoteOptions;
@@ -369,4 +371,5 @@ namespace MOHPC
 			const char* what() const noexcept override;
 		};
 	}
+}
 }

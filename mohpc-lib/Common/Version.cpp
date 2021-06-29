@@ -8,11 +8,11 @@ namespace MOHPC
 	const unsigned long VERSION_MAJOR = 1;
 	const unsigned long VERSION_MINOR = 2;
 	const unsigned long VERSION_PATCH = 0;
-	const unsigned long VERSION_BUILD = 17445;
+	const unsigned long VERSION_BUILD = 17601;
 
-	const char VERSION_STRING[] = "1.2.0.17445";
+	const char VERSION_STRING[] = "1.2.0.17601";
 	const char VERSION_SHORT_STRING[] = "1.2.0";
-	const char VERSION_DATE[] = "Jun 28 2021";
+	const char VERSION_DATE[] = "Jun 29 2021";
 
 	// The following is manually set
 	// This should be modified only for adding a new architecture

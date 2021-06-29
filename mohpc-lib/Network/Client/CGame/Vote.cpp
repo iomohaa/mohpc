@@ -6,7 +6,8 @@
 #include <functional>
 
 using namespace MOHPC;
-using namespace Network;
+using namespace MOHPC::Network;
+using namespace MOHPC::Network::CGame;
 
 static constexpr char MOHPC_LOG_NAMESPACE[] = "cg_vote";
 

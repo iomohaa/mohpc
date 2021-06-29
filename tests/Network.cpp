@@ -33,6 +33,7 @@
 
 using namespace MOHPC;
 using namespace MOHPC::Network;
+using namespace MOHPC::Network::CGame;
 using namespace std::placeholders;
 
 std::mutex bufLock;
@@ -165,7 +166,7 @@ int main(int argc, const char* argv[])
 			connection = cg;
 			tickableObjects->addTickable(connection.get());
 
-			CGameModuleBase* cgame = connection->getCGModule();
+			ModuleBase* cgame = connection->getCGModule();
 
 			connection->getHandlerList().errorHandler.add([](const Network::NetworkException& exception)
 				{
@@ -240,7 +241,7 @@ int main(int argc, const char* argv[])
 					//MOHPC_LOG(Trace, "effect %zu: type \"%s\"", num++, getEffectName(type));
 				});
 
-			cgame->handlers().spawnDebrisHandler.add([](CGameHandlers::debrisType_e debrisType, const Vector& origin, uint32_t numDebris)
+			cgame->handlers().spawnDebrisHandler.add([](Handlers::debrisType_e debrisType, const Vector& origin, uint32_t numDebris)
 				{
 					static size_t num = 0;
 					//MOHPC_LOG(Trace, "debris %zu: type %d", num++, debrisType);
@@ -315,7 +316,7 @@ int main(int argc, const char* argv[])
 				[&forwardValue, &rightValue, &angleYaw, &anglePitch, &buttons, cgame, &connection, &cm](usercmd_t& ucmd, usereyes_t& eyeinfo)
 				{
 					const uint32_t seq = connection->getCurrentServerMessageSequence();
-					const playerState_t& ps = cgame->getPredictedPlayerState();
+					const playerState_t& ps = cgame->getPrediction().getPredictedPlayerState();
 
 					uint16_t deltaAngles[3];
 					ps.getDeltaAngles(deltaAngles);
@@ -365,7 +366,7 @@ int main(int argc, const char* argv[])
 		/*
 		if (connection)
 		{
-			CGameModuleBase* cgame = connection->getCGModule();
+			ModuleBase* cgame = connection->getCGModule();
 			if (cgame)
 			{
 				const playerState_t& ps = cgame->getPredictedPlayerState();

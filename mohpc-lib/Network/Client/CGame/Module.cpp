@@ -9,7 +9,8 @@
 #include <bitset>
 
 using namespace MOHPC;
-using namespace Network;
+using namespace MOHPC::Network;
+using namespace MOHPC::Network::CGame;
 
 #define MOHPC_LOG_NAMESPACE "cgame" 
 
@@ -91,29 +92,9 @@ const char* effectsModel[] =
 "models/fx/water_trail_bubble.tik"
 };
 
-const char* MOHPC::Network::getEffectName(effects_e effect)
+const char* MOHPC::Network::CGame::getEffectName(effects_e effect)
 {
 	return effectsModel[(size_t)effect];
-}
-
-const objective_t& ObjectiveManager::get(uint32_t objNum) const
-{
-	return objectives[objNum];
-}
-
-const objective_t& ObjectiveManager::set(const ReadOnlyInfo& info, uint32_t objNum)
-{
-	objective_t& objective = objectives[objNum];
-	objective.flags = info.IntValueForKey("flags");
-	// Get objective text
-	objective.text = info.ValueForKey("text");
-
-	// Get objective location
-	size_t strLen;
-	const char* locStr = info.ValueForKey("loc", strLen);
-	sscanf(locStr, "%f %f %f", &objective.location[0], &objective.location[1], &objective.location[2]);
-
-	return objective;
 }
 
 const clientInfo_t& ClientInfoList::get(uint32_t clientNum) const
@@ -144,50 +125,42 @@ const clientInfo_t& ClientInfoList::set(const ReadOnlyInfo& info, uint32_t clien
 	return client;
 }
 
-CGameModuleBase::CGameModuleBase()
+ModuleBase::ModuleBase()
 	: processedSnapshots(serverCommandManager)
-	, validPPS(false)
 {
-	traceFunction = stubTrace;
-	pointContentsFunction = stubPointContents;
-
 	using namespace std::placeholders;
-	imports.getGameState().getHandlers().configStringHandler.add(std::bind(&CGameModuleBase::configStringModified, this, _1, _2));
-
-	// Create predefined box hull
-	boxHull = CollisionWorld::create();
-	boxHull->InitBoxHull();
+	imports.getGameState().getHandlers().configStringHandler.add(std::bind(&ModuleBase::configStringModified, this, _1, _2));
 
 	size_t numCommands = 8;
 	numCommands += voteManager.getNumCommandsToRegister();
 	serverCommandManager.reserveCommands(numCommands);
 
 	using namespace std::placeholders;
-	serverCommandManager.addCommand(Command("print", std::bind(&CGameModuleBase::SCmd_HudPrint, this, _1)));
-	serverCommandManager.addCommand(Command("hudprint", std::bind(&CGameModuleBase::SCmd_Scores, this, _1)));
-	serverCommandManager.addCommand(Command("scores", std::bind(&CGameModuleBase::SCmd_Stats, this, _1)));
-	serverCommandManager.addCommand(Command("stats", std::bind(&CGameModuleBase::SCmd_Stopwatch, this, _1)));
-	serverCommandManager.addCommand(Command("stopwatch", std::bind(&CGameModuleBase::SCmd_ServerLag, this, _1)));
-	serverCommandManager.addCommand(Command("svlag", std::bind(&CGameModuleBase::SCmd_Stufftext, this, _1)));
-	serverCommandManager.addCommand(Command("stufftext", std::bind(&CGameModuleBase::SCmd_Print, this, _1)));
-	serverCommandManager.addCommand(Command("printdeathmsg", std::bind(&CGameModuleBase::SCmd_PrintDeathMsg, this, _1)));
+	serverCommandManager.addCommand(Command("print", std::bind(&ModuleBase::SCmd_HudPrint, this, _1)));
+	serverCommandManager.addCommand(Command("hudprint", std::bind(&ModuleBase::SCmd_Scores, this, _1)));
+	serverCommandManager.addCommand(Command("scores", std::bind(&ModuleBase::SCmd_Stats, this, _1)));
+	serverCommandManager.addCommand(Command("stats", std::bind(&ModuleBase::SCmd_Stopwatch, this, _1)));
+	serverCommandManager.addCommand(Command("stopwatch", std::bind(&ModuleBase::SCmd_ServerLag, this, _1)));
+	serverCommandManager.addCommand(Command("svlag", std::bind(&ModuleBase::SCmd_Stufftext, this, _1)));
+	serverCommandManager.addCommand(Command("stufftext", std::bind(&ModuleBase::SCmd_Print, this, _1)));
+	serverCommandManager.addCommand(Command("printdeathmsg", std::bind(&ModuleBase::SCmd_PrintDeathMsg, this, _1)));
 
 	voteManager.registerCommands(serverCommandManager);
 }
 
-void CGameModuleBase::setProtocol(protocolType_c protocol)
+void ModuleBase::setProtocol(protocolType_c protocol)
 {
 	const uint32_t version = protocol.getProtocolVersionNumber();
 	environmentParse = Parsing::IEnvironment::get(version);
 	gameStateParse = Parsing::IGameState::get(version);
 }
 
-void CGameModuleBase::init(uintptr_t serverMessageSequence, rsequence_t serverCommandSequence)
+void ModuleBase::init(uintptr_t serverMessageSequence, rsequence_t serverCommandSequence)
 {
 	processedSnapshots.init(serverMessageSequence, serverCommandSequence);
 }
 
-void CGameModuleBase::parseCGMessage(MSG& msg)
+void ModuleBase::parseCGMessage(MSG& msg)
 {
 	MsgTypesHelper msgHelper(msg);
 
@@ -202,34 +175,16 @@ void CGameModuleBase::parseCGMessage(MSG& msg)
 	} while (hasMessage);
 }
 
-void CGameModuleBase::tick(uint64_t deltaTime, uint64_t currentTime, uint64_t serverTime)
+void ModuleBase::tick(uint64_t deltaTime, uint64_t currentTime, uint64_t serverTime)
 {
 	svTime = serverTime;
 
-	// Set snapshots transition
+	// set snapshots transition
+	// and process commands
 	processedSnapshots.processSnapshots(serverTime);
-
-	const SnapshotInfo* snap = processedSnapshots.getSnap();
-	const SnapshotInfo* nextSnap = processedSnapshots.getNextSnap();
-	if(snap && !(snap->snapFlags & SNAPFLAG_NOT_ACTIVE))
-	{
-		// Calculate the interpolation time
-		if (nextSnap)
-		{
-			const uint32_t delta = nextSnap->serverTime - snap->serverTime;
-			if (!delta) {
-				frameInterpolation = 0.f;
-			}
-			else {
-				frameInterpolation = (float)(svTime - snap->serverTime) / (float)delta;
-			}
-		}
-		else {
-			frameInterpolation = 0.f;
-		}
-
-		predictPlayerState();
-	}
+	traceManager.buildSolidList(processedSnapshots);
+	// process prediction stuff
+	prediction.process(serverTime, processedSnapshots);
 
 	if (voteManager.isModified())
 	{
@@ -238,464 +193,33 @@ void CGameModuleBase::tick(uint64_t deltaTime, uint64_t currentTime, uint64_t se
 	}
 }
 
-float CGameModuleBase::getFrameInterpolation() const
+float ModuleBase::getFrameInterpolation() const
 {
 	return frameInterpolation;
 }
 
-const playerState_t& CGameModuleBase::getPredictedPlayerState() const
-{
-	return predictedPlayerState;
-}
-
-void CGameModuleBase::predictPlayerState()
-{
-	const SnapshotInfo* snap = processedSnapshots.getSnap();
-	const SnapshotInfo* nextSnap = processedSnapshots.getNextSnap();
-
-	if (!snap || (snap->snapFlags & SNAPFLAG_NOT_ACTIVE))
-	{
-		// avoid predicting while in an invalid snap
-		return;
-	}
-
-	if (!validPPS)
-	{
-		validPPS = true;
-		predictedPlayerState = snap->ps;
-	}
-
-	// server can freeze the player and/or disable prediction for the player
-	if (snap->ps.pm_flags & PMF_NO_PREDICTION || snap->ps.pm_flags & PMF_FROZEN)
-	{
-		interpolatePlayerState(false);
-		return;
-	}
-
-	// non-predicting local movement will grab the latest angles
-	if (settings.isPredictionDisabled())
-	{
-		interpolatePlayerState(true);
-		return;
-	}
-
-	// replay all commands for this frame
-	const bool moved = replayAllCommands();
-
-	// interpolate camera view (spectator, cutscenes, etc)
-	interpolatePlayerStateCamera();
-
-	const EntityInfo* entInfo = processedSnapshots.getEntity(predictedPlayerState.groundEntityNum);
-	if (entInfo && entInfo->interpolate)
-	{
-		const float f = frameInterpolation - 1.f;
-
-		predictedPlayerState.origin = predictedPlayerState.origin + (entInfo->nextState.netorigin - entInfo->currentState.netorigin) * f;
-	}
-}
-
-void CGameModuleBase::interpolatePlayerState(bool grabAngles)
-{
-	const SnapshotInfo* snap = processedSnapshots.getSnap();
-	const SnapshotInfo* nextSnap = processedSnapshots.getNextSnap();
-
-	playerState_t* out = &predictedPlayerState;
-
-	*out = snap->ps;
-
-	// interpolate the camera if necessary
-	interpolatePlayerStateCamera();
-
-	// if we are still allowing local input, short circuit the view angles
-	if (grabAngles)
-	{
-		const uintptr_t cmdNum = getImports().getUserInput().getCurrentCmdNumber();
-
-		usercmd_t cmd;
-		getImports().getUserCmd(cmdNum, cmd);
-
-		Pmove::PM_UpdateViewAngles(out, &cmd);
-	}
-
-	// if the next frame is a teleport, we can't lerp to it
-	if (processedSnapshots.doesTeleportNextFrame()) {
-		return;
-	}
-
-	const SnapshotInfo* const prev = snap;
-	const SnapshotInfo* const next = nextSnap;
-
-	if (!next || next->serverTime <= prev->serverTime)
-	{
-		if(!next) {
-			MOHPC_LOG(Debug, "CGameModuleBase::interpolatePlayerState: nextSnap == NULL");
-		}
-		return;
-	}
-
-	const float f = frameInterpolation;
-
-	uint32_t i = next->ps.bobCycle;
-	if (i < prev->ps.bobCycle)
-	{
-		// handle wraparound
-		i += 256;
-	}
-
-	// interpolate the bob cycle
-	out->bobCycle = (uint8_t)((float)prev->ps.bobCycle + f * (float)(i - prev->ps.bobCycle));
-
-	// interpolate the lean angle
-	out->fLeanAngle = prev->ps.fLeanAngle +
-		f * (next->ps.fLeanAngle - prev->ps.fLeanAngle);
-
-	// interpolate angles, origin and velocity
-	for (i = 0; i < 3; i++) {
-		out->origin[i] = prev->ps.origin[i] + f * (next->ps.origin[i] - prev->ps.origin[i]);
-		if (!grabAngles) {
-			out->viewangles[i] = LerpAngle(
-				prev->ps.viewangles[i], next->ps.viewangles[i], f);
-		}
-		out->velocity[i] = prev->ps.velocity[i] +
-			f * (next->ps.velocity[i] - prev->ps.velocity[i]);
-	}
-}
-
-void CGameModuleBase::interpolatePlayerStateCamera()
-{
-	const SnapshotInfo* snap = processedSnapshots.getSnap();
-	const SnapshotInfo* nextSnap = processedSnapshots.getNextSnap();
-
-	//
-	// copy in the current ones if nothing else
-	//
-	cameraAngles = predictedPlayerState.camera_angles;
-	cameraOrigin = predictedPlayerState.camera_origin;
-	cameraFov = predictedPlayerState.fov;
-
-	// if the next frame is a teleport, we can't lerp to it
-	if (processedSnapshots.doesCameraCutNextFrame()) {
-		return;
-	}
-
-	const SnapshotInfo* const prev = snap;
-	const SnapshotInfo* const next = nextSnap;
-
-	if (!next || next->serverTime <= prev->serverTime) {
-		return;
-	}
-
-	const float f = (float)(svTime - prev->serverTime) / (next->serverTime - prev->serverTime);
-
-	// interpolate fov
-	cameraFov = prev->ps.fov + f * (next->ps.fov - prev->ps.fov);
-
-	if (!(snap->ps.pm_flags & PMF_CAMERA_VIEW))
-	{
-		// only interpolate if the player is in camera view
-		return;
-	}
-
-	if (predictedPlayerState.camera_flags & CF_CAMERA_ANGLES_TURRETMODE)
-	{
-		predictedPlayerState.camera_origin = next->ps.camera_origin;
-		predictedPlayerState.camera_angles = next->ps.camera_angles;
-		return;
-	}
-
-	for (uint32_t i = 0; i < 3; i++)
-	{
-		predictedPlayerState.camera_origin[i] = prev->ps.camera_origin[i] + f * (next->ps.camera_origin[i] - prev->ps.camera_origin[i]);
-		predictedPlayerState.camera_angles[i] = LerpAngle(prev->ps.camera_angles[i], next->ps.camera_angles[i], f);
-	}
-}
-
-uint64_t CGameModuleBase::getTime() const
+uint64_t ModuleBase::getTime() const
 {
 	return svTime;
 }
 
-void CGameModuleBase::setTraceFunction(TraceFunction&& inTraceFunction)
-{
-	traceFunction = std::move(inTraceFunction);
-}
 
-void CGameModuleBase::setPointContentsFunction(PointContentsFunction&& inPointContentsFunction)
-{
-	pointContentsFunction = std::move(inPointContentsFunction);
-}
-
-void CGameModuleBase::clipMoveToEntities(CollisionWorld& cm, const Vector& start, const Vector& mins, const Vector& maxs, const Vector& end, uint16_t skipNumber, uint32_t mask, bool cylinder, trace_t& tr)
-{
-	// iterate through entities and test their collision
-	const size_t numSolidEntities = processedSnapshots.getNumSolidEntities();
-	for (size_t i = 0; i < numSolidEntities; i++)
-	{
-		const EntityInfo* cent = processedSnapshots.getSolidEntity(i);
-		const entityState_t* ent = &cent->currentState;
-
-		if (ent->number == skipNumber) {
-			continue;
-		}
-
-		CollisionWorld* world = &cm;
-		clipHandle_t cmodel;
-		Vector bmins, bmaxs;
-		Vector origin, angles;
-
-		if (ent->solid == SOLID_BMODEL)
-		{
-			// special value for bmodel
-			cmodel = cm.inlineModel(ent->modelindex);
-			if(!cmodel) continue;
-			angles = cent->currentState.netangles;
-			origin = cent->currentState.netorigin;
-		}
-		else
-		{
-			// encoded bbox
-			IntegerToBoundingBox(ent->solid, bmins, bmaxs);
-			cmodel = boxHull->TempBoxModel(bmins, bmaxs, ContentFlags::CONTENTS_BODY);
-			angles = vec3_origin;
-			origin = cent->currentState.netorigin;
-			// trace to the boxhull instead
-			// entities with a boundingbox use a boxhull
-			world = boxHull.get();
-		}
-
-		trace_t trace;
-		// trace through the entity's submodel
-		world->TransformedBoxTrace(&trace, start, end,
-			mins, maxs, cmodel, mask, origin, angles, cylinder);
-
-		if (trace.allsolid || trace.fraction < tr.fraction) {
-			trace.entityNum = ent->number;
-			tr = trace;
-		}
-		else if (trace.startsolid) {
-			tr.startsolid = true;
-		}
-	}
-}
-
-void CGameModuleBase::trace(CollisionWorld& cm, trace_t& tr, const Vector& start, const Vector& mins, const Vector& maxs, const Vector& end, uint16_t skipNumber, uint32_t mask, bool cylinder, bool cliptoentities)
-{
-	// if there is a loaded collision from the game, use it instead
-	cm.BoxTrace(&tr, start, end, mins, maxs, 0, mask, cylinder);
-	// collision defaults to world
-	tr.entityNum = tr.fraction != 1.0 ? ENTITYNUM_WORLD : ENTITYNUM_NONE;
-
-	if (tr.startsolid) {
-		tr.entityNum = ENTITYNUM_WORLD;
-	}
-
-	if(cliptoentities)
-	{
-		// also trace through entities
-		clipMoveToEntities(cm, start, mins, maxs, end, skipNumber, mask, cylinder, tr);
-	}
-}
-
-uint32_t CGameModuleBase::pointContents(CollisionWorld& cm, const Vector& point, uintptr_t passEntityNum) const
-{
-	// get the contents in world
-	uint32_t contents = cm.PointContents(point, 0);
-
-	// also iterate through entities (that are using a submodel) to check if the point is inside
-	const size_t numSolidEntities = processedSnapshots.getNumSolidEntities();
-	for (size_t i = 0; i < numSolidEntities; i++)
-	{
-		const EntityInfo* cent = processedSnapshots.getSolidEntity(i);
-		const entityState_t* ent = &cent->currentState;
-
-		if (ent->number == passEntityNum) {
-			continue;
-		}
-
-		// special value for bmodel
-		if (ent->solid != SOLID_BMODEL) {
-			continue;
-		}
-
-		clipHandle_t cmodel = cm.inlineModel(ent->modelindex);
-		if (!cmodel) {
-			continue;
-		}
-
-		contents |= cm.TransformedPointContents(point, cmodel, ent->netorigin, ent->netangles);
-	}
-
-	return contents;
-}
-
-const ClientImports& CGameModuleBase::getImports() const
+const ClientImports& ModuleBase::getImports() const
 {
 	return imports;
 }
 
-bool CGameModuleBase::replayAllCommands()
-{
-	const SnapshotInfo* snap = processedSnapshots.getSnap();
-	const SnapshotInfo* nextSnap = processedSnapshots.getNextSnap();
-
-	// Pmove
-	Pmove& pmove = getMove();
-	pmove_t& pm = pmove.get();
-	pm.ps = &predictedPlayerState;
-	pm.pointcontents = pointContentsFunction;
-	pm.trace = traceFunction;
-
-	if (pm.ps->pm_type == pmType_e::Dead) {
-		pm.tracemask = ContentFlags::MASK_PLAYERSOLID & ~ContentFlags::MASK_DYNAMICBODY;
-	}
-	else {
-		pm.tracemask = ContentFlags::MASK_PLAYERSOLID;
-	}
-
-	pm.noFootsteps = cgs.hasAnyDMFlags(DMFlags::DF_NO_FOOTSTEPS);
-	// Set settings depending on the protocol/version
-	setupMove(pmove);
-
-	const playerState_t oldPlayerState = predictedPlayerState;
-	const uintptr_t current = getImports().getUserInput().getCurrentCmdNumber();
-
-	// Grab the latest cmd
-	usercmd_t latestCmd;
-	getImports().getUserCmd(current, latestCmd);
-
-	if (nextSnap && !processedSnapshots.doesTeleportNextFrame() && !processedSnapshots.doesTeleportThisFrame())
-	{
-		predictedPlayerState = nextSnap->ps;
-		physicsTime = nextSnap->serverTime;
-	}
-	else
-	{
-		predictedPlayerState = snap->ps;
-		physicsTime = snap->serverTime;
-	}
-
-	const uint32_t pmove_msec = settings.getPmoveMsec();
-	pm.pmove_fixed = settings.isPmoveFixed();
-	pm.pmove_msec = pmove_msec;
-
-	bool moved = false;
-	// play all previous commands up to the current
-	for (uintptr_t cmdNum = CMD_BACKUP; cmdNum > 0; --cmdNum)
-	{
-		moved |= tryReplayCommand(pmove, oldPlayerState, latestCmd, current - cmdNum + 1);
-	}
-
-	return moved;
-}
-
-bool CGameModuleBase::tryReplayCommand(Pmove& pmove, const playerState_t& oldPlayerState, const usercmd_t& latestCmd, uintptr_t cmdNum)
-{
-	pmove_t& pm = pmove.get();
-
-	getImports().getUserCmd(cmdNum, pm.cmd);
-
-	if (pm.pmove_fixed) {
-		pmove.PM_UpdateViewAngles(pm.ps, &pm.cmd);
-	}
-
-	// don't do anything if the time is before the snapshot player time
-	if (pm.cmd.serverTime <= predictedPlayerState.commandTime) {
-		return false;
-	}
-
-	// don't do anything if the command was from a previous map_restart
-	if (pm.cmd.serverTime > latestCmd.serverTime) {
-		return false;
-	}
-
-	if (predictedPlayerState.commandTime == oldPlayerState.commandTime)
-	{
-		if (processedSnapshots.doesTeleportThisFrame())
-		{
-			predictedError = Vector();
-			processedSnapshots.clearTeleportThisFrame();
-		}
-
-		// FIXME: Should it have some sort of predicted error?
-	}
-
-	if (pm.pmove_fixed)
-	{
-		pm.cmd.serverTime = (
-			(pm.cmd.serverTime + pm.pmove_msec - 1)
-			/ pm.pmove_msec
-			) * pm.pmove_msec;
-	}
-
-	// Replay movement
-	return replayMove(pmove, pm.cmd);
-}
-
-bool CGameModuleBase::replayMove(Pmove& pmove, usercmd_t& cmd)
-{
-	pmove_t& pm = pmove.get();
-
-	if (pm.ps->feetfalling && pm.waterlevel <= 1)
-	{
-		// clear xy movement when falling or when under water
-		cmd.moveForward(0);
-		cmd.moveRight(0);
-	}
-
-	// calculate delta time between server command time and current client time
-	const uint32_t msec = pm.cmd.serverTime - pm.ps->commandTime;
-
-	// call move handler
-	pmove.move();
-
-	// additional movement
-	// can be anything, from jumping to events/fire prediction
-	extendMove(pmove, msec);
-
-	// valid move
-	return true;
-}
-
-void CGameModuleBase::extendMove(Pmove& pmove, uint32_t msec)
-{
-	const pmove_t& pm = pmove.get();
-
-	const float frametime = float(msec / 1000.f);
-
-	switch (pm.ps->pm_type)
-	{
-	case pmType_e::Noclip:
-		// on the server, the origin is changed in pm code and in G_Physics_Noclip;
-		// as a consequence, do the same client-side
-		physicsNoclip(pmove, frametime);
-		break;
-	default:
-		break;
-	}
-
-	// let the callee replay/predict other events that are not present in the original pm code
-	// the event could be called inside the PM code, but it's not what the server expect (no sub-ticking)
-	// and PM must remain identical to the server PM code
-	handlers().replayCmdHandler.broadcast(pm.cmd, *pm.ps, frametime);
-}
-
-void CGameModuleBase::physicsNoclip(Pmove& pmove, float frametime)
-{
-	const pmove_t& pm = pmove.get();
-	pm.ps->origin += pm.ps->velocity * frametime;
-}
-
-const rain_t& CGameModuleBase::getRain() const
+const rain_t& ModuleBase::getRain() const
 {
 	return rain;
 }
 
-const environment_t& CGameModuleBase::getEnvironment() const
+const environment_t& ModuleBase::getEnvironment() const
 {
 	return environment;
 }
 
-const cgsInfo& CGameModuleBase::getServerInfo() const
+const cgsInfo& ModuleBase::getServerInfo() const
 {
 	return cgs;
 }
@@ -832,7 +356,7 @@ bool cgsInfo::hasAllDMFlags(uint32_t flags) const
 	return (dmFlags & flags) == flags;
 }
 
-void CGameModuleBase::configStringModified(csNum_t num, const char* cs)
+void ModuleBase::configStringModified(csNum_t num, const char* cs)
 {
 	switch (num)
 	{
@@ -945,7 +469,7 @@ void CGameModuleBase::configStringModified(csNum_t num, const char* cs)
 	}
 }
 
-void CGameModuleBase::parseServerInfo(const char* cs)
+void ModuleBase::parseServerInfo(const char* cs)
 {
 	ReadOnlyInfo info(cs);
 
@@ -994,7 +518,7 @@ void CGameModuleBase::parseServerInfo(const char* cs)
 	cgs.scoreboardPicOver = info.ValueForKey("g_scoreboardpicover");
 }
 
-void CGameModuleBase::conditionalReflectClient(const clientInfo_t& client)
+void ModuleBase::conditionalReflectClient(const clientInfo_t& client)
 {
 	const ClientInfoPtr& userInfo = imports.getUserInfo();
 
@@ -1010,7 +534,7 @@ void CGameModuleBase::conditionalReflectClient(const clientInfo_t& client)
 	}
 }
 
-void CGameModuleBase::SCmd_Print(TokenParser& args)
+void ModuleBase::SCmd_Print(TokenParser& args)
 {
 	const char* text = args.GetString(true, false);
 	if(*text < (uint8_t)hudMessage_e::Max)
@@ -1025,21 +549,23 @@ void CGameModuleBase::SCmd_Print(TokenParser& args)
 	}
 }
 
-void CGameModuleBase::SCmd_HudPrint(TokenParser& args)
+void ModuleBase::SCmd_HudPrint(TokenParser& args)
 {
 	const char* text = args.GetString(true, false);
 	handlers().hudPrintHandler.broadcast(text);
 }
 
-void CGameModuleBase::SCmd_Scores(TokenParser& args)
+void ModuleBase::SCmd_Scores(TokenParser& args)
 {
-	Scoreboard scoreboard(cgs.gameType);
-	scoreboard.parse(args);
+	Scoreboard scoreboard;
+
+	ScoreboardParser scoreboardParser(scoreboard, cgs.gameType);
+	scoreboardParser.parse(args);
 	// Pass the parsed scoreboard
 	handlers().scmdScoresHandler.broadcast(scoreboard);
 }
 
-void CGameModuleBase::SCmd_Stats(TokenParser& args)
+void ModuleBase::SCmd_Stats(TokenParser& args)
 {
 	stats_t stats;
 
@@ -1068,30 +594,35 @@ void CGameModuleBase::SCmd_Stats(TokenParser& args)
 	handlers().scmdStatsHandler.broadcast(stats);
 }
 
-void CGameModuleBase::SCmd_Stopwatch(TokenParser& args)
+void ModuleBase::SCmd_Stopwatch(TokenParser& args)
 {
 	const uint64_t startTime = args.GetInteger64(false);
 	const uint64_t endTime = args.GetInteger64(false);
 	handlers().scmdStopwatchHandler.broadcast(startTime, endTime);
 }
 
-void CGameModuleBase::SCmd_ServerLag(TokenParser& args)
+void ModuleBase::SCmd_ServerLag(TokenParser& args)
 {
 	cgs.serverLagTime = getTime();
 	handlers().scmdServerLagHandler.broadcast();
 }
 
-void CGameModuleBase::SCmd_Stufftext(TokenParser& args)
+void ModuleBase::SCmd_Stufftext(TokenParser& args)
 {
 	handlers().scmdStufftextHandler.broadcast(args);
 }
 
-CGameModuleBase::HandlerListCGame& CGameModuleBase::handlers()
+ModuleBase::HandlerList& ModuleBase::handlers()
 {
 	return handlerList;
 }
 
-void CGameModuleBase::SCmd_PrintDeathMsg(TokenParser& args)
+const ModuleBase::HandlerList& ModuleBase::handlers() const
+{
+	return handlerList;
+}
+
+void ModuleBase::SCmd_PrintDeathMsg(TokenParser& args)
 {
 	const str deathMessage1 = args.GetToken(true);
 	const str deathMessage2 = args.GetToken(true);
@@ -1145,50 +676,60 @@ void CGameModuleBase::SCmd_PrintDeathMsg(TokenParser& args)
 	}
 }
 
-clientSettings_t& CGameModuleBase::getSettings()
+void ModuleBase::setImports(const Imports& imports)
 {
-	return settings;
+	prediction.setUserInputPtr(&imports.userInput);
+
+	processedSnapshots.setPtrs(
+		&imports.clientTime,
+		&imports.snapshotManager,
+		&imports.commandSequence
+	);
 }
 
-void CGameModuleBase::setImports(const ClientImports& inImports)
-{
-	imports = inImports;
-
-	SnapshotImports snapshotImports;
-	snapshotImports.getClientTime = imports.getClientTime;
-	snapshotImports.getSnapshotManager = imports.getSnapshotManager;
-
-	processedSnapshots.setImports(snapshotImports);
-}
-
-CGameSnapshotProcessor& CGameModuleBase::getSnapshotProcessor()
+SnapshotProcessor& ModuleBase::getSnapshotProcessor()
 {
 	return processedSnapshots;
 }
 
-const CGameSnapshotProcessor& CGameModuleBase::getSnapshotProcessor() const
+const SnapshotProcessor& ModuleBase::getSnapshotProcessor() const
 {
 	return processedSnapshots;
 }
 
-VoteManager& CGameModuleBase::getVoteManager()
+VoteManager& ModuleBase::getVoteManager()
 {
 	return voteManager;
 }
 
-const VoteManager& CGameModuleBase::getVoteManager() const
+const VoteManager& ModuleBase::getVoteManager() const
 {
 	return voteManager;
 }
 
-const ObjectiveManager& CGameModuleBase::getObjectiveManager() const
+const ObjectiveManager& ModuleBase::getObjectiveManager() const
 {
 	return objectiveManager;
 }
 
-const ClientInfoList& CGameModuleBase::getClientInfoList() const
+const ClientInfoList& ModuleBase::getClientInfoList() const
 {
 	return clientInfoList;
+}
+
+const TraceManager& ModuleBase::getTraceManager() const
+{
+	return traceManager;
+}
+
+Prediction& ModuleBase::getPrediction()
+{
+	return prediction;
+}
+
+const Prediction& ModuleBase::getPrediction() const
+{
+	return prediction;
 }
 
 CGameModule6::CGameModule6()
@@ -2058,7 +1599,7 @@ void CGameModule15::setupMove(Pmove& pmove)
 	pmoveVer.canLeanWhileMoving = getServerInfo().hasAnyDMFlags(DMFlags::DF_ALLOW_LEAN);
 }
 
-CommonMessageHandler::CommonMessageHandler(MSG& inMsg, const CGameModuleBase::HandlerListCGame& inHandlerList)
+CommonMessageHandler::CommonMessageHandler(MSG& inMsg, const ModuleBase::HandlerList& inHandlerList)
 	: msg(inMsg)
 	, handlerList(inHandlerList)
 {}
@@ -2073,14 +1614,14 @@ void CommonMessageHandler::impactMelee()
 	handlerList.meleeImpactHandler.broadcast(vecStart, vecEnd);
 }
 
-void MOHPC::Network::CommonMessageHandler::debrisCrate()
+void CommonMessageHandler::debrisCrate()
 {
 	MsgTypesHelper msgHelper(msg);
 
 	const Vector vecStart = msgHelper.ReadVectorCoord();
 	const uint8_t numDebris = msg.ReadByte();
 
-	handlerList.spawnDebrisHandler.broadcast(CGameHandlers::debrisType_e::crate, vecStart, numDebris);
+	handlerList.spawnDebrisHandler.broadcast(Handlers::debrisType_e::crate, vecStart, numDebris);
 }
 
 void CommonMessageHandler::debrisWindow()
@@ -2090,7 +1631,7 @@ void CommonMessageHandler::debrisWindow()
 	const Vector vecStart = msgHelper.ReadVectorCoord();
 	const uint8_t numDebris = msg.ReadByte();
 
-	handlerList.spawnDebrisHandler.broadcast(CGameHandlers::debrisType_e::window, vecStart, numDebris);
+	handlerList.spawnDebrisHandler.broadcast(Handlers::debrisType_e::window, vecStart, numDebris);
 }
 
 void CommonMessageHandler::huddrawShader()
@@ -2107,7 +1648,7 @@ void CommonMessageHandler::huddrawAlign()
 	const uint8_t hAlign = msg.ReadNumber<uint8_t>(2);
 	const uint8_t vAlign = msg.ReadNumber<uint8_t>(2);
 
-	using namespace CGameHandlers;
+	using namespace Handlers;
 	handlerList.huddrawAlignHandler.broadcast(index, horizontalAlign_e(hAlign), verticalAlign_e(vAlign));
 }
 
@@ -2248,244 +1789,6 @@ const char* rain_t::getShader(uint8_t index) const
 	return shader[index].c_str();
 }
 
-objective_t::objective_t()
-	: flags(0)
-{
-}
-
-uint32_t objective_t::getFlags() const
-{
-	return flags;
-}
-
-const char* objective_t::getText() const
-{
-	return text;
-}
-
-const Vector& objective_t::getLocation() const
-{
-	return location;
-}
-
-Scoreboard::Scoreboard(gameType_e inGameType)
-	: gameType(inGameType)
-{
-}
-
-size_t Scoreboard::getNumTeams() const
-{
-	return teamEntries.NumObjects();
-}
-
-const Scoreboard::teamEntry_t& Scoreboard::getTeam(size_t index)
-{
-	return teamEntries[index];
-}
-
-const Scoreboard::teamEntry_t* Scoreboard::getTeamByType(teamType_e type)
-{
-	const size_t numTeams = teamEntries.NumObjects();
-	for (size_t i = 0; i < numTeams; ++i)
-	{
-		const teamEntry_t& entry = teamEntries[i];
-		if (entry.teamNum == (uint32_t)type) {
-			return &entry;
-		}
-	}
-
-	return nullptr;
-}
-
-size_t Scoreboard::getNumPlayers() const
-{
-	return playerList.NumObjects();
-}
-
-const Scoreboard::player_t& Scoreboard::getPlayer(size_t index) const
-{
-	return playerList[index];
-}
-
-void Scoreboard::parse(TokenParser& tokenizer)
-{
-	uint32_t numEntries = tokenizer.GetInteger(false);
-	if (numEntries > MAX_ENTRIES)
-	{
-		// Better not overflow with a bad number
-		numEntries = MAX_ENTRIES;
-	}
-
-	playerList.reserve(numEntries);
-
-	if (gameType > gameType_e::FreeForAll)
-	{
-		teamEntries.reserve(4);
-
-		// TDM
-		for (size_t i = 0; i < numEntries; ++i)
-		{
-			const int32_t id = tokenizer.GetInteger(false);
-			if (id == -1) {
-				parseTeamInfo(tokenizer);
-			}
-			else if (id == -2) {
-				parseTeamEmpty(tokenizer);
-			}
-			else {
-				parseTeamPlayer(id, tokenizer);
-			}
-		}
-	}
-	else
-	{
-		// Free-for-All
-		for (size_t i = 0; i < numEntries; ++i)
-		{
-			const int32_t id = tokenizer.GetInteger(false);
-			if (id == -1 || id == -2) {
-				parseEmpty(tokenizer);
-			}
-			else {
-				parsePlayer(id, tokenizer);
-			}
-		}
-	}
-}
-
-void Scoreboard::parseTeamInfo(TokenParser& tokenizer)
-{
-	teamEntry_t* entry = new(teamEntries) teamEntry_t;
-
-	entry->teamNum = tokenizer.GetInteger(false);
-	entry->numKills = tokenizer.GetInteger(false);
-	entry->numDeaths = tokenizer.GetInteger(false);
-
-	// Skip the team string
-	tokenizer.GetToken(false);
-
-	entry->ping = tokenizer.GetInteger(false);
-}
-
-void Scoreboard::parseTeamPlayer(uint32_t clientNum, TokenParser& tokenizer)
-{
-	player_t* player = new(playerList) player_t;
-
-	const int32_t teamNum = tokenizer.GetInteger(false);
-
-	player->clientNum = clientNum;
-	player->teamNum = abs(teamNum);
-	// A negative teamNumber means that the player is dead
-	player->alive = teamNum >= 0;
-	player->numKills = tokenizer.GetInteger(false);
-	player->numDeaths = tokenizer.GetInteger(false);
-	const str timeString = tokenizer.GetToken(false);
-	player->ping = tokenizer.GetInteger(false);
-
-	// Parse time
-	player->timeStamp = parseTime(timeString.c_str());
-}
-
-void Scoreboard::parseTeamEmpty(TokenParser& tokenizer)
-{
-	for (size_t i = 0; i < 5; ++i) {
-		tokenizer.GetToken(false);
-	}
-}
-
-void Scoreboard::parsePlayer(uint32_t clientNum, TokenParser& tokenizer)
-{
-	player_t* player = new(playerList) player_t;
-
-	player->clientNum = clientNum;
-	player->numKills = tokenizer.GetInteger(false);
-	player->numDeaths = tokenizer.GetInteger(false);
-	const str timeString = tokenizer.GetToken(false);
-	player->ping = tokenizer.GetInteger(false);
-
-	// Parse time
-	player->timeStamp = parseTime(timeString.c_str());
-
-	// No team
-	player->teamNum = 0;
-	// Can't determine with the data if the player is dead or alive.
-	player->alive = true;
-}
-
-void Scoreboard::parseEmpty(TokenParser& tokenizer)
-{
-	for (size_t i = 0; i < 4; ++i) {
-		tokenizer.GetToken(false);
-	}
-}
-
-uint64_t Scoreboard::parseTime(const char* timeStr)
-{
-	uint32_t hours, minutes, seconds;
-	if (sscanf(timeStr, "%i:%02i:%02i", &hours, &minutes, &seconds) != 3)
-	{
-		hours = 0;
-		sscanf(timeStr, "%i:%02i", &minutes, &seconds);
-	}
-
-	return (seconds + minutes * 60 + hours * 24 * 60) * 1000;
-}
-
-uint32_t Scoreboard::teamEntry_t::getTeamNum() const
-{
-	return teamNum;
-}
-
-uint32_t Scoreboard::teamEntry_t::getNumKills() const
-{
-	return numKills;
-}
-
-uint32_t Scoreboard::teamEntry_t::getNumDeaths() const
-{
-	return numDeaths;
-}
-
-uint32_t Scoreboard::teamEntry_t::getPing() const
-{
-	return ping;
-}
-
-uint32_t Scoreboard::player_t::getClientNum() const
-{
-	return clientNum;
-}
-
-uint32_t Scoreboard::player_t::getTeamNum() const
-{
-	return teamNum;
-}
-
-uint32_t Scoreboard::player_t::getNumKills() const
-{
-	return numKills;
-}
-
-uint32_t Scoreboard::player_t::getNumDeaths() const
-{
-	return numDeaths;
-}
-
-uint64_t Scoreboard::player_t::getTimeStamp() const
-{
-	return timeStamp;
-}
-
-uint32_t Scoreboard::player_t::getPing() const
-{
-	return ping;
-}
-
-bool Scoreboard::player_t::isAlive() const
-{
-	return alive;
-}
-
 clientInfo_t::clientInfo_t()
 	: team(teamType_e::None)
 {
@@ -2506,47 +1809,5 @@ const PropertyObject& clientInfo_t::getProperties() const
 	return properties;
 }
 
-clientSettings_t::clientSettings_t()
-	: pmove_msec(8)
-	, pmove_fixed(false)
-	, forceDisablePrediction(false)
-{
-}
-
-void clientSettings_t::setPmoveMsec(uint32_t value)
-{
-	pmove_msec = value;
-}
-
-uint32_t clientSettings_t::getPmoveMsec() const
-{
-	return pmove_msec;
-}
-
-void clientSettings_t::setPmoveFixed(bool value)
-{
-	pmove_fixed = value;
-}
-
-bool clientSettings_t::isPmoveFixed() const
-{
-	return pmove_fixed;
-}
-
-void clientSettings_t::disablePrediction()
-{
-	forceDisablePrediction = true;
-}
-
-void clientSettings_t::enablePrediction()
-{
-	forceDisablePrediction = false;
-}
-
-bool clientSettings_t::isPredictionDisabled() const
-{
-	return forceDisablePrediction;
-}
-
-ProtocolClassInstancier_Template<CGameModule6, CGameModuleBase, 5, 8> cgameVersion8;
-ProtocolClassInstancier_Template<CGameModule15, CGameModuleBase, 15, 17> cgameVersion17;
+ProtocolClassInstancier_Template<CGameModule6, ModuleBase, 5, 8> cgameVersion8;
+ProtocolClassInstancier_Template<CGameModule15, ModuleBase, 15, 17> cgameVersion17;

@@ -64,7 +64,7 @@ namespace Network
 		 * @param sizeVal	The size of the struct member.
 		 * @param bitsVal	The number of bits to transmit.
 		 *  > 0 = normal number.
-		 *  0	= float.
+		 *	  0	= float.
 		 *  < 0	= use the sign bit.
 		 */
 		constexpr netField_t(const char* nameVal, uint16_t offsetVal, uint8_t sizeVal, int8_t bitsVal, uint8_t typeVal)

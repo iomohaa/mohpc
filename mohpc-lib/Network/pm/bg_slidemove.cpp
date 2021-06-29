@@ -102,7 +102,7 @@ bool Pmove::PM_SlideMove( bool gravity )
 		VectorMA( pm.ps->origin, time_left, pm.ps->velocity, end );
 
 		// see if we can make it there
-		pm.trace( &trace, pm.ps->origin, pm.mins, pm.maxs, end, pm.ps->clientNum, pm.tracemask, true, false );
+		pm.traceInterface->trace( &trace, pm.ps->origin, pm.mins, pm.maxs, end, pm.ps->clientNum, pm.tracemask, true, false );
 
 		if( trace.allsolid ) {
 			// entity is completely trapped in another solid
@@ -258,7 +258,7 @@ void Pmove::PM_StepSlideMove( bool gravity )
 
 	VecCopy( start_o, down );
 	down[ 2 ] -= STEPSIZE;
-	pm.trace( &trace, start_o, pm.mins, pm.maxs, down, pm.ps->clientNum, pm.tracemask, true, false );
+	pm.traceInterface->trace( &trace, start_o, pm.mins, pm.maxs, down, pm.ps->clientNum, pm.tracemask, true, false );
 	VecSet( up, 0, 0, 1 );
 
 	// never step up when you still have up velocity
@@ -280,11 +280,11 @@ void Pmove::PM_StepSlideMove( bool gravity )
 	up[ 2 ] += STEPSIZE;
 
 	// test the player position if they were a stepheight higher
-	pm.trace( &trace, up, pm.mins, pm.maxs, up, pm.ps->clientNum, pm.tracemask, true, false );
+	pm.traceInterface->trace( &trace, up, pm.mins, pm.maxs, up, pm.ps->clientNum, pm.tracemask, true, false );
 	if( trace.allsolid )
 	{
 		up[ 2 ] -= 9.0f;
-		pm.trace( &trace, up, pm.mins, pm.maxs, up, pm.ps->clientNum, pm.tracemask, true, false );
+		pm.traceInterface->trace( &trace, up, pm.mins, pm.maxs, up, pm.ps->clientNum, pm.tracemask, true, false );
 		if( trace.allsolid )
 		{
 			return;
@@ -304,7 +304,7 @@ void Pmove::PM_StepSlideMove( bool gravity )
 	VecCopy( pm.ps->origin, down );
 	down[ 2 ] -= STEPSIZE;
 
-	pm.trace( &trace, pm.ps->origin, pm.mins, pm.maxs, down, pm.ps->clientNum, pm.tracemask, true, false );
+	pm.traceInterface->trace( &trace, pm.ps->origin, pm.mins, pm.maxs, down, pm.ps->clientNum, pm.tracemask, true, false );
 	if( !trace.allsolid )
 	{
 		if( bWasOnGoodGround && trace.fraction < 1.0 && trace.plane.normal[ 2 ] < MIN_WALK_NORMAL )

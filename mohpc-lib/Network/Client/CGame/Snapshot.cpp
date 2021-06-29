@@ -6,6 +6,7 @@
 
 using namespace MOHPC;
 using namespace MOHPC::Network;
+using namespace MOHPC::Network::CGame;
 
 EntityInfo::EntityInfo()
 	: currentValid(false)
@@ -45,12 +46,10 @@ bool EntityInfo::hasTeleported() const
 	return teleported;
 }
 
-CGameSnapshotProcessor::CGameSnapshotProcessor(CommandManager& serverCommandManagerRef)
+SnapshotProcessor::SnapshotProcessor(CommandManager& serverCommandManagerRef)
 	: serverCommandManager(serverCommandManagerRef)
 	, nextSnap(nullptr)
 	, snap(nullptr)
-	, numSolidEntities(0)
-	, numTriggerEntities(0)
 	, processedSnapshotNum(0)
 	, latestSnapshotNum(0)
 	, nextFrameTeleport(false)
@@ -59,24 +58,24 @@ CGameSnapshotProcessor::CGameSnapshotProcessor(CommandManager& serverCommandMana
 {
 }
 
-void CGameSnapshotProcessor::init(uintptr_t serverMessageSequence, rsequence_t serverCommandSequence)
+void SnapshotProcessor::init(uintptr_t serverMessageSequence, rsequence_t serverCommandSequence)
 {
 	processedSnapshotNum = serverMessageSequence;
 	latestSnapshotNum = processedSnapshotNum;
 	latestCommandSequence = serverCommandSequence;
 }
 
-const MOHPC::Network::SnapshotInfo* CGameSnapshotProcessor::getSnap() const
+const MOHPC::Network::SnapshotInfo* SnapshotProcessor::getSnap() const
 {
 	return snap;
 }
 
-const MOHPC::Network::SnapshotInfo* CGameSnapshotProcessor::getNextSnap() const
+const MOHPC::Network::SnapshotInfo* SnapshotProcessor::getNextSnap() const
 {
 	return nextSnap;
 }
 
-const EntityInfo* CGameSnapshotProcessor::getEntity(entityNum_t num) const
+const EntityInfo* SnapshotProcessor::getEntity(entityNum_t num) const
 {
 	if (num >= MAX_GENTITIES) {
 		return nullptr;
@@ -93,7 +92,7 @@ const EntityInfo* CGameSnapshotProcessor::getEntity(entityNum_t num) const
 	return &entInfo;
 }
 
-SnapshotInfo* CGameSnapshotProcessor::readNextSnapshot()
+SnapshotInfo* SnapshotProcessor::readNextSnapshot()
 {
 	SnapshotInfo* dest;
 
@@ -102,7 +101,7 @@ SnapshotInfo* CGameSnapshotProcessor::readNextSnapshot()
 		dest = &activeSnapshots[processedSnapshotNum % MAX_ACTIVE_SNAPSHOTS];
 
 		processedSnapshotNum++;
-		bool r = getImports().getSnapshotManager().getSnapshot(processedSnapshotNum, *dest);
+		bool r = snapshotManager->getSnapshot(processedSnapshotNum, *dest);
 		if (r)
 		{
 			return dest;
@@ -112,9 +111,9 @@ SnapshotInfo* CGameSnapshotProcessor::readNextSnapshot()
 	return nullptr;
 }
 
-void CGameSnapshotProcessor::processSnapshots(uint64_t serverTime)
+void SnapshotProcessor::processSnapshots(uint64_t serverTime)
 {
-	const uintptr_t n = getImports().getSnapshotManager().getCurrentSnapNumber();
+	const uintptr_t n = snapshotManager->getCurrentSnapNumber();
 	if (n != latestSnapshotNum)
 	{
 		if (n < latestSnapshotNum)
@@ -170,7 +169,7 @@ void CGameSnapshotProcessor::processSnapshots(uint64_t serverTime)
 			}
 		}
 
-		const uint64_t serverStartTime = getImports().getClientTime().getStartTime();
+		const uint64_t serverStartTime = clientTime->getStartTime();
 		// if our time is < nextFrame's, we have a nice interpolating state
 		if (serverTime >= snap->serverTime && serverTime < nextSnap->serverTime && snap->serverTime > serverStartTime) {
 			break;
@@ -194,7 +193,7 @@ void CGameSnapshotProcessor::processSnapshots(uint64_t serverTime)
 	}
 }
 
-void CGameSnapshotProcessor::setNextSnap(SnapshotInfo* newSnap)
+void SnapshotProcessor::setNextSnap(SnapshotInfo* newSnap)
 {
 	this->nextSnap = newSnap;
 
@@ -249,20 +248,20 @@ void CGameSnapshotProcessor::setNextSnap(SnapshotInfo* newSnap)
 		nextFrameCameraCut = false;
 	}
 
-	if (snap->serverTime < getImports().getClientTime().getRemoteStartTime()) {
+	if (snap->serverTime < clientTime->getRemoteStartTime()) {
 		nextFrameTeleport = true;
 	}
 
 	// sort out solid entities
-	buildSolidList();
+	//buildSolidList();
 }
 
-void CGameSnapshotProcessor::setInitialSnapshot(SnapshotInfo* newSnap)
+void SnapshotProcessor::setInitialSnapshot(SnapshotInfo* newSnap)
 {
 	this->snap = newSnap;
 
 	// sort out solid entities
-	buildSolidList();
+	//buildSolidList();
 	// execute all commands at once that was received in this snap
 	executeNewServerCommands(this->snap->serverCommandSequence, false);
 
@@ -282,7 +281,7 @@ void CGameSnapshotProcessor::setInitialSnapshot(SnapshotInfo* newSnap)
 	}
 }
 
-void CGameSnapshotProcessor::transitionSnapshot(bool differentServer)
+void SnapshotProcessor::transitionSnapshot(bool differentServer)
 {
 	assert(snap);
 	assert(nextSnap);
@@ -373,7 +372,7 @@ void CGameSnapshotProcessor::transitionSnapshot(bool differentServer)
 	}
 }
 
-void CGameSnapshotProcessor::transitionEntity(EntityInfo& entInfo)
+void SnapshotProcessor::transitionEntity(EntityInfo& entInfo)
 {
 	entInfo.currentState = entInfo.nextState;
 	entInfo.currentValid = true;
@@ -381,99 +380,56 @@ void CGameSnapshotProcessor::transitionEntity(EntityInfo& entInfo)
 	entInfo.teleported = false;
 }
 
-void CGameSnapshotProcessor::executeNewServerCommands(uintptr_t serverCommandSequence, bool differentServer)
+void SnapshotProcessor::executeNewServerCommands(uintptr_t serverCommandSequence, bool differentServer)
 {
 	while (this->latestCommandSequence < serverCommandSequence)
 	{
-		TokenParser tokenized;
-		if (getImports().getServerCommand(++latestCommandSequence, tokenized)) {
+		const char* commandString = commandSequence->getSequence(++latestCommandSequence);
+		if (commandString)
+		{
+			TokenParser tokenized;
+			tokenized.Parse(commandString, str::len(commandString));
+
 			serverCommandManager.processCommand(tokenized);
 		}
 	}
 }
 
-void CGameSnapshotProcessor::buildSolidList()
-{
-	numSolidEntities = 0;
-	numTriggerEntities = 0;
-
-	SnapshotInfo* snap;
-
-	if (nextSnap && !nextFrameTeleport && !thisFrameTeleport) {
-		snap = nextSnap;
-	}
-	else {
-		snap = this->snap;
-	}
-
-	for (uintptr_t i = 0; i < snap->numEntities; i++)
-	{
-		EntityInfo* cent = &clientEnts[snap->entities[i].number];
-		entityState_t* ent = &cent->currentState;
-
-		// Ignore item/triggers, they're always non-solid
-		if (ent->eType == entityType_e::item || ent->eType == entityType_e::push_trigger || ent->eType == entityType_e::teleport_trigger) {
-			continue;
-		}
-
-		if (cent->nextState.solid)
-		{
-			// Add solid entities
-			solidEntities[numSolidEntities] = cent;
-			numSolidEntities++;
-			continue;
-		}
-	}
-}
-
-void CGameSnapshotProcessor::setImports(const SnapshotImports& inImports)
-{
-	imports = inImports;
-}
-
-const MOHPC::Network::SnapshotImports& CGameSnapshotProcessor::getImports() const
-{
-	return imports;
-}
-
-const CGameSnapshotProcessor::HandlerList& CGameSnapshotProcessor::handlers() const
+const SnapshotProcessor::HandlerList& SnapshotProcessor::handlers() const
 {
 	return handlerList;
 }
 
-CGameSnapshotProcessor::HandlerList& CGameSnapshotProcessor::handlers()
+SnapshotProcessor::HandlerList& SnapshotProcessor::handlers()
 {
 	return handlerList;
 }
 
-bool CGameSnapshotProcessor::doesTeleportNextFrame() const
+bool SnapshotProcessor::doesTeleportNextFrame() const
 {
 	return nextFrameTeleport;
 }
 
-bool CGameSnapshotProcessor::doesCameraCutNextFrame() const
+bool SnapshotProcessor::doesCameraCutNextFrame() const
 {
 	return nextFrameCameraCut;
 }
 
-bool CGameSnapshotProcessor::doesTeleportThisFrame() const
+bool SnapshotProcessor::doesTeleportThisFrame() const
 {
 	return thisFrameTeleport;
 }
 
-void CGameSnapshotProcessor::clearTeleportThisFrame()
+void SnapshotProcessor::clearTeleportThisFrame()
 {
 	thisFrameTeleport = false;
 }
 
-size_t CGameSnapshotProcessor::getNumSolidEntities() const
+void SnapshotProcessor::setPtrs(const ClientTime* clientTimePtr, const ServerSnapshotManager* snapshotManagerPtr, const ICommandSequence* commandSequencePtr)
 {
-	return numSolidEntities;
-}
-
-const EntityInfo* CGameSnapshotProcessor::getSolidEntity(size_t index) const
-{
-	return solidEntities[index];
+	clientTime = clientTimePtr;
+	snapshotManager = snapshotManagerPtr;
+	commandSequence = commandSequencePtr;
 }
 
 CGSnapshotError::NextSnapTimeWentBackward::NextSnapTimeWentBackward(uint64_t inPrevTime, uint64_t inTime)

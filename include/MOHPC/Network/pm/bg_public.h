@@ -27,6 +27,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #pragma once
 
+#include "../NetGlobal.h"
 #include "../../Common/Math.h"
 #include "../../Utility/Function.h"
 #include "../../Utility/Collision/Collision.h"
@@ -127,8 +128,24 @@ namespace Network
 	using TraceFunction = Function<void(trace_t* results, const Vector& start, const Vector& mins, const Vector& maxs, const Vector& end, uintptr_t passEntityNum, uintptr_t contentMask, bool capsule, bool traceDeep)>;
 	using PointContentsFunction = Function<uint32_t(const Vector& point, uintptr_t passEntityNum)>;
 
-	void stubTrace(trace_t* results, const Vector& start, const Vector& mins, const Vector& maxs, const Vector& end, uintptr_t passEntityNum, uintptr_t contentMask, bool capsule, bool traceDeep);
-	int stubPointContents(const Vector& point, uintptr_t passEntityNum);
+	class MOHPC_NET_EXPORTS ITraceFunction
+	{
+	public:
+		virtual ~ITraceFunction();
+		virtual void trace(
+			trace_t* results,
+			const Vector& start,
+			const Vector& mins,
+			const Vector& maxs,
+			const Vector& end,
+			uintptr_t passEntityNum,
+			uintptr_t contentMask,
+			bool capsule,
+			bool traceDeep
+		) = 0;
+
+		virtual int pointContents(const Vector& point, uintptr_t passEntityNum) = 0;
+	};
 
 	struct pmove_t
 	{
@@ -170,8 +187,7 @@ namespace Network
 
 		// callbacks to test the world
 		// these will be different functions during game and cgame
-		TraceFunction trace;
-		PointContentsFunction pointcontents;
+		ITraceFunction* traceInterface;
 
 	public:
 		pmove_t();

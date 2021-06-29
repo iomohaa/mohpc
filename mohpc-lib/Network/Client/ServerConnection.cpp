@@ -27,65 +27,6 @@ class ClientRemoteCommandSequenceTemplate_ver8 : public ClientRemoteCommandSeque
 class ClientSequenceTemplate_ver17 : public ClientSequenceTemplate<64, 2048> {};
 class ClientRemoteCommandSequenceTemplate_ver17 : public ClientRemoteCommandSequenceTemplate<64, 2048> {};
 
-UserInput::UserInput()
-	: cmdNumber(0)
-{
-}
-
-void UserInput::reset()
-{
-	cmdNumber = 0;
-}
-
-void UserInput::createCommand(uint64_t currentTime, uint64_t remoteTime, usercmd_t*& outCmd, usereyes_t*& outEyes)
-{
-	++cmdNumber;
-	const uint32_t cmdNum = cmdNumber % CMD_BACKUP;
-
-	usercmd_t& cmd = cmds[cmdNum];
-	cmd = usercmd_t((uint32_t)remoteTime);
-	eyeinfo = usereyes_t();
-
-	outCmd = &cmd;
-	outEyes = &eyeinfo;
-}
-
-uint32_t UserInput::getCurrentCmdNumber() const
-{
-	return cmdNumber;
-}
-
-const usercmd_t& UserInput::getCommand(size_t index) const
-{
-	return cmds[index % CMD_BACKUP];
-}
-
-const usercmd_t& UserInput::getCommandFromLast(size_t index) const
-{
-	const size_t elem = cmdNumber - index;
-	return getCommand(elem);
-}
-
-const usereyes_t& UserInput::getEyeInfo() const
-{
-	return eyeinfo;
-}
-
-usereyes_t& UserInput::getEyeInfo()
-{
-	return eyeinfo;
-}
-
-const usercmd_t& UserInput::getLastCommand() const
-{
-	return cmds[cmdNumber % CMD_BACKUP];
-}
-
-usercmd_t& UserInput::getLastCommand()
-{
-	return cmds[cmdNumber % CMD_BACKUP];
-}
-
 MOHPC_OBJECT_DEFINITION(ServerConnection);
 
 ServerConnection::ServerConnection(const INetchanPtr& inNetchan, const IRemoteIdentifierPtr& inAdr, uint32_t challengeResponse, const protocolType_c& protoType, const ClientInfoPtr& cInfo)
@@ -115,13 +56,19 @@ ServerConnection::ServerConnection(const INetchanPtr& inNetchan, const IRemoteId
 	reliableCommands = new ClientSequenceTemplate_ver17();
 	serverCommands = new ClientRemoteCommandSequenceTemplate_ver17();
 
-	cgameModule = CGameInstancier::get(protocol)->createInstance();
+	cgameModule = CGame::ModuleInstancier::get(protocol)->createInstance();
 	cgameModule->setProtocol(protoType);
 	if (!cgameModule)
 	{
 		throw ClientError::BadProtocolVersionException((uint8_t)protoType.getProtocolVersion());
 	}
-	cgameModule->setImports(imports);
+	CGame::Imports cgImports{
+		clSnapshotManager,
+		clientTime,
+		input,
+		*serverCommands
+	};
+	cgameModule->setImports(cgImports);
 
 	encoder = std::make_shared<Encoding>(challengeResponse, *reliableCommands, *serverCommands);
 
@@ -662,27 +609,50 @@ void ServerConnection::parseCommandString(MSG& msg)
 		return;
 	}
 
-	TokenParser parser;
-	parser.Parse(s, strlen(s));
+	TokenParser tokenized;
+	tokenized.Parse(s, strlen(s));
 
-	const str commandName = parser.GetToken(false);
+	const str commandName = tokenized.GetToken(false);
 #if _DEBUG
 
-	if (!str::icmp(commandName, "stufftext"))
+	if (!str::icmp(commandName.c_str(), "stufftext"))
 	{
 		// Warn about stufftext
 		MOHPC_LOG(Warn, "Stufftext command detected. Handle it with high precautions. Arguments : %s", s.getData() + 10);
 	}
 #endif
 
-	if (!str::icmp(commandName, "disconnect"))
+	if (!str::icmp(commandName.c_str(), "disconnect"))
 	{
 		// Server kicking out the client
 		throw ClientError::DisconnectException();
 	}
+	else if (!str::icmpn(commandName.c_str(), "cs ", 3))
+	{
+		// Skip the "cs" token
+		tokenized.GetToken(true);
+
+		// Retrieve the configstring number
+		const uint32_t num = tokenized.GetInteger(true);
+		// Get the content
+		const char* csString = tokenized.GetString(true, false);
+
+		//gameStatePtr->configStringModified(num, csString, true);
+		// can set the config-string right now
+		clGameState.get().getConfigstringManager().setConfigString(num, csString);
+
+		// Notify about modification
+		clGameState.getHandlers().configStringHandler.broadcast(num, csString);
+
+		if (num == CS_SYSTEMINFO || num == CS_SERVERINFO)
+		{
+			// reload gameState settings including the sv_fps value
+			clGameState.reloadGameState(clientTime);
+		}
+	}
 
 	// notify about the new command
-	handlerList.serverCommandManager.broadcast(commandName.c_str(), parser);
+	handlerList.serverCommandManager.broadcast(commandName.c_str(), tokenized);
 }
 
 void ServerConnection::parseCenterprint(MSG& msg)
@@ -763,7 +733,7 @@ void ServerConnection::writePacket(uint64_t currentTime)
 	lastPacketSendTime = currentTime;
 }
 
-CGameModuleBase* ServerConnection::getCGModule()
+CGame::ModuleBase* ServerConnection::getCGModule()
 {
 	return cgameModule;
 }
@@ -841,57 +811,6 @@ ICommandSequence& ServerConnection::getServerCommands() const
 {
 	assert(serverCommands);
 	return *serverCommands;
-}
-
-bool ServerConnection::getUserCmd(uintptr_t cmdNum, usercmd_t& outCmd) const
-{
-	// the usercmd has been overwritten in the wrapping
-	// buffer because it is too far out of date
-	const uint32_t cmdNumber = input.getCurrentCmdNumber();
-	if (cmdNum + CMD_BACKUP < cmdNumber) {
-		return false;
-	}
-
-	outCmd = input.getCommand(cmdNum);
-	return true;
-}
-
-bool ServerConnection::getServerCommand(rsequence_t serverCommandNumber, TokenParser& tokenized)
-{
-	const char* cmdString = serverCommands->getSequence(serverCommandNumber);
-	if (!cmdString) {
-		return false;
-	}
-
-	tokenized.Parse(cmdString, strlen(cmdString));
-
-	if (!str::icmpn(cmdString, "cs ", 3))
-	{
-		// Skip the "cs" token
-		tokenized.GetToken(true);
-
-		// Retrieve the configstring number
-		const uint32_t num = tokenized.GetInteger(true);
-		// Get the content
-		const char* csString = tokenized.GetString(true, false);
-
-		//gameStatePtr->configStringModified(num, csString, true);
-		// can set the config-string right now
-		clGameState.get().getConfigstringManager().setConfigString(num, csString);
-
-		// Notify about modification
-		clGameState.getHandlers().configStringHandler.broadcast(num, csString);
-
-		if (num == CS_SYSTEMINFO || num == CS_SERVERINFO)
-		{
-			// reload gameState settings including the sv_fps value
-			clGameState.reloadGameState(clientTime);
-		}
-
-		return false;
-	}
-
-	return true;
 }
 
 uint32_t ServerConnection::getCurrentServerMessageSequence() const
@@ -1064,9 +983,7 @@ void ServerConnection::fillClientImports(ClientImports& imports)
 {
 	using namespace std::placeholders;
 	imports.getClientTime				= std::bind(&ServerConnection::getClientTime, this);
-	imports.getUserCmd					= std::bind(&ServerConnection::getUserCmd, this, _1, _2);
 	imports.getUserInput				= std::bind(&ServerConnection::getUserInput, this);
-	imports.getServerCommand			= std::bind(&ServerConnection::getServerCommand, this, _1, _2);
 	imports.getGameState				= std::bind(const_cast<ServerGameState& (ServerConnection::*)()>(&ServerConnection::getGameState), this);
 	imports.getSnapshotManager			= std::bind(const_cast<ServerSnapshotManager& (ServerConnection::*)()>(&ServerConnection::getSnapshotManager), this);
 	imports.addReliableCommand			= std::bind(&ServerConnection::addReliableCommand, this, _1);
