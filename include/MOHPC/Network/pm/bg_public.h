@@ -31,7 +31,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../../Common/Math.h"
 #include "../../Utility/Function.h"
 #include "../../Utility/Collision/Collision.h"
+#include "../../Utility/SharedPtr.h"
 #include "../Types/UserInput.h"
+
+#include "bg_trace.h"
 
 namespace MOHPC
 {
@@ -125,28 +128,6 @@ namespace Network
 	class playerState_t;
 	class entityState_t;
 
-	using TraceFunction = Function<void(trace_t* results, const Vector& start, const Vector& mins, const Vector& maxs, const Vector& end, uintptr_t passEntityNum, uintptr_t contentMask, bool capsule, bool traceDeep)>;
-	using PointContentsFunction = Function<uint32_t(const Vector& point, uintptr_t passEntityNum)>;
-
-	class MOHPC_NET_EXPORTS ITraceFunction
-	{
-	public:
-		virtual ~ITraceFunction();
-		virtual void trace(
-			trace_t* results,
-			const Vector& start,
-			const Vector& mins,
-			const Vector& maxs,
-			const Vector& end,
-			uintptr_t passEntityNum,
-			uintptr_t contentMask,
-			bool capsule,
-			bool traceDeep
-		) = 0;
-
-		virtual int pointContents(const Vector& point, uintptr_t passEntityNum) = 0;
-	};
-
 	struct pmove_t
 	{
 		// state (in / out)
@@ -223,7 +204,7 @@ namespace Network
 	{
 	public:
 		MOHPC_NET_EXPORTS Pmove();
-		virtual ~Pmove() = default;
+		MOHPC_NET_EXPORTS ~Pmove();
 
 		MOHPC_NET_EXPORTS pmove_t& get();
 
@@ -263,34 +244,17 @@ namespace Network
 		float PM_CmdScale(usercmd_t* cmd);
 		void PM_CheckTerminalVelocity();
 
-	protected:
-		virtual bool canLean(const usercmd_t& cmd) = 0;
-		virtual bool shouldClearLean() = 0;
+		bool canLean(const usercmd_t& cmd);
+		bool shouldClearLean();
 
-	protected:
+	private:
 		pmove_t pm;
 		pml_t pml;
 		size_t c_pmove;
-	};
-
-	class Pmove_ver6 : public Pmove
-	{
-	protected:
-		bool canLean(const usercmd_t& cmd) override;
-		bool shouldClearLean() override;
-	};
-
-	class Pmove_ver15 : public Pmove
-	{
-	public:
-		bool canLeanWhileMoving;
 
 	public:
-		Pmove_ver15();
-
-	protected:
-		bool canLean(const usercmd_t& cmd) override;
-		bool shouldClearLean() override;
+		bool canLeanWhileMoving : 1;
+		bool clearLeanOnExit : 1;
 	};
 
 	//===================================================================================

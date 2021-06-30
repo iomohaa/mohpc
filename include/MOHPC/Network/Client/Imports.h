@@ -39,7 +39,7 @@ namespace MOHPC
 			std::function<bool(rsequence_t serverCommandNumber, TokenParser& tokenized)> getServerCommand;
 			std::function<ServerGameState& ()> getGameState;
 			std::function<void(const char* cmd)> addReliableCommand;
-			std::function<const ClientInfoPtr&()> getUserInfo;
+			std::function<const UserInfoPtr&()> getUserInfo;
 
 		public:
 			const Parsing::IString* stringParser;

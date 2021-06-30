@@ -145,16 +145,16 @@ int main(int argc, const char* argv[])
 
 	CollisionWorldPtr cm;
 
-	const Network::ClientInfoPtr clientInfo = Network::ClientInfo::create();
-	clientInfo->setName("mohpc_test");
-	clientInfo->setRate(25000);
+	const Network::UserInfoPtr userInfo = Network::UserInfo::create();
+	userInfo->setName("mohpc_test");
+	userInfo->setRate(25000);
 	const Network::ConnectSettingsPtr connectSettings = Network::ConnectSettings::create();
 	connectSettings->setQport(rand() % 45536 + 20000);
 	connectSettings->setCDKey("12345");
 
 	const TickableObjectsPtr tickableObjects = TickableObjects::create();
 
-	clientBase->connect(clientInfo, connectSettings, [&](const Network::ServerConnectionPtr& cg, const char* errorMessage)
+	clientBase->connect(userInfo, connectSettings, [&](const Network::ServerConnectionPtr& cg, const char* errorMessage)
 		{
 			if (errorMessage)
 			{
@@ -423,7 +423,7 @@ int main(int argc, const char* argv[])
 			{
 				if (connection)
 				{
-					const ClientInfoPtr& userInfo = connection->getUserInfo();
+					const UserInfoPtr& userInfo = connection->getUserInfo();
 					userInfo->setRate(30000);
 					userInfo->setName("modified");
 					userInfo->setSnaps(1);
@@ -484,7 +484,7 @@ int main(int argc, const char* argv[])
 					const uint32_t rate = parser.GetInteger(false);
 					if (connection)
 					{
-						const ClientInfoPtr& userInfo = connection->getUserInfo();
+						const UserInfoPtr& userInfo = connection->getUserInfo();
 						userInfo->setRate(rate);
 						connection->updateUserInfo();
 					}
@@ -494,7 +494,7 @@ int main(int argc, const char* argv[])
 					const uint32_t snaps = parser.GetInteger(false);
 					if (connection)
 					{
-						const ClientInfoPtr& userInfo = connection->getUserInfo();
+						const UserInfoPtr& userInfo = connection->getUserInfo();
 						userInfo->setSnaps(snaps);
 						connection->updateUserInfo();
 					}

@@ -58,6 +58,7 @@ namespace Network
 		MOHPC_NET_EXPORTS const gameState_t& get() const;
 		bool parseGameState(MSG& msg, ICommandSequence* serverCommands, ClientTime& clientTime);
 		bool reloadGameState(ClientTime& clientTime);
+		void modifyConfigString(csNum_t num, const char* string);
 
 	private:
 		void notifyAllConfigStringChanges() const;

@@ -15,17 +15,7 @@ TraceManager::TraceManager()
 	boxHull->InitBoxHull();
 }
 
-void TraceManager::setTraceFunction(TraceFunction&& inTraceFunction)
-{
-	traceFunction = std::move(inTraceFunction);
-}
-
-void TraceManager::setPointContentsFunction(PointContentsFunction&& inPointContentsFunction)
-{
-	pointContentsFunction = std::move(inPointContentsFunction);
-}
-
-void TraceManager::clipMoveToEntities(CollisionWorld& cm, const Vector& start, const Vector& mins, const Vector& maxs, const Vector& end, uint16_t skipNumber, uint32_t mask, bool cylinder, trace_t& tr)
+void TraceManager::clipMoveToEntities(CollisionWorld& cm, const Vector& start, const Vector& mins, const Vector& maxs, const Vector& end, uint16_t skipNumber, uint32_t mask, bool cylinder, trace_t& tr) const
 {
 	// iterate through entities and test their collision
 	for (size_t i = 0; i < numSolidEntities; i++)
@@ -77,7 +67,7 @@ void TraceManager::clipMoveToEntities(CollisionWorld& cm, const Vector& start, c
 	}
 }
 
-void TraceManager::trace(CollisionWorld& cm, trace_t& tr, const Vector& start, const Vector& mins, const Vector& maxs, const Vector& end, uint16_t skipNumber, uint32_t mask, bool cylinder, bool cliptoentities)
+void TraceManager::trace(CollisionWorld& cm, trace_t& tr, const Vector& start, const Vector& mins, const Vector& maxs, const Vector& end, uint16_t skipNumber, uint32_t mask, bool cylinder, bool cliptoentities) const
 {
 	// if there is a loaded collision from the game, use it instead
 	cm.BoxTrace(&tr, start, end, mins, maxs, 0, mask, cylinder);
@@ -158,14 +148,4 @@ void TraceManager::buildSolidList(const SnapshotProcessor& snapshotProcessor)
 			continue;
 		}
 	}
-}
-
-const TraceFunction& TraceManager::getTraceFunction() const
-{
-	return traceFunction;
-}
-
-const PointContentsFunction& TraceManager::getPointContentsFunction() const
-{
-	return pointContentsFunction;
 }

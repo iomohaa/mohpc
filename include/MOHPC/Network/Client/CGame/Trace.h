@@ -24,25 +24,6 @@ namespace Network
 			TraceManager();
 
 			/**
-			 * Set the function used to trace through the world.
-			 *
-			 * @param	inTraceFunction		Custom function to use for tracing
-			 */
-			MOHPC_NET_EXPORTS void setTraceFunction(TraceFunction&& inTraceFunction);
-
-			/**
-			 * Set the function used to trace through the world.
-			 *
-			 * @param	inPointContentsFunction		Custom function to use getting content flags.
-			 */
-			MOHPC_NET_EXPORTS void setPointContentsFunction(PointContentsFunction&& inPointContentsFunction);
-
-			/** Return the function interface for tracing. */
-			const TraceFunction& getTraceFunction() const;
-			/** Return the function interface for getting contents from point. */
-			const PointContentsFunction& getPointContentsFunction() const;
-
-			/**
 			 * Trace through various entities. This function should be used in conjunction to a previous trace.
 			 *
 			 * @param	cm			Collision world to use.
@@ -54,7 +35,7 @@ namespace Network
 			 * @param	mask		Trace mask.
 			 * @param	tr			Input/Output results.
 			 */
-			MOHPC_NET_EXPORTS void clipMoveToEntities(CollisionWorld& cm, const Vector& start, const Vector& mins, const Vector& maxs, const Vector& end, uint16_t skipNumber, uint32_t mask, bool cylinder, trace_t& tr);
+			MOHPC_NET_EXPORTS void clipMoveToEntities(CollisionWorld& cm, const Vector& start, const Vector& mins, const Vector& maxs, const Vector& end, entityNum_t skipNumber, uint32_t mask, bool cylinder, trace_t& tr) const;
 
 			/**
 			 * Perform a trace from start to the end, taking entities into account.
@@ -68,7 +49,7 @@ namespace Network
 			 * @param	mask		Trace mask.
 			 * @param	tr			Input/Output results.
 			 */
-			MOHPC_NET_EXPORTS void trace(CollisionWorld& cm, trace_t& tr, const Vector& start, const Vector& mins, const Vector& maxs, const Vector& end, uint16_t skipNumber, uint32_t mask, bool cylinder, bool cliptoentities);
+			MOHPC_NET_EXPORTS void trace(CollisionWorld& cm, trace_t& tr, const Vector& start, const Vector& mins, const Vector& maxs, const Vector& end, entityNum_t skipNumber, uint32_t mask, bool cylinder, bool cliptoentities) const;
 
 			/**
 			 * Get contents of point.
@@ -85,8 +66,6 @@ namespace Network
 			void buildSolidList(const SnapshotProcessor& snapshotProcessor);
 
 		private:
-			TraceFunction traceFunction;
-			PointContentsFunction pointContentsFunction;
 			CollisionWorldPtr boxHull;
 			size_t numSolidEntities;
 			size_t numTriggerEntities;

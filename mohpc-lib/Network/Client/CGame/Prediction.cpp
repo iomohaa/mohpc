@@ -1,5 +1,6 @@
 #include <MOHPC/Network/Client/CGame/Prediction.h>
 #include <MOHPC/Network/Client/CGame/Snapshot.h>
+#include <MOHPC/Network/Client/CGame/ServerInfo.h>
 #include <MOHPC/Network/Client/UserInput.h>
 
 #include <MOHPC/Network/pm/bg_public.h>
@@ -14,15 +15,62 @@ using namespace MOHPC::Network::CGame;
 
 static constexpr char MOHPC_LOG_NAMESPACE[] = "cgame_prediction";
 
+class PmovePredict_ver8 : public IPmovePredict
+{
+public:
+	void getProtocol(uint32_t& minRange, uint32_t& maxRange) const override
+	{
+		minRange = 5;
+		maxRange = 8;
+	}
+
+	void setupPmove(const cgsInfo& serverInfo, Pmove& pmove) const override
+	{
+		pmove.canLeanWhileMoving = true;
+		pmove.clearLeanOnExit = false;
+	}
+};
+
+class PmovePredict_ver17 : public IPmovePredict
+{
+public:
+	void getProtocol(uint32_t& minRange, uint32_t& maxRange) const override
+	{
+		minRange = 15;
+		maxRange = 17;
+	}
+
+	void setupPmove(const cgsInfo& serverInfo, Pmove& pmove) const override
+	{
+		// in SH/BT, can't lean by default
+		// unless a dmflag specify it
+		pmove.canLeanWhileMoving = serverInfo.hasAnyDMFlags(DMFlags::DF_ALLOW_LEAN);
+		pmove.clearLeanOnExit = true;
+	}
+};
+
+
+
+ProtocolClassInstancier_Template<PmovePredict_ver8, IPmovePredict, 5, 8> pmovePredict8;
+ProtocolClassInstancier_Template<PmovePredict_ver17, IPmovePredict, 15, 17> pmovePredict17;
+
 Prediction::Prediction()
-	: validPPS(false)
+	: userInput(nullptr)
+	, pmovePredict(nullptr)
+	, validPPS(false)
+	, traceFunction(PmoveNoTracePtr)
 {
 }
 
-void Prediction::process(uint64_t serverTime, SnapshotProcessor& processedSnapshots)
+void Prediction::setProtocol(protocolType_c protocol)
 {
-	const SnapshotInfo* snap = processedSnapshots.getSnap();
-	const SnapshotInfo* nextSnap = processedSnapshots.getNextSnap();
+	pmovePredict = IPmovePredict::get(protocol.getProtocolVersionNumber());
+}
+
+void Prediction::process(uint64_t serverTime, const PredictionParm& pparm)
+{
+	const SnapshotInfo* snap = pparm.processedSnapshots.getSnap();
+	const SnapshotInfo* nextSnap = pparm.processedSnapshots.getNextSnap();
 	if (snap && !(snap->snapFlags & SNAPFLAG_NOT_ACTIVE))
 	{
 		// Calculate the interpolation time
@@ -40,7 +88,7 @@ void Prediction::process(uint64_t serverTime, SnapshotProcessor& processedSnapsh
 			frameInterpolation = 0.f;
 		}
 
-		predictPlayerState(serverTime, processedSnapshots);
+		predictPlayerState(serverTime, pparm);
 	}
 }
 
@@ -49,10 +97,10 @@ const playerState_t& Prediction::getPredictedPlayerState() const
 	return predictedPlayerState;
 }
 
-void Prediction::predictPlayerState(uint64_t serverTime, SnapshotProcessor& processedSnapshots)
+void Prediction::predictPlayerState(uint64_t serverTime, const PredictionParm& pparm)
 {
-	const SnapshotInfo* snap = processedSnapshots.getSnap();
-	const SnapshotInfo* nextSnap = processedSnapshots.getNextSnap();
+	const SnapshotInfo* snap = pparm.processedSnapshots.getSnap();
+	const SnapshotInfo* nextSnap = pparm.processedSnapshots.getNextSnap();
 
 	if (!snap || (snap->snapFlags & SNAPFLAG_NOT_ACTIVE))
 	{
@@ -69,24 +117,24 @@ void Prediction::predictPlayerState(uint64_t serverTime, SnapshotProcessor& proc
 	// server can freeze the player and/or disable prediction for the player
 	if (snap->ps.pm_flags & PMF_NO_PREDICTION || snap->ps.pm_flags & PMF_FROZEN)
 	{
-		interpolatePlayerState(serverTime, processedSnapshots, false);
+		interpolatePlayerState(serverTime, pparm, false);
 		return;
 	}
 
 	// non-predicting local movement will grab the latest angles
 	if (settings.isPredictionDisabled())
 	{
-		interpolatePlayerState(serverTime, processedSnapshots, true);
+		interpolatePlayerState(serverTime, pparm, true);
 		return;
 	}
 
 	// replay all commands for this frame
-	const bool moved = replayAllCommands(processedSnapshots);
+	const bool moved = replayAllCommands(pparm);
 
 	// interpolate camera view (spectator, cutscenes, etc)
-	interpolatePlayerStateCamera(serverTime, processedSnapshots);
+	interpolatePlayerStateCamera(serverTime, pparm);
 
-	const EntityInfo* entInfo = processedSnapshots.getEntity(predictedPlayerState.groundEntityNum);
+	const EntityInfo* entInfo = pparm.processedSnapshots.getEntity(predictedPlayerState.groundEntityNum);
 	if (entInfo && entInfo->interpolate)
 	{
 		const float f = frameInterpolation - 1.f;
@@ -95,17 +143,17 @@ void Prediction::predictPlayerState(uint64_t serverTime, SnapshotProcessor& proc
 	}
 }
 
-void Prediction::interpolatePlayerState(uint64_t serverTime, SnapshotProcessor& processedSnapshots, bool grabAngles)
+void Prediction::interpolatePlayerState(uint64_t serverTime, const PredictionParm& pparm, bool grabAngles)
 {
-	const SnapshotInfo* snap = processedSnapshots.getSnap();
-	const SnapshotInfo* nextSnap = processedSnapshots.getNextSnap();
+	const SnapshotInfo* snap = pparm.processedSnapshots.getSnap();
+	const SnapshotInfo* nextSnap = pparm.processedSnapshots.getNextSnap();
 
 	playerState_t* out = &predictedPlayerState;
 
 	*out = snap->ps;
 
 	// interpolate the camera if necessary
-	interpolatePlayerStateCamera(serverTime, processedSnapshots);
+	interpolatePlayerStateCamera(serverTime, pparm);
 
 	// if we are still allowing local input, short circuit the view angles
 	if (grabAngles)
@@ -119,7 +167,7 @@ void Prediction::interpolatePlayerState(uint64_t serverTime, SnapshotProcessor& 
 	}
 
 	// if the next frame is a teleport, we can't lerp to it
-	if (processedSnapshots.doesTeleportNextFrame()) {
+	if (pparm.processedSnapshots.doesTeleportNextFrame()) {
 		return;
 	}
 
@@ -162,10 +210,10 @@ void Prediction::interpolatePlayerState(uint64_t serverTime, SnapshotProcessor& 
 	}
 }
 
-void Prediction::interpolatePlayerStateCamera(uint64_t serverTime, SnapshotProcessor& processedSnapshots)
+void Prediction::interpolatePlayerStateCamera(uint64_t serverTime, const PredictionParm& pparm)
 {
-	const SnapshotInfo* snap = processedSnapshots.getSnap();
-	const SnapshotInfo* nextSnap = processedSnapshots.getNextSnap();
+	const SnapshotInfo* snap = pparm.processedSnapshots.getSnap();
+	const SnapshotInfo* nextSnap = pparm.processedSnapshots.getNextSnap();
 
 	//
 	// copy in the current ones if nothing else
@@ -175,7 +223,7 @@ void Prediction::interpolatePlayerStateCamera(uint64_t serverTime, SnapshotProce
 	cameraFov = predictedPlayerState.fov;
 
 	// if the next frame is a teleport, we can't lerp to it
-	if (processedSnapshots.doesCameraCutNextFrame()) {
+	if (pparm.processedSnapshots.doesCameraCutNextFrame()) {
 		return;
 	}
 
@@ -221,30 +269,27 @@ PredictionSettings& Prediction::getSettings()
 	return settings;
 }
 
-bool Prediction::replayAllCommands(SnapshotProcessor& processedSnapshots)
+bool Prediction::replayAllCommands(const PredictionParm& pparm)
 {
-	const SnapshotInfo* snap = processedSnapshots.getSnap();
-	const SnapshotInfo* nextSnap = processedSnapshots.getNextSnap();
+	const SnapshotInfo* snap = pparm.processedSnapshots.getSnap();
+	const SnapshotInfo* nextSnap = pparm.processedSnapshots.getNextSnap();
 
 	// Pmove
-	//Pmove& pmove = getMove();
-	Pmove_ver6 pmove;
+	Pmove pmove;
 	pmove_t& pm = pmove.get();
 	pm.ps = &predictedPlayerState;
-	// FIXME
-	//pm.pointcontents = traceManager.getPointContentsFunction();
-	//pm.trace = traceManager.getTraceFunction();
+	pm.traceInterface = traceFunction.get();
 
-	if (pm.ps->pm_type == pmType_e::Dead) {
-		pm.tracemask = ContentFlags::MASK_PLAYERSOLID & ~ContentFlags::MASK_DYNAMICBODY;
-	}
-	else {
-		pm.tracemask = ContentFlags::MASK_PLAYERSOLID;
+	pm.tracemask = ContentFlags::MASK_PLAYERSOLID;
+	if (pm.ps->pm_type == pmType_e::Dead)
+	{
+		// ignore other players
+		pm.tracemask &= ~ContentFlags::MASK_DYNAMICBODY;
 	}
 
-	//pm.noFootsteps = cgs.hasAnyDMFlags(DMFlags::DF_NO_FOOTSTEPS);
+	pm.noFootsteps = pparm.serverInfo.hasAnyDMFlags(DMFlags::DF_NO_FOOTSTEPS);
 	// Set settings depending on the protocol/version
-	//setupMove(pmove);
+	pmovePredict->setupPmove(pparm.serverInfo, pmove);
 
 	const playerState_t oldPlayerState = predictedPlayerState;
 	const uintptr_t current = userInput->getCurrentCmdNumber();
@@ -253,7 +298,7 @@ bool Prediction::replayAllCommands(SnapshotProcessor& processedSnapshots)
 	usercmd_t latestCmd;
 	userInput->getUserCmd(current, latestCmd);
 
-	if (nextSnap && !processedSnapshots.doesTeleportNextFrame() && !processedSnapshots.doesTeleportThisFrame())
+	if (nextSnap && !pparm.processedSnapshots.doesTeleportNextFrame() && !pparm.processedSnapshots.doesTeleportThisFrame())
 	{
 		predictedPlayerState = nextSnap->ps;
 		physicsTime = nextSnap->serverTime;
@@ -272,13 +317,15 @@ bool Prediction::replayAllCommands(SnapshotProcessor& processedSnapshots)
 	// play all previous commands up to the current
 	for (uintptr_t cmdNum = CMD_BACKUP; cmdNum > 0; --cmdNum)
 	{
-		moved |= tryReplayCommand(pmove, processedSnapshots, oldPlayerState, latestCmd, current - cmdNum + 1);
+		moved |= tryReplayCommand(pmove, pparm, oldPlayerState, latestCmd, current - cmdNum + 1);
 	}
+
+	transitionPlayerState(pparm, predictedPlayerState, &oldPlayerState);
 
 	return moved;
 }
 
-bool Prediction::tryReplayCommand(Pmove& pmove, SnapshotProcessor& processedSnapshots, const playerState_t& oldPlayerState, const usercmd_t& latestCmd, uintptr_t cmdNum)
+bool Prediction::tryReplayCommand(Pmove& pmove, const PredictionParm& pparm, const playerState_t& oldPlayerState, const usercmd_t& latestCmd, uintptr_t cmdNum)
 {
 	pmove_t& pm = pmove.get();
 
@@ -300,10 +347,10 @@ bool Prediction::tryReplayCommand(Pmove& pmove, SnapshotProcessor& processedSnap
 
 	if (predictedPlayerState.commandTime == oldPlayerState.commandTime)
 	{
-		if (processedSnapshots.doesTeleportThisFrame())
+		if (pparm.processedSnapshots.doesTeleportThisFrame())
 		{
 			predictedError = Vector();
-			processedSnapshots.clearTeleportThisFrame();
+			pparm.processedSnapshots.clearTeleportThisFrame();
 		}
 
 		// FIXME: Should it have some sort of predicted error?
@@ -375,6 +422,21 @@ void Prediction::physicsNoclip(Pmove& pmove, float frametime)
 	pm.ps->origin += pm.ps->velocity * frametime;
 }
 
+void Prediction::transitionPlayerState(const PredictionParm& pparm, const playerState_t& current, const playerState_t* old)
+{
+	if (current.getClientNum() != old->getClientNum())
+	{
+		pparm.processedSnapshots.makeTeleportThisFrame();
+		// avoid any unwanted transition effects
+		old = &current;
+	}
+
+	// FIXME: transition?
+
+	// call custom handler for transition effects
+	handlers().transitionPlayerStateHandler.broadcast(current, *old);
+}
+
 const Prediction::HandlerList& Prediction::handlers() const
 {
 	return handlerList;
@@ -383,6 +445,11 @@ const Prediction::HandlerList& Prediction::handlers() const
 Prediction::HandlerList& Prediction::handlers()
 {
 	return handlerList;
+}
+
+void Prediction::setTraceFunction(const ITraceFunctionPtr& func)
+{
+	traceFunction = func;
 }
 
 PredictionSettings::PredictionSettings()

@@ -55,38 +55,6 @@ float pm_backspeed = 0.80f;
 float Network::pm_flightfriction = 3.0f;
 float PM_NOCLIPfriction = 5.0f;
 
-ITraceFunction::~ITraceFunction()
-{
-}
-
-class StubTrace : public ITraceFunction
-{
-public:
-	void trace(
-		trace_t* results,
-		const Vector& start,
-		const Vector& mins,
-		const Vector& maxs,
-		const Vector& end,
-		uintptr_t passEntityNum,
-		uintptr_t contentMask,
-		bool capsule,
-		bool traceDeep
-	) override
-	{
-		memset(results, 0, sizeof(trace_t));
-
-		VecCopy(end, results->endpos);
-		results->fraction = 1.f;
-	}
-
-	int pointContents(const Vector& point, uintptr_t passEntityNum) override
-	{
-		return 0;
-	}
-};
-static StubTrace stubTrace;
-
 pmove_t::pmove_t()
 	: ps(nullptr)
 	, tracemask(0)
@@ -104,7 +72,7 @@ pmove_t::pmove_t()
 	, xyspeed(0)
 	, pmove_fixed(0)
 	, pmove_msec(0)
-	, traceInterface(&stubTrace)
+	, traceInterface(PmoveNoTrace)
 {
 
 }
@@ -125,6 +93,12 @@ pml_t::pml_t()
 
 Pmove::Pmove()
 	: c_pmove(0)
+	, canLeanWhileMoving(false)
+	, clearLeanOnExit(true)
+{
+}
+
+Pmove::~Pmove()
 {
 }
 
@@ -1803,23 +1777,7 @@ void Pmove::moveAdjustAngleSettings_Client(Vector& vViewAngles, Vector& vAngles,
 	// FIXME
 }
 
-bool Pmove_ver6::canLean(const usercmd_t& cmd)
-{
-	return true;
-}
-
-bool Pmove_ver6::shouldClearLean()
-{
-	return false;
-}
-
-Pmove_ver15::Pmove_ver15()
-	: canLeanWhileMoving(false)
-{
-
-}
-
-bool Pmove_ver15::canLean(const usercmd_t& cmd)
+bool Pmove::canLean(const usercmd_t& cmd)
 {
 	// a new setting since SH that allow leaning while moving
 	return (!cmd.forwardmove || canLeanWhileMoving)
@@ -1827,7 +1785,7 @@ bool Pmove_ver15::canLean(const usercmd_t& cmd)
 		&& (!cmd.upmove || canLeanWhileMoving);
 }
 
-bool Pmove_ver15::shouldClearLean()
+bool Pmove::shouldClearLean()
 {
-	return (pm.ps->getPlayerMoveFlags() & PMF_LEVELEXIT) != 0;
+	return clearLeanOnExit && (pm.ps->getPlayerMoveFlags() & PMF_LEVELEXIT) != 0;
 }

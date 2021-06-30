@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cstdint>
 #include "../../Configstring.h"
 #include "../../Exception.h"
 #include "../../pm/bg_public.h"
@@ -15,9 +14,12 @@
 #include "../../Parsing/GameState.h"
 #include "../Imports.h"
 
+#include "ClientInfo.h"
+#include "Hud.h"
 #include "Objective.h"
 #include "Prediction.h"
 #include "Scoreboard.h"
+#include "ServerInfo.h"
 #include "Snapshot.h"
 #include "Trace.h"
 #include "Vote.h"
@@ -25,6 +27,7 @@
 #include "GameType.h"
 
 #include <type_traits>
+#include <cstdint>
 
 #include <morfuse/Container/Container.h>
 
@@ -37,79 +40,10 @@ class ReadOnlyInfo;
 
 namespace Network
 {
-	class entityState_t;
-	class ServerConnection;
-	struct gameState_t;
 	class Pmove;
 
 	namespace CGame
 	{
-	namespace DMFlags
-	{
-		/**
-		 * Values for dmflags
-		 */
-		/** Players don't drop health on death. */
-		static constexpr unsigned int DF_NO_HEALTH				= (1 << 0);
-		/** Players don't drop powerups on death. */
-		static constexpr unsigned int DF_NO_POWERUPS			= (1 << 1);
-		/** Whether or not weapons in the level stays available on player pick up. */
-		static constexpr unsigned int DF_WEAPONS_STAY			= (1 << 2);
-		/** Prevent falling damage. */
-		static constexpr unsigned int DF_NO_FALLING				= (1 << 3);
-		/** This flag doesn't seem to be used at all. */
-		static constexpr unsigned int DF_INSTANT_ITEMS			= (1 << 4);
-		/** TriggerChangeLevel won't switch level. */
-		static constexpr unsigned int DF_SAME_LEVEL				= (1 << 5);
-		/** Prevent players from having an armor. */
-		static constexpr unsigned int DF_NO_ARMOR				= (1 << 11);
-		/** MOH:AA: Infinite clip ammo. MOH:SH/MOH:BT: Infinite magazines. */
-		static constexpr unsigned int DF_INFINITE_AMMO			= (1 << 14);
-		/** This should prevent footstep sounds to play. */
-		static constexpr unsigned int DF_NO_FOOTSTEPS			= (1 << 17);
-
-		/**
-		 * protocol version >= 15
-		 * (SH)
-		 */
-
-		/** Allow leaning while in movement. */
-		static constexpr unsigned int DF_ALLOW_LEAN				= (1 << 18);
-		/** Specify that G43 is replaced with Kar98. */
-		static constexpr unsigned int DF_OLD_SNIPERRIFLE		= (1 << 19);
-
-		/**
-		 * protocol version >= 17
-		 * (BT)
-		 */
-
-		/** Axis use a shotgun rather than kar98 mortar. */
-		static constexpr unsigned int DF_GERMAN_SHOTGUN			= (1 << 20);
-		/** Allow landmine to be used on AA maps. */
-		static constexpr unsigned int DF_ALLOW_OLDMAP_MINES		= (1 << 21);
-
-		/**
-		 * [BT]
-		 * Weapon type filtering
-		 */
-		/** Disallow the usage of rifles. */
-		static constexpr unsigned int DF_BAN_WEAP_RIFLE			= (1 << 22);
-		/** Disallow the usage of rifles. */
-		static constexpr unsigned int DF_BAN_WEAP_SNIPER		= (1 << 23);
-		/** Disallow the usage of snipers. */
-		static constexpr unsigned int DF_BAN_WEAP_SMG			= (1 << 24);
-		/** Disallow the usage of sub-machine guns. */
-		static constexpr unsigned int DF_BAN_WEAP_MG			= (1 << 25);
-		/** Disallow the usage of machine guns. */
-		static constexpr unsigned int DF_BAN_WEAP_HEAVY			= (1 << 26);
-		/** Disallow the usage of shotgun. */
-		static constexpr unsigned int DF_BAN_WEAP_SHOTGUN		= (1 << 27);
-		/** Disallow the usage of landmine. */
-		static constexpr unsigned int DF_BAN_WEAP_LANDMINE		= (1 << 28);
-	}
-
-	static constexpr size_t NUM_TEAM_OBJECTIVES = 5;
-
 	/**
 	 * This is the list of effects.
 	 *
@@ -202,23 +136,6 @@ namespace Network
 	 */
 	MOHPC_NET_EXPORTS const char* getEffectName(effects_e effect);
 
-	enum class hudMessage_e : unsigned char
-	{
-		Yellow = 1,
-		/** White message, shown top center with death messages. */
-		ChatWhite,
-		/** White message, shown top left, below compass. */
-		White,
-		/** Red message, shown top center with death messages. */
-		ChatRed,
-		/** (protocol version 15) Green message, shown top center with death messages. */
-		ChatGreen,
-		/** Maximum number of valid message type that can be sent by the server. */
-		Max,
-		/** Message printed in console instead of the HUD. */
-		Console,
-	};
-
 	struct EntityInfo;
 	struct stats_t;
 	class Scoreboard;
@@ -294,79 +211,6 @@ namespace Network
 		 */
 		struct SpawnDebris : public HandlerNotifyBase<void(debrisType_e debrisType, const Vector& origin, uint32_t numDebris)> {};
 
-		//=== Hud drawing functions
-
-		/** HUD Alignment. */
-		enum class horizontalAlign_e : unsigned char { left, center, right };
-		enum class verticalAlign_e : unsigned char { top, center, bottom };
-
-		/**
-		 * Set the shader to HUD index.
-		 *
-		 * @param	index	HUD index.
-		 * @param	name	HUD name.
-		 */
-		struct HudDraw_Shader : public HandlerNotifyBase<void(uint8_t index, const char* name)> {};
-		/**
-		 * Set the alignment for HUD.
-		 *
-		 * @param	index				HUD index.
-		 * @param	horizontalAlign		Horizontal alignment on screen.
-		 * @param	verticalAlign		Vertical alignment on screen.
-		 */
-		struct HudDraw_Align : public HandlerNotifyBase<void(uint8_t index, horizontalAlign_e horizontalAlign, verticalAlign_e verticalAlign)> {};
-
-		/**
-		 * Set the HUD rect.
-		 *
-		 * @param	index	HUD index.
-		 * @param	x		X position on screen.
-		 * @param	y		Y position on screen.
-		 * @param	width	Width of the element.
-		 * @param	height	Height of the element.
-		 */
-		struct HudDraw_Rect : public HandlerNotifyBase<void(uint8_t index, uint16_t x, uint16_t y, uint16_t width, uint16_t height)> {};
-
-		/**
-		 * Specify if the HUD is virtual screen (rect relative to 640x480).
-		 *
-		 * @param	index			HUD index.
-		 * @param	virtualScreen	True if the HUD is virtual screen.
-		 */
-		struct HudDraw_VirtualScreen : public HandlerNotifyBase<void(uint8_t index, bool virtualScreen)> {};
-
-		/**
-		 * Specify the color of the HUD.
-		 *
-		 * @param	index	HUD index.
-		 * @param	color	[[0...1]...] RGB color of the HUD.
-		 */
-		struct HudDraw_Color : public HandlerNotifyBase<void(uint8_t index, const Vector& color)> {};
-
-		/**
-		 * Specify the alpha of the HUD.
-		 *
-		 * @param	index	HUD index.
-		 * @arap	alpha	[0...1] Alpha.
-		 */
-		struct HudDraw_Alpha : public HandlerNotifyBase<void(uint8_t index, float alpha)> {};
-
-		/**
-		 * Set the string of the HUD element.
-		 *
-		 * @param	index	HUD index.
-		 * @param	string	string value.
-		 */
-		struct HudDraw_String : public HandlerNotifyBase<void(uint8_t index, const char* string)> {};
-
-		/**
-		 * Set the font to use for the HUD (only if it has a string).
-		 *
-		 * @param	index		HUD index.
-		 * @param	fontName	Name of the font.
-		 */
-		struct HudDraw_Font : public HandlerNotifyBase<void(uint8_t index, const char* fontName)> {};
-
 		//=== Deathmatch functions
 		/** Called to notify the client of an enemy hit in DM game. */
 		struct HitNotify : public HandlerNotifyBase<void()> {};
@@ -385,34 +229,12 @@ namespace Network
 		struct VoiceMessage : public HandlerNotifyBase<void(const Vector& origin, bool local, uint8_t clientNum, const char* soundName)> {};
 
 		/**
-		 * Called to print a message on console.
-		 *
-		 * @param	type	Type of the message (see hudMessage_e).
-		 * @param	text	Text to print.
-		 */
-		struct Print : public HandlerNotifyBase<void(hudMessage_e type, const char* text)> {};
-
-		/**
-		 * Called to print a message that is displayed on HUD, yellow color.
-		 *
-		 * @param	text	Text to print.
-		 */
-		struct HudPrint : public HandlerNotifyBase<void(const char* text)> {};
-
-		/**
 		 * Called when the client received a command.
 		 *
 		 * @param	command	The command.
 		 * @param	parser	Used to parse the command arguments.
 		 */
 		struct ServerCommand : public HandlerNotifyBase<void(const char* command, TokenParser& parser)> {};
-
-		/**
-		 * Called from server after score has been parsed.
-		 *
-		 * @param	scores	Score data.
-		 */
-		struct ServerCommand_Scores : public HandlerNotifyBase<void(const Scoreboard& scores)> {};
 
 		/**
 		 * Called from server for statistics.
@@ -422,19 +244,6 @@ namespace Network
 		struct ServerCommand_Stats : public HandlerNotifyBase<void(const stats_t& stats)> {};
 
 		/**
-		 * Called to display a stopwatch.
-		 *
-		 * @param	startTime	Start time of the stopwatch.
-		 * @param	endTime		End time of the stopwatch.
-		 */
-		struct ServerCommand_Stopwatch : public HandlerNotifyBase<void(uint64_t startTime, uint64_t endTime)> {};
-
-		/**
-		 * The server notify clients when it experiences lags, such as hitches.
-		 */
-		struct ServerCommand_ServerLag : public HandlerNotifyBase<void()> {};
-
-		/**
 		 * Called from server to make the client process a console command.
 		 *
 		 * @param	tokenized	Arguments of stufftext (command to exec on console).
@@ -442,6 +251,17 @@ namespace Network
 		 */
 		struct ServerCommand_Stufftext : public HandlerNotifyBase<void(TokenParser& tokenized)> {};
 	}
+
+	struct Imports
+	{
+	public:
+		const ServerSnapshotManager& snapshotManager;
+		const ClientTime& clientTime;
+		const UserInput& userInput;
+		const ICommandSequence& commandSequence;
+		ServerGameState& gameState;
+		const UserInfoPtr& userInfo;
+	};
 
 	struct rain_t
 	{
@@ -494,173 +314,6 @@ namespace Network
 		uint32_t failed;
 	};
 
-	struct clientInfo_t
-	{
-	public:
-		str name;
-		teamType_e team;
-		PropertyObject properties;
-
-	public:
-		clientInfo_t();
-
-		/** Name of the client. */
-		MOHPC_NET_EXPORTS const char* getName() const;
-
-		/** Client's current team. */
-		MOHPC_NET_EXPORTS teamType_e getTeam() const;
-
-		/** List of misc client properties. */
-		MOHPC_NET_EXPORTS const PropertyObject& getProperties() const;
-	};
-
-	/**
-	 * Parsed server info data.
-	 */
-	class cgsInfo
-	{
-	public:
-		cgsInfo();
-
-		/** Return the server time at which the match has started. */
-		MOHPC_NET_EXPORTS uint64_t getMatchStartTime() const;
-
-		/** Return the server time at which the match has ended. */
-		MOHPC_NET_EXPORTS uint64_t getMatchEndTime() const;
-
-		/** Return the server time at which the level has started. */
-		MOHPC_NET_EXPORTS uint64_t getLevelStartTime() const;
-
-		/** Get the last lag time. */
-		MOHPC_NET_EXPORTS uint64_t getServerLagTime() const;
-
-		/** Return the current game type. */
-		MOHPC_NET_EXPORTS gameType_e getGameType() const;
-
-		/** Return current DF_ flags. */
-		MOHPC_NET_EXPORTS uint32_t getDeathmatchFlags() const;
-
-		/** 
-		 * Return true if dmflags contain one or more of the specified flags.
-		 *
-		 * @param	flags	Flags to look for.
-		 * @return	true	if one of the following flags are valid.
-		 */
-		MOHPC_NET_EXPORTS bool hasAnyDMFlags(uint32_t flags) const;
-
-		/**
-		 * Return true if dmflags contain the specified flags.
-		 *
-		 * @param	flags	Flags to look for.
-		 * @return	true	if all of the flags are valid.
-		 */
-		MOHPC_NET_EXPORTS bool hasAllDMFlags(uint32_t flags) const;
-
-		/**
-		 * User version of hasAnyDMFlags that split each flags by arguments.
-		 * Checks if any of the specified flags matches.
-		 */
-		template<typename...Args>
-		bool hasAnyDMFlagsArgs(Args... args)
-		{
-			const uint32_t flags = (args | ...);
-			return hasAnyDMFlags(flags);
-		}
-
-		/**
-		 * User version of hasAnyDMFlags that split each flags by arguments.
-		 * Checks if all of the specified flags matches.
-		 */
-		template<typename...Args>
-		bool hasAllDMFlagsArgs(Args... args)
-		{
-			const uint32_t flags = (args | ...);
-			return hasAllDMFlags(flags);
-		}
-
-		/** Return teamFlags (doesn't seem to be used). */
-		MOHPC_NET_EXPORTS uint32_t getTeamFlags() const;
-
-		/** Return the number of maximum clients that can be connected in the current server. */
-		MOHPC_NET_EXPORTS uint32_t getMaxClients() const;
-
-		/** Return the frag limit before the match ends. */
-		MOHPC_NET_EXPORTS int32_t getFragLimit() const;
-
-		/** Returns the time limit before the match ends. */
-		MOHPC_NET_EXPORTS int32_t getTimeLimit() const;
-
-		/** Return the server type the client is connected on. */
-		MOHPC_NET_EXPORTS serverType_e getServerType() const;
-
-		/** Return whether or not voting is allowed. */
-		MOHPC_NET_EXPORTS bool isVotingAllowed() const;
-
-		/** Return the map checksum on the server. Useful to compare against the checksum of the map on the client. */
-		MOHPC_NET_EXPORTS uint32_t getMapChecksum() const;
-
-		/** Return the current map name. */
-		MOHPC_NET_EXPORTS const char* getMapName() const;
-		MOHPC_NET_EXPORTS const str& getMapNameStr() const;
-
-		/** Return the path to the map name. */
-		MOHPC_NET_EXPORTS const char* getMapFilename() const;
-		MOHPC_NET_EXPORTS const str& getMapFilenameStr() const;
-
-		/** Return the allied text NUM_TEAM_OBJECTIVES is the max. */
-		MOHPC_NET_EXPORTS const char* getAlliedText(size_t index) const;
-
-		/** Return the axis text. NUM_TEAM_OBJECTIVES is the max. */
-		MOHPC_NET_EXPORTS const char* getAxisText(size_t index);
-
-		/** Return the scoreboard pic shader. */
-		MOHPC_NET_EXPORTS const char* getScoreboardPic() const;
-
-		/** Return the scoreboard pic shader when game is over. */
-		MOHPC_NET_EXPORTS const char* getScoreboardPicOver() const;
-
-	public:
-		uint64_t matchStartTime;
-		uint64_t matchEndTme;
-		uint64_t levelStartTime;
-		uint64_t serverLagTime;
-		str mapName;
-		str mapFilename;
-		str alliedText[NUM_TEAM_OBJECTIVES];
-		str axisText[NUM_TEAM_OBJECTIVES];
-		str scoreboardPic;
-		str scoreboardPicOver;
-		uint32_t dmFlags;
-		uint32_t teamFlags;
-		uint32_t maxClients;
-		uint32_t mapChecksum;
-		int32_t fragLimit;
-		int32_t timeLimit;
-		serverType_e serverType;
-		gameType_e gameType;
-		bool allowVote;
-	};
-
-	class ClientInfoList
-	{
-	public:
-		/** Get a client info in the interval of [0, MAX_CLIENTS]. */
-		MOHPC_NET_EXPORTS const clientInfo_t& get(uint32_t clientNum) const;
-		const clientInfo_t& set(const ReadOnlyInfo& info, uint32_t clientNum);
-
-	private:
-		clientInfo_t clientInfo[MAX_CLIENTS];
-	};
-
-	struct Imports
-	{
-	public:
-		const ServerSnapshotManager& snapshotManager;
-		const ClientTime& clientTime;
-		const UserInput& userInput;
-		const ICommandSequence& commandSequence;
-	};
-
 	/**
 	 * Base CG module, contains most implementations.
 	 */
@@ -699,7 +352,7 @@ namespace Network
 
 	public:
 		ModuleBase();
-		virtual ~ModuleBase() = default;
+		virtual ~ModuleBase();
 
 		void setProtocol(protocolType_c protocol);
 		void setImports(const Imports& imports);
@@ -712,9 +365,6 @@ namespace Network
 		/** Return the handler list. */
 		MOHPC_NET_EXPORTS HandlerList& handlers();
 		MOHPC_NET_EXPORTS const HandlerList& handlers() const;
-
-		/** Return the alpha interpolation between the current frame and the next frame. */
-		MOHPC_NET_EXPORTS float getFrameInterpolation() const;
 		
 		/** Get the current client time. */
 		MOHPC_NET_EXPORTS uint64_t getTime() const;
@@ -754,20 +404,11 @@ namespace Network
 		/** Notified when a configString has been modified. */
 		void configStringModified(csNum_t num, const char* newString);
 
-		/** Get imports list. */
-		const ClientImports& getImports() const;
-
-		virtual Pmove& getMove() = 0;
-
-		/** Setup move between versions. */
-		virtual void setupMove(Pmove& pmove) = 0;
-
 		/** Used to parse CG messages between different versions. */
 		virtual void handleCGMessage(MSG& msg, uint8_t msgType) = 0;
 
 	private:
 		void parseServerInfo(const char* cs);
-		void conditionalReflectClient(const clientInfo_t& client);
 	
 	private:
 		/**
@@ -776,25 +417,17 @@ namespace Network
 		void SCmd_Print(TokenParser& args);
 		void SCmd_HudPrint(TokenParser& args);
 		void SCmd_Scores(TokenParser& args);
-		void SCmd_Stats(TokenParser& args);
 		void SCmd_Stopwatch(TokenParser& args);
+		void SCmd_PrintDeathMsg(TokenParser& args);
+		void SCmd_Stats(TokenParser& args);
 		void SCmd_ServerLag(TokenParser& args);
 		void SCmd_Stufftext(TokenParser& args);
-		void SCmd_PrintDeathMsg(TokenParser& args);
-
-	protected:
-		ClientImports imports;
 
 	private:
 		uint64_t svTime;
 		HandlerList handlerList;
-		uint32_t physicsTime;
-		float frameInterpolation;
-		float cameraFov;
-		Vector predictedError;
-		Vector cameraAngles;
-		Vector cameraOrigin;
-		playerState_t predictedPlayerState;
+		ServerGameState* gameState;
+		fnHandle_t configStringHandler;
 		Prediction prediction;
 		const Parsing::IEnvironment* environmentParse;
 		const Parsing::IGameState* gameStateParse;
@@ -820,14 +453,9 @@ namespace Network
 
 	protected:
 		void handleCGMessage(MSG& msg, uint8_t msgType) override;
-		Pmove& getMove() override;
-		void setupMove(Pmove& pmove) override;
 
 	private:
 		effects_e getEffectId(uint32_t effectId);
-
-	private:
-		Pmove_ver6 pmove;
 	};
 
 	/**
@@ -841,14 +469,9 @@ namespace Network
 
 	protected:
 		void handleCGMessage(MSG& msg, uint8_t msgType) override;
-		Pmove& getMove() override;
-		void setupMove(Pmove& pmove) override;
 
 	private:
 		effects_e getEffectId(uint32_t effectId);
-
-	private:
-		Pmove_ver15 pmove;
 	};
 	
 	class CommonMessageHandler

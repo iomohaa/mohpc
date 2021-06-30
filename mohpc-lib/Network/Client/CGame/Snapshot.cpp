@@ -420,6 +420,11 @@ bool SnapshotProcessor::doesTeleportThisFrame() const
 	return thisFrameTeleport;
 }
 
+void SnapshotProcessor::makeTeleportThisFrame()
+{
+	thisFrameTeleport = true;
+}
+
 void SnapshotProcessor::clearTeleportThisFrame()
 {
 	thisFrameTeleport = false;

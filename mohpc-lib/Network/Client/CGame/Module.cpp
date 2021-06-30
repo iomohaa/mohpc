@@ -97,39 +97,10 @@ const char* MOHPC::Network::CGame::getEffectName(effects_e effect)
 	return effectsModel[(size_t)effect];
 }
 
-const clientInfo_t& ClientInfoList::get(uint32_t clientNum) const
-{
-	return clientInfo[clientNum];
-}
-
-const clientInfo_t& ClientInfoList::set(const ReadOnlyInfo& info, uint32_t clientNum)
-{
-	clientInfo_t& client = clientInfo[clientNum];
-	client.name = info.ValueForKey("name");
-	// Specify a valid name if empty
-	if (!client.name.length()) client.name = "UnnamedSolider";
-
-	// Get the current team
-	client.team = teamType_e(info.IntValueForKey("team"));
-
-	// Add other unknown properties
-	for (InfoIterator it = info.createConstIterator(); it; ++it)
-	{
-		const char* key = it.key();
-		// Don't add first properties above
-		if (str::icmp(key, "name") && str::icmp(key, "team")) {
-			client.properties.SetPropertyValue(key, it.value());
-		}
-	}
-
-	return client;
-}
-
 ModuleBase::ModuleBase()
 	: processedSnapshots(serverCommandManager)
 {
-	using namespace std::placeholders;
-	imports.getGameState().getHandlers().configStringHandler.add(std::bind(&ModuleBase::configStringModified, this, _1, _2));
+	gameState = nullptr;
 
 	size_t numCommands = 8;
 	numCommands += voteManager.getNumCommandsToRegister();
@@ -148,16 +119,50 @@ ModuleBase::ModuleBase()
 	voteManager.registerCommands(serverCommandManager);
 }
 
-void ModuleBase::setProtocol(protocolType_c protocol)
+ModuleBase::~ModuleBase()
 {
-	const uint32_t version = protocol.getProtocolVersionNumber();
-	environmentParse = Parsing::IEnvironment::get(version);
-	gameStateParse = Parsing::IGameState::get(version);
+	if (gameState)
+	{
+		gameState->getHandlers().configStringHandler.remove(configStringHandler);
+	}
 }
 
 void ModuleBase::init(uintptr_t serverMessageSequence, rsequence_t serverCommandSequence)
 {
 	processedSnapshots.init(serverMessageSequence, serverCommandSequence);
+}
+
+void ModuleBase::setProtocol(protocolType_c protocol)
+{
+	const uint32_t version = protocol.getProtocolVersionNumber();
+	environmentParse = Parsing::IEnvironment::get(version);
+	gameStateParse = Parsing::IGameState::get(version);
+
+	prediction.setProtocol(protocol);
+}
+
+void ModuleBase::setImports(const Imports& imports)
+{
+	prediction.setUserInputPtr(&imports.userInput);
+
+	processedSnapshots.setPtrs(
+		&imports.clientTime,
+		&imports.snapshotManager,
+		&imports.commandSequence
+	);
+
+	if (gameState)
+	{
+		// clear from previous game state
+		gameState->getHandlers().configStringHandler.remove(configStringHandler);
+	}
+
+	gameState = &imports.gameState;
+
+	using namespace std::placeholders;
+	configStringHandler = gameState->getHandlers().configStringHandler.add(std::bind(&ModuleBase::configStringModified, this, _1, _2));
+
+	clientInfoList.setPtrs(&imports.gameState, imports.userInfo);
 }
 
 void ModuleBase::parseCGMessage(MSG& msg)
@@ -184,7 +189,12 @@ void ModuleBase::tick(uint64_t deltaTime, uint64_t currentTime, uint64_t serverT
 	processedSnapshots.processSnapshots(serverTime);
 	traceManager.buildSolidList(processedSnapshots);
 	// process prediction stuff
-	prediction.process(serverTime, processedSnapshots);
+	PredictionParm predictionParm{
+		processedSnapshots,
+		cgs
+	};
+
+	prediction.process(serverTime, predictionParm);
 
 	if (voteManager.isModified())
 	{
@@ -193,20 +203,9 @@ void ModuleBase::tick(uint64_t deltaTime, uint64_t currentTime, uint64_t serverT
 	}
 }
 
-float ModuleBase::getFrameInterpolation() const
-{
-	return frameInterpolation;
-}
-
 uint64_t ModuleBase::getTime() const
 {
 	return svTime;
-}
-
-
-const ClientImports& ModuleBase::getImports() const
-{
-	return imports;
 }
 
 const rain_t& ModuleBase::getRain() const
@@ -222,138 +221,6 @@ const environment_t& ModuleBase::getEnvironment() const
 const cgsInfo& ModuleBase::getServerInfo() const
 {
 	return cgs;
-}
-
-cgsInfo::cgsInfo()
-	: matchStartTime(0)
-	, matchEndTme(0)
-	, levelStartTime(0)
-	, serverLagTime(0)
-	, dmFlags(0)
-	, teamFlags(0)
-	, maxClients(0)
-	, mapChecksum(0)
-	, fragLimit(0)
-	, timeLimit(0)
-	, serverType(serverType_e::normal)
-	, gameType(gameType_e::FreeForAll)
-	, allowVote(false)
-{
-}
-
-uint64_t cgsInfo::getMatchStartTime() const
-{
-	return matchStartTime;
-}
-
-uint64_t cgsInfo::getMatchEndTime() const
-{
-	return matchEndTme;
-}
-
-uint64_t cgsInfo::getLevelStartTime() const
-{
-	return levelStartTime;
-}
-
-uint64_t cgsInfo::getServerLagTime() const
-{
-	return serverLagTime;
-}
-
-gameType_e cgsInfo::getGameType() const
-{
-	return gameType;
-}
-
-uint32_t cgsInfo::getDeathmatchFlags() const
-{
-	return dmFlags;
-}
-
-uint32_t cgsInfo::getTeamFlags() const
-{
-	return teamFlags;
-}
-
-uint32_t cgsInfo::getMaxClients() const
-{
-	return maxClients;
-}
-
-int32_t cgsInfo::getFragLimit() const
-{
-	return fragLimit;
-}
-
-int32_t cgsInfo::getTimeLimit() const
-{
-	return timeLimit;
-}
-
-serverType_e cgsInfo::getServerType() const
-{
-	return serverType;
-}
-
-bool cgsInfo::isVotingAllowed() const
-{
-	return allowVote;
-}
-
-uint32_t cgsInfo::getMapChecksum() const
-{
-	return mapChecksum;
-}
-
-const char* cgsInfo::getMapName() const
-{
-	return mapName.c_str();
-}
-
-const char* cgsInfo::getMapFilename() const
-{
-	return mapFilename.c_str();
-}
-
-const char* cgsInfo::getAlliedText(size_t index) const
-{
-	return alliedText[index].c_str();
-}
-
-const char* cgsInfo::getAxisText(size_t index)
-{
-	return axisText[index].c_str();
-}
-
-const char* cgsInfo::getScoreboardPic() const
-{
-	return scoreboardPic.c_str();
-}
-
-const char* cgsInfo::getScoreboardPicOver() const
-{
-	return scoreboardPicOver.c_str();
-}
-
-const str& cgsInfo::getMapNameStr() const
-{
-	return mapName;
-}
-
-const str& cgsInfo::getMapFilenameStr() const
-{
-	return mapFilename;
-}
-
-bool cgsInfo::hasAnyDMFlags(uint32_t flags) const
-{
-	return (dmFlags & flags) != 0;
-}
-
-bool cgsInfo::hasAllDMFlags(uint32_t flags) const
-{
-	return (dmFlags & flags) == flags;
 }
 
 void ModuleBase::configStringModified(csNum_t num, const char* cs)
@@ -459,13 +326,6 @@ void ModuleBase::configStringModified(csNum_t num, const char* cs)
 
 		const uint32_t clientNum = num - CS_PLAYERS;
 		const clientInfo_t& client = clientInfoList.set(info, clientNum);
-
-		if (clientNum == imports.getClientNum())
-		{
-			// something has changed locally so try to reflect the change
-			// to the local client
-			conditionalReflectClient(client);
-		}
 	}
 }
 
@@ -516,22 +376,6 @@ void ModuleBase::parseServerInfo(const char* cs)
 	cgs.axisText[4] = info.ValueForKey("g_obj_axistext5");
 	cgs.scoreboardPic = info.ValueForKey("g_scoreboardpic");
 	cgs.scoreboardPicOver = info.ValueForKey("g_scoreboardpicover");
-}
-
-void ModuleBase::conditionalReflectClient(const clientInfo_t& client)
-{
-	const ClientInfoPtr& userInfo = imports.getUserInfo();
-
-	const char* currentName = userInfo->getName();
-	if (str::icmp(client.name, currentName))
-	{
-		MOHPC_LOG(Info, "Name changed from \"%s\" to \"%s\"", currentName, client.name.c_str());
-		// the name has changed (can be because it was sanitized)
-		// as a consequence, the change must be reflected on the client
-		userInfo->setName(client.name.c_str());
-
-		// don't resend user info because it would be useless to do so
-	}
 }
 
 void ModuleBase::SCmd_Print(TokenParser& args)
@@ -674,17 +518,6 @@ void ModuleBase::SCmd_PrintDeathMsg(TokenParser& args)
 		handlers().printHandler.broadcast(hudMessage, deathMessage1.c_str());
 		break;
 	}
-}
-
-void ModuleBase::setImports(const Imports& imports)
-{
-	prediction.setUserInputPtr(&imports.userInput);
-
-	processedSnapshots.setPtrs(
-		&imports.clientTime,
-		&imports.snapshotManager,
-		&imports.commandSequence
-	);
 }
 
 SnapshotProcessor& ModuleBase::getSnapshotProcessor()
@@ -1100,16 +933,6 @@ effects_e CGameModule6::getEffectId(uint32_t effectId)
 	}
 
 	return effects_e::bh_stone_hard;
-}
-
-Pmove& CGameModule6::getMove()
-{
-	pmove = Pmove_ver6();
-	return pmove;
-}
-
-void CGameModule6::setupMove(Pmove& pmove)
-{
 }
 
 CGameModule15::CGameModule15()
@@ -1584,21 +1407,6 @@ effects_e CGameModule15::getEffectId(uint32_t effectId)
 	return effects_e::bh_stone_hard;
 }
 
-Pmove& CGameModule15::getMove()
-{
-	pmove = Pmove_ver15();
-	return pmove;
-}
-
-void CGameModule15::setupMove(Pmove& pmove)
-{
-	pmove_t& pm = pmove.get();
-	// in SH/BT, can't lean by default
-	// unless a dmflag specify it
-	Pmove_ver15& pmoveVer = static_cast<Pmove_ver15&>(pmove);
-	pmoveVer.canLeanWhileMoving = getServerInfo().hasAnyDMFlags(DMFlags::DF_ALLOW_LEAN);
-}
-
 CommonMessageHandler::CommonMessageHandler(MSG& inMsg, const ModuleBase::HandlerList& inHandlerList)
 	: msg(inMsg)
 	, handlerList(inHandlerList)
@@ -1787,26 +1595,6 @@ uint32_t rain_t::getNumShaders() const
 const char* rain_t::getShader(uint8_t index) const
 {
 	return shader[index].c_str();
-}
-
-clientInfo_t::clientInfo_t()
-	: team(teamType_e::None)
-{
-}
-
-const char* clientInfo_t::getName() const
-{
-	return name.c_str();
-}
-
-teamType_e clientInfo_t::getTeam() const
-{
-	return team;
-}
-
-const PropertyObject& clientInfo_t::getProperties() const
-{
-	return properties;
 }
 
 ProtocolClassInstancier_Template<CGameModule6, ModuleBase, 5, 8> cgameVersion8;

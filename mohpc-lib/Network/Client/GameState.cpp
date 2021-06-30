@@ -88,3 +88,11 @@ bool ServerGameState::reloadGameState(ClientTime& clientTime)
 
 	return isDiff;
 }
+
+void ServerGameState::modifyConfigString(csNum_t num, const char* string)
+{
+	get().getConfigstringManager().setConfigString(num, string);
+
+	// Notify about modification
+	getHandlers().configStringHandler.broadcast(num, string);
+}

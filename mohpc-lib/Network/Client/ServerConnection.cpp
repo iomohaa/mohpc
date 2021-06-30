@@ -29,7 +29,7 @@ class ClientRemoteCommandSequenceTemplate_ver17 : public ClientRemoteCommandSequ
 
 MOHPC_OBJECT_DEFINITION(ServerConnection);
 
-ServerConnection::ServerConnection(const INetchanPtr& inNetchan, const IRemoteIdentifierPtr& inAdr, uint32_t challengeResponse, const protocolType_c& protoType, const ClientInfoPtr& cInfo)
+ServerConnection::ServerConnection(const INetchanPtr& inNetchan, const IRemoteIdentifierPtr& inAdr, uint32_t challengeResponse, const protocolType_c& protoType, const UserInfoPtr& cInfo)
 	: netchan(inNetchan)	
 	, adr(inAdr)
 	, timeout(std::chrono::milliseconds(60000))
@@ -39,6 +39,12 @@ ServerConnection::ServerConnection(const INetchanPtr& inNetchan, const IRemoteId
 	, clGameState(protoType)
 	, clSnapshotManager(protoType)
 {
+	if (!userInfo)
+	{
+		// not existing so create one
+		userInfo = UserInfo::create();
+	}
+
 	ClientImports imports;
 	fillClientImports(imports);
 
@@ -66,7 +72,9 @@ ServerConnection::ServerConnection(const INetchanPtr& inNetchan, const IRemoteId
 		clSnapshotManager,
 		clientTime,
 		input,
-		*serverCommands
+		*serverCommands,
+		clGameState,
+		userInfo
 	};
 	cgameModule->setImports(cgImports);
 
@@ -639,10 +647,7 @@ void ServerConnection::parseCommandString(MSG& msg)
 
 		//gameStatePtr->configStringModified(num, csString, true);
 		// can set the config-string right now
-		clGameState.get().getConfigstringManager().setConfigString(num, csString);
-
-		// Notify about modification
-		clGameState.getHandlers().configStringHandler.broadcast(num, csString);
+		clGameState.modifyConfigString(num, csString);
 
 		if (num == CS_SYSTEMINFO || num == CS_SERVERINFO)
 		{
@@ -753,12 +758,12 @@ const ServerGameState& ServerConnection::getGameState() const
 	return clGameState;
 }
 
-ConstClientInfoPtr ServerConnection::getUserInfo() const
+ConstUserInfoPtr ServerConnection::getUserInfo() const
 {
 	return userInfo;
 }
 
-const ClientInfoPtr& ServerConnection::getUserInfo()
+const UserInfoPtr& ServerConnection::getUserInfo()
 {
 	return userInfo;
 }
@@ -987,96 +992,7 @@ void ServerConnection::fillClientImports(ClientImports& imports)
 	imports.getGameState				= std::bind(const_cast<ServerGameState& (ServerConnection::*)()>(&ServerConnection::getGameState), this);
 	imports.getSnapshotManager			= std::bind(const_cast<ServerSnapshotManager& (ServerConnection::*)()>(&ServerConnection::getSnapshotManager), this);
 	imports.addReliableCommand			= std::bind(&ServerConnection::addReliableCommand, this, _1);
-	imports.getUserInfo					= std::bind(static_cast<const ClientInfoPtr&(ServerConnection::*)()>(&ServerConnection::getUserInfo), this);
-}
-MOHPC_OBJECT_DEFINITION(ClientInfo);
-
-ClientInfo::ClientInfo()
-	: snaps(20)
-	, rate(5000)
-{
-}
-
-void ClientInfo::setRate(uint32_t inRate)
-{
-	rate = inRate;
-}
-
-uint32_t ClientInfo::getRate() const
-{
-	return rate;
-}
-
-void ClientInfo::setSnaps(uint32_t inSnaps)
-{
-	snaps = inSnaps;
-}
-
-uint32_t ClientInfo::getSnaps() const
-{
-	return snaps;
-}
-
-void ClientInfo::setName(const char* newName)
-{
-	name = newName;
-}
-
-const char* ClientInfo::getName() const
-{
-	return name.c_str();
-}
-
-void ClientInfo::setPlayerAlliedModel(const char* newModel)
-{
-	properties.SetPropertyValue("dm_playermodel", newModel);
-}
-
-const char* ClientInfo::getPlayerAlliedModel() const
-{
-	return properties.GetPropertyRawValue("dm_playermodel");
-}
-
-void ClientInfo::setPlayerGermanModel(const char* newModel)
-{
-	properties.SetPropertyValue("dm_playergermanmodel", newModel);
-}
-
-const char* ClientInfo::getPlayerGermanModel() const
-{
-	return properties.GetPropertyRawValue("dm_playergermanmodel");
-}
-
-void ClientInfo::setUserKeyValue(const char* key, const char* value)
-{
-	properties.SetPropertyValue(key, value);
-}
-
-const char* ClientInfo::getUserKeyValue(const char* key) const
-{
-	return properties.GetPropertyRawValue(key);
-}
-
-const PropertyObject& ClientInfo::getPropertyObject() const
-{
-	return properties;
-}
-
-void ClientInfoHelper::fillInfoString(const ClientInfo& clientInfo, Info& info)
-{
-	// Build mandatory variables
-	info.SetValueForKey("rate", str::printf("%i", clientInfo.getRate()));
-	info.SetValueForKey("snaps", str::printf("%i", clientInfo.getSnaps()));
-	info.SetValueForKey("name", clientInfo.getName());
-
-	// Build miscellaneous values
-	for (PropertyMapIterator it = clientInfo.getPropertyObject().GetIterator(); it; ++it)
-	{
-		info.SetValueForKey(
-			it.key().GetFullPropertyName(),
-			it.value()
-		);
-	}
+	imports.getUserInfo					= std::bind(static_cast<const UserInfoPtr&(ServerConnection::*)()>(&ServerConnection::getUserInfo), this);
 }
 
 PacketHeaderWriter::PacketHeaderWriter(const ServerGameState& clGameStateRef, const ICommandSequence& serverCommandsRef, uint32_t serverMessageSequenceValue)

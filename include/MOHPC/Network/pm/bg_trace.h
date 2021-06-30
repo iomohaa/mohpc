@@ -1,0 +1,44 @@
+#pragma once
+
+#include "../NetGlobal.h"
+#include "../../Utility/Function.h"
+#include "../../Utility/Collision/Collision.h"
+#include "../../Common/Vector.h"
+#include "../Types/Entity.h"
+
+#include <cstdint>
+
+namespace MOHPC
+{
+namespace Network
+{
+	using TraceFunction = Function<void(trace_t* results, const Vector& start, const Vector& mins, const Vector& maxs, const Vector& end, uintptr_t passEntityNum, uintptr_t contentMask, bool capsule, bool traceDeep)>;
+	using PointContentsFunction = Function<uint32_t(const Vector& point, uintptr_t passEntityNum)>;
+
+	class MOHPC_NET_EXPORTS ITraceFunction
+	{
+	public:
+		virtual ~ITraceFunction();
+
+		/** @see CollisionWorld::BoxTrace. */
+		virtual void trace(
+			trace_t* results,
+			const Vector& start,
+			const Vector& mins,
+			const Vector& maxs,
+			const Vector& end,
+			entityNum_t passEntityNum,
+			uint32_t contentMask,
+			bool capsule,
+			bool traceDeep
+		) = 0;
+
+		/** @see CollisionWorld::PointContents. */
+		virtual uint32_t pointContents(const Vector& point, uintptr_t passEntityNum) = 0;
+	};
+	using ITraceFunctionPtr = SharedPtr<ITraceFunction>;
+
+	extern MOHPC_NET_EXPORTS ITraceFunction* PmoveNoTrace;
+	extern MOHPC_NET_EXPORTS ITraceFunctionPtr PmoveNoTracePtr;
+}
+}

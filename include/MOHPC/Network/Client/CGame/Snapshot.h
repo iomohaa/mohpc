@@ -115,6 +115,8 @@ namespace Network
 			MOHPC_NET_EXPORTS bool doesCameraCutNextFrame() const;
 			/** Return true if no lerp/interpolation should be done (instant teleport). */
 			MOHPC_NET_EXPORTS bool doesTeleportThisFrame() const;
+			/** Set the teleport this frame flag. */
+			MOHPC_NET_EXPORTS void makeTeleportThisFrame();
 			/** Clear the teleport this frame flag. */
 			MOHPC_NET_EXPORTS void clearTeleportThisFrame();
 

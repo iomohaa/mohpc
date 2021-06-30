@@ -138,21 +138,13 @@ EngineServer::~EngineServer()
 {
 }
 
-/*
-void EngineServer::tick(uint64_t deltaTime, uint64_t currentTime)
-{
-	EngineServerPtr ThisPtr = shared_from_this();
-	handler.handle();
-}
-*/
-
-void EngineServer::connect(const ClientInfoPtr& clientInfo, const ConnectSettingsPtr& connectSettings, Callbacks::Connect&& result, Callbacks::ServerTimeout&& timeoutResult)
+void EngineServer::connect(const UserInfoPtr& UserInfo, const ConnectSettingsPtr& connectSettings, Callbacks::Connect&& result, Callbacks::ServerTimeout&& timeoutResult)
 {
 	using namespace std::placeholders;
 
 	ConnectionParams connData;
 	connData.response = std::bind(&EngineServer::onConnect, this, std::move(result), _1, _2, _3, _4, _5);
-	connData.info = std::move(clientInfo);
+	connData.info = std::move(UserInfo);
 	connData.settings = std::move(connectSettings);
 
 	sendRequest(makeShared<VerBeforeChallengeRequest>(std::move(connData)), std::move(timeoutResult));
@@ -176,7 +168,7 @@ void EngineServer::sendRequest(IEngineRequestPtr&& req, Callbacks::ServerTimeout
 	handler.sendRequest(std::move(req), timeoutTime);
 }
 
-void EngineServer::onConnect(const Callbacks::Connect result, uint16_t qport, uint32_t challengeResponse, const protocolType_c& protoType, const ClientInfoPtr& cInfo, const char* errorMessage)
+void EngineServer::onConnect(const Callbacks::Connect result, uint16_t qport, uint32_t challengeResponse, const protocolType_c& protoType, const UserInfoPtr& cInfo, const char* errorMessage)
 {
 	if (!errorMessage)
 	{
@@ -302,25 +294,21 @@ SharedPtr<IRequestBase> EngineServer::IEngineRequest::process(InputRequest& data
 	msg.SetCodec(MessageCodecs::OOB);
 
 	const uint32_t marker = msg.ReadUInteger();
-	assert(marker == -1);
-	/*
+	//assert(marker == -1);
 	if (marker != -1)
 	{
 		// must be a connectionless packet
 		MOHPC_LOG(Info, "Received a sequenced packet (%d)", marker);
 		return nullptr;
 	}
-	*/
 
 	const netsrc_e dirByte = (netsrc_e)msg.ReadByte();
-	assert(dirByte == netsrc_e::Client);
-	/*
+	//assert(dirByte == netsrc_e::Client);
 	if (dirByte != netsrc_e::Client)
 	{
 		MOHPC_LOG(Info, "Wrong direction for connectionLess packet (must be targeted at client, got %d)", dirByte);
 		return nullptr;
 	}
-	*/
 
 	IRequestPtr newRequest;
 
@@ -328,7 +316,7 @@ SharedPtr<IRequestBase> EngineServer::IEngineRequest::process(InputRequest& data
 	StringMessage arg = msg.ReadString();
 	const size_t len = strlen(arg);
 	assert(len > 0);
-	//if (len > 0)
+	if (len > 0)
 	{
 		TokenParser parser;
 		parser.Parse(arg, strlen(arg) + 1);
@@ -346,7 +334,6 @@ SharedPtr<IRequestBase> EngineServer::IEngineRequest::process(InputRequest& data
 			);
 		}
 	}
-	/*
 	else
 	{
 		// Empty response
@@ -355,7 +342,6 @@ SharedPtr<IRequestBase> EngineServer::IEngineRequest::process(InputRequest& data
 			data.identifier->getString().c_str()
 		);
 	}
-	*/
 
 	return newRequest;
 }

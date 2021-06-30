@@ -139,12 +139,6 @@ namespace MOHPC
 		};
 #endif
 
-		class ClientInfoHelper
-		{
-		public:
-			static void fillInfoString(const ClientInfo& clientInfo, Info& info);
-		};
-
 		class DownloadManager
 		{
 		public:
@@ -382,7 +376,7 @@ namespace MOHPC
 			 * @param	challengeResponse	Challenge used to XOR data.
 			 * @param	protocolVersion		Version of the protocol to use.
 			 */
-			ServerConnection(const INetchanPtr& netchan, const IRemoteIdentifierPtr& inAdr, uint32_t challengeResponse, const protocolType_c& protoType, const ClientInfoPtr& cInfo);
+			ServerConnection(const INetchanPtr& netchan, const IRemoteIdentifierPtr& inAdr, uint32_t challengeResponse, const protocolType_c& protoType, const UserInfoPtr& cInfo);
 			~ServerConnection();
 
 			// ITickable
@@ -422,10 +416,10 @@ namespace MOHPC
 			MOHPC_NET_EXPORTS CGame::ModuleBase* getCGModule();
 
 			/** Return read-only user info. */
-			MOHPC_NET_EXPORTS ConstClientInfoPtr getUserInfo() const;
+			MOHPC_NET_EXPORTS ConstUserInfoPtr getUserInfo() const;
 
 			/** Return modifiable user info. */
-			MOHPC_NET_EXPORTS const ClientInfoPtr& getUserInfo();
+			MOHPC_NET_EXPORTS const UserInfoPtr& getUserInfo();
 
 			/** Send the server a new user info string. Must be called when done modifying the userinfo. */
 			MOHPC_NET_EXPORTS void updateUserInfo();
@@ -510,7 +504,7 @@ namespace MOHPC
 			IRemoteIdentifierPtr adr;
 			EncodingPtr encoder;
 			INetchanPtr netchan;
-			ClientInfoPtr userInfo;
+			UserInfoPtr userInfo;
 			IReliableSequence* reliableCommands;
 			ICommandSequence* serverCommands;
 			ClientTime clientTime;
