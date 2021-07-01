@@ -70,7 +70,7 @@ const clientInfo_t& ClientInfoList::set(const ReadOnlyInfo& info, uint32_t clien
 		}
 	}
 
-	if (clientNum == gameState->clientNum)
+	if (clientNum == gameState->getClientNum())
 	{
 		// something has changed locally so try to reflect the change
 		// to the local client

@@ -123,7 +123,7 @@ ModuleBase::~ModuleBase()
 {
 	if (gameState)
 	{
-		gameState->getHandlers().configStringHandler.remove(configStringHandler);
+		gameState->handlers().configStringHandler.remove(configStringHandler);
 	}
 }
 
@@ -154,13 +154,13 @@ void ModuleBase::setImports(const Imports& imports)
 	if (gameState)
 	{
 		// clear from previous game state
-		gameState->getHandlers().configStringHandler.remove(configStringHandler);
+		gameState->handlers().configStringHandler.remove(configStringHandler);
 	}
 
 	gameState = &imports.gameState;
 
 	using namespace std::placeholders;
-	configStringHandler = gameState->getHandlers().configStringHandler.add(std::bind(&ModuleBase::configStringModified, this, _1, _2));
+	configStringHandler = gameState->handlers().configStringHandler.add(std::bind(&ModuleBase::configStringModified, this, _1, _2));
 
 	clientInfoList.setPtrs(&imports.gameState, imports.userInfo);
 }

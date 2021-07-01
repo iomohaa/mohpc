@@ -55,6 +55,9 @@ namespace MOHPC
 		uintmax_t length;
 
 		MOHPC_UTILITY_EXPORTS TokenParser();
+		MOHPC_UTILITY_EXPORTS TokenParser(const char* s);
+		MOHPC_UTILITY_EXPORTS TokenParser(const char* s, size_t len);
+		MOHPC_UTILITY_EXPORTS TokenParser(const str& s);
 		MOHPC_UTILITY_EXPORTS ~TokenParser();
 
 		MOHPC_UTILITY_EXPORTS void Close();

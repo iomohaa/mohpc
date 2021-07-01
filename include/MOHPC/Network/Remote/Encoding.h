@@ -15,6 +15,9 @@ namespace MOHPC
 		class IReliableSequence;
 		class ICommandSequence;
 
+		/**
+		 * Interface for encoding streams.
+		 */
 		class MOHPC_NET_EXPORTS IEncoding
 		{
 		public:

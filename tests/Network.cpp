@@ -173,7 +173,7 @@ int main(int argc, const char* argv[])
 					MOHPC_LOG(Info, "Exception of type \"%s\": \"%s\"", typeid(exception).name(), exception.what().c_str());
 				});
 
-			connection->getGameState().getHandlers().gameStateParsedHandler.add([&AM, &connection, cgame, &cm, &mapfilename](const Network::ServerGameState& gameState, bool differentLevel)
+			connection->getGameState().handlers().gameStateParsedHandler.add([&AM, &connection, cgame, &cm, &mapfilename](const Network::ServerGameState& gameState, bool differentLevel)
 				{
 					const cgsInfo& cgs = cgame->getServerInfo();
 					const str& loadedMap = cgs.getMapFilenameStr();
@@ -200,7 +200,7 @@ int main(int argc, const char* argv[])
 					MOHPC_LOG(Info, "server restarted");
 				});
 
-			connection->getGameState().getHandlers().configStringHandler.add([](csNum_t csNum, const char* configString)
+			connection->getGameState().handlers().configStringHandler.add([](csNum_t csNum, const char* configString)
 				{
 					MOHPC_LOG(Info, "cs %d modified: %s", csNum, configString);
 				});
@@ -516,7 +516,7 @@ int main(int argc, const char* argv[])
 			else
 			{
 				if (connection) {
-					connection->sendCommand(buf);
+					connection->getReliableSequence()->addCommand(buf);
 				}
 			}
 

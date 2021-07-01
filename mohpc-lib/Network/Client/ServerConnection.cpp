@@ -18,7 +18,6 @@
 using namespace MOHPC;
 using namespace Network;
 
-static constexpr size_t MAX_MSGLEN = 49152;
 static constexpr size_t MINIMUM_RECEIVE_BUFFER_SIZE = 1024;
 static constexpr char MOHPC_LOG_NAMESPACE[] = "network_cgame";
 
@@ -36,7 +35,7 @@ ServerConnection::ServerConnection(const INetchanPtr& inNetchan, const IRemoteId
 	, isActive(false)
 	, isReady(false)
 	, userInfo(cInfo)
-	, clGameState(protoType)
+	, clGameState(protoType, &clientTime)
 	, clSnapshotManager(protoType)
 {
 	if (!userInfo)
@@ -45,19 +44,14 @@ ServerConnection::ServerConnection(const INetchanPtr& inNetchan, const IRemoteId
 		userInfo = UserInfo::create();
 	}
 
-	ClientImports imports;
-	fillClientImports(imports);
-
-	downloadState.setImports(imports);
-
 	const uint32_t protocol = protoType.getProtocolVersionNumber();
 
 	stringParser = Parsing::IString::get(protocol);
 	hashParser = Parsing::IHash::get(protocol);
 
 	// from now always use version 17
-	// the maximum command char may vary between version
-	// FIXME: would it alter the gameplay?
+	// the maximum command char is different across versions
+	// would it alter the gameplay?
 	//  the command size is bigger than moh:aa (protocol version 5-8)
 	reliableCommands = new ClientSequenceTemplate_ver17();
 	serverCommands = new ClientRemoteCommandSequenceTemplate_ver17();
@@ -77,6 +71,15 @@ ServerConnection::ServerConnection(const INetchanPtr& inNetchan, const IRemoteId
 		userInfo
 	};
 	cgameModule->setImports(cgImports);
+
+	// setup the download manager
+	downloadState.setReliableSequence(reliableCommands);
+
+	// register remote commands
+	clGameState.RegisterCommands(remoteCommandManager);
+
+	using namespace std::placeholders;
+	remoteCommandManager.addCommand(Command("disconnect", std::bind(&ServerConnection::disconnectCommand, this, _1)));
 
 	encoder = std::make_shared<Encoding>(challengeResponse, *reliableCommands, *serverCommands);
 
@@ -123,7 +126,7 @@ void ServerConnection::tick(uint64_t deltaTime, uint64_t currentTime)
 	while(isChannelValid() && socket->getIncomingSize() && count++ < settings.getMaxTickPackets())
 	{
 		DynamicDataMessageStream stream;
-		// reserve a minimum amount to avoid reallocating each time
+		// reserve a minimum amount to reduce the amount of reallocations
 		stream.reserve(MINIMUM_RECEIVE_BUFFER_SIZE);
 
 		uint32_t sequenceNum;
@@ -280,11 +283,6 @@ void ServerConnection::receiveConnectionLess(const IRemoteIdentifierPtr& from, M
 	}
 }
 
-void ServerConnection::addReliableCommand(const char* cmd)
-{
-	return reliableCommands->addCommand(cmd);
-}
-
 void ServerConnection::parseServerMessage(MSG& msg, uint64_t currentTime)
 {
 	while(cgameModule)
@@ -302,7 +300,7 @@ void ServerConnection::parseServerMessage(MSG& msg, uint64_t currentTime)
 			parseCommandString(msg);
 			break;
 		case svc_ops_e::Gamestate:
-			clGameState.parseGameState(msg, serverCommands, clientTime);
+			clGameState.parseGameState(msg, serverCommands);
 			break;
 		case svc_ops_e::Snapshot:
 			clSnapshotManager.parseSnapshot(
@@ -326,6 +324,7 @@ void ServerConnection::parseServerMessage(MSG& msg, uint64_t currentTime)
 			parseLocprint(msg);
 			break;
 		case svc_ops_e::CGameMessage:
+			// Client game module will handle all gameplay related messages
 			cgameModule->parseCGMessage(msg);
 			break;
 		default:
@@ -350,261 +349,6 @@ void GetNullEntityState(entityState_t* nullState) {
 	nullState->bone_tag[0] = -1;
 }
 
-/*
-void ServerConnection::parseGameState(MSG& msg)
-{
-	// create a new gameState with correct version
-	clGameState.get() = gameStateParser->create();
-
-	Parsing::gameStateClient_t clientData;
-	gameStateParser->parseGameState(msg, clGameState.get(), clientData);
-
-	// update the command sequence
-	serverCommands->setSequence(clientData.commandSequence);
-
-	clGameState.clientNum = clientData.clientNum;
-	// seems to be always zero, is it really useful?
-	clGameState.checksumFeed = clientData.checksumFeed;
-
-	const bool isDiff = reloadGameState();
-	if (isDiff)
-	{
-		clearState();
-	}
-
-	// take care of each config-string
-	// the user must be fully aware of the current state
-	clGameState.notifyAllConfigStringChanges();
-
-	// gameState has been parsed, notify
-	clGameState.getHandlers().gameStateParsedHandler.broadcast(clGameState, isDiff);
-
-#if 0
-	MOHPC_LOG(Debug, "Received gamestate");
-
-	MsgTypesHelper msgHelper(msg);
-
-	serverCommandSequence = msg.ReadInteger();
-
-	gameState.dataCount = 1;
-	for (;;)
-	{
-		const svc_ops_e cmd = msg.ReadByteEnum<svc_ops_e>();
-		if (cmd == svc_ops_e::Eof) {
-			break;
-		}
-
-		switch (cmd)
-		{
-		case svc_ops_e::Configstring:
-		{
-			const csNum_t stringNum = msg.ReadUShort();
-
-			if (stringNum > MAX_CONFIGSTRINGS) {
-				throw ClientError::MaxConfigStringException("gameStateParsing", stringNum);
-			}
-
-			const StringMessage stringValue = stringParser->readString(msg);
-
-			// don't notify yet
-			configStringModified(getNormalizedConfigstring(stringNum), stringValue, false);
-		}
-		break;
-		case svc_ops_e::Baseline:
-		{
-			const entityNum_t newNum = readEntityNum(msgHelper);
-			if (newNum >= MAX_GENTITIES) {
-				throw ClientError::BaselineOutOfRangeException(newNum);
-			}
-
-			entityState_t nullState;
-			GetNullEntityState(&nullState);
-
-			entityState_t& es = entityBaselines[newNum];
-			readDeltaEntity(msg, &nullState, &es, newNum);
-		}
-		break;
-		default:
-			throw ClientError::BadCommandByteException((uint8_t)cmd);
-		}
-	}
-
-	clientNum = msg.ReadUInteger();
-	checksumFeed = msg.ReadUInteger();
-
-	// save the server id for later
-	// it may be changed when parsing the system info
-	const uint32_t oldServerId = serverId;
-
-	systemInfoChanged();
-
-	(this->*parseGameState_pf)(msg);
-
-	// now notify about all received config strings
-	notifyAllConfigStringChanges();
-
-	const bool isDiff = isDifferentServer(oldServerId);
-	if (isDiff)
-	{
-		// new map/server, reset important data
-		clearState();
-	} else {
-		MOHPC_LOG(Warn, "Server has resent gamestate while in-game");
-	}
-
-	// notify about the new game state
-	getHandlerList().gameStateParsedHandler.broadcast(getGameState(), isDiff);
-#endif
-}
-*/
-
-DownloadManager::DownloadManager()
-	: downloadSize(0)
-	, downloadBlock(0)
-	, downloadRequested(false)
-{}
-
-void DownloadManager::setImports(ClientImports& inImports) noexcept
-{
-	imports = inImports;
-}
-
-void DownloadManager::processDownload(MSG& msg, const Parsing::IString& stringParser)
-{
-	if (!downloadRequested)
-	{
-		// not requested
-		imports.addReliableCommand("stopdl");
-		throw ClientError::UnexpectedDownloadException();
-	}
-
-	uint8_t data[MAX_MSGLEN];
-
-	const uint16_t block = msg.ReadUShort();
-	if (!block)
-	{
-		// block zero = file size
-		uint32_t fileSize = msg.ReadInteger();
-
-		if (!fileSize || fileSize == -1)
-		{
-			// not a valid file size
-			imports.addReliableCommand("stopdl");
-			throw ClientError::DownloadException(stringParser.readString(msg));
-		}
-
-		downloadBlock = 0;
-
-		MOHPC_LOG(Debug, "downloading file of size %d", fileSize);
-	}
-
-	const uint16_t size = msg.ReadUShort();
-
-	if (size > sizeof(data))
-	{
-		// invalid size
-		throw ClientError::DownloadSizeException(size);
-	}
-
-	if (downloadBlock != block)
-	{
-		// unexpected block
-		throw ClientError::BadDownloadBlockException(block, downloadBlock);
-	}
-
-	if (size > 0)
-	{
-		msg.ReadData(data, size);
-
-		if (!receive(data, size))
-		{
-			clearDownload();
-			imports.addReliableCommand("stopdl");
-			return;
-		}
-
-		//std::ofstream strm("dwnl.tmp", std::ofstream::binary | std::ofstream::app);
-		// append data
-		//strm.write((const char*)data, size);
-
-		MOHPC_LOG(Debug, "downloaded block %d size %d", block, size);
-
-		// tell the server to continue downloading
-		imports.addReliableCommand(str::printf("nextdl %d", downloadBlock));
-
-		downloadSize += size;
-	}
-	else
-	{
-		// a size of 0 means EOF
-		clearDownload();
-
-		downloadsComplete();
-	}
-
-	downloadBlock++;
-}
-
-bool DownloadManager::receive(const uint8_t* data, const size_t size)
-{
-	if (receiveCallback)
-	{
-		// let the callee do whatever with the data and possibly cancel
-		return receiveCallback(data, size);
-	}
-
-	return true;
-}
-
-void DownloadManager::startDownload(const char* inDownloadName)
-{
-	if (startCallback)
-	{
-		// notify about the new download
-		if (!startCallback(downloadName.c_str()))
-		{
-			// don't start the download if the callee didn't want it
-			return;
-		}
-	}
-
-	downloadName = inDownloadName;
-	downloadRequested = true;
-}
-
-void DownloadManager::cancelDownload()
-{
-	clearDownload();
-}
-
-
-void DownloadManager::clearDownload()
-{
-	downloadName.clear();
-	downloadRequested = false;
-}
-
-void DownloadManager::downloadsComplete()
-{
-	// inform that download has stopped
-	imports.addReliableCommand("donedl");
-}
-
-void DownloadManager::nextDownload()
-{
-	// FIXME: list of files to download
-}
-
-void DownloadManager::setDownloadStartedCallback(startCallback_f&& callback)
-{
-	startCallback = std::move(callback);
-}
-
-void DownloadManager::setReceiveCallback(receiveCallback_f&& callback)
-{
-	receiveCallback = std::move(callback);
-}
-
 void ServerConnection::parseCommandString(MSG& msg)
 {
 	const uint32_t seq = msg.ReadUInteger();
@@ -612,52 +356,22 @@ void ServerConnection::parseCommandString(MSG& msg)
 
 	serverCommands->addCommand(s, seq);
 
-	// check if it is already stored
-	if (serverCommands->getCommandSequence() >= seq) {
+	if (serverCommands->getCommandSequence() >= seq)
+	{
+		// already stored so avoid processing it twice
 		return;
 	}
 
-	TokenParser tokenized;
-	tokenized.Parse(s, strlen(s));
-
-	const str commandName = tokenized.GetToken(false);
 #if _DEBUG
-
-	if (!str::icmp(commandName.c_str(), "stufftext"))
+	if (!str::icmpn(s.c_str(), "stufftext ", 10))
 	{
 		// Warn about stufftext
 		MOHPC_LOG(Warn, "Stufftext command detected. Handle it with high precautions. Arguments : %s", s.getData() + 10);
 	}
 #endif
 
-	if (!str::icmp(commandName.c_str(), "disconnect"))
-	{
-		// Server kicking out the client
-		throw ClientError::DisconnectException();
-	}
-	else if (!str::icmpn(commandName.c_str(), "cs ", 3))
-	{
-		// Skip the "cs" token
-		tokenized.GetToken(true);
-
-		// Retrieve the configstring number
-		const uint32_t num = tokenized.GetInteger(true);
-		// Get the content
-		const char* csString = tokenized.GetString(true, false);
-
-		//gameStatePtr->configStringModified(num, csString, true);
-		// can set the config-string right now
-		clGameState.modifyConfigString(num, csString);
-
-		if (num == CS_SYSTEMINFO || num == CS_SERVERINFO)
-		{
-			// reload gameState settings including the sv_fps value
-			clGameState.reloadGameState(clientTime);
-		}
-	}
-
-	// notify about the new command
-	handlerList.serverCommandManager.broadcast(commandName.c_str(), tokenized);
+	// notify handlers about the new command
+	remoteCommandManager.processCommand(s.c_str());
 }
 
 void ServerConnection::parseCenterprint(MSG& msg)
@@ -726,7 +440,7 @@ void ServerConnection::writePacket(uint64_t currentTime)
 	static constexpr size_t encodeStart = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t);
 
 	stream.Seek(encodeStart, IMessageStream::SeekPos::Begin);
-	encoder->setSecretKey(clGameState.serverId);
+	encoder->setSecretKey(clGameState.getServerId());
 	encoder->setMessageAcknowledge(serverMessageSequence);
 	encoder->setReliableAcknowledge(serverCommands->getCommandSequence());
 	encoder->encode(stream, stream);
@@ -773,7 +487,7 @@ void ServerConnection::updateUserInfo()
 	Info info;
 	ClientInfoHelper::fillInfoString(*userInfo, info);
 	// send the new user info to the server
-	addReliableCommand(str::printf("userinfo \"%s\"", info.GetString()));
+	reliableCommands->addCommand(str::printf("userinfo \"%s\"", info.GetString()));
 }
 
 clientGameSettings_t& ServerConnection::getSettings()
@@ -828,6 +542,11 @@ const ICommandSequence* ServerConnection::getCommandSequence() const
 	return serverCommands;
 }
 
+IReliableSequence* ServerConnection::getReliableSequence()
+{
+	return reliableCommands;
+}
+
 const IReliableSequence* ServerConnection::getReliableSequence() const
 {
 	return reliableCommands;
@@ -837,7 +556,7 @@ void ServerConnection::disconnect()
 {
 	if(getNetchan())
 	{
-		addReliableCommand("disconnect");
+		reliableCommands->addCommand("disconnect");
 
 		for (size_t i = 0; i < 3; ++i) {
 			writePacket(0);
@@ -849,12 +568,6 @@ void ServerConnection::disconnect()
 
 	// Terminate the connection
 	terminateConnection(nullptr);
-}
-
-void ServerConnection::sendCommand(const char* command)
-{
-	addReliableCommand(command);
-	parseClientCommand(command);
 }
 
 void ServerConnection::markReady()
@@ -872,6 +585,12 @@ bool ServerConnection::canCreateCommand() const
 	return isReady;
 }
 
+void ServerConnection::disconnectCommand(TokenParser& tokenized)
+{
+	// Server kicking out the client
+	throw ClientError::DisconnectException();
+}
+
 void ServerConnection::serverDisconnected(const char* reason)
 {
 	wipeChannel();
@@ -882,8 +601,8 @@ void ServerConnection::serverDisconnected(const char* reason)
 
 void ServerConnection::terminateConnection(const char* reason)
 {
-	// Clear out the server client data
-	clGameState = ServerGameState(protocolType_c());
+	// Clear the server client data
+	clGameState = ServerGameState();
 
 	if (cgameModule)
 	{
@@ -910,25 +629,6 @@ void ServerConnection::clearState()
 	input.reset();
 	isActive = false;
 	isReady = false;
-}
-
-void ServerConnection::parseClientCommand(const char* arguments)
-{
-	TokenParser parser;
-	parser.Parse(arguments, strlen(arguments) + 1);
-
-	const char* cmd = parser.GetToken(false);
-	if(!str::icmp(cmd, "download"))
-	{
-		// a download command was issued so start it
-		const char* downloadName = parser.GetToken(false);
-		downloadState.startDownload(downloadName);
-	}
-	else if (!str::icmp(cmd, "stopdl"))
-	{
-		// cancel downloading
-		downloadState.cancelDownload();
-	}
 }
 
 void ServerConnection::setCGameTime(uint64_t currentTime)
@@ -969,7 +669,7 @@ bool ServerConnection::readyToSendPacket(uint64_t currentTime) const
 		return false;
 	}
 
-	if (!clGameState.serverId || !canCreateCommand())
+	if (!clGameState.getServerId() || !canCreateCommand())
 	{
 		// allow one packet per second when not entered
 		return currentTime >= lastPacketSendTime + 1000;
@@ -984,15 +684,9 @@ bool ServerConnection::readyToSendPacket(uint64_t currentTime) const
 	return true;
 }
 
-void ServerConnection::fillClientImports(ClientImports& imports)
+CommandManager& ServerConnection::getRemoteCommandManager()
 {
-	using namespace std::placeholders;
-	imports.getClientTime				= std::bind(&ServerConnection::getClientTime, this);
-	imports.getUserInput				= std::bind(&ServerConnection::getUserInput, this);
-	imports.getGameState				= std::bind(const_cast<ServerGameState& (ServerConnection::*)()>(&ServerConnection::getGameState), this);
-	imports.getSnapshotManager			= std::bind(const_cast<ServerSnapshotManager& (ServerConnection::*)()>(&ServerConnection::getSnapshotManager), this);
-	imports.addReliableCommand			= std::bind(&ServerConnection::addReliableCommand, this, _1);
-	imports.getUserInfo					= std::bind(static_cast<const UserInfoPtr&(ServerConnection::*)()>(&ServerConnection::getUserInfo), this);
+	return remoteCommandManager;
 }
 
 PacketHeaderWriter::PacketHeaderWriter(const ServerGameState& clGameStateRef, const ICommandSequence& serverCommandsRef, uint32_t serverMessageSequenceValue)
@@ -1005,7 +699,7 @@ PacketHeaderWriter::PacketHeaderWriter(const ServerGameState& clGameStateRef, co
 void PacketHeaderWriter::write(MSG& msg)
 {
 	// write the server id (given with the gameState)
-	msg.WriteUInteger(clGameState.serverId);
+	msg.WriteUInteger(clGameState.getServerId());
 	// write the server sequence number (packet number)
 	msg.WriteUInteger(serverMessageSequence);
 	// write the command sequence acknowledge
@@ -1094,7 +788,7 @@ clc_ops_e UserInputWriter::getClientOperation(uint32_t serverMessageSequence) co
 
 uint32_t UserInputWriter::getCommandHashKey(uint32_t serverMessageSequence) const
 {
-	uint32_t key = clGameState.checksumFeed;
+	uint32_t key = clGameState.getChecksumFeed();
 	// also use the message acknowledge
 	key ^= serverMessageSequence;
 	// also use the last acknowledged server command in the key
@@ -1244,42 +938,4 @@ uint16_t ClientError::BaselineOutOfRangeException::getBaselineNum() const
 str ClientError::BaselineOutOfRangeException::what() const
 {
 	return str((int)getBaselineNum());
-}
-
-ClientError::DownloadException::DownloadException(StringMessage&& inError)
-	: error(std::move(inError))
-{}
-
-ClientError::DownloadSizeException::DownloadSizeException(uint16_t inSize)
-	: size(inSize)
-{}
-
-const char* ClientError::DownloadException::getError() const
-{
-	return error;
-}
-str ClientError::DownloadException::what() const
-{
-	return str(getError());
-}
-
-uint16_t ClientError::DownloadSizeException::getSize() const
-{
-	return size;
-}
-
-ClientError::BadDownloadBlockException::BadDownloadBlockException(uint16_t inBlock, uint16_t inExpectedBlock)
-	: block(inBlock)
-	, expectedBlock(inExpectedBlock)
-{
-}
-
-uint16_t ClientError::BadDownloadBlockException::getBlock() const noexcept
-{
-	return block;
-}
-
-uint16_t ClientError::BadDownloadBlockException::getExpectedBlock() const noexcept
-{
-	return expectedBlock;
 }

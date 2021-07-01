@@ -33,8 +33,10 @@ void CommandManager::addCommand(Command&& command)
 	commands.AddObject(std::move(command));
 }
 
-void CommandManager::processCommand(TokenParser& tokenized)
+void CommandManager::processCommand(const char* commandString)
 {
+	TokenParser tokenized(commandString);
+
 	TokenParser::scriptmarker_t mark;
 	tokenized.MarkPosition(&mark);
 

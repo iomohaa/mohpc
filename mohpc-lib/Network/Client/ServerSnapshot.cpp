@@ -91,7 +91,7 @@ void ServerSnapshotManager::parseSnapshot(
 	calculatePing(currentTime, outPackets, outSequenceNum);
 
 	Parsing::pvsParm_t parm;
-	parm.clientNum = clGameState.clientNum;
+	parm.clientNum = clGameState.getClientNum();
 	parm.origin = currentSnap.ps.getOrigin();
 	// FIXME: make the value modifiable as an option?
 	// currently 1 radar unit = 63 world units

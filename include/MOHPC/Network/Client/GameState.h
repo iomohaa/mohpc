@@ -11,6 +11,8 @@
 namespace MOHPC
 {
 class MSG;
+class CommandManager;
+class TokenParser;
 
 namespace Network
 {
@@ -50,25 +52,56 @@ namespace Network
 		};
 
 	public:
-		ServerGameState(protocolType_c protocol);
+		/** Construct a game state without a protocol. */
+		ServerGameState();
+		/** Construct a game state for remote replication. */
+		ServerGameState(protocolType_c protocol, ClientTime* clientTimePtr);
 
-		MOHPC_NET_EXPORTS HandlerList& getHandlers();
-		MOHPC_NET_EXPORTS const HandlerList& getHandlers() const;
+		/** Return the handler list specific to the server game state. */
+		MOHPC_NET_EXPORTS HandlerList& handlers();
+		MOHPC_NET_EXPORTS const HandlerList& handlers() const;
+
+		/** Return the underlying game state. */
 		MOHPC_NET_EXPORTS gameState_t& get();
 		MOHPC_NET_EXPORTS const gameState_t& get() const;
-		bool parseGameState(MSG& msg, ICommandSequence* serverCommands, ClientTime& clientTime);
-		bool reloadGameState(ClientTime& clientTime);
-		void modifyConfigString(csNum_t num, const char* string);
+
+		/**
+		 * Parse the game state.
+		 *
+		 * @param msg The message to use for reading.
+		 * @param serverCommands A pointer to the command sequence to set the new server command sequence.
+		 * @return True if it's a different map.
+		 */
+		MOHPC_NET_EXPORTS bool parseGameState(MSG& msg, ICommandSequence* serverCommands);
+
+		/**
+		 * Reload the game state by parsing the config string.
+		 *
+		 * @return True if it's a different map.
+		 */
+		MOHPC_NET_EXPORTS bool reloadGameState();
+
+		/** Return the server id of the game state (represents an ID of the current map). */
+		MOHPC_NET_EXPORTS uint32_t getServerId() const;
+
+		/** Return the client num in the server for the local client.*/
+		MOHPC_NET_EXPORTS uint32_t getClientNum() const;
+
+		/** Return the map checksum. */
+		MOHPC_NET_EXPORTS uint32_t getChecksumFeed() const;
+
+		void RegisterCommands(CommandManager& commandManager);
 
 	private:
 		void notifyAllConfigStringChanges() const;
+		void modifyConfigString(csNum_t num, const char* string);
+		void ConfigstringCommand(TokenParser& tokenized);
 
 	private:
-		gameState_t gameState;
-		HandlerList handlers;
 		const Parsing::IGameState* gameStateParser;
-
-	public:
+		ClientTime* clientTime;
+		HandlerList handlerList;
+		gameState_t gameState;
 		uint32_t serverId;
 		uint32_t clientNum;
 		uint32_t checksumFeed;

@@ -59,8 +59,11 @@ namespace Network
 		MOHPC_NET_EXPORTS gameState_t(const size_t numConfigStrings, const size_t maxChars, const entityNum_t maxBaselines);
 		MOHPC_NET_EXPORTS ~gameState_t();
 
+		/** Return the config string manager. */
 		MOHPC_NET_EXPORTS ConfigStringManager& getConfigstringManager();
 		MOHPC_NET_EXPORTS const ConfigStringManager& getConfigstringManager() const;
+
+		/** Return the list of initial entities, to be used as a delta reference. */
 		MOHPC_NET_EXPORTS EntityList& getEntityBaselines();
 		MOHPC_NET_EXPORTS const EntityList& getEntityBaselines() const;
 

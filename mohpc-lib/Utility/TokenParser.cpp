@@ -4,11 +4,6 @@
 
 using namespace MOHPC;
 
-TokenParser::~TokenParser()
-{
-	Close();
-}
-
 TokenParser::TokenParser()
 {
 	buffer = NULL;
@@ -19,6 +14,29 @@ TokenParser::TokenParser()
 	releaseBuffer = false;
 	tokenready = false;
 	token.clear();
+}
+
+TokenParser::TokenParser(const char* s)
+	: TokenParser()
+{
+	Parse(s, str::len(s));
+}
+
+TokenParser::TokenParser(const char* s, size_t len)
+	: TokenParser()
+{
+	Parse(s, len);
+}
+
+TokenParser::TokenParser(const str& s)
+	: TokenParser()
+{
+	Parse(s, s.length());
+}
+
+TokenParser::~TokenParser()
+{
+	Close();
 }
 
 void TokenParser::Close()

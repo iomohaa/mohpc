@@ -387,10 +387,8 @@ void SnapshotProcessor::executeNewServerCommands(uintptr_t serverCommandSequence
 		const char* commandString = commandSequence->getSequence(++latestCommandSequence);
 		if (commandString)
 		{
-			TokenParser tokenized;
-			tokenized.Parse(commandString, str::len(commandString));
-
-			serverCommandManager.processCommand(tokenized);
+			// process the command
+			serverCommandManager.processCommand(commandString);
 		}
 	}
 }

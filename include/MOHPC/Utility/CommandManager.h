@@ -54,7 +54,7 @@ namespace MOHPC
 		MOHPC_UTILITY_EXPORTS void addCommand(Command&& command);
 		MOHPC_UTILITY_EXPORTS void reserveCommands(size_t num);
 
-		MOHPC_UTILITY_EXPORTS void processCommand(TokenParser& tokenized);
+		MOHPC_UTILITY_EXPORTS void processCommand(const char* commandString);
 
 		MOHPC_UTILITY_EXPORTS HandlerList& handlers();
 		MOHPC_UTILITY_EXPORTS const HandlerList& handlers() const;

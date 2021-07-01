@@ -19,7 +19,10 @@
 #include "../../Utility/RemoteIdentifier.h"
 #include "../../Utility/Tick.h"
 #include "../../Utility/Timeout.h"
+#include "../../Utility/CommandManager.h"
 #include "../../Utility/Misc/MSG/MSG.h"
+
+#include "DownloadManager.h"
 #include "UserInfo.h"
 #include "Imports.h"
 #include "Packet.h"
@@ -27,6 +30,7 @@
 #include "ServerSnapshot.h"
 #include "Time.h"
 #include "UserInput.h"
+
 #include <cstdint>
 #include <functional>
 #include <type_traits>
@@ -85,13 +89,6 @@ namespace MOHPC
 			struct LocationPrint : public HandlerNotifyBase<void(uint16_t x, uint16_t y, const char* message)> {};
 
 			/**
-			 * Called when the server sent a command. The library doesn't process any commands.
-			 *
-			 * @param	command		Command to process.
-			 */
-			struct ServerCommand : public HandlerNotifyBase<void(const char* command, const TokenParser& ev)> {};
-
-			/**
 			 * This callback is used to modify the player input before sending.
 			 *
 			 * @param	cmd		User command structure.
@@ -138,63 +135,6 @@ namespace MOHPC
 			char stringData[MAX_GAMESTATE_CHARS];
 		};
 #endif
-
-		class DownloadManager
-		{
-		public:
-			using startCallback_f = Function<bool(const char*)>;
-			using receiveCallback_f = Function<bool(const uint8_t*, size_t)>;
-
-		public:
-			DownloadManager();
-
-			/**
-			 * Set client imports API
-			 */
-			void setImports(ClientImports& inImports) noexcept;
-
-			/**
-			 * Called to process a download message
-			 */
-			void processDownload(MSG& msg, const Parsing::IString& stringParser);
-
-			/**
-			 * Start downloading from server.
-			 *
-			 * @param downloadName Name of the download.
-			 */
-			void startDownload(const char* downloadName);
-
-			/**
-			 * Cancel downloading.
-			 */
-			void cancelDownload();
-
-			/**
-			 * Set the callback to be used when starting downloads.
-			 */
-			void setDownloadStartedCallback(startCallback_f&& callback);
-
-			/**
-			 * Set the callback to be used when receiving data.
-			 */
-			void setReceiveCallback(receiveCallback_f&& callback);
-
-		private:
-			void clearDownload();
-			void nextDownload();
-			void downloadsComplete();
-			bool receive(const uint8_t* data, const size_t size);
-
-		private:
-			ClientImports imports;
-			startCallback_f startCallback;
-			Function<bool(const uint8_t*, size_t)> receiveCallback;
-			size_t downloadSize;
-			str downloadName;
-			uint32_t downloadBlock;
-			bool downloadRequested;
-		};
 
 		template<size_t MAX_RELIABLE_COMMANDS, size_t RELIABLE_COMMAND_SIZE>
 		class ClientSequenceTemplate : public IReliableSequence
@@ -362,7 +302,6 @@ namespace MOHPC
 				FunctionList<ClientHandlers::Error> errorHandler;
 				FunctionList<ClientHandlers::CenterPrint> centerPrintHandler;
 				FunctionList<ClientHandlers::LocationPrint> locationPrintHandler;
-				FunctionList<ClientHandlers::ServerCommand> serverCommandManager;
 				FunctionList<ClientHandlers::UserInput> userInputHandler;
 				FunctionList<ClientHandlers::PreWritePacket> preWritePacketHandler;
 			};
@@ -395,6 +334,12 @@ namespace MOHPC
 
 			/** Return the client time that manages client and remote time. */
 			MOHPC_NET_EXPORTS const UserInput& getUserInput() const;
+
+			/**
+			 * Return a reference to the class that manages remote command.
+			 * Use this to register a server command.
+			 */
+			MOHPC_NET_EXPORTS CommandManager& getRemoteCommandManager();
 
 			/** Return the client command object for managing commands. */
 			MOHPC_NET_EXPORTS IReliableSequence& getClientCommands() const;
@@ -439,6 +384,7 @@ namespace MOHPC
 			MOHPC_NET_EXPORTS const ICommandSequence* getCommandSequence() const;
 
 			/** Return the current reliable sequence (the latest command number on the client). */
+			MOHPC_NET_EXPORTS IReliableSequence* getReliableSequence();
 			MOHPC_NET_EXPORTS const IReliableSequence* getReliableSequence() const;
 
 			/**
@@ -462,28 +408,20 @@ namespace MOHPC
 			 */
 			MOHPC_NET_EXPORTS void unmarkReady();
 
-			/**
-			 * Send a command to server.
-			 *
-			 * @param command Command to send.
-			 */
-			MOHPC_NET_EXPORTS void sendCommand(const char* command);
-
 		private:
 			const INetchanPtr& getNetchan() const;
 			void receive(const IRemoteIdentifierPtr& from, MSG& msg, uint64_t currentTime, uint32_t sequenceNum);
 			void receiveConnectionLess(const IRemoteIdentifierPtr& from, MSG& msg);
 			void wipeChannel();
 			bool isChannelValid() const;
+			void disconnectCommand(TokenParser& tokenized);
 			void serverDisconnected(const char* reason);
 			void terminateConnection(const char* reason);
-			void addReliableCommand(const char* command);
 
 			void parseServerMessage(MSG& msg, uint64_t currentTime);
 			void parseCommandString(MSG& msg);
 			void parseCenterprint(MSG& msg);
 			void parseLocprint(MSG& msg);
-			void parseClientCommand(const char* arguments);
 
 			void clearState();
 			void setCGameTime(uint64_t currentTime);
@@ -494,13 +432,12 @@ namespace MOHPC
 
 			void writePacket(uint64_t currentTime);
 
-			void fillClientImports(ClientImports& imports);
-
 		private:
 			HandlerListClient handlerList;
 			CGame::ModuleBase* cgameModule;
 			const Parsing::IString* stringParser;
 			const Parsing::IHash* hashParser;
+			CommandManager remoteCommandManager;
 			IRemoteIdentifierPtr adr;
 			EncodingPtr encoder;
 			INetchanPtr netchan;
@@ -572,55 +509,7 @@ namespace MOHPC
 				uint16_t baselineNum;
 			};
 
-			/**
-			 * Server error while downloading.
-			 */
-			class DownloadException : public Base
-			{
-			public:
-				DownloadException(StringMessage&& inError);
-
-				/** Return the error the server sent. */
-				MOHPC_NET_EXPORTS const char* getError() const;
-				MOHPC_NET_EXPORTS str what() const override;
-
-			private:
-				StringMessage error;
-			};
-
-			class DownloadSizeException : public Base
-			{
-			public:
-				DownloadSizeException(uint16_t inSize);
-
-				MOHPC_NET_EXPORTS uint16_t getSize() const;
-
-			private:
-				uint16_t size;
-			};
-
-			class BadDownloadBlockException : public Base
-			{
-			public:
-				BadDownloadBlockException(uint16_t block, uint16_t expectedBlock);
-
-				MOHPC_NET_EXPORTS uint16_t getBlock() const noexcept;
-				MOHPC_NET_EXPORTS uint16_t getExpectedBlock() const noexcept;
-
-			private:
-				uint16_t block;
-				uint16_t expectedBlock;
-
-			};
-
 			class DisconnectException : public Base
-			{
-			};
-
-			/**
-			 * When the server is sending a download but it hasn't been requested by the client
-			 */
-			class MOHPC_NET_EXPORTS UnexpectedDownloadException : public NetworkException
 			{
 			};
 
