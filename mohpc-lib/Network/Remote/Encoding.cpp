@@ -7,65 +7,7 @@
 using namespace MOHPC;
 using namespace Network;
 
-MOHPC_OBJECT_DEFINITION(Encoding);
-
-Encoding::Encoding(uint32_t inChallenge, const IReliableSequence& reliableCommandsValue, const ICommandSequence& serverCommandsValue)
-	: challenge(inChallenge)
-	, reliableCommands(reliableCommandsValue)
-	, serverCommands(serverCommandsValue)
-{
-
-}
-
-void Encoding::encode(IMessageStream& in, IMessageStream& out)
-{
-	uint32_t sequenceNum = 0;
-
-	const size_t savedPos = in.GetPosition();
-	const size_t len = in.GetLength();
-
-	// Ack index
-	const uint8_t* string = (const uint8_t*)serverCommands.getSequence(reliableAcknowledge);
-	// xor the client challenge with the netchan sequence number
-	uint8_t key = challenge ^ secretKey ^ messageAcknowledge;
-	// encode the message
-	if (&in != &out)
-	{
-		XORValues(key, string, len, in, out);
-		// Seek to the start of the message
-		out.Seek(0);
-	}
-	else
-	{
-		XORValues(key, string, len, out);
-		out.Seek(savedPos);
-	}
-}
-
-void Encoding::decode(IMessageStream& in, IMessageStream& out)
-{
-	const size_t savedPos = in.GetPosition();
-	const size_t len = in.GetLength();
-
-	// Ack index
-	const uint8_t* string = (const uint8_t*)reliableCommands.getSequence(reliableAcknowledge);
-	// xor the client challenge with the netchan sequence number
-	uint8_t key = challenge ^ secretKey;
-	// decode the message
-	if (&in != &out)
-	{
-		XORValues(key, string, len, in, out);
-		// Seek to the start of the message
-		out.Seek(0);
-	}
-	else
-	{
-		XORValues(key, string, len, out);
-		out.Seek(savedPos);
-	}
-}
-
-uint32_t Encoding::XORKeyIndex(size_t i, size_t& index, const uint8_t* string)
+uint32_t XORKeyIndex(size_t i, size_t& index, const uint8_t* string)
 {
 	if (!string[index]) {
 		index = 0;
@@ -79,7 +21,7 @@ uint32_t Encoding::XORKeyIndex(size_t i, size_t& index, const uint8_t* string)
 	}
 }
 
-void Encoding::XORValues(uint32_t key, const uint8_t* string, size_t len, IMessageStream& in, IMessageStream& out)
+void XORValues(uint32_t key, const uint8_t* string, size_t len, IMessageStream& in, IMessageStream& out)
 {
 	size_t index = 0;
 
@@ -95,7 +37,7 @@ void Encoding::XORValues(uint32_t key, const uint8_t* string, size_t len, IMessa
 	}
 }
 
-void Encoding::XORValues(uint32_t key, const uint8_t* string, size_t len, IMessageStream& stream)
+void XORValues(uint32_t key, const uint8_t* string, size_t len, IMessageStream& stream)
 {
 	size_t index = 0;
 
@@ -112,32 +54,67 @@ void Encoding::XORValues(uint32_t key, const uint8_t* string, size_t len, IMessa
 	}
 }
 
-void Encoding::setMessageAcknowledge(uint32_t num)
+
+XOREncoding::XOREncoding(uint32_t challengeValue, const IAbstractSequence& remoteCommandsValue)
+	: challenge(challengeValue)
+	, remoteCommands(remoteCommandsValue)
+	, secretKey(0)
+	, messageAcknowledge(0)
+	, reliableAcknowledge(0)
+{
+}
+
+void XOREncoding::convert(IMessageStream& in, IMessageStream& out)
+{
+	uint32_t sequenceNum = 0;
+
+	const size_t savedPos = in.GetPosition();
+	const size_t len = in.GetLength();
+
+	// Ack index
+	const uint8_t* string = (const uint8_t*)remoteCommands.get(reliableAcknowledge % remoteCommands.getMaxElements());
+	// xor the client challenge with the netchan sequence number
+	uint8_t key = challenge ^ secretKey ^ messageAcknowledge;
+	// encode the message
+	if (&in != &out)
+	{
+		XORValues(key, string, len, in, out);
+		// Seek to the start of the message
+		out.Seek(0);
+	}
+	else
+	{
+		XORValues(key, string, len, out);
+		out.Seek(savedPos);
+	}
+}
+
+void XOREncoding::setMessageAcknowledge(uint32_t num)
 {
 	messageAcknowledge = num;
 }
 
-uint32_t Encoding::getMessageAcknowledge() const
+uint32_t XOREncoding::getMessageAcknowledge() const
 {
 	return messageAcknowledge;
 }
 
-void Encoding::setReliableAcknowledge(uint32_t num)
+void XOREncoding::setReliableAcknowledge(uint32_t num)
 {
 	reliableAcknowledge = num;
 }
 
-uint32_t Encoding::getReliableAcknowledge() const
+uint32_t XOREncoding::getReliableAcknowledge() const
 {
 	return reliableAcknowledge;
 }
 
-void Encoding::setSecretKey(uint32_t num)
+void XOREncoding::setSecretKey(uint32_t num)
 {
 	secretKey = num;
 }
 
-uint32_t Encoding::getSecretKey() const
+uint32_t XOREncoding::getSecretKey() const
 {
 	return secretKey;
 }

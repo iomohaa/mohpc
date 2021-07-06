@@ -15,7 +15,10 @@
 #include "../Imports.h"
 
 #include "ClientInfo.h"
+#include "Effect.h"
+#include "GameplayNotify.h"
 #include "Hud.h"
+#include "MessageParse.h"
 #include "Objective.h"
 #include "Prediction.h"
 #include "Scoreboard.h"
@@ -44,190 +47,12 @@ namespace Network
 
 	namespace CGame
 	{
-	/**
-	 * This is the list of effects.
-	 *
-	 * To get the full model path, use getEffectName().
-	 */
-	enum class effects_e
-	{
-		barrel_oil_leak_big = 0,
-		barrel_oil_leak_medium,
-		barrel_oil_leak_small,
-		barrel_oil_leak_splat,
-		barrel_water_leak_big,
-		barrel_water_leak_medium,
-		barrel_water_leak_small,
-		barrel_water_leak_splat,
-		bazookaexp_base,
-		bazookaexp_dirt,
-		bazookaexp_snow,
-		bazookaexp_stone,
-		bh_carpet_hard,
-		bh_carpet_lite,
-		bh_dirt_hard,
-		bh_dirt_lite,
-		bh_foliage_hard,
-		bh_foliage_lite,
-		bh_glass_hard,
-		bh_glass_lite,
-		bh_grass_hard,
-		bh_grass_lite,
-		bh_human_uniform_hard,
-		bh_human_uniform_lite,
-		bh_metal_hard,
-		bh_metal_lite,
-		bh_mud_hard,
-		bh_mud_lite,
-		bh_paper_hard,
-		bh_paper_lite,
-		bh_sand_hard,
-		bh_sand_lite,
-		bh_snow_hard,
-		bh_snow_lite,
-		bh_stone_hard,
-		bh_stone_lite,
-		bh_water_hard,
-		bh_water_lite,
-		bh_wood_hard,
-		bh_wood_lite,
-		fs_dirt,
-		fs_grass,
-		fs_heavy_dust,
-		fs_light_dust,
-		fs_mud,
-		fs_puddle,
-		fs_sand,
-		fs_snow,
-		fx_fence_wood,
-		grenexp_base,
-		grenexp_carpet,
-		grenexp_dirt,
-		grenexp_foliage,
-		grenexp_grass,
-		grenexp_gravel,
-		grenexp_metal,
-		grenexp_mud,
-		grenexp_paper,
-		grenexp_sand,
-		grenexp_snow,
-		grenexp_stone,
-		grenexp_water,
-		grenexp_wood,
-		heavyshellexp_base,
-		heavyshellexp_dirt,
-		heavyshellexp_snow,
-		heavyshellexp_stone,
-		tankexp_base,
-		tankexp_dirt,
-		tankexp_snow,
-		tankexp_stone,
-		water_ripple_moving,
-		water_ripple_still,
-		water_trail_bubble,
-		max
-	};
-
-	/**
-	 * Return the model path from an effect.
-	 *
-	 * @param effect The client game module effect.
-	 * @return the model path, i.e "/models/fx/grenexp_mud.tik".
-	 */
-	MOHPC_NET_EXPORTS const char* getEffectName(effects_e effect);
-
 	struct EntityInfo;
 	struct stats_t;
 	class Scoreboard;
 
 	namespace Handlers
 	{
-		//=== FX functions
-
-		/**
-		 * Callback for creating bullet tracers.
-		 *
-		 * @param	barrel			tag_barrel where the bullet has been emitted from.
-		 * @param	start			Start of the bullet tracer.
-		 * @param	end				Where the bullet tracer should end.
-		 * @param	numBullets		Number of bullets that have been fired at once (could be fired from a shotgun).
-		 * @param	iLarge			Whether or not it's a large bullet.
-		 * @param	tracerVisible	Specify if this tracer is visible.
-		 * @param	bulletSize		The length of the bullet.
-		 */
-		struct MakeBulletTracer : public HandlerNotifyBase<void(const Vector& barrel, const Vector& start, const Vector& end, uint32_t numBullets, uint32_t iLarge, uint32_t numTracersVisible, float bulletSize)> {};
-
-		/**
-		 * Underwater bubble trail.
-		 *
-		 * @param	start		Trail's start.
-		 * @param	end			Trail's end.
-		 * @param	iLarge		If it's a large trail.
-		 * @param	bulletSize	Length of the trail.
-		 */
-		struct MakeBubbleTrail : public HandlerNotifyBase<void(const Vector& start, const Vector& end, uint32_t iLarge, float bulletSize)> {};
-
-		/**
-		 * Called on impact.
-		 *
-		 * @param	origin	Position for melee impact.
-		 * @param	normal	Direction of the impact.
-		 * @param	large	If it's a large impact.
-		 */
-		struct Impact : public HandlerNotifyBase<void(const Vector& origin, const Vector& normal, uint32_t large)> {};
-
-		/**
-		 * Called on melee impact.
-		 *
-		 * @param	start	Start position for melee impact.
-		 * @param	end		End position for melee impact.
-		 */
-		struct MeleeImpact : public HandlerNotifyBase<void(const Vector& start, const Vector& end)> {};
-
-		/**
-		 * Called when an explosion occurs.
-		 *
-		 * @param	origin	Location of the explosion.
-		 * @param	type	Explosion type.
-		 */
-		struct MakeExplosionEffect : public HandlerNotifyBase<void(const Vector& origin, const char* modelName)> {};
-
-		/**
-		 * Called to spawn an effect.
-		 *
-		 * @param	origin	Location of the effect.
-		 * @param	normal	Explosion's normal direction.
-		 * @param	type	Type of the effect.
-		 */
-		struct MakeEffect : public HandlerNotifyBase<void(const Vector& origin, const Vector& normal, const char* modelName)> {};
-
-		enum class debrisType_e : unsigned char { crate, window };
-		/**
-		 * Spawn a debris of the specified type.
-		 *
-		 * @param	debrisType	Type of the debris.
-		 * @param	origin		Location where to spawn the debris.
-		 * @param	numDebris	Number of debris to spawn.
-		 */
-		struct SpawnDebris : public HandlerNotifyBase<void(debrisType_e debrisType, const Vector& origin, uint32_t numDebris)> {};
-
-		//=== Deathmatch functions
-		/** Called to notify the client of an enemy hit in DM game. */
-		struct HitNotify : public HandlerNotifyBase<void()> {};
-
-		/** Called to notify the client of an enemy kill in DM game. */
-		struct KillNotify : public HandlerNotifyBase<void()> {};
-
-		/**
-		 * Called to play a DM voice message.
-		 *
-		 * @param	origin		Origin of the message
-		 * @param	local		True to play the sound locally. False if it should be spatialized.
-		 * @param	clientNum	Player responsible for the voice.
-		 * @param	soundName	Sound to play.
-		 */
-		struct VoiceMessage : public HandlerNotifyBase<void(const Vector& origin, bool local, uint8_t clientNum, const char* soundName)> {};
-
 		/**
 		 * Called when the client received a command.
 		 *
@@ -323,24 +148,6 @@ namespace Network
 		class HandlerList
 		{
 		public:
-			FunctionList<Handlers::MakeBulletTracer> makeBulletTracerHandler;
-			FunctionList<Handlers::MakeBubbleTrail> makeBubbleTrailHandler;
-			FunctionList<Handlers::Impact> impactHandler;
-			FunctionList<Handlers::MeleeImpact> meleeImpactHandler;
-			FunctionList<Handlers::MakeExplosionEffect> makeExplosionEffectHandler;
-			FunctionList<Handlers::MakeEffect> makeEffectHandler;
-			FunctionList<Handlers::SpawnDebris> spawnDebrisHandler;
-			FunctionList<Handlers::HudDraw_Shader> huddrawShaderHandler;
-			FunctionList<Handlers::HudDraw_Align> huddrawAlignHandler;
-			FunctionList<Handlers::HudDraw_Rect> huddrawRectHandler;
-			FunctionList<Handlers::HudDraw_VirtualScreen> huddrawVSHandler;
-			FunctionList<Handlers::HudDraw_Color> huddrawColorHandler;
-			FunctionList<Handlers::HudDraw_Alpha> huddrawAlphaHandler;
-			FunctionList<Handlers::HudDraw_String> huddrawStringHandler;
-			FunctionList<Handlers::HudDraw_Font> huddrawFontHandler;
-			FunctionList<Handlers::HitNotify> hitNotifyHandler;
-			FunctionList<Handlers::KillNotify> killNotifyHandler;
-			FunctionList<Handlers::VoiceMessage> voiceMessageHandler;
 			FunctionList<Handlers::Print> printHandler;
 			FunctionList<Handlers::HudPrint> hudPrintHandler;
 			FunctionList<Handlers::ServerCommand_Scores> scmdScoresHandler;
@@ -368,6 +175,9 @@ namespace Network
 		
 		/** Get the current client time. */
 		MOHPC_NET_EXPORTS uint64_t getTime() const;
+
+		MOHPC_NET_EXPORTS GameplayNotify& getGameplayNotify();
+		MOHPC_NET_EXPORTS const GameplayNotify& getGameplayNotify() const;
 
 		MOHPC_NET_EXPORTS Prediction& getPrediction();
 		MOHPC_NET_EXPORTS const Prediction& getPrediction() const;
@@ -404,9 +214,6 @@ namespace Network
 		/** Notified when a configString has been modified. */
 		void configStringModified(csNum_t num, const char* newString);
 
-		/** Used to parse CG messages between different versions. */
-		virtual void handleCGMessage(MSG& msg, uint8_t msgType) = 0;
-
 	private:
 		void parseServerInfo(const char* cs);
 	
@@ -425,12 +232,16 @@ namespace Network
 
 	private:
 		uint64_t svTime;
+
+		const Parsing::IEnvironment* environmentParse;
+		const Parsing::IGameState* gameStateParse;
+		const IMessageParser* messageParser;
+
 		HandlerList handlerList;
 		ServerGameState* gameState;
 		fnHandle_t configStringHandler;
 		Prediction prediction;
-		const Parsing::IEnvironment* environmentParse;
-		const Parsing::IGameState* gameStateParse;
+		GameplayNotify gameplayNotify;
 		cgsInfo cgs;
 		environment_t environment;
 		rain_t rain;
@@ -439,6 +250,16 @@ namespace Network
 		ClientInfoList clientInfoList;
 		SnapshotProcessor processedSnapshots;
 		TraceManager traceManager;
+
+		CommandTemplate<ModuleBase, &ModuleBase::SCmd_Print> printHandler;
+		CommandTemplate<ModuleBase, &ModuleBase::SCmd_HudPrint> hudPrintHandler;
+		CommandTemplate<ModuleBase, &ModuleBase::SCmd_Scores> scoresHandler;
+		CommandTemplate<ModuleBase, &ModuleBase::SCmd_Stopwatch> stopwatchHandler;
+		CommandTemplate<ModuleBase, &ModuleBase::SCmd_PrintDeathMsg> printDeathMsgHandler;
+		CommandTemplate<ModuleBase, &ModuleBase::SCmd_Stats> statsHandler;
+		CommandTemplate<ModuleBase, &ModuleBase::SCmd_ServerLag> serverLagHandler;
+		CommandTemplate<ModuleBase, &ModuleBase::SCmd_Stufftext> stufftextHandler;
+
 		CommandManager serverCommandManager;
 	};
 
@@ -450,12 +271,6 @@ namespace Network
 	{
 	public:
 		CGameModule6();
-
-	protected:
-		void handleCGMessage(MSG& msg, uint8_t msgType) override;
-
-	private:
-		effects_e getEffectId(uint32_t effectId);
 	};
 
 	/**
@@ -466,37 +281,6 @@ namespace Network
 	{
 	public:
 		CGameModule15();
-
-	protected:
-		void handleCGMessage(MSG& msg, uint8_t msgType) override;
-
-	private:
-		effects_e getEffectId(uint32_t effectId);
-	};
-	
-	class CommonMessageHandler
-	{
-	public:
-		CommonMessageHandler(MSG& inMsg, const ModuleBase::HandlerList& inHandlerList);
-
-		void impactMelee();
-		void debrisCrate();
-		void debrisWindow();
-		void huddrawShader();
-		void huddrawAlign();
-		void huddrawRect();
-		void huddrawVirtualScreen();
-		void huddrawColor();
-		void huddrawAlpha();
-		void huddrawString();
-		void huddrawFont();
-		void notifyHit();
-		void notifyKill();
-		void playSoundEntity();
-
-	private:
-		MSG& msg;
-		const ModuleBase::HandlerList& handlerList;
 	};
 
 	class ModuleInstancier : public IProtocolClassInstancier<ModuleBase>

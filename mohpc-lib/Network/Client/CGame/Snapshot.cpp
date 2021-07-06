@@ -388,7 +388,7 @@ void SnapshotProcessor::executeNewServerCommands(uintptr_t serverCommandSequence
 		if (commandString)
 		{
 			// process the command
-			serverCommandManager.processCommand(commandString);
+			serverCommandManager.process(commandString);
 		}
 	}
 }

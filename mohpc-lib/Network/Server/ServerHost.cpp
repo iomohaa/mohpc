@@ -52,17 +52,11 @@ ClientData::ClientData(const IUdpSocketPtr& inSocket, const NetAddrPtr& from, ui
 	, challengeNum(inChallenge)
 	, sequenceNum(0)
 	, qport(inQport)
-	, reliableCommands{0}
-	, serverCommands{0}
+	, encoder(inChallenge, reliableCommands)
+	, decoder(inChallenge, serverCommands)
 {
 	clientSequence = 0;
 	numCommands = 0;
-
-	for (size_t i = 0; i < MAX_RELIABLE_COMMANDS; ++i)
-	{
-		reliableCommandList[i] = &reliableCommands[i * MAX_STRING_CHARS];
-		serverCommandList[i] = &serverCommands[i * MAX_STRING_CHARS];
-	}
 
 	// FIXME: NULL
 	//encoding = Encoding::create(challengeNum, (const char**)serverCommandList, (const char**)reliableCommandList);
@@ -78,9 +72,14 @@ uint16_t ClientData::getQPort() const
 	return qport;
 }
 
-Encoding& ClientData::getEncoding() const
+XOREncoding& ClientData::getEncoder()
 {
-	return *encoding;
+	return encoder;
+}
+
+XOREncoding& ClientData::getDecoder()
+{
+	return decoder;
 }
 
 uint32_t ClientData::newSequence()
@@ -307,7 +306,7 @@ void ServerHost::processRequests()
 
 void ServerHost::processClient(ClientData& client, uint32_t sequenceNum, IMessageStream& stream, MSG& msg)
 {
-	Encoding& encoding = client.getEncoding();
+	IEndec& encoding = client.getEncoder();
 
 	if (stream.GetPosition() != stream.GetLength() || msg.GetBitPosition() / 8 < stream.GetLength())
 	{
@@ -344,7 +343,7 @@ void ServerHost::sendClientMessage(ClientData& client)
 
 void ServerHost::sendGameStateToClient(ClientData& client)
 {
-	Encoding& encoding = client.getEncoding();
+	XOREncoding& encoding = client.getEncoder();
 
 	const uint32_t sequenceNum = client.newSequence();
 
@@ -392,7 +391,7 @@ void ServerHost::sendGameStateToClient(ClientData& client)
 	encoding.setMessageAcknowledge(0);
 	encoding.setReliableAcknowledge(0);
 	encoding.setSecretKey(sequenceNum);
-	encoding.encode(encodedStream, encodedStream);
+	encoding.convert(encodedStream, encodedStream);
 
 	encodedStream.Seek(0, IMessageStream::SeekPos::Begin);
 

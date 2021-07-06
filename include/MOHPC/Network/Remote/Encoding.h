@@ -12,44 +12,30 @@ namespace MOHPC
 
 	namespace Network
 	{
+		class IAbstractSequence;
 		class IReliableSequence;
 		class ICommandSequence;
 
 		/**
-		 * Interface for encoding streams.
+		 * Encoder/Decoder class.
 		 */
-		class MOHPC_NET_EXPORTS IEncoding
+		class MOHPC_NET_EXPORTS IEndec
 		{
 		public:
-			virtual ~IEncoding() = default;
+			virtual ~IEndec() = default;
 
-			/** Encode the data inside the stream. */
-			virtual void encode(IMessageStream& in, IMessageStream& out) = 0;
-
-			/** Decode the data inside the stream. */
-			virtual void decode(IMessageStream& in, IMessageStream& out) = 0;
+			/** Process the data inside the stream. */
+			virtual void convert(IMessageStream& in, IMessageStream& out) = 0;
 		};
 
-		using IEncodingPtr = SharedPtr<IEncoding>;
-
-		class Encoding : public IEncoding
+		class XOREncoding : public IEndec
 		{
-			MOHPC_NET_OBJECT_DECLARATION(Encoding);
-
-		private:
-			uint32_t challenge;
-			uint32_t secretKey;
-			uint32_t messageAcknowledge;
-			uint32_t reliableAcknowledge;
-			const IReliableSequence& reliableCommands;
-			const ICommandSequence& serverCommands;
+			MOHPC_NET_OBJECT_DECLARATION(XOREncoding);
 
 		public:
-			//MOHPC_NET_EXPORTS Encoding(uint32_t challenge, const char** reliableCommands, const char** serverCommands);
-			MOHPC_NET_EXPORTS Encoding(uint32_t challenge, const IReliableSequence& reliableCommands, const ICommandSequence& serverCommands);
+			MOHPC_NET_EXPORTS XOREncoding(uint32_t challengeValue, const IAbstractSequence& remoteCommandsValue);
 
-			virtual void encode(IMessageStream& in, IMessageStream& out) override;
-			virtual void decode(IMessageStream& in, IMessageStream& out) override;
+			virtual void convert(IMessageStream& in, IMessageStream& out) override;
 
 			MOHPC_NET_EXPORTS void setMessageAcknowledge(uint32_t num);
 			MOHPC_NET_EXPORTS uint32_t getMessageAcknowledge() const;
@@ -59,11 +45,11 @@ namespace MOHPC
 			MOHPC_NET_EXPORTS uint32_t getSecretKey() const;
 
 		private:
-			uint32_t XORKeyIndex(size_t i, size_t& index, const uint8_t* string);
-			void XORValues(uint32_t key, const uint8_t* string, size_t len, IMessageStream& stream);
-			void XORValues(uint32_t key, const uint8_t* string, size_t len, IMessageStream& in, IMessageStream& out);
+			uint32_t challenge;
+			uint32_t secretKey;
+			uint32_t messageAcknowledge;
+			uint32_t reliableAcknowledge;
+			const IAbstractSequence& remoteCommands;
 		};
-
-		using EncodingPtr = SharedPtr<Encoding>;
 	}
 }

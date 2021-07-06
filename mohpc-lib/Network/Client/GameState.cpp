@@ -9,7 +9,8 @@ using namespace MOHPC;
 using namespace Network;
 
 ServerGameState::ServerGameState()
-	: gameStateParser(nullptr)
+	: csHandler(*this)
+	, gameStateParser(nullptr)
 	, clientTime(nullptr)
 	, serverId(0)
 	, clientNum(0)
@@ -24,10 +25,18 @@ ServerGameState::ServerGameState(protocolType_c protocol, ClientTime* clientTime
 	clientTime = clientTimePtr;
 }
 
-void ServerGameState::RegisterCommands(CommandManager& commandManager)
+void ServerGameState::reset()
 {
-	using namespace std::placeholders;
-	commandManager.addCommand(Command("cs", std::bind(&ServerGameState::ConfigstringCommand, this, _1)));
+	get().reset();
+
+	serverId = 0;
+	clientNum = 0;
+	checksumFeed = 0;
+}
+
+void ServerGameState::registerCommands(CommandManager& commandManager)
+{
+	commandManager.add("cs", &csHandler);
 }
 
 ServerGameState::HandlerList& ServerGameState::handlers()

@@ -6,6 +6,7 @@
 #include "../Remote/Socket.h"
 #include "../Remote/Encoding.h"
 #include "../Remote/Channel.h"
+#include "../Types/ReliableTemplate.h"
 
 #include <morfuse/Container/Container.h>
 
@@ -52,20 +53,20 @@ namespace MOHPC
 
 			const NetAddr& getAddress() const;
 			uint16_t getQPort() const;
-			Encoding& getEncoding() const;
+			XOREncoding& getEncoder();
+			XOREncoding& getDecoder();
 			uint32_t newSequence();
 
 		private:
 			IUdpSocketPtr socket;
-			EncodingPtr encoding;
+			XOREncoding encoder;
+			XOREncoding decoder;
 			NetAddrPtr source;
 			uint32_t challengeNum;
 			uint32_t sequenceNum;
 			uint16_t qport;
-			char reliableCommands[MAX_RELIABLE_COMMANDS * MAX_STRING_CHARS]{ 0 };
-			char serverCommands[MAX_RELIABLE_COMMANDS * MAX_STRING_CHARS]{ 0 };
-			char* reliableCommandList[MAX_RELIABLE_COMMANDS];
-			char* serverCommandList[MAX_RELIABLE_COMMANDS];
+			RemoteCommandSequenceTemplate<64, 2048> reliableCommands;
+			SequenceTemplate<64, 2048> serverCommands;
 		};
 		using ClientDataPtr = SharedPtr<ClientData>;
 

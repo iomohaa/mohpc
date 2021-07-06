@@ -3,37 +3,21 @@
 
 using namespace MOHPC;
 
-Command::Command(const char* cmdNameValue, std::function<void(TokenParser&)>&& functionMv)
-	: cmdName(cmdNameValue)
-	, function(std::move(functionMv))
-{
-}
-
-const char* Command::getName() const
-{
-	return cmdName;
-}
-
-const std::function<void(TokenParser&)> Command::getFunction() const
-{
-	return function;
-}
-
 CommandManager::CommandManager()
 {
 }
 
-void CommandManager::reserveCommands(size_t num)
+void CommandManager::reserve(size_t num)
 {
 	commands.Resize(commands.NumObjects() + num);
 }
 
-void CommandManager::addCommand(Command&& command)
+void CommandManager::add(const char* name, ICommand* command)
 {
-	commands.AddObject(std::move(command));
+	commands.AddObject(CommandData(name, command));
 }
 
-void CommandManager::processCommand(const char* commandString)
+void CommandManager::process(const char* commandString)
 {
 	TokenParser tokenized(commandString);
 
@@ -45,11 +29,11 @@ void CommandManager::processCommand(const char* commandString)
 	const size_t numCmds = commands.NumObjects();
 	for (size_t i = 0; i < numCmds; ++i)
 	{
-		const Command& cmd = commands[i];
+		const CommandData& cmd = commands[i];
 		if (!str::icmp(command, cmd.getName()))
 		{
 			// Call the correct function
-			cmd.getFunction()(tokenized);
+			cmd.getCommand()->execute(tokenized);
 			break;
 		}
 	}
@@ -68,4 +52,30 @@ CommandManager::HandlerList& CommandManager::handlers()
 const CommandManager::HandlerList& CommandManager::handlers() const
 {
 	return handlerList;
+}
+
+CommandHandler::CommandHandler(std::function<void(TokenParser&)>&& functionMv)
+	: function(std::move(functionMv))
+{
+}
+
+void CommandHandler::execute(TokenParser& tokenized)
+{
+	function(tokenized);
+}
+
+CommandManager::CommandData::CommandData(const char* nameValue, ICommand* commandPtr)
+	: name(nameValue)
+	, command(commandPtr)
+{
+}
+
+const char* CommandManager::CommandData::getName() const
+{
+	return name;
+}
+
+ICommand* CommandManager::CommandData::getCommand() const
+{
+	return command;
 }

@@ -49,10 +49,8 @@ public:
 	}
 };
 
-
-
-ProtocolClassInstancier_Template<PmovePredict_ver8, IPmovePredict, 5, 8> pmovePredict8;
-ProtocolClassInstancier_Template<PmovePredict_ver17, IPmovePredict, 15, 17> pmovePredict17;
+PmovePredict_ver8 pmovePredict8;
+PmovePredict_ver17 pmovePredict17;
 
 Prediction::Prediction()
 	: userInput(nullptr)

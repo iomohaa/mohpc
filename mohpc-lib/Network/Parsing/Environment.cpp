@@ -8,6 +8,12 @@ using namespace MOHPC::Network::Parsing;
 class Environment8 : public Parsing::IEnvironment
 {
 public:
+	void getProtocol(uint32_t& minRange, uint32_t& maxRange) const override
+	{
+		minRange = 5;
+		maxRange = 8;
+	}
+
 	void parseEnvironment(const char* string, environment_t& env) const override
 	{
 		int tmp = 0;
@@ -53,6 +59,12 @@ public:
 class Environment17 : public Environment8
 {
 public:
+	void getProtocol(uint32_t& minRange, uint32_t& maxRange) const override
+	{
+		minRange = 15;
+		maxRange = 17;
+	}
+
 	void parseEnvironment(const char* string, environment_t& env) const override
 	{
 		int tmp = 0, tmp2 = 0;
@@ -98,3 +110,6 @@ public:
 		);
 	}
 };
+
+Environment8 env8;
+Environment17 env17;

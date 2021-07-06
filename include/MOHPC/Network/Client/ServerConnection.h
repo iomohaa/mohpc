@@ -11,7 +11,6 @@
 #include "../Parsing/String.h"
 #include "../Parsing/Hash.h"
 #include "../Types/Snapshot.h"
-#include "../Types/Reliable.h"
 #include "../../Utility/HandlerList.h"
 #include "../../Utility/Info.h"
 #include "../../Utility/PropertyMap.h"
@@ -102,98 +101,6 @@ namespace MOHPC
 			struct PreWritePacket : public HandlerNotifyBase<void()> {};
 		}
 
-#if 0
-		struct gameState_t
-		{
-			static constexpr size_t MAX_GAMESTATE_CHARS = 40000;
-
-		public:
-			MOHPC_NET_EXPORTS gameState_t();
-
-			/**
-			 * Return the configstring at the specified number.
-			 *
-			 * @param	num		Config string ID. Must be < MAX_CONFIGSTRINGS
-			 * @return	The configstring. NULL if num is greater than MAX_CONFIGSTRINGS
-			 */
-			MOHPC_NET_EXPORTS const char* getConfigString(csNum_t num) const;
-			const char* getConfigStringChecked(csNum_t num) const;
-
-			/**
-			 * Return the configstring at the specified number.
-			 *
-			 * @param	num				Config string ID. Must be < MAX_CONFIGSTRINGS
-			 * @param	configString	The value to put in.
-			 * @param	sz				Size of the config string
-			 */
-			MOHPC_NET_EXPORTS void setConfigString(csNum_t num, const char* configString, size_t sz);
-
-		public:
-			size_t dataCount;
-			size_t stringOffsets[MAX_CONFIGSTRINGS];
-			// could have made stringData a dynamic buffer
-			char stringData[MAX_GAMESTATE_CHARS];
-		};
-#endif
-
-		template<size_t MAX_RELIABLE_COMMANDS, size_t RELIABLE_COMMAND_SIZE>
-		class ClientSequenceTemplate : public IReliableSequence
-		{
-		public:
-			void set(rsequence_t index, const char* command) override;
-			const char* get(rsequence_t index) const override;
-			size_t getMaxElements() const override;
-
-		private:
-			char reliableCommands[MAX_RELIABLE_COMMANDS][RELIABLE_COMMAND_SIZE];
-		};
-
-		template<size_t MAX_RELIABLE_COMMANDS, size_t RELIABLE_COMMAND_SIZE>
-		class ClientRemoteCommandSequenceTemplate : public ICommandSequence
-		{
-		public:
-			void set(rsequence_t index, const char* command) override;
-			const char* get(rsequence_t index) const override;
-			size_t getMaxElements() const override;
-
-		private:
-			char serverCommands[MAX_RELIABLE_COMMANDS][RELIABLE_COMMAND_SIZE];
-		};
-
-		class UserPacket
-		{
-		public:
-			UserPacket();
-
-			void sendPacket(uint64_t currentTime);
-		};
-
-		class UserModule
-		{
-		private:
-			struct HandlerList
-			{
-				FunctionList<ClientHandlers::UserInput> userInputHandler;
-			};
-
-		public:
-			UserModule();
-
-			void write(MSG& msg, uint64_t currentTime);
-			HandlerList& getHandlerList() const;
-
-		private:
-			clc_ops_e getClientOperation() const;
-			uint32_t getCommandHashKey() const;
-			uint8_t getNumCommandsToWrite(uint32_t oldPacketNum) const;
-			void writeAllCommands(MSG& msg, const usercmd_t*& oldcmd, size_t count, uint32_t key);
-
-		private:
-			HandlerList handlerList;
-			UserInput input;
-			outPacket_t outPackets[CMD_BACKUP];
-		};
-
 		class PacketHeaderWriter
 		{
 		public:
@@ -280,6 +187,12 @@ namespace MOHPC
 			uint32_t maxTickPackets;
 			float radarRange;
 			uint32_t timeNudge;
+		};
+
+		class ClientConnectionlessHandler
+		{
+		public:
+			void handle(const IRemoteIdentifierPtr& from, MSG& msg);
 		};
 
 		/**
@@ -383,9 +296,15 @@ namespace MOHPC
 			/** Return the current server command sequence. */
 			MOHPC_NET_EXPORTS const ICommandSequence* getCommandSequence() const;
 
-			/** Return the current reliable sequence (the latest command number on the client). */
+			/**
+			 * Return the current reliable sequence (the latest command number on the client).
+			 * Use this to enqueue a new command (reliable).
+			 */
 			MOHPC_NET_EXPORTS IReliableSequence* getReliableSequence();
 			MOHPC_NET_EXPORTS const IReliableSequence* getReliableSequence() const;
+
+			/** Return the client challenge. */
+			MOHPC_NET_EXPORTS uint32_t getChallenge() const;
 
 			/**
 			 * Disconnect the client.
@@ -411,7 +330,6 @@ namespace MOHPC
 		private:
 			const INetchanPtr& getNetchan() const;
 			void receive(const IRemoteIdentifierPtr& from, MSG& msg, uint64_t currentTime, uint32_t sequenceNum);
-			void receiveConnectionLess(const IRemoteIdentifierPtr& from, MSG& msg);
 			void wipeChannel();
 			bool isChannelValid() const;
 			void disconnectCommand(TokenParser& tokenized);
@@ -423,9 +341,8 @@ namespace MOHPC
 			void parseCenterprint(MSG& msg);
 			void parseLocprint(MSG& msg);
 
-			void clearState();
 			void setCGameTime(uint64_t currentTime);
-			void initSnapshot(uint64_t currentTime);
+			void initSnapshot();
 
 			bool readyToSendPacket(uint64_t currentTime) const;
 			bool sendCmd(uint64_t currentTime);
@@ -433,13 +350,14 @@ namespace MOHPC
 			void writePacket(uint64_t currentTime);
 
 		private:
+			CommandTemplate<ServerConnection, &ServerConnection::disconnectCommand> disconnectHandler;
+
 			HandlerListClient handlerList;
 			CGame::ModuleBase* cgameModule;
 			const Parsing::IString* stringParser;
 			const Parsing::IHash* hashParser;
 			CommandManager remoteCommandManager;
 			IRemoteIdentifierPtr adr;
-			EncodingPtr encoder;
 			INetchanPtr netchan;
 			UserInfoPtr userInfo;
 			IReliableSequence* reliableCommands;
@@ -454,6 +372,7 @@ namespace MOHPC
 			OutgoingPackets outPackets;
 			uint64_t lastPacketSendTime;
 			uint32_t serverMessageSequence;
+			uint32_t challenge;
 			bool isActive : 1;
 			bool isReady : 1;
 		};
@@ -511,48 +430,21 @@ namespace MOHPC
 
 			class DisconnectException : public Base
 			{
+			public:
+				DisconnectException();
+				DisconnectException(const char* reasonValue);
+				DisconnectException(const str& reasonValue);
+
+				const char* getReason() const;
+
+			private:
+				str reason;
 			};
 
 			class BadSoundNumberException : public Base
 			{
 
 			};
-		}
-
-		template<size_t MAX_RELIABLE_COMMANDS, size_t RELIABLE_COMMAND_SIZE>
-		void ClientSequenceTemplate<MAX_RELIABLE_COMMANDS, RELIABLE_COMMAND_SIZE>::set(rsequence_t index, const char* command)
-		{
-			str::copyn(reliableCommands[index], command, RELIABLE_COMMAND_SIZE);
-		}
-
-		template<size_t MAX_RELIABLE_COMMANDS, size_t RELIABLE_COMMAND_SIZE>
-		const char* ClientSequenceTemplate<MAX_RELIABLE_COMMANDS, RELIABLE_COMMAND_SIZE>::get(rsequence_t index) const
-		{
-			return reliableCommands[index];
-		}
-
-		template<size_t MAX_RELIABLE_COMMANDS, size_t RELIABLE_COMMAND_SIZE>
-		size_t ClientSequenceTemplate<MAX_RELIABLE_COMMANDS, RELIABLE_COMMAND_SIZE>::getMaxElements() const
-		{
-			return RELIABLE_COMMAND_SIZE;
-		}
-
-		template<size_t MAX_RELIABLE_COMMANDS, size_t RELIABLE_COMMAND_SIZE>
-		void ClientRemoteCommandSequenceTemplate<MAX_RELIABLE_COMMANDS, RELIABLE_COMMAND_SIZE>::set(rsequence_t index, const char* command)
-		{
-			str::copyn(serverCommands[index], command, RELIABLE_COMMAND_SIZE);
-		}
-
-		template<size_t MAX_RELIABLE_COMMANDS, size_t RELIABLE_COMMAND_SIZE>
-		const char* ClientRemoteCommandSequenceTemplate<MAX_RELIABLE_COMMANDS, RELIABLE_COMMAND_SIZE>::get(rsequence_t index) const
-		{
-			return serverCommands[index];
-		}
-
-		template<size_t MAX_RELIABLE_COMMANDS, size_t RELIABLE_COMMAND_SIZE>
-		size_t ClientRemoteCommandSequenceTemplate<MAX_RELIABLE_COMMANDS, RELIABLE_COMMAND_SIZE>::getMaxElements() const
-		{
-			return RELIABLE_COMMAND_SIZE;
 		}
 	}
 }

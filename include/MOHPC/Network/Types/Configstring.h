@@ -28,6 +28,8 @@ namespace Network
 		 * @param maxChars Maximum number of characters to allow for the entire config-strings buffer.
 		 */
 		MOHPC_NET_EXPORTS ConfigStringManager(const size_t numConfigStrings, const size_t maxChars);
+		MOHPC_NET_EXPORTS ConfigStringManager(ConfigStringManager&& other);
+		MOHPC_NET_EXPORTS ConfigStringManager& operator=(ConfigStringManager&& other);
 		MOHPC_NET_EXPORTS ~ConfigStringManager();
 
 		/**
@@ -86,7 +88,10 @@ namespace Network
 			csNum_t currentNum;
 		};
 
-	public:
+	private:
+		void freeStrings();
+
+	private:
 		size_t* stringOffsets;
 		char* stringData;
 		size_t maxChars;

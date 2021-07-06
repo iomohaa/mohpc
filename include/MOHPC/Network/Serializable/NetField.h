@@ -91,7 +91,7 @@ namespace Network
 		uint8_t getSize() const;
 
 		/** Return the number of bits that this field take in transmission. */
-		uint8_t getBits() const;
+		int8_t getBits() const;
 
 		/** Return the field type (version specific). */
 		uint8_t getType() const;

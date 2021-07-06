@@ -455,8 +455,15 @@ void VoteOptionsParser::parseChoiceList(VoteOptionList& list, TokenParser& parse
 }
 
 VoteManager::VoteManager()
+	: startReadFromServerHandler(*this)
+	, continueReadFromServerHandler(*this)
+	, finishReadFromServerHandler(*this)
+	, voteTime(0)
+	, numVotesYes(0)
+	, numVotesNo(0)
+	, numUndecidedVotes(0)
+	, modified(false)
 {
-
 }
 
 VoteManager::HandlerList& VoteManager::handlers()
@@ -476,10 +483,9 @@ size_t VoteManager::getNumCommandsToRegister() const
 
 void VoteManager::registerCommands(CommandManager& commandManager)
 {
-	using namespace std::placeholders;
-	commandManager.addCommand(Command("vo0", std::bind(&VoteManager::commandStartReadFromServer, this, _1)));
-	commandManager.addCommand(Command("vo1", std::bind(&VoteManager::commandContinueReadFromServer, this, _1)));
-	commandManager.addCommand(Command("vo2", std::bind(&VoteManager::commandFinishReadFromServer, this, _1)));
+	commandManager.add("vo0", &startReadFromServerHandler);
+	commandManager.add("vo1", &continueReadFromServerHandler);
+	commandManager.add("vo2", &finishReadFromServerHandler);
 }
 
 void VoteManager::commandStartReadFromServer(TokenParser& args)

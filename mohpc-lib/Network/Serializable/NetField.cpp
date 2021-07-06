@@ -18,7 +18,7 @@ uint8_t netField_t::getSize() const
 	return size;
 }
 
-uint8_t netField_t::getBits() const
+int8_t netField_t::getBits() const
 {
 	return bits;
 }

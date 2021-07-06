@@ -1,7 +1,7 @@
 #include <MOHPC/Network/Client/Time.h>
 
 using namespace MOHPC;
-using namespace Network;
+using namespace MOHPC::Network;
 
 ClientTime::ClientTime()
 	: realTimeStart(0)

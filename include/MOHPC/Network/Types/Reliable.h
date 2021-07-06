@@ -15,12 +15,14 @@ using rsequence_t = uint32_t;
 
 class IAbstractSequence
 {
-protected:
+public:
 	virtual ~IAbstractSequence();
 
-	virtual const char* get(rsequence_t index) const = 0;
-	virtual void set(rsequence_t index, const char* command) = 0;
 	virtual size_t getMaxElements() const = 0;
+	virtual const char* get(rsequence_t index) const = 0;
+
+protected:
+	virtual void set(rsequence_t index, const char* command) = 0;
 };
 
 class IReliableSequence : public IAbstractSequence

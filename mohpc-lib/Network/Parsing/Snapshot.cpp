@@ -22,7 +22,6 @@ public:
 		: entityParser(nullptr)
 		, playerStateParser(nullptr)
 	{
-
 	}
 
 	void parseSnapshot(
@@ -324,6 +323,12 @@ protected:
 class Snapshot8 : public SnapshotBase
 {
 public:
+	void getProtocol(uint32_t& minRange, uint32_t& maxRange) const override
+	{
+		minRange = 5;
+		maxRange = 8;
+	}
+
 	Snapshot8()
 	{
 		entityParser = Parsing::IEntity::get(8);
@@ -340,6 +345,12 @@ public:
 class Snapshot17 : public SnapshotBase
 {
 public:
+	void getProtocol(uint32_t& minRange, uint32_t& maxRange) const override
+	{
+		minRange = 15;
+		maxRange = 17;
+	}
+
 	Snapshot17()
 	{
 		entityParser = Parsing::IEntity::get(17);
@@ -352,6 +363,9 @@ public:
 		maxRange = 8;
 	}
 };
+
+Snapshot8 snapshot8;
+Snapshot17 snapshot17;
 
 SnapshotError::AreaMaskBadSize::AreaMaskBadSize(uint8_t inSize)
 	: size(inSize)

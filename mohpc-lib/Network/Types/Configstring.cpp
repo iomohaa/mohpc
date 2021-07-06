@@ -39,9 +39,42 @@ ConfigStringManager::ConfigStringManager(const size_t numConfigStrings, const si
 	highestConfigstring = 0;
 }
 
+ConfigStringManager::ConfigStringManager(ConfigStringManager&& other)
+	: stringOffsets(other.stringOffsets)
+	, stringData(other.stringData)
+	, maxChars(other.maxChars)
+	, maxConfigStrings(other.maxChars)
+	, highestConfigstring(other.highestConfigstring)
+	, dataCount(other.dataCount)
+{
+	other.stringOffsets = nullptr;
+	other.stringData = nullptr;
+}
+
+ConfigStringManager& ConfigStringManager::operator=(ConfigStringManager&& other)
+{
+	freeStrings();
+
+	stringOffsets = other.stringOffsets;
+	stringData = other.stringData;
+	maxChars = other.maxChars;
+	maxConfigStrings = other.maxConfigStrings;
+	highestConfigstring = other.highestConfigstring;
+	dataCount = other.dataCount;
+	other.stringOffsets = nullptr;
+	other.stringData = nullptr;
+
+	return *this;
+}
+
 ConfigStringManager::~ConfigStringManager()
 {
-	uint8_t* buf = (uint8_t*)stringOffsets;
+	freeStrings();
+}
+
+void ConfigStringManager::freeStrings()
+{
+	uint8_t* const buf = (uint8_t*)stringOffsets;
 	if (buf)
 	{
 		// delete the existing buffer
@@ -52,7 +85,7 @@ ConfigStringManager::~ConfigStringManager()
 const char* ConfigStringManager::getConfigString(csNum_t num) const
 {
 	if (num > maxConfigStrings) {
-		return nullptr;
+		throw ConfigstringErrors::MaxConfigStringException("getConfigString", num);
 	}
 
 	return &stringData[stringOffsets[num]];
@@ -75,7 +108,7 @@ void ConfigStringManager::setConfigString(csNum_t num, const char* configString,
 	}
 
 	size_t& stringOffset = stringOffsets[num];
-	if (stringOffset)
+  	if (stringOffset)
 	{
 		// existing config-string
 

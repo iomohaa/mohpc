@@ -23,16 +23,43 @@ namespace MOHPC
 		struct CommandNotify : public HandlerNotifyBase<void(const char* command, TokenParser& parser)> {};
 	}
 
-	class Command
+	/**
+	 * Command interface.
+	 */
+	class ICommand
 	{
 	public:
-		Command(const char* cmdNameValue, std::function<void(TokenParser&)>&& functionMv);
+		virtual ~ICommand() = default;
+		virtual void execute(TokenParser& tokenized) = 0;
+	};
 
-		const char* getName() const;
-		const std::function<void(TokenParser&)> getFunction() const;
+	
+	template<typename T, void (T::*exec)(TokenParser&)>
+	class CommandTemplate : public ICommand
+	{
+	public:
+		CommandTemplate(T& instancePtr)
+			: instance(instancePtr)
+		{
+		}
+
+		void execute(TokenParser& tokenized) override
+		{
+			(instance.*exec)(tokenized);
+		}
 
 	private:
-		const char* cmdName;
+		T& instance;
+	};
+
+	class CommandHandler : public ICommand
+	{
+	public:
+		CommandHandler(std::function<void(TokenParser&)>&& functionMv);
+
+		void execute(TokenParser& tokenized) override;
+
+	private:
 		std::function<void(TokenParser&)> function;
 	};
 
@@ -47,20 +74,33 @@ namespace MOHPC
 			FunctionList<CommandHandlers::CommandNotify> commandNotify;
 		};
 
+		class CommandData
+		{
+		public:
+			CommandData(const char* nameValue, ICommand* commandPtr);
+
+			const char* getName() const;
+			ICommand* getCommand() const;
+
+		public:
+			const char* name;
+			ICommand* command;
+		};
+
 	public:
 		MOHPC_UTILITY_EXPORTS CommandManager();
 
 		/** Add an handler for the specified command. */
-		MOHPC_UTILITY_EXPORTS void addCommand(Command&& command);
-		MOHPC_UTILITY_EXPORTS void reserveCommands(size_t num);
+		MOHPC_UTILITY_EXPORTS void add(const char* name, ICommand* command);
+		MOHPC_UTILITY_EXPORTS void reserve(size_t num);
 
-		MOHPC_UTILITY_EXPORTS void processCommand(const char* commandString);
+		MOHPC_UTILITY_EXPORTS void process(const char* commandString);
 
 		MOHPC_UTILITY_EXPORTS HandlerList& handlers();
 		MOHPC_UTILITY_EXPORTS const HandlerList& handlers() const;
 
 	private:
 		HandlerList handlerList;
-		mfuse::con::Container<Command> commands;
+		mfuse::con::Container<CommandData> commands;
 	};
 }

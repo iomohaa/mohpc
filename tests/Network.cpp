@@ -217,52 +217,57 @@ int main(int argc, const char* argv[])
 					MOHPC_LOG(Trace, "entity %d deleted (was model \"%s\")", state.number, modelName);
 				});
 
-			cgame->handlers().makeBulletTracerHandler.add([](const Vector& barrel, const Vector& start, const Vector& end, uint32_t numBullets, uint32_t iLarge, uint32_t numTracersVisible, float bulletSize)
+			cgame->getGameplayNotify().getBulletNotify().createBulletTracerHandler.add([](const Vector& barrel, const Vector& start, const Vector& end, uint32_t numBullets, uint32_t iLarge, uint32_t numTracersVisible, float bulletSize)
 				{
 					static size_t num = 0;
 					//MOHPC_LOG(Trace, "bullet %zu", num++);
 				});
 
-			cgame->handlers().impactHandler.add([](const Vector& origin, const Vector& normal, uint32_t large)
+			cgame->getGameplayNotify().getImpactNotify().impactHandler.add([](const Vector& origin, const Vector& normal, uint32_t large)
 				{
 					static size_t num = 0;
 					//MOHPC_LOG(Trace, "impact %zu", num++);
 				});
 
-			cgame->handlers().makeExplosionEffectHandler.add([](const Vector& origin, const char* modelName)
+			cgame->getGameplayNotify().getImpactNotify().explosionHandler.add([](const Vector& origin, const char* modelName)
 				{
 					static size_t num = 0;
 					//MOHPC_LOG(Trace, "explosionfx %zu: type \"%s\"", num++, getEffectName(type));
 				});
 
-			cgame->handlers().makeEffectHandler.add([](const Vector& origin, const Vector& normal, const char* modelName)
+			cgame->getGameplayNotify().getEffectNotify().spawnEffectHandler.add([](const Vector& origin, const Vector& normal, const char* modelName)
 				{
 					static size_t num = 0;
 					//MOHPC_LOG(Trace, "effect %zu: type \"%s\"", num++, getEffectName(type));
 				});
 
-			cgame->handlers().spawnDebrisHandler.add([](Handlers::debrisType_e debrisType, const Vector& origin, uint32_t numDebris)
+			cgame->getGameplayNotify().getEffectNotify().spawnDebrisHandler.add([](debrisType_e debrisType, const Vector& origin, uint32_t numDebris)
 				{
 					static size_t num = 0;
 					//MOHPC_LOG(Trace, "debris %zu: type %d", num++, debrisType);
 				});
 
-			cgame->handlers().hitNotifyHandler.add([]()
+			cgame->getGameplayNotify().getEventNotify().hitHandler.add([]()
 				{
 					static size_t num = 0;
 					//MOHPC_LOG(Trace, "hit %zu", num++);
 				});
 
-			cgame->handlers().killNotifyHandler.add([]()
+			cgame->getGameplayNotify().getEventNotify().gotKillHandler.add([]()
 				{
 					static size_t num = 0;
 					//MOHPC_LOG(Trace, "kill %zu", num++);
 				});
 
-			cgame->handlers().voiceMessageHandler.add([](const Vector& origin, bool local, uint8_t clientNum, const char* soundName)
+			cgame->getGameplayNotify().getEventNotify().voiceMessageHandler.add([](const Vector& origin, bool local, uint8_t clientNum, const char* soundName)
 				{
 					static size_t num = 0;
 					//MOHPC_LOG(Trace, "voice %d: sound \"%s\"", num++, soundName);
+				});
+
+			cgame->getGameplayNotify().getHUDNotify().setShaderHandler.add([](uint8_t index, const char* shaderName)
+				{
+					MOHPC_LOG(Debug, "huddraw_shader : %d \"%s\"", index, shaderName);
 				});
 
 			cgame->handlers().printHandler.add([](hudMessage_e hudMessage, const char* text)
@@ -273,11 +278,6 @@ int main(int argc, const char* argv[])
 			cgame->handlers().hudPrintHandler.add([](const char* text)
 				{
 					MOHPC_LOG(Trace, "server print \"%s\"", text);
-				});
-
-			cgame->handlers().huddrawShaderHandler.add([](uint8_t index, const char* shaderName)
-				{
-					MOHPC_LOG(Debug, "huddraw_shader : %d \"%s\"", index, shaderName);
 				});
 
 			cgame->getVoteManager().handlers().voteModifiedHandler.add([](const VoteManager& voteInfo)

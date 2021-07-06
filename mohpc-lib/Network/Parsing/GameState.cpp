@@ -202,10 +202,11 @@ public:
 		// this is the frame time of the server set by **sv_fps**
 		// it is practically useless because the delta frequency can be calculated with 1 / sv_fps
 		const float receivedFrameTimeSec = msg.ReadFloat();
-		if (receivedFrameTimeSec != getFrameTime(serverInfo))
+		const float expectedFrameTimeSec = getFrameTime(serverInfo);
+		if (receivedFrameTimeSec != expectedFrameTimeSec)
 		{
 			// the server frame time is 1 / sv_fps, it shouldn't be any other value
-			MOHPC_LOG(Warn, "Server has sent a frame time that doesn't match sv_fps");
+			MOHPC_LOG(Warn, "Server has sent a frame time that doesn't match sv_fps (expected %f got %f)", receivedFrameTimeSec, expectedFrameTimeSec);
 		}
 	}
 

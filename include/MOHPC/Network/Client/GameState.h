@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../Utility/HandlerList.h"
+#include "../../Utility/CommandManager.h"
 #include "../Types/GameState.h"
 #include "../Parsing/GameState.h"
 #include "../Configstring.h"
@@ -90,7 +91,9 @@ namespace Network
 		/** Return the map checksum. */
 		MOHPC_NET_EXPORTS uint32_t getChecksumFeed() const;
 
-		void RegisterCommands(CommandManager& commandManager);
+		void registerCommands(CommandManager& commandManager);
+
+		void reset();
 
 	private:
 		void notifyAllConfigStringChanges() const;
@@ -98,6 +101,8 @@ namespace Network
 		void ConfigstringCommand(TokenParser& tokenized);
 
 	private:
+		CommandTemplate<ServerGameState, &ServerGameState::ConfigstringCommand> csHandler;
+
 		const Parsing::IGameState* gameStateParser;
 		ClientTime* clientTime;
 		HandlerList handlerList;

@@ -24,7 +24,32 @@ EntityList::EntityList(entityNum_t maxEntitiesValue)
 	}
 }
 
+EntityList::EntityList(EntityList&& other)
+	: entityList(other.entityList)
+	, maxEntities(other.maxEntities)
+{
+	other.entityList = nullptr;
+	other.maxEntities = 0;
+}
+
+EntityList& EntityList::operator=(EntityList&& other)
+{
+	freeList();
+
+	entityList = other.entityList;
+	maxEntities = other.maxEntities;
+	other.entityList = nullptr;
+	other.maxEntities = 0;
+
+	return *this;
+}
+
 EntityList::~EntityList()
+{
+	freeList();
+}
+
+void EntityList::freeList()
 {
 	if (entityList)
 	{
@@ -71,6 +96,19 @@ gameState_t::gameState_t(const size_t numConfigStrings, const size_t maxChars, c
 	: csMan(numConfigStrings, maxChars)
 	, entityBaselines(maxBaselines)
 {
+}
+
+gameState_t::gameState_t(gameState_t&& other)
+	: csMan(std::move(other.csMan))
+	, entityBaselines(std::move(other.entityBaselines))
+{
+}
+
+gameState_t& gameState_t::operator=(gameState_t&& other)
+{
+	csMan = std::move(other.csMan);
+	entityBaselines = std::move(other.entityBaselines);
+	return *this;
 }
 
 gameState_t::~gameState_t()

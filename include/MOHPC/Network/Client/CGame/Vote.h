@@ -9,6 +9,7 @@
 #include "../../NetGlobal.h"
 #include "../../../Common/str.h"
 #include "../../../Utility/HandlerList.h"
+#include "../../../Utility/CommandManager.h"
 
 #include <morfuse/Container/Container.h>
 
@@ -261,6 +262,10 @@ namespace Network
 			void markDirty();
 
 		public:
+			CommandTemplate<VoteManager, &VoteManager::commandStartReadFromServer> startReadFromServerHandler;
+			CommandTemplate<VoteManager, &VoteManager::commandContinueReadFromServer> continueReadFromServerHandler;
+			CommandTemplate<VoteManager, &VoteManager::commandFinishReadFromServer> finishReadFromServerHandler;
+
 			VoteOptions voteOptions;
 			VoteOptionsParser voteOptionsParser;
 			HandlerList handlerList;

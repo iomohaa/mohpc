@@ -1,4 +1,5 @@
 #include <MOHPC/Network/Client/ServerConnection.h>
+#include <MOHPC/Network/Client/TimeManager.h>
 #include <MOHPC/Network/Client/CGame/Module.h>
 #include <MOHPC/Network/Remote/Channel.h>
 #include <MOHPC/Network/Serializable/UserInput.h>
@@ -8,6 +9,7 @@
 #include <MOHPC/Utility/Info.h>
 #include <MOHPC/Utility/TokenParser.h>
 #include <MOHPC/Common/Log.h>
+#include <MOHPC/Network/Types/ReliableTemplate.h>
 
 #include <typeinfo>
 #include <filesystem>
@@ -21,15 +23,95 @@ using namespace Network;
 static constexpr size_t MINIMUM_RECEIVE_BUFFER_SIZE = 1024;
 static constexpr char MOHPC_LOG_NAMESPACE[] = "network_cgame";
 
-class ClientSequenceTemplate_ver8 : public ClientSequenceTemplate<64, 1024> {};
-class ClientRemoteCommandSequenceTemplate_ver8 : public ClientRemoteCommandSequenceTemplate<64, 1024> {};
-class ClientSequenceTemplate_ver17 : public ClientSequenceTemplate<64, 2048> {};
-class ClientRemoteCommandSequenceTemplate_ver17 : public ClientRemoteCommandSequenceTemplate<64, 2048> {};
+class SequenceTemplate_ver8 : public SequenceTemplate<64, 1024> {};
+class RemoteCommandSequenceTemplate_ver8 : public RemoteCommandSequenceTemplate<64, 1024> {};
+class SequenceTemplate_ver17 : public SequenceTemplate<64, 2048> {};
+class RemoteCommandSequenceTemplate_ver17 : public RemoteCommandSequenceTemplate<64, 2048> {};
+
+class ClientEncoding
+{
+public:
+	static void encode(IMessageStream& stream, const ICommandSequence* serverCommands, const ServerGameState& gameState, uint32_t challenge, uint32_t serverMessageSequence)
+	{
+		static constexpr size_t encodeStart = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t);
+
+		stream.Seek(encodeStart, IMessageStream::SeekPos::Begin);
+
+		XOREncoding encoder(challenge, *serverCommands);
+		encoder.setSecretKey(gameState.getServerId());
+		encoder.setMessageAcknowledge(serverMessageSequence);
+		encoder.setReliableAcknowledge(serverCommands->getCommandSequence());
+		encoder.convert(stream, stream);
+
+		stream.Seek(0, IMessageStream::SeekPos::Begin);
+	}
+
+	static void decode(MSG& msg, const IReliableSequence* reliableCommands, const ServerGameState& gameState, uint32_t challenge, uint32_t serverMessageSequence)
+	{
+		static constexpr size_t decodeStart = sizeof(uint32_t) + sizeof(uint32_t);
+
+		// decode the stream itself
+		IMessageStream& stream = msg.stream();
+		stream.Seek(decodeStart, IMessageStream::SeekPos::Begin);
+
+		XOREncoding decoder(challenge, *reliableCommands);
+		decoder.setReliableAcknowledge(reliableCommands->getReliableAcknowledge());
+		decoder.setSecretKey(serverMessageSequence);
+		decoder.convert(stream, stream);
+		// seek after sequence number
+		stream.Seek(sizeof(uint32_t));
+
+		// needs to be reset as the stream has been decoded
+		msg.Reset();
+		// read again to get the right bits
+		msg.ReadInteger();
+	}
+};
+
+void ClientConnectionlessHandler::handle(const IRemoteIdentifierPtr& from, MSG& msg)
+{
+	msg.SetCodec(MessageCodecs::OOB);
+
+	// a message without sequence number indicates a connectionless packet
+	// the only possible connectionless packet should be the disconnect command
+	// it is received when the client gets kicked out during map loading
+
+	// read the direction
+	uint8_t direction = msg.ReadByte();
+
+	// read the command
+	StringMessage data = msg.ReadString();
+
+	// parse command arguments
+	TokenParser parser;
+	parser.Parse(data, strlen(data));
+
+	// get the connectionless command
+	const char* cmd = parser.GetToken(true);
+
+	if (!str::icmp(cmd, "disconnect"))
+	{
+		// disconnect message, may happen during map loading
+		throw ClientError::DisconnectException();
+	}
+	else if (!str::icmp(cmd, "droperror"))
+	{
+		// server is kicking the client due to an error
+
+		// trim leading spaces/crlf
+		parser.SkipWhiteSpace(true);
+		// get the reason of the kick
+		const char* reason = parser.GetCurrentScript();
+
+		// Supply the reason when disconnecting
+		throw ClientError::DisconnectException(reason);
+	}
+}
 
 MOHPC_OBJECT_DEFINITION(ServerConnection);
 
 ServerConnection::ServerConnection(const INetchanPtr& inNetchan, const IRemoteIdentifierPtr& inAdr, uint32_t challengeResponse, const protocolType_c& protoType, const UserInfoPtr& cInfo)
-	: netchan(inNetchan)	
+	: netchan(inNetchan)
 	, adr(inAdr)
 	, timeout(std::chrono::milliseconds(60000))
 	, isActive(false)
@@ -37,6 +119,8 @@ ServerConnection::ServerConnection(const INetchanPtr& inNetchan, const IRemoteId
 	, userInfo(cInfo)
 	, clGameState(protoType, &clientTime)
 	, clSnapshotManager(protoType)
+	, disconnectHandler(*this)
+	, lastPacketSendTime(0)
 {
 	if (!userInfo)
 	{
@@ -53,8 +137,15 @@ ServerConnection::ServerConnection(const INetchanPtr& inNetchan, const IRemoteId
 	// the maximum command char is different across versions
 	// would it alter the gameplay?
 	//  the command size is bigger than moh:aa (protocol version 5-8)
-	reliableCommands = new ClientSequenceTemplate_ver17();
-	serverCommands = new ClientRemoteCommandSequenceTemplate_ver17();
+	reliableCommands = new SequenceTemplate_ver17();
+	serverCommands = new RemoteCommandSequenceTemplate_ver17();
+
+	// from now always use version 17
+	// the maximum command char is different across versions
+	// would it alter the gameplay?
+	//  the command size is bigger than moh:aa (protocol version 5-8)
+	reliableCommands = new SequenceTemplate_ver17();
+	serverCommands = new RemoteCommandSequenceTemplate_ver17();
 
 	cgameModule = CGame::ModuleInstancier::get(protocol)->createInstance();
 	cgameModule->setProtocol(protoType);
@@ -76,12 +167,12 @@ ServerConnection::ServerConnection(const INetchanPtr& inNetchan, const IRemoteId
 	downloadState.setReliableSequence(reliableCommands);
 
 	// register remote commands
-	clGameState.RegisterCommands(remoteCommandManager);
+	clGameState.registerCommands(remoteCommandManager);
 
 	using namespace std::placeholders;
-	remoteCommandManager.addCommand(Command("disconnect", std::bind(&ServerConnection::disconnectCommand, this, _1)));
+	remoteCommandManager.add("disconnect", &disconnectHandler);
 
-	encoder = std::make_shared<Encoding>(challengeResponse, *reliableCommands, *serverCommands);
+	//encoder = std::make_shared<Encoding>(challengeResponse, *reliableCommands, *serverCommands);
 
 	using namespace std::chrono;
 	const steady_clock::time_point currentTime = steady_clock::now();
@@ -120,58 +211,57 @@ void ServerConnection::tick(uint64_t deltaTime, uint64_t currentTime)
 
 	size_t count = 0;
 
-	ICommunicator* socket = getNetchan()->getRawSocket();
-	// Loop until there is no valid data
-	// or the max number of processed packets has reached the limit
-	while(isChannelValid() && socket->getIncomingSize() && count++ < settings.getMaxTickPackets())
-	{
-		DynamicDataMessageStream stream;
-		// reserve a minimum amount to reduce the amount of reallocations
-		stream.reserve(MINIMUM_RECEIVE_BUFFER_SIZE);
-
-		uint32_t sequenceNum;
-		IRemoteIdentifierPtr from;
-
-		if(getNetchan()->receive(from, stream, sequenceNum))
-		{
-			// Prepare for reading
-			MSG msg(stream, msgMode_e::Reading);
-			if(sequenceNum != -1)
-			{
-				// received connection packet
-				receive(from, msg, currentTime, sequenceNum);
-			}
-			else
-			{
-				// can only happen when disconnected
-				receiveConnectionLess(from, msg);
-			}
-		}
-	}
-
-	// Build and send client commands
-	if(sendCmd(currentTime))
-	{
-		// Send packets if there are new commands
-		writePacket(currentTime);
-	}
-
-	setCGameTime(currentTime);
-
 	try
 	{
+		ICommunicator* socket = getNetchan()->getRawSocket();
+		// Loop until there is no valid data
+		// or the max number of processed packets has reached the limit
+		while (isChannelValid() && socket->getIncomingSize() && count++ < settings.getMaxTickPackets())
+		{
+			DynamicDataMessageStream stream;
+			// reserve a minimum amount to reduce the amount of reallocations
+			stream.reserve(MINIMUM_RECEIVE_BUFFER_SIZE);
+
+			uint32_t sequenceNum;
+			IRemoteIdentifierPtr from;
+
+			if (getNetchan()->receive(from, stream, sequenceNum))
+			{
+				// Prepare for reading
+				MSG msg(stream, msgMode_e::Reading);
+				if (sequenceNum != -1)
+				{
+					// received connection packet
+					receive(from, msg, currentTime, sequenceNum);
+				}
+				else
+				{
+					// can only happen when disconnected
+					ClientConnectionlessHandler handler;
+					handler.handle(from, msg);
+				}
+			}
+		}
+
+		// Build and send client commands
+		if (sendCmd(currentTime))
+		{
+			// Send packets if there are new commands
+			writePacket(currentTime);
+		}
+
+		setCGameTime(currentTime);
+
 		if (cgameModule) {
 			cgameModule->tick(deltaTime, currentTime, clientTime.getRemoteTime());
 		}
 	}
-	catch (ClientError::DisconnectException&)
+	catch (ClientError::DisconnectException& exception)
 	{
 		// Could happen if the server sent a "disconnect" message
 
 		// Wipe the channel as it has been closed on server already
-		wipeChannel();
-		// Disconnect the client
-		terminateConnection(nullptr);
+		serverDisconnected(exception.getReason());
 	}
 	catch (NetworkException& e)
 	{
@@ -199,28 +289,14 @@ const INetchanPtr& ServerConnection::getNetchan() const
 
 void ServerConnection::receive(const IRemoteIdentifierPtr& from, MSG& msg, uint64_t currentTime, uint32_t sequenceNum)
 {
-	serverMessageSequence = (uint32_t)sequenceNum;
+	serverMessageSequence = sequenceNum;
 
 	msg.SetCodec(MessageCodecs::Bit);
 
 	// Read the ack
 	reliableCommands->updateAcknowledge(msg.ReadUInteger());
 
-	static constexpr size_t decodeStart = sizeof(uint32_t) + sizeof(uint32_t);
-
-	// decode the stream itself
-	IMessageStream& stream = msg.stream();
-	stream.Seek(decodeStart, IMessageStream::SeekPos::Begin);
-	encoder->setReliableAcknowledge(reliableCommands->getReliableAcknowledge());
-	encoder->setSecretKey(serverMessageSequence);
-	encoder->decode(stream, stream);
-	// seek after sequence number
-	stream.Seek(sizeof(uint32_t));
-
-	// needs to be reset as the stream has been decoded
-	msg.Reset();
-	// read again to get the right bits
-	msg.ReadInteger();
+	ClientEncoding::decode(msg, reliableCommands, clGameState, getChallenge(), serverMessageSequence);
 
 	// as data has been received, update the last timeout time
 	timeout.update();
@@ -239,47 +315,8 @@ void ServerConnection::receive(const IRemoteIdentifierPtr& from, MSG& msg, uint6
 	}
 	catch (StreamMessageException&)
 	{
+		const IMessageStream& stream = msg.stream();
 		MOHPC_LOG(Error, "Tried to read past end of server message (length %d)", stream.GetLength());
-	}
-}
-
-void ServerConnection::receiveConnectionLess(const IRemoteIdentifierPtr& from, MSG& msg)
-{
-	msg.SetCodec(MessageCodecs::OOB);
-
-	// a message without sequence number indicates a connectionless packet
-	// the only possible connectionless packet should be the disconnect command
-	// it is received when the client gets kicked out during map loading
-
-	// read the direction
-	uint8_t direction = msg.ReadByte();
-
-	// read the command
-	StringMessage data = msg.ReadString();
-
-	// parse command arguments
-	TokenParser parser;
-	parser.Parse(data, strlen(data));
-
-	// get the connectionless command
-	const char* cmd = parser.GetToken(true);
-
-	if (!str::icmp(cmd, "disconnect"))
-	{
-		// disconnect message, may happen during map loading
-		serverDisconnected(nullptr);
-	}
-	else if (!str::icmp(cmd, "droperror"))
-	{
-		// server is kicking the client due to an error
-
-		// trim leading spaces/crlf
-		parser.SkipWhiteSpace(true);
-		// get the reason of the kick
-		const char* reason = parser.GetCurrentScript();
-
-		// Supply the reason when disconnecting
-		serverDisconnected(reason);
 	}
 }
 
@@ -354,13 +391,13 @@ void ServerConnection::parseCommandString(MSG& msg)
 	const uint32_t seq = msg.ReadUInteger();
 	const StringMessage s = stringParser->readString(msg);
 
-	serverCommands->addCommand(s, seq);
-
 	if (serverCommands->getCommandSequence() >= seq)
 	{
 		// already stored so avoid processing it twice
 		return;
 	}
+
+	serverCommands->addCommand(s, seq);
 
 #if _DEBUG
 	if (!str::icmpn(s.c_str(), "stufftext ", 10))
@@ -371,7 +408,7 @@ void ServerConnection::parseCommandString(MSG& msg)
 #endif
 
 	// notify handlers about the new command
-	remoteCommandManager.processCommand(s.c_str());
+	remoteCommandManager.process(s.c_str());
 }
 
 void ServerConnection::parseCenterprint(MSG& msg)
@@ -437,14 +474,8 @@ void ServerConnection::writePacket(uint64_t currentTime)
 	// flush out pending data
 	msg.Flush();
 
-	static constexpr size_t encodeStart = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t);
-
-	stream.Seek(encodeStart, IMessageStream::SeekPos::Begin);
-	encoder->setSecretKey(clGameState.getServerId());
-	encoder->setMessageAcknowledge(serverMessageSequence);
-	encoder->setReliableAcknowledge(serverCommands->getCommandSequence());
-	encoder->encode(stream, stream);
-	stream.Seek(0, IMessageStream::SeekPos::Begin);
+	// encode the stream
+	ClientEncoding::encode(stream, serverCommands, clGameState, getChallenge(), serverMessageSequence);
 	
 	// transmit the encoded message
 	getNetchan()->transmit(*adr, stream);
@@ -602,7 +633,7 @@ void ServerConnection::serverDisconnected(const char* reason)
 void ServerConnection::terminateConnection(const char* reason)
 {
 	// Clear the server client data
-	clGameState = ServerGameState();
+	clGameState.reset();
 
 	if (cgameModule)
 	{
@@ -624,34 +655,19 @@ bool ServerConnection::isChannelValid() const
 	return netchan != nullptr && cgameModule != nullptr;
 }
 
-void ServerConnection::clearState()
-{
-	input.reset();
-	isActive = false;
-	isReady = false;
-}
-
 void ServerConnection::setCGameTime(uint64_t currentTime)
 {
-	if (clSnapshotManager.checkTime(clientTime))
-	{
-		initSnapshot(currentTime);
-	}
+	ClientTimeManager timeManager(clientTime, clSnapshotManager);
+	timeManager.setTime(currentTime);
 
-	// if we have gotten to this point, cl.snap is guaranteed to be valid
-	if (!clSnapshotManager.isSnapshotValid())
+	if (timeManager.hasEntered())
 	{
-		clientTime.setStartTime(currentTime);
-		return;
+		initSnapshot();
 	}
-
-	// FIXME: throw if snap server time went backward
-	clientTime.setTime(currentTime, clSnapshotManager.getServerTime(), clSnapshotManager.hasNewSnapshots());
 }
 
-void ServerConnection::initSnapshot(uint64_t currentTime)
+void ServerConnection::initSnapshot()
 {
-	clientTime.initRemoteTime(clSnapshotManager.getServerTime(), currentTime);
 	// make the game active
 	isActive = true;
 
@@ -687,6 +703,11 @@ bool ServerConnection::readyToSendPacket(uint64_t currentTime) const
 CommandManager& ServerConnection::getRemoteCommandManager()
 {
 	return remoteCommandManager;
+}
+
+uint32_t ServerConnection::getChallenge() const
+{
+	return challenge;
 }
 
 PacketHeaderWriter::PacketHeaderWriter(const ServerGameState& clGameStateRef, const ICommandSequence& serverCommandsRef, uint32_t serverMessageSequenceValue)
@@ -938,4 +959,23 @@ uint16_t ClientError::BaselineOutOfRangeException::getBaselineNum() const
 str ClientError::BaselineOutOfRangeException::what() const
 {
 	return str((int)getBaselineNum());
+}
+
+ClientError::DisconnectException::DisconnectException()
+{
+}
+
+ClientError::DisconnectException::DisconnectException(const char* reasonValue)
+	: reason(reasonValue)
+{
+}
+
+ClientError::DisconnectException::DisconnectException(const str& reasonValue)
+	: reason(reasonValue)
+{
+}
+
+const char* ClientError::DisconnectException::getReason() const
+{
+	return reason.c_str();
 }

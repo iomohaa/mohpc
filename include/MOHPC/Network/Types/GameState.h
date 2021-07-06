@@ -28,6 +28,8 @@ namespace Network
 		 * @param maxBaselines maximum number of baseline entities
 		 */
 		MOHPC_NET_EXPORTS EntityList(entityNum_t maxEntities);
+		MOHPC_NET_EXPORTS EntityList(EntityList&& other);
+		MOHPC_NET_EXPORTS EntityList& operator=(EntityList&& other);
 		MOHPC_NET_EXPORTS ~EntityList();
 
 		/**
@@ -45,6 +47,9 @@ namespace Network
 		MOHPC_NET_EXPORTS void reset();
 
 	private:
+		void freeList();
+
+	private:
 		entityState_t* entityList;
 		entityNum_t maxEntities;
 	};
@@ -57,6 +62,8 @@ namespace Network
 	public:
 		MOHPC_NET_EXPORTS gameState_t();
 		MOHPC_NET_EXPORTS gameState_t(const size_t numConfigStrings, const size_t maxChars, const entityNum_t maxBaselines);
+		MOHPC_NET_EXPORTS gameState_t(gameState_t&& other);
+		MOHPC_NET_EXPORTS gameState_t& operator=(gameState_t&& other);
 		MOHPC_NET_EXPORTS ~gameState_t();
 
 		/** Return the config string manager. */
