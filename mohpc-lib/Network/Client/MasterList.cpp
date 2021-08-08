@@ -393,5 +393,5 @@ bool ServerListLAN::Request_InfoBroadcast::isThisRequest(InputRequest& data) con
 	parser.Parse(arg, strlen(arg) + 1);
 
 	const char* command = parser.GetToken(false);
-	return !str::icmp(command, "infoResponse");
+	return !strHelpers::icmp(command, "infoResponse");
 }

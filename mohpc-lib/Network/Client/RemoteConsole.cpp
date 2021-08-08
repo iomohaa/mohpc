@@ -110,7 +110,7 @@ void RemoteConsole::RConMessageRequest::generateOutput(IMessageStream& output)
 	// Direction (to server)
 	msg.WriteByte(2);
 
-	str rconStr = str::printf("rcon %s %s", password, command);
+	str rconStr = str("rcon ") + password + str(" ") + command;
 	// Write the string
 	msg.WriteString(rconStr.c_str());
 
@@ -139,7 +139,7 @@ SharedPtr<MOHPC::IRequestBase> RemoteConsole::RConMessageRequest::process(InputR
 	parser.Parse(cmd, strlen(cmd));
 
 	const char* token = parser.GetToken(false);
-	if (!str::icmp(token, "print"))
+	if (!strHelpers::icmp(token, "print"))
 	{
 		// Print text
 		const char* text = parser.GetCurrentScript();

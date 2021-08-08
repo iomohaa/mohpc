@@ -1,29 +1,40 @@
 #include <Shared.h>
 #include <MOHPC/Assets/Formats/BSP.h>
 #include "Polylib.h"
+#include "BSP_Curve.h"
+
+#include "../../../Common/VectorPrivate.h"
+
+#include <cassert>
 
 using namespace MOHPC;
 using namespace BSPData;
 
-#define	MAX_FACETS			1024
-#define	MAX_PATCH_PLANES	4096
-#define	SUBDIVIDE_DISTANCE	16
-#define	PLANE_TRI_EPSILON	0.1
-#define	WRAP_POINT_EPSILON	0.1
-#define	MAX_GRID_SIZE	129
-
-#define	SIDE_FRONT	0
-#define	SIDE_BACK	1
-#define	SIDE_ON		2
-#define	SIDE_CROSS	3
+static constexpr unsigned long MAX_FACETS = 1024;
+static constexpr unsigned long MAX_PATCH_PLANES = 4096;
+static constexpr unsigned long SUBDIVIDE_DISTANCE = 16;
+static constexpr double PLANE_TRI_EPSILON = 0.1;
+static constexpr double WRAP_POINT_EPSILON = 0.1;
 
 struct cGrid_t {
+public:
+	cGrid_t();
+
+public:
 	int32_t width;
 	int32_t height;
 	bool wrapWidth;
 	bool wrapHeight;
-	vec3_t points[MAX_GRID_SIZE][MAX_GRID_SIZE];	// [width][height]
+	vec3_t points[MAX_GRID_SIZE][MAX_GRID_SIZE];
 };
+
+cGrid_t::cGrid_t()
+	: width(0)
+	, height(0)
+	, wrapWidth(false)
+	, wrapHeight(false)
+	, points{ 0 }
+{}
 
 static bool ValidateFacet(patchWork_t& pw, BSPData::Facet *facet) {
 	float		plane[4];
@@ -35,23 +46,28 @@ static bool ValidateFacet(patchWork_t& pw, BSPData::Facet *facet) {
 		return false;
 	}
 
-	Vec4Copy(pw.planes[facet->surfacePlane].plane, plane);
+	Vector4Copy(pw.planes[facet->surfacePlane].plane, plane);
 	w = BaseWindingForPlane(plane, plane[3]);
-	for (j = 0; j < facet->numBorders && w; j++) {
-		if (facet->borderPlanes[j] == -1) {
+	for (j = 0; j < facet->numBorders && w; j++)
+	{
+		if (facet->borderPlanes[j] == -1)
+		{
 			FreeWinding(w);
 			return false;
 		}
-		Vec4Copy(pw.planes[facet->borderPlanes[j]].plane, plane);
-		if (!facet->borderInward[j]) {
-			VecSubtract(vec3_origin, plane, plane);
+		Vector4Copy(pw.planes[facet->borderPlanes[j]].plane, plane);
+		if (!facet->borderInward[j])
+		{
+			castVector(plane) = -castVector(plane);
 			plane[3] = -plane[3];
 		}
 		ChopWindingInPlace(&w, plane, plane[3], 0.1f);
 	}
 
-	if (!w) {
-		return false;		// winding was completely chopped away
+	if (!w)
+	{
+		// winding was completely chopped away
+		return false;
 	}
 
 	// see if the facet is unreasonably large
@@ -100,7 +116,7 @@ int PlaneEqual(BSPData::PatchPlane *p, float plane[4], int *flipped) {
 		return true;
 	}
 
-	VecNegate(plane, invplane);
+	castVector(invplane) = -castVector(plane);
 	invplane[3] = -plane[3];
 
 	if (
@@ -118,16 +134,17 @@ int PlaneEqual(BSPData::PatchPlane *p, float plane[4], int *flipped) {
 
 bool BSP::PlaneFromPoints(vec4_t plane, vec3_t a, vec3_t b, vec3_t c)
 {
-	vec3_t	d1, d2;
+	Eigen::Vector3f d1, d2;
 
-	VecSubtract(b, a, d1);
-	VecSubtract(c, a, d2);
-	CrossProduct(d2, d1, plane);
-	if (VectorNormalize(plane) == 0) {
+	d1 = castVector(b) - castVector(a);
+	d2 = castVector(c) - castVector(a);
+	castVector(plane) = d2.cross(d1);
+	castVector(plane).normalize();
+	if (castVector(plane).squaredNorm() == 0) {
 		return false;
 	}
 
-	plane[3] = DotProduct(a, plane);
+	plane[3] = castVector(a).dot(castVector(plane));
 	return true;
 }
 
@@ -142,7 +159,7 @@ int FindPlane2(patchWork_t& pw, float plane[4], int *flipped) {
 		assert(!"MAX_PATCH_PLANES");
 	}
 
-	Vec4Copy(plane, pw.planes[pw.numPlanes].plane);
+	Vector4Copy(plane, pw.planes[pw.numPlanes].plane);
 	pw.planes[pw.numPlanes].signbits = SignbitsForNormal(plane);
 
 	pw.numPlanes++;
@@ -161,22 +178,23 @@ static int FindPlane(patchWork_t& pw, float *p1, float *p2, float *p3) {
 	}
 
 	// see if the points are close enough to an existing plane
-	for (uint32_t i = 0; i < pw.numPlanes; i++) {
-		if (DotProduct(plane, pw.planes[i].plane) < 0) {
+	for (uint32_t i = 0; i < pw.numPlanes; i++)
+	{
+		if (castVector(plane).dot(castVector(pw.planes[i].plane)) < 0) {
 			continue;	// allow backwards planes?
 		}
 
-		d = DotProduct(p1, pw.planes[i].plane) - pw.planes[i].plane[3];
+		d = castVector(p1).dot(castVector(pw.planes[i].plane)) - pw.planes[i].plane[3];
 		if (d < -PLANE_TRI_EPSILON || d > PLANE_TRI_EPSILON) {
 			continue;
 		}
 
-		d = DotProduct(p2, pw.planes[i].plane) - pw.planes[i].plane[3];
+		d = castVector(p2).dot(castVector(pw.planes[i].plane)) - pw.planes[i].plane[3];
 		if (d < -PLANE_TRI_EPSILON || d > PLANE_TRI_EPSILON) {
 			continue;
 		}
 
-		d = DotProduct(p3, pw.planes[i].plane) - pw.planes[i].plane[3];
+		d = castVector(p3).dot(castVector(pw.planes[i].plane)) - pw.planes[i].plane[3];
 		if (d < -PLANE_TRI_EPSILON || d > PLANE_TRI_EPSILON) {
 			continue;
 		}
@@ -190,7 +208,7 @@ static int FindPlane(patchWork_t& pw, float *p1, float *p2, float *p3) {
 		return -1;
 	}
 
-	Vec4Copy(plane, pw.planes[pw.numPlanes].plane);
+	Vector4Copy(plane, pw.planes[pw.numPlanes].plane);
 	pw.planes[pw.numPlanes].signbits = SignbitsForNormal(plane);
 
 	pw.numPlanes++;
@@ -199,11 +217,11 @@ static int FindPlane(patchWork_t& pw, float *p1, float *p2, float *p3) {
 }
 
 static bool	NeedsSubdivision(vec3_t a, vec3_t b, vec3_t c, float subdivisions) {
-	vec3_t		cmid;
-	vec3_t		lmid;
-	vec3_t		delta;
-	float		dist;
-	int			i;
+	Eigen::Vector3f cmid;
+	Eigen::Vector3f lmid;
+	Eigen::Vector3f delta;
+	float dist;
+	int i;
 
 	// calculate the linear midpoint
 	for (i = 0; i < 3; i++) {
@@ -216,8 +234,8 @@ static bool	NeedsSubdivision(vec3_t a, vec3_t b, vec3_t c, float subdivisions) {
 	}
 
 	// see if the curve is far enough away from the linear mid
-	VecSubtract(cmid, lmid, delta);
-	dist = VectorLength(delta);
+	delta = cmid - lmid;
+	dist = delta.norm();
 
 	return dist >= subdivisions;
 }
@@ -242,13 +260,13 @@ static void TransposeGrid(cGrid_t *grid) {
 			for (j = i + 1; j < grid->width; j++) {
 				if (j < grid->height) {
 					// swap the value
-					VecCopy(grid->points[i][j], temp);
-					VecCopy(grid->points[j][i], grid->points[i][j]);
-					VecCopy(temp, grid->points[j][i]);
+					VectorCopy(grid->points[i][j], temp);
+					VectorCopy(grid->points[j][i], grid->points[i][j]);
+					VectorCopy(temp, grid->points[j][i]);
 				}
 				else {
 					// just copy
-					VecCopy(grid->points[j][i], grid->points[i][j]);
+					VectorCopy(grid->points[j][i], grid->points[i][j]);
 				}
 			}
 		}
@@ -258,13 +276,13 @@ static void TransposeGrid(cGrid_t *grid) {
 			for (j = i + 1; j < grid->height; j++) {
 				if (j < grid->width) {
 					// swap the value
-					VecCopy(grid->points[j][i], temp);
-					VecCopy(grid->points[i][j], grid->points[j][i]);
-					VecCopy(temp, grid->points[i][j]);
+					VectorCopy(grid->points[j][i], temp);
+					VectorCopy(grid->points[i][j], grid->points[j][i]);
+					VectorCopy(temp, grid->points[i][j]);
 				}
 				else {
 					// just copy
-					VecCopy(grid->points[i][j], grid->points[j][i]);
+					VectorCopy(grid->points[i][j], grid->points[j][i]);
 				}
 			}
 		}
@@ -324,7 +342,7 @@ static void SubdivideGridColumns(cGrid_t *grid, float subdivisions) {
 			for (j = 0; j < grid->height; j++) {
 				// remove the column
 				for (k = i + 2; k < grid->width; k++) {
-					VecCopy(grid->points[k][j], grid->points[k - 1][j]);
+					VectorCopy(grid->points[k][j], grid->points[k - 1][j]);
 				}
 			}
 
@@ -342,15 +360,15 @@ static void SubdivideGridColumns(cGrid_t *grid, float subdivisions) {
 			vec3_t	prev, mid, next;
 
 			// save the control points now
-			VecCopy(grid->points[i][j], prev);
-			VecCopy(grid->points[i + 1][j], mid);
-			VecCopy(grid->points[i + 2][j], next);
+			VectorCopy(grid->points[i][j], prev);
+			VectorCopy(grid->points[i + 1][j], mid);
+			VectorCopy(grid->points[i + 2][j], next);
 
 			// make room for two additional columns in the grid
 			// columns i+1 will be replaced, column i+2 will become i+4
 			// i+1, i+2, and i+3 will be generated
 			for (k = grid->width - 1; k > i + 1; k--) {
-				VecCopy(grid->points[k][j], grid->points[k + 2][j]);
+				VectorCopy(grid->points[k][j], grid->points[k + 2][j]);
 			}
 
 			// generate the subdivided points
@@ -400,7 +418,7 @@ static void RemoveDegenerateColumns(cGrid_t *grid) {
 		for (j = 0; j < grid->height; j++) {
 			// remove the column
 			for (k = i + 2; k < grid->width; k++) {
-				VecCopy(grid->points[k][j], grid->points[k - 1][j]);
+				VectorCopy(grid->points[k][j], grid->points[k - 1][j]);
 			}
 		}
 		grid->width--;
@@ -419,7 +437,7 @@ static int PointOnPlaneSide(patchWork_t& pw, float *p, int planeNum) {
 	}
 	plane = pw.planes[planeNum].plane;
 
-	d = DotProduct(p, plane) - plane[3];
+	d = castVector(p).dot(castVector(plane)) - plane[3];
 
 	if (d > PLANE_TRI_EPSILON) {
 		return SIDE_FRONT;
@@ -572,17 +590,19 @@ void AddFacetBevels(patchWork_t& pw, BSPData::Facet *facet) {
 	int axis, dir, order, flipped;
 	float plane[4], d, newplane[4];
 	winding_t *w, *w2;
-	vec3_t mins, maxs, vec, vec2;
+	Eigen::Vector3f mins, maxs, vec, vec2;
 
-	Vec4Copy(pw.planes[facet->surfacePlane].plane, plane);
+	Vector4Copy(pw.planes[facet->surfacePlane].plane, plane);
 
 	w = BaseWindingForPlane(plane, plane[3]);
-	for (j = 0; j < facet->numBorders && w; j++) {
+	for (j = 0; j < facet->numBorders && w; j++)
+	{
 		if (facet->borderPlanes[j] == facet->surfacePlane) continue;
-		Vec4Copy(pw.planes[facet->borderPlanes[j]].plane, plane);
+		Vector4Copy(pw.planes[facet->borderPlanes[j]].plane, plane);
 
-		if (!facet->borderInward[j]) {
-			VecSubtract(vec3_origin, plane, plane);
+		if (!facet->borderInward[j])
+		{
+			castVector(plane) = -castVector(plane);
 			plane[3] = -plane[3];
 		}
 
@@ -592,7 +612,7 @@ void AddFacetBevels(patchWork_t& pw, BSPData::Facet *facet) {
 		return;
 	}
 
-	WindingBounds(w, mins, maxs);
+	WindingBounds(w, uncastVector(mins), uncastVector(maxs));
 
 	// add the axial pw.planes
 	order = 0;
@@ -634,11 +654,15 @@ void AddFacetBevels(patchWork_t& pw, BSPData::Facet *facet) {
 	for (j = 0; j < w->numpoints; j++)
 	{
 		k = (j + 1) % w->numpoints;
-		VecSubtract(w->p[j], w->p[k], vec);
+		vec = castVector(w->p[j]) - castVector(w->p[k]);
 		//if it's a degenerate edge
-		if (VectorNormalize(vec) < 0.5)
+		if (vec.squaredNorm() < 0.5) {
 			continue;
-		SnapVector(vec);
+		}
+
+		vec.normalize();
+
+		SnapVector(uncastVector(vec));
 		for (k = 0; k < 3; k++)
 			if (vec[k] == -1 || vec[k] == 1)
 				break;	// axial
@@ -651,18 +675,21 @@ void AddFacetBevels(patchWork_t& pw, BSPData::Facet *facet) {
 			for (dir = -1; dir <= 1; dir += 2)
 			{
 				// construct a plane
-				VectorClear(vec2);
+				vec2 = Eigen::Vector3f();
 				vec2[axis] = (float)dir;
-				CrossProduct(vec, vec2, plane);
-				if (VectorNormalize(plane) < 0.5)
+				castVector(plane) = vec.cross(vec2);
+				if (castVector(plane).squaredNorm() < 0.5) {
 					continue;
-				plane[3] = DotProduct(w->p[j], plane);
+				}
+
+				castVector(plane).normalize();
+				plane[3] = castVector(w->p[j]).dot(castVector(plane));
 
 				// if all the points of the facet winding are
 				// behind this plane, it is a proper edge bevel
 				for (l = 0; l < w->numpoints; l++)
 				{
-					d = DotProduct(w->p[l], plane) - plane[3];
+					d = castVector(w->p[l]).dot(castVector(plane)) - plane[3];
 					if (d > 0.1)
 						break;	// point in front
 				}
@@ -693,10 +720,10 @@ void AddFacetBevels(patchWork_t& pw, BSPData::Facet *facet) {
 					facet->borderInward[facet->numBorders] = flipped;
 					//
 					w2 = CopyWinding(w);
-					Vec4Copy(pw.planes[facet->borderPlanes[facet->numBorders]].plane, newplane);
+					Vector4Copy(pw.planes[facet->borderPlanes[facet->numBorders]].plane, newplane);
 					if (!facet->borderInward[facet->numBorders])
 					{
-						VecNegate(newplane, newplane);
+						castVector(newplane) = -castVector(newplane);
 						newplane[3] = -newplane[3];
 					} //end if
 					ChopWindingInPlace(&w2, newplane, newplane[3], 0.1f);
@@ -925,7 +952,7 @@ BSPData::PatchCollide* BSP::GeneratePatchCollide(int32_t width, int32_t height, 
 	grid.wrapHeight = false;
 	for (i = 0; i < width; i++) {
 		for (j = 0; j < height; j++) {
-			VecCopy(points[j*width + i].xyz, grid.points[i][j]);
+			VectorCopy(points[j*width + i].xyz, grid.points[i][j]);
 		}
 	}
 

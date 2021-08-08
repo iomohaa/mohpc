@@ -7,28 +7,44 @@ using namespace MOHPC::Network;
 
 void SerializableUsercmd::LoadDelta(MSG& msg, const ISerializableMessage* from, intptr_t key)
 {
+	using namespace std::chrono;
+
 	const usercmd_t* fromCmd = &((SerializableUsercmd*)from)->ucmd;
 
 	const bool isByteTime = msg.ReadBool();
 	if (isByteTime)
 	{
 		const uint8_t deltaTime = msg.ReadByte();
+		ucmd = usercmd_t(fromCmd->getServerTime() + milliseconds(deltaTime));
 	}
-	else {
-		ucmd.serverTime = msg.ReadUInteger();
+	else
+	{
+		const uint32_t serverTime = msg.ReadUInteger();
+		ucmd = usercmd_t(tickTime_t(milliseconds(serverTime)));
 	}
 
 	const bool hasChanges = msg.ReadBool();
 	if (hasChanges)
 	{
-		key = (uint32_t)((uint32_t)key ^ ucmd.serverTime);
-		ucmd.angles[0] = msg.ReadDeltaTypeKey(fromCmd->angles[0], key);
-		ucmd.angles[1] = msg.ReadDeltaTypeKey(fromCmd->angles[1], key);
-		ucmd.angles[2] = msg.ReadDeltaTypeKey(fromCmd->angles[2], key);
-		ucmd.forwardmove = msg.ReadDeltaTypeKey(fromCmd->forwardmove, key);
-		ucmd.rightmove = msg.ReadDeltaTypeKey(fromCmd->rightmove, key);
-		ucmd.upmove = msg.ReadDeltaTypeKey(fromCmd->upmove, key);
-		ucmd.buttons.flags = msg.ReadDeltaTypeKey(fromCmd->buttons.flags, key);
+		key = (uint32_t)((uint32_t)key ^ duration_cast<milliseconds>(ucmd.getServerTime().time_since_epoch()).count());
+		const UserMovementInput& mFromInput = fromCmd->getMovement();
+		UserMovementInput& mInput = ucmd.getMovement();
+		const UserActionInput& aFromInput = fromCmd->getAction();
+		UserActionInput& aInput = ucmd.getAction();
+
+		const netAngles_t& fromAngles = mFromInput.getAngles();
+
+		netAngles_t angles;
+		angles[0] = msg.ReadDeltaTypeKey(fromAngles[0], key);
+		angles[1] = msg.ReadDeltaTypeKey(fromAngles[1], key);
+		angles[2] = msg.ReadDeltaTypeKey(fromAngles[2], key);
+
+		mInput.setAngles(angles);
+
+		mInput.moveForward(msg.ReadDeltaTypeKey(mFromInput.getForwardValue(), key));
+		mInput.moveRight(msg.ReadDeltaTypeKey(mFromInput.getRightValue(), key));
+		mInput.moveUp(msg.ReadDeltaTypeKey(mFromInput.getUpValue(), key));
+		aInput.setFlags(msg.ReadDeltaTypeKey(aFromInput.getFlags(), key));
 	}
 }
 
@@ -36,37 +52,49 @@ void SerializableUsercmd::SaveDelta(MSG& msg, const ISerializableMessage* from, 
 {
 	const usercmd_t* fromCmd = &((SerializableUsercmd*)from)->ucmd;
 
-	const uint32_t deltaTime = ucmd.serverTime - fromCmd->serverTime;
-	const bool isByteTime = deltaTime < 256;
+	using namespace std::chrono;
+	const deltaTime_t deltaTime = ucmd.getServerTime() - fromCmd->getServerTime();
+	const uint32_t serverTime = (uint32_t)duration_cast<milliseconds>(ucmd.getServerTime().time_since_epoch()).count();
+	const bool isByteTime = deltaTime < milliseconds(256);
 
 	msg.WriteBool(isByteTime);
 	if (isByteTime) {
-		msg.WriteByte(deltaTime);
+		msg.WriteByte((uint8_t)duration_cast<milliseconds>(deltaTime).count());
 	}
-	else {
-		msg.WriteUInteger(ucmd.serverTime);
+	else
+	{
+		// write the 32-bit server time
+		msg.WriteUInteger(serverTime);
 	}
 
+	const UserMovementInput& mFromInput = fromCmd->getMovement();
+	UserMovementInput& mInput = ucmd.getMovement();
+	const UserActionInput& aFromInput = fromCmd->getAction();
+	UserActionInput& aInput = ucmd.getAction();
+
+	const netAngles_t& fromAngles = mFromInput.getAngles();
+	const netAngles_t& angles = mInput.getAngles();
+
 	const bool hasChanges =
-		fromCmd->angles[0] != ucmd.angles[0] ||
-		fromCmd->angles[1] != ucmd.angles[1] ||
-		fromCmd->angles[2] != ucmd.angles[2] ||
-		fromCmd->forwardmove != ucmd.forwardmove ||
-		fromCmd->rightmove != ucmd.rightmove ||
-		fromCmd->upmove != ucmd.upmove ||
-		fromCmd->buttons.flags != ucmd.buttons.flags;
+		fromAngles[0] != angles[0] ||
+		fromAngles[1] != angles[1] ||
+		fromAngles[2] != angles[2] ||
+		mFromInput.getForwardValue() != mInput.getForwardValue() ||
+		mFromInput.getRightValue() != mInput.getRightValue() ||
+		mFromInput.getUpValue() != mInput.getUpValue() ||
+		aFromInput.getFlags() != aInput.getFlags();
 
 	msg.WriteBool(hasChanges);
 	if (hasChanges)
 	{
-		const uint32_t keyTime = (uint32_t)key ^ ucmd.serverTime;
-		msg.WriteDeltaTypeKey(fromCmd->angles[0], ucmd.angles[0], keyTime, 16);
-		msg.WriteDeltaTypeKey(fromCmd->angles[1], ucmd.angles[1], keyTime, 16);
-		msg.WriteDeltaTypeKey(fromCmd->angles[2], ucmd.angles[2], keyTime, 16);
-		msg.WriteDeltaTypeKey(fromCmd->forwardmove, ucmd.forwardmove, keyTime, 8);
-		msg.WriteDeltaTypeKey(fromCmd->rightmove, ucmd.rightmove, keyTime, 8);
-		msg.WriteDeltaTypeKey(fromCmd->upmove, ucmd.upmove, keyTime, 8);
-		msg.WriteDeltaTypeKey(fromCmd->buttons.flags, ucmd.buttons.flags, keyTime, 16);
+		const uint32_t keyTime = (uint32_t)key ^ serverTime;
+		msg.WriteDeltaTypeKey(fromAngles[0], angles[0], keyTime, 16);
+		msg.WriteDeltaTypeKey(fromAngles[1], angles[1], keyTime, 16);
+		msg.WriteDeltaTypeKey(fromAngles[2], angles[2], keyTime, 16);
+		msg.WriteDeltaTypeKey(mFromInput.getForwardValue(), mInput.getForwardValue(), keyTime, 8);
+		msg.WriteDeltaTypeKey(mFromInput.getRightValue(), mInput.getRightValue(), keyTime, 8);
+		msg.WriteDeltaTypeKey(mFromInput.getUpValue(), mInput.getUpValue(), keyTime, 8);
+		msg.WriteDeltaTypeKey(aFromInput.getFlags(), aInput.getFlags(), keyTime, 16);
 	}
 }
 

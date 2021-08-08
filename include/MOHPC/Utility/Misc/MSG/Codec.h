@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../../UtilityGlobal.h"
+
 namespace MOHPC
 {
 

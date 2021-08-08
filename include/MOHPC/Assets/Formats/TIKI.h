@@ -80,7 +80,7 @@ namespace MOHPC
 		struct Command
 		{
 			frameInt_t frame_num;
-			mfuse::con::Container<str> args;
+			std::vector<str> args;
 		};
 
 		struct AnimDef
@@ -89,21 +89,21 @@ namespace MOHPC
 			float weight;
 			float blendtime;
 			uint32_t flags;
-			mfuse::con::Container<Command> client_cmds;
-			mfuse::con::Container<Command> server_cmds;
+			std::vector<Command> client_cmds;
+			std::vector<Command> server_cmds;
 			SharedPtr<SkeletonAnimation> animData;
 		};
 
 	public:
 		str name;
-		mfuse::con::Container<Command> client_initcmds;
-		mfuse::con::Container<Command> server_initcmds;
-		Vector mins;
-		Vector maxs;
-		mfuse::con::Container<str> headmodels;
-		mfuse::con::Container<str> headskins;
+		std::vector<Command> client_initcmds;
+		std::vector<Command> server_initcmds;
+		vec3_t mins;
+		vec3_t maxs;
+		std::vector<str> headmodels;
+		std::vector<str> headskins;
 		bool bIsCharacter;
-		mfuse::con::Container<AnimDef> animdefs;
+		std::vector<AnimDef> animdefs;
 	};
 
 	typedef SharedPtr<class TIKI> TIKIPtr;
@@ -111,10 +111,10 @@ namespace MOHPC
 	struct QuakedSection
 	{
 		str name;
-		Vector color;
-		Vector mins;
-		Vector maxs;
-		mfuse::con::Container<str> spawnFlags;
+		vec3_t color;
+		vec3_t mins;
+		vec3_t maxs;
+		std::vector<str> spawnFlags;
 	};
 
 	class TIKI : public Asset
@@ -125,7 +125,7 @@ namespace MOHPC
 		struct TIKISurface
 		{
 			str name;
-			mfuse::con::Container<str> shaders;
+			std::vector<str> shaders;
 			uint32_t flags;
 			float damageMultiplier;
 		};
@@ -133,15 +133,15 @@ namespace MOHPC
 	private:
 		str name;
 		class TIKIAnim* tikianim;
-		mfuse::con::Container<TIKISurface> surfaces;
+		std::vector<TIKISurface> surfaces;
 		float loadScale;
 		float lodScale;
 		float lodBias;
-		Vector lightOffset;
-		Vector loadOrigin;
+		vec3_t lightOffset;
+		vec3_t loadOrigin;
 		float radius;
 		SkeletonChannelList boneList;
-		mfuse::con::Container<SharedPtr<Skeleton>> meshes;
+		std::vector<SharedPtr<Skeleton>> meshes;
 		QuakedSection quakedSection;
 
 	public:
@@ -165,7 +165,7 @@ namespace MOHPC
 		MOHPC_ASSETS_EXPORTS SkeletonAnimationPtr GetAnimationByName(const char *name) const;
 		MOHPC_ASSETS_EXPORTS const TIKIAnim::AnimDef* GetAnimDefByName(const char *name) const;
 		MOHPC_ASSETS_EXPORTS const TIKIAnim::AnimDef* GetRandomAnimation(const char *name) const;
-		MOHPC_ASSETS_EXPORTS void GetAllAnimations(const char *name, mfuse::con::Container<TIKIAnim::AnimDef*>& out) const;
+		MOHPC_ASSETS_EXPORTS void GetAllAnimations(const char *name, std::vector<TIKIAnim::AnimDef*>& out) const;
 		MOHPC_ASSETS_EXPORTS bool IsStaticModel() const;
 
 		// commands
@@ -195,10 +195,10 @@ namespace MOHPC
 		void FreeStorage(dloaddef_t* ld);
 
 		bool ParseSetup(dloaddef_t* ld);
-		void ParseInitCommands(dloaddef_t* ld, mfuse::con::Container<dloadinitcmd_t>& cmdlist);
+		void ParseInitCommands(dloaddef_t* ld, std::vector<dloadinitcmd_t>& cmdlist);
 		void ParseInit(dloaddef_t* ld);
 		bool ParseCase(dloaddef_t* ld);
-		void ParseFrameCommands(dloaddef_t* ld, mfuse::con::Container<dloadframecmd_t>& cmdlist);
+		void ParseFrameCommands(dloaddef_t* ld, std::vector<dloadframecmd_t>& cmdlist);
 		void ParseAnimationCommands(dloaddef_t* ld, dloadanim_t* anim);
 		void ParseAnimationFlags(dloaddef_t* ld, dloadanim_t* anim);
 		void ParseAnimationsFail(dloaddef_t* ld);
@@ -207,8 +207,8 @@ namespace MOHPC
 		void ParseQuaked(dloaddef_t* ld);
 		int32_t ParseSurfaceFlag(const char* token);
 		void InitSetup(dloaddef_t* ld);
-		bool LoadSetupCase(const char *filename, const dloaddef_t* ld, mfuse::con::Container<dloadsurface_t>& loadsurfaces);
-		bool LoadSetup(const char *filename, const dloaddef_t* ld, mfuse::con::Container<dloadsurface_t>& loadsurfaces);
+		bool LoadSetupCase(const char *filename, const dloaddef_t* ld, std::vector<dloadsurface_t>& loadsurfaces);
+		bool LoadSetup(const char *filename, const dloaddef_t* ld, std::vector<dloadsurface_t>& loadsurfaces);
 
 		bool IsValidFrame(size_t maxFrames, frameInt_t frameNum) const;
 		void FixFrameNum(const TIKIAnim *ptiki, const SkeletonAnimation *animData, TIKIAnim::Command *cmd, const char *alias);
@@ -216,7 +216,7 @@ namespace MOHPC
 		TIKIAnim* InitTiki(dloaddef_t *ld);
 
 		// animations
-		void GetAnimOrder(const dloaddef_t *ld, mfuse::con::Container<size_t>& order) const;
+		void GetAnimOrder(const dloaddef_t *ld, std::vector<size_t>& order) const;
 
 		// main
 		void SetupIndividualSurface(const char *filename, TIKISurface* surf, const char *name, const dloadsurface_t *loadsurf);

@@ -14,5 +14,5 @@ uint8_t OpsErrors::BadCommandByteException::getLength() const
 
 str OpsErrors::BadCommandByteException::what() const
 {
-	return str((int)getLength());
+	return std::to_string(getLength());
 }

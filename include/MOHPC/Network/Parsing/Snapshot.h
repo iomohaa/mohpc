@@ -4,6 +4,7 @@
 #include "../ProtocolSingleton.h"
 #include "../Exception.h"
 #include "../../Utility/Misc/MSG/Serializable.h"
+#include "../../Utility/TickTypes.h"
 
 namespace MOHPC
 {
@@ -25,14 +26,13 @@ namespace Network
 			size_t maxParseEntities;
 			size_t maxSnapshotEntities;
 			uint32_t parseEntitiesNum;
-			float deltaTime;
+			deltaTimeFloat_t deltaTime;
 		};
 
 		class MOHPC_NET_EXPORTS ISnapshot : public IProtocolSingleton<ISnapshot>
 		{
 		public:
 			virtual void parseSnapshot(
-				uint64_t currentTime,
 				MSG& msg,
 				const gameState_t& gameState,
 				ICommandSequence* serverCommands,

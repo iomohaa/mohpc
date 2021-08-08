@@ -50,7 +50,7 @@ void Skeleton::LoadBoneFromBuffer(const SkeletonChannelList *boneList, const Ske
 		{
 			skelBone_PosRot *newBone;
 
-			if (!str::cmpn(boneName, "Bip01", 5))
+			if (!strHelpers::icmpn(boneName, "Bip01", 5))
 			{
 				newBone = new skelBone_Root;
 				bone[newBoneIndex] = newBone;

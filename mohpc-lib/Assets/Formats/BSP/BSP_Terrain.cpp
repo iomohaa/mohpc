@@ -2,6 +2,8 @@
 #include <MOHPC/Assets/Formats/BSP.h>
 #include <MOHPC/Assets/Managers/AssetManager.h>
 #include <MOHPC/Assets/Managers/ShaderManager.h>
+#include <MOHPC/Common/Math.h>
+#include "../../../Common/VectorPrivate.h"
 
 namespace MOHPC
 {
@@ -107,7 +109,7 @@ void BSP::GenerateTerrainPatch(const TerrainPatch* Patch, Surface* Out)
 			v[0] = Patch->x0 + (x << 6);
 			v[1] = Patch->y0 + (y << 6);
 			v[2] = Patch->z0 + (Patch->heightmap[ndx] * 2);
-			Out->vertices[ndx].xyz = v;
+			VectorCopy(v, Out->vertices[ndx].xyz);
 
 			f = x / 8.f;
 			Out->vertices[ndx].st[0] = Patch->texCoord[0][0][0] + f * distU;
@@ -157,14 +159,13 @@ void BSP::GenerateTerrainPatch(const TerrainPatch* Patch, Surface* Out)
 		Vertice* v2 = &Out->vertices[Out->indexes[ndx + 1]];
 		Vertice* v3 = &Out->vertices[Out->indexes[ndx + 2]];
 
-		const Vector Delta1 = v1->xyz - v2->xyz;
-		const Vector Delta2 = v3->xyz - v2->xyz;
+		const Eigen::Vector3f Delta1 = castVector(v1->xyz) - castVector(v2->xyz);
+		const Eigen::Vector3f Delta2 = castVector(v3->xyz) - castVector(v2->xyz);
 
-		Vector normal;
-		normal.CrossProduct(Delta1, Delta2);
+		Eigen::Vector3f normal = Delta1.cross(Delta2);
 		normal.normalize();
 
-		v1->normal = v2->normal = v3->normal = normal;
+		castVector(v1->normal) = castVector(v2->normal) = castVector(v3->normal) = normal;
 	}
 
 	Out->CalculateCentroid();
@@ -238,14 +239,13 @@ void BSP::GenerateTerrainPatch2(const TerrainPatch* Patch, Surface* Out)
 		Vertice* v2 = &Out->vertices[Out->indexes[ndx + 1]];
 		Vertice* v3 = &Out->vertices[Out->indexes[ndx + 2]];
 
-		const Vector Delta1 = v1->xyz - v2->xyz;
-		const Vector Delta2 = v3->xyz - v2->xyz;
+		const Eigen::Vector3f Delta1 = castVector(v1->xyz) - castVector(v2->xyz);
+		const Eigen::Vector3f Delta2 = castVector(v3->xyz) - castVector(v2->xyz);
 		
-		Vector normal;
-		normal.CrossProduct(Delta1, Delta2);
+		Eigen::Vector3f normal = Delta1.cross(Delta2);
 		normal.normalize();
 
-		v1->normal = v2->normal = v3->normal = normal;
+		castVector(v1->normal) = castVector(v2->normal) = castVector(v3->normal) = normal;
 	}
 
 	Out->CalculateCentroid();
@@ -1296,23 +1296,19 @@ void BSP::TR_DoTriMerging()
 
 void BSP::TR_ShrinkData()
 {
-	for (size_t n = trTris.size() - 1; n > 0; n--)
+	for (auto pTri = trTris.begin(); pTri != trTris.end(); ++pTri)
 	{
-		TerrainTri* pTri = &trTris[n];
 		if (!pTri->patch)
 		{
-			//trTris.erase(trTris.begin() + n);
-			trTris.RemoveObjectAt(n);
+			pTri = trTris.erase(pTri);
 		}
 	}
 
-	for (size_t n = trVerts.size() - 1; n > 0; n--)
+	for (auto pVert = trVerts.begin(); pVert != trVerts.end(); ++pVert)
 	{
-		TerrainVert* pVert = &trVerts[n];
 		if (!pVert->nRef)
 		{
-			//trVerts.erase(trVerts.begin() + n);
-			trVerts.RemoveObjectAt(n);
+			pVert = trVerts.erase(pVert);
 		}
 	}
 }
@@ -1545,7 +1541,7 @@ void BSP::GenerateTerrainCollide(const TerrainPatch* patch, TerrainCollide& coll
 	tc->vBounds[1][2] = fMaxHeight;
 }
 
-void BSP::TR_PickTerrainSquareMode(TerrainCollideSquare* square, const MOHPC::Vector& vTest, terraInt i, terraInt j, const TerrainPatch* patch)
+void BSP::TR_PickTerrainSquareMode(TerrainCollideSquare* square, const vec3r_t vTest, terraInt i, terraInt j, const TerrainPatch* patch)
 {
 	int flags0, flags1;
 	varnodeIndex* vni;
@@ -1559,7 +1555,7 @@ void BSP::TR_PickTerrainSquareMode(TerrainCollideSquare* square, const MOHPC::Ve
 
 	if (square->eMode == 2)
 	{
-		if(Vector::Dot(vTest, square->plane[0]) < square->plane[0][3]) {
+		if(castVector(vTest).dot(castVector(square->plane[0])) < square->plane[0][3]) {
 			square->eMode = 1;
 		}
 	}

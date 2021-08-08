@@ -177,7 +177,7 @@ PM_ClipVelocity
 Slide off of the impacting surface
 ==================
 */
-void Pmove::PM_ClipVelocity(const Vector& in, const Vector& normal, Vector& out, float overbounce)
+void Pmove::PM_ClipVelocity(const_vec3r_t in, const_vec3r_t normal, vec3r_t out, float overbounce)
 {
 	float	backoff;
 	float	dir_z;
@@ -226,15 +226,16 @@ PM_Friction
 Handles both ground friction and water friction
 ==================
 */
-void Pmove::PM_Friction( void ) {
-	Vector	vec;
+void Pmove::PM_Friction( void )
+{
+	vec3_t	vec;
 	float	*vel;
 	float	speed, newspeed, control;
 	float	drop;
 
 	vel = pm.ps->velocity;
 
-	VecCopy( vel, vec );
+	VecCopy(vel, vec);
 	if( pml.walking )
 	{
 		// ignore slope movement
@@ -260,11 +261,11 @@ void Pmove::PM_Friction( void ) {
 		// if getting knocked back, no friction
 		if( pml.groundTrace.surfaceFlags & SURF_SLICK )
 		{
-			drop += control * pm_slipperyfriction * pml.frametime;
+			drop += control * pm_slipperyfriction * pml.frametime.count();
 		}
 		else
 		{
-			drop += control * pm_friction * pml.frametime;
+			drop += control * pm_friction * pml.frametime.count();
 		}
 	}
 
@@ -273,11 +274,11 @@ void Pmove::PM_Friction( void ) {
 	{
 		if( pm.watertype & CONTENTS_SLIME )
 		{
-			drop += speed * pm_waterfriction * 5 * pm.waterlevel * pml.frametime;
+			drop += speed * pm_waterfriction * 5 * pm.waterlevel * pml.frametime.count();
 		}
 		else
 		{
-			drop += speed * pm_waterfriction * pm.waterlevel * pml.frametime;
+			drop += speed * pm_waterfriction * pm.waterlevel * pml.frametime.count();
 		}
 	}
 
@@ -303,18 +304,18 @@ PM_Accelerate
 Handles user intended acceleration
 ==============
 */
-void Pmove::PM_Accelerate(const Vector& wishdir, float wishspeed, float accel)
+void Pmove::PM_Accelerate(const_vec3r_t wishdir, float wishspeed, float accel)
 {
-	Vector		wishVelocity;
-	Vector		pushDir;
-	float		pushLen;
-	float		canPush;
+	vec3_t wishVelocity;
+	vec3_t pushDir;
+	float pushLen;
+	float canPush;
 
 	VectorScale( wishdir, wishspeed, wishVelocity );
 	VecSubtract( wishVelocity, pm.ps->velocity, pushDir );
 	pushLen = VectorNormalize( pushDir );
 
-	canPush = accel*pml.frametime*wishspeed;
+	canPush = accel * pml.frametime.count() * wishspeed;
 	if (canPush > pushLen) {
 		canPush = pushLen;
 	}
@@ -333,7 +334,7 @@ This allows the clients to use axial -127 to 127 values for all directions
 without getting a sqrtf(2) distortion in speed.
 ============
 */
-float Pmove::PM_CmdScale( usercmd_t *cmd )
+float Pmove::PM_CmdScale(const UserMovementInput& mInput)
 {
 	float fmove, smove;
 	PM_GetMove(&fmove, &smove);
@@ -344,7 +345,7 @@ float Pmove::PM_CmdScale( usercmd_t *cmd )
 		max = (int)smovepos;
 	}
 
-	const int upmove = abs(cmd->upmove);
+	const int upmove = abs(mInput.getUpValue());
 	if (upmove > max) {
 		max = upmove;
 	}
@@ -354,9 +355,9 @@ float Pmove::PM_CmdScale( usercmd_t *cmd )
 	}
 
 	const double total = sqrt(double(
-			cmd->forwardmove * cmd->forwardmove
-			+ cmd->rightmove * cmd->rightmove
-			+ cmd->upmove * cmd->upmove
+			mInput.getForwardValue() * mInput.getForwardValue()
+			+ mInput.getRightValue() * mInput.getRightValue()
+			+ mInput.getUpValue() * mInput.getUpValue()
 		));
 
 	return float(double(pm.ps->speed * max) / (127.0 * total));
@@ -399,9 +400,9 @@ void Pmove::PM_CheckTerminalVelocity()
 /*
 {
 	int			i;
-	Vector		wishvel;
+	vec3_t		wishvel;
 	float		fmove, smove;
-	Vector		wishdir;
+	vec3_t		wishdir;
 	float		wishspeed;
 	float		scale;
 	usercmd_t	cmd;
@@ -460,12 +461,12 @@ void Pmove::PM_GetMove
 	)
 
 {
-	*pfForward = pm.cmd.forwardmove;
+	*pfForward = pm.cmd.getMovement().getForwardValue();
 	if( *pfForward < 0 )
 	{
 		*pfForward *= pm_backspeed;
 	}
-	*pfRight = pm.cmd.rightmove * pm_strafespeed;
+	*pfRight = pm.cmd.getMovement().getRightValue() * pm_strafespeed;
 }
 
 /*
@@ -476,20 +477,21 @@ PM_AirMove
 */
 void Pmove::PM_AirMove( void )
 {
-	Vector		wishvel;
+	vec3_t		wishvel;
 	float		   fmove;
 	float       smove;
-	Vector		wishdir;
+	vec3_t		wishdir;
 	float		   wishspeed;
 	float		   scale;
 	usercmd_t	cmd;
 
 	PM_GetMove( &fmove, &smove );
 
-	pm.ps->pm_time = 0;
+	using namespace ticks;
+	pm.ps->pm_time = milliseconds();
 
 	cmd = pm.cmd;
-	scale = PM_CmdScale( &cmd );
+	scale = PM_CmdScale(cmd.getMovement());
 
 	wishvel[ 0 ] = pml.flat_forward[ 0 ] * fmove - pml.flat_left[ 0 ] * smove;
 	wishvel[ 1 ] = pml.flat_forward[ 1 ] * fmove - pml.flat_left[ 1 ] * smove;
@@ -515,15 +517,15 @@ void Pmove::PM_AirMove( void )
 	PM_CheckTerminalVelocity();
 }
 
-static Vector min4x4 = { -8, 0, 0 };
-static Vector max4x4 = { 4, 4, 8 };
-static Vector base_rightfoot_pos = { -5.25301f, -3.10885f, 0 };
-static Vector base_leftfoot_pos = { -0.123711f, 10.4893f, 0 };
+static vec3_t min4x4 = { -8, 0, 0 };
+static vec3_t max4x4 = { 4, 4, 8 };
+static vec3_t base_rightfoot_pos = { -5.25301f, -3.10885f, 0 };
+static vec3_t base_leftfoot_pos = { -0.123711f, 10.4893f, 0 };
 
-bool Pmove::PM_FeetOnGround(const Vector& pos)
+bool Pmove::PM_FeetOnGround(const_vec3r_t pos)
 {
-	Vector start;
-	Vector end;
+	vec3_t start;
+	vec3_t end;
 	trace_t trace;
 
 	VecCopy(pos, start);
@@ -536,14 +538,14 @@ bool Pmove::PM_FeetOnGround(const Vector& pos)
 	return trace.fraction != 1.0f;
 }
 
-bool Pmove::PM_FindBestFallPos(const Vector& pos, Vector& bestdir)
+bool Pmove::PM_FindBestFallPos(const_vec3r_t pos, vec3r_t bestdir)
 { 
 	trace_t trace;
-	Vector ang;
-	Vector dir;
-	Vector start;
-	Vector end;
-	Vector move;
+	vec3_t ang;
+	vec3_t dir;
+	vec3_t start;
+	vec3_t end;
+	vec3_t move;
 	int i;
 	bool set;
 	float radius;
@@ -590,9 +592,9 @@ bool Pmove::PM_FindBestFallPos(const Vector& pos, Vector& bestdir)
 	return true;
 }
 
-void Pmove::PM_CheckFeet(const Vector& vWishdir)
+void Pmove::PM_CheckFeet(const_vec3r_t vWishdir)
 {
-	Vector		temp;
+	vec3_t		temp;
 	trace_t		trace;
 
 	if( pm.stepped )
@@ -628,7 +630,7 @@ void Pmove::PM_CheckFeet(const Vector& vWishdir)
 		pm.ps->feetfalling = 5;
 	}
 
-	VectorMA( pm.ps->origin, 15.0f * pml.frametime, pm.ps->falldir, temp );
+	VectorMA( pm.ps->origin, 15.0f * pml.frametime.count(), pm.ps->falldir, temp );
 
 	pm.traceInterface->trace( &trace, pm.ps->origin, pm.mins, pm.maxs, temp, pm.ps->clientNum, pm.tracemask, true, false );
 	if( trace.fraction == 0 )
@@ -653,9 +655,9 @@ PM_WalkMove
 */
 void Pmove::PM_WalkMove( void ) {
 	int			i;
-	Vector		wishvel;
+	vec3_t		wishvel;
 	float		fmove, smove;
-	Vector		wishdir;
+	vec3_t		wishdir;
 	float		wishspeed;
 	float		scale;
 	usercmd_t	cmd;
@@ -666,15 +668,16 @@ void Pmove::PM_WalkMove( void ) {
 	PM_GetMove( &fmove, &smove );
 
 	cmd = pm.cmd;
-	scale = PM_CmdScale( &cmd );
+	scale = PM_CmdScale(cmd.getMovement());
 
-	if( ( pm.cmd.buttons.flags & BUTTON_RUN ) && fmove && !smove )
+	using namespace ticks;
+	if( ( pm.cmd.getAction().isHeld(UserButtons::Run) ) && fmove && !smove )
 	{
-		pm.ps->pm_time += pml.msec;
+		pm.ps->pm_time += duration_cast<deltaTime16_t>(pml.msec);
 	}
 	else
 	{
-		pm.ps->pm_time = 0;
+		pm.ps->pm_time = deltaTime16_t();
 	}
 
 	// project the forward and right directions onto the ground plane
@@ -721,7 +724,7 @@ void Pmove::PM_WalkMove( void ) {
 	PM_Accelerate( wishdir, wishspeed, accelerate );
 
 	if( pml.groundTrace.surfaceFlags & SURF_SLICK ) {
-		pm.ps->velocity[ 2 ] -= pm.ps->gravity * pml.frametime;
+		pm.ps->velocity[ 2 ] -= pm.ps->gravity * pml.frametime.count();
 	}
 
 	// slide along the ground plane
@@ -775,10 +778,10 @@ void Pmove::PM_NoclipMove()
 	float    control;
 	float    newspeed;
 	int		i;
-	Vector	wishvel;
+	vec3_t	wishvel;
 	float		fmove;
 	float    smove;
-	Vector	wishdir;
+	vec3_t	wishdir;
 	float		wishspeed;
 	float		scale;
 
@@ -800,7 +803,7 @@ void Pmove::PM_NoclipMove()
 		friction = pm_friction * 1.5f;
 
 		control = speed < pm_stopspeed ? pm_stopspeed : speed;
-		drop += control * friction * pml.frametime;
+		drop += control * friction * pml.frametime.count();
 
 		// scale the velocity
 		newspeed = speed - drop;
@@ -815,18 +818,19 @@ void Pmove::PM_NoclipMove()
 
 	// accelerate
 	// allow the player to move twice as fast in noclip
-	scale = PM_CmdScale( &pm.cmd ) * 2;
+	scale = PM_CmdScale(pm.cmd.getMovement()) * 2;
 
 	PM_GetMove( &fmove, &smove );
 
-	pm.ps->pm_time = 0;
+	using namespace ticks;
+	pm.ps->pm_time = deltaTime16_t();
 
 	for( i = 0; i < 3; i++ )
 	{
 		wishvel[ i ] = pml.flat_forward[ i ] * fmove - pml.flat_left[ i ] * smove;
 	}
 
-	wishvel[ 2 ] += pm.cmd.upmove;
+	wishvel[ 2 ] += pm.cmd.getMovement().getUpValue();
 
 	VecCopy( wishvel, wishdir );
 	wishspeed = VectorNormalize( wishdir );
@@ -835,7 +839,7 @@ void Pmove::PM_NoclipMove()
 	PM_Accelerate( wishdir, wishspeed, pm_accelerate );
 
 	// move
-	VectorMA( pm.ps->origin, pml.frametime, pm.ps->velocity, pm.ps->origin );
+	VectorMA( pm.ps->origin, pml.frametime.count(), pm.ps->velocity, pm.ps->origin );
 }
 
 //============================================================================
@@ -942,7 +946,7 @@ PM_CorrectAllSolid
 int Pmove::PM_CorrectAllSolid()
 {
 	int			i, j, k;
-	Vector		point, point2;
+	vec3_t		point, point2;
 	trace_t		trace, trace2;
 
 	if ( pm.debugLevel ) {
@@ -950,9 +954,12 @@ int Pmove::PM_CorrectAllSolid()
 	}
 
 	// jitter around
-	for (i = -1; i <= 1; i++) {
-		for (j = -1; j <= 1; j++) {
-			for (k = -1; k <= 1; k++) {
+	for (i = -1; i <= 1; i++)
+	{
+		for (j = -1; j <= 1; j++)
+		{
+			for (k = -1; k <= 1; k++)
+			{
 				VecCopy(pm.ps->origin, point);
 				point[0] += (float) i;
 				point[1] += (float) j;
@@ -962,7 +969,7 @@ int Pmove::PM_CorrectAllSolid()
 					pm.ps->origin[0] = point[0];
 					pm.ps->origin[1] = point[1];
 					pm.ps->origin[2] = point[2];
-					point2 = point;
+					VectorCopy(point, point2);
 					point2[2] -= 0.25f;
 
 					pm.traceInterface->trace( &trace2, point, pm.mins, pm.maxs, point2, pm.ps->clientNum, pm.tracemask, true, false );
@@ -987,7 +994,7 @@ PM_GroundTrace
 =============
 */
 void Pmove::PM_GroundTrace( void ) {
-	Vector		point;
+	vec3_t		point;
 	trace_t		trace;
 
 	point[ 0 ] = pm.ps->origin[ 0 ];
@@ -1038,7 +1045,7 @@ void Pmove::PM_GroundTrace( void ) {
 	// slopes that are too steep will not be considered onground
 	if( trace.plane.normal[ 2 ] < MIN_WALK_NORMAL )
 	{
-		Vector oldvel;
+		vec3_t oldvel;
 		float d;
 
 		if ( pm.debugLevel ) {
@@ -1046,13 +1053,13 @@ void Pmove::PM_GroundTrace( void ) {
 		}
 
 		VecCopy( pm.ps->velocity, oldvel );
-		VecSet( pm.ps->velocity, 0, 0, -1.0f / pml.frametime );
+		VecSet( pm.ps->velocity, 0, 0, -1.0f / pml.frametime.count());
 		PM_SlideMove( false );
 
 		d = VectorLength( pm.ps->velocity );
 		VecCopy( oldvel, pm.ps->velocity );
 
-		if( d > ( 0.1f / pml.frametime ) )
+		if (d > (0.1f / pml.frametime.count()))
 		{
 			pm.ps->groundEntityNum = ENTITYNUM_NONE;
 			pml.groundPlane = true;
@@ -1092,7 +1099,7 @@ PM_SetWaterLevel	FIXME: avoid this twice?  certainly if not moving
 =============
 */
 void Pmove::PM_SetWaterLevel( void ) {
-	Vector		point;
+	vec3_t		point;
 	int			cont;
 	int			sample1;
 	int			sample2;
@@ -1219,7 +1226,8 @@ void Pmove::PM_Footsteps( void ) {
 	}
 
 	// if not trying to move
-	if ( !pm.cmd.forwardmove && !pm.cmd.rightmove ) {
+	const UserMovementInput& mInput = pm.cmd.getMovement();
+	if ( !mInput.getForwardValue() && !mInput.getRightValue() ) {
 		if (  pm.xyspeed < 5 ) {
 			pm.ps->bobCycle = 0;	// start at beginning of cycle again
 			if ( pm.ps->pm_flags & PMF_DUCKED ) {
@@ -1235,7 +1243,7 @@ void Pmove::PM_Footsteps( void ) {
 	footstep = false;
 
 
-	if( !( pm.cmd.buttons.flags & BUTTON_RUN ) )
+	if (!(pm.cmd.getAction().isHeld(UserButtons::Run)))
 	{
 		bobmove = 0.4f;	// faster speeds bob faster
 
@@ -1246,7 +1254,8 @@ void Pmove::PM_Footsteps( void ) {
 
 	// check for footstep / splash sounds
 	old = pm.ps->bobCycle;
-	pm.ps->bobCycle = (int)( old + bobmove * pml.msec ) & 255;
+	using namespace ticks;
+	pm.ps->bobCycle = (int)( old + bobmove * duration_cast<milliseconds>(pml.msec).count() ) & 255;
 
 	// if we just crossed a cycle boundary, play an apropriate footstep event
 	if ( ( ( old + 64 ) ^ ( pm.ps->bobCycle + 64 ) ) & 128 ) {
@@ -1329,7 +1338,7 @@ This can be used as another entry point when only the viewangles
 are being updated isntead of a full move
 ================
 */
-void Pmove::PM_UpdateViewAngles(playerState_t* ps, const usercmd_t* cmd)
+void Pmove::PM_UpdateViewAngles(playerState_t* ps, const UserMovementInput& mInput)
 {
 	if (ps->pm_flags & PMF_FROZEN)
 	{
@@ -1344,20 +1353,21 @@ void Pmove::PM_UpdateViewAngles(playerState_t* ps, const usercmd_t* cmd)
 	}
 
 	// circularly clamp the angles with deltas
+	const netAngles_t& angles = mInput.getAngles();
 	for (uint8_t i = 0; i < 3; i++)
 	{
-		short temp = cmd->angles[i] + ps->delta_angles[i];
+		short temp = angles[i] + ps->delta_angles[i];
 		if (i == PITCH)
 		{
 			// don't let the player look up or down more than 90 degrees
 			if (temp > 16000)
 			{
-				ps->delta_angles[i] = 16000 - cmd->angles[i];
+				ps->delta_angles[i] = 16000 - angles[i];
 				temp = 16000;
 			}
 			else if (temp < -16000)
 			{
-				ps->delta_angles[i] = -16000 - cmd->angles[i];
+				ps->delta_angles[i] = -16000 - angles[i];
 				temp = -16000;
 			}
 		}
@@ -1376,7 +1386,7 @@ PmoveSingle
 
 void Pmove::moveSingle()
 {
-	Vector tempVec;
+	vec3_t tempVec;
 	bool walking;
 
 	// this counter lets us debug movement problems with a journal
@@ -1395,21 +1405,23 @@ void Pmove::moveSingle()
 	if( pm.ps->pm_type == pmType_e::ClimbWall )
 	{
 		pm.ps->fLeanAngle = 0.0f;
-		pm.cmd.buttons.flags &= ~( BUTTON_LEANLEFT | BUTTON_LEANRIGHT );
+		pm.cmd.getAction().removeButton(UserButtons::LeanLeft);
+		pm.cmd.getAction().removeButton(UserButtons::LeanRight);
 	}
 
 	// clear all pmove local vars
 	memset( &pml, 0, sizeof( pml ) );
 
 	// determine the time
-	pml.msec = pm.cmd.serverTime - pm.ps->commandTime;
-	if ( pml.msec < 1 ) {
-		pml.msec = 1;
-	} else if ( pml.msec > 200 ) {
-		pml.msec = 200;
+	pml.msec = pm.cmd.getServerTime() - time_cast<tickTime_t>(pm.ps->getCommandTime());
+	using namespace ticks;
+	if ( pml.msec < milliseconds(1) ) {
+		pml.msec = milliseconds(1);
+	} else if ( pml.msec > milliseconds(200) ) {
+		pml.msec = milliseconds(200);
 	}
 
-	pm.ps->commandTime = pm.cmd.serverTime;
+	pm.ps->commandTime = time_cast<netTime_t>(pm.cmd.getServerTime());
 
 	// save old org in case we get stuck
 	VecCopy( pm.ps->origin, pml.previous_origin );
@@ -1417,13 +1429,13 @@ void Pmove::moveSingle()
 	// save old velocity for crashlanding
 	VecCopy( pm.ps->velocity, pml.previous_velocity );
 
-	pml.frametime = float(pml.msec * 0.001);
+	pml.frametime = duration_cast<deltaTimeFloat_t>(pml.msec);
 
-	if ((pm.cmd.buttons.flags & (BUTTON_LEANLEFT | BUTTON_LEANRIGHT) &&
-		(pm.cmd.buttons.flags & (BUTTON_LEANLEFT | BUTTON_LEANRIGHT)) != (BUTTON_LEANLEFT | BUTTON_LEANRIGHT))
-		&& canLean(pm.cmd))
+	if (pm.cmd.getAction().checkAnyHeld(UserButtons::LeanLeft, UserButtons::LeanRight) &&
+		!pm.cmd.getAction().checkAllHeld(UserButtons::LeanLeft, UserButtons::LeanRight)
+		&& canLean(pm.cmd.getMovement()))
 	{
-		if( pm.cmd.buttons.flags & BUTTON_LEANLEFT )
+		if(pm.cmd.getAction().isHeld(UserButtons::LeanLeft))
 		{
 			if( pm.ps->fLeanAngle <= -40.0f )
 			{
@@ -1431,8 +1443,8 @@ void Pmove::moveSingle()
 			}
 			else
 			{
-				float fAngle = pml.frametime * ( -40.0f - pm.ps->fLeanAngle );
-				float fLeanAngle = pml.frametime * -4.0f;
+				float fAngle = pml.frametime.count() * ( -40.0f - pm.ps->fLeanAngle );
+				float fLeanAngle = pml.frametime.count() * -4.0f;
 
 				if( fAngle * 10.0f <= fLeanAngle ) {
 					fLeanAngle = fAngle * 10.0f;
@@ -1450,8 +1462,8 @@ void Pmove::moveSingle()
 			else
 			{
 				float fAngle = 40.0f - pm.ps->fLeanAngle;
-				float fLeanAngle = pml.frametime * 4.0f;
-				float fMult = pml.frametime * fAngle;
+				float fLeanAngle = pml.frametime.count() * 4.0f;
+				float fMult = pml.frametime.count() * fAngle;
 
 				if( fLeanAngle <= fMult * 10.0f )
 				{
@@ -1468,11 +1480,11 @@ void Pmove::moveSingle()
 	}
 	else if( pm.ps->fLeanAngle )
 	{
-		float fAngle = pm.ps->fLeanAngle * pml.frametime * 15.0f;
+		float fAngle = pm.ps->fLeanAngle * pml.frametime.count() * 15.0f;
 
 		if( pm.ps->fLeanAngle <= 0.0f )
 		{
-			float fLeanAngle = -4.0f * pml.frametime;
+			float fLeanAngle = -4.0f * pml.frametime.count();
 
 			if( fAngle <= fLeanAngle )
 			{
@@ -1483,7 +1495,7 @@ void Pmove::moveSingle()
 		}
 		else
 		{
-			float fLeanAngle = pml.frametime * 4.0f;
+			float fLeanAngle = pml.frametime.count() * 4.0f;
 
 			if( fLeanAngle <= fAngle ) {
 				fLeanAngle = fAngle;
@@ -1498,7 +1510,8 @@ void Pmove::moveSingle()
 	}
 
 	// update the viewangles
-	PM_UpdateViewAngles( pm.ps, &pm.cmd );
+	UserMovementInput& mInput = pm.cmd.getMovement();
+	PM_UpdateViewAngles(pm.ps, mInput);
 
 	AngleVectorsLeft( pm.ps->viewangles, pml.forward, pml.left, pml.up );
 	VectorClear( tempVec );
@@ -1507,9 +1520,7 @@ void Pmove::moveSingle()
 
 	if (pm.ps->pm_type >= pmType_e::Dead)
 	{
-		pm.cmd.forwardmove = 0;
-		pm.cmd.rightmove = 0;
-		pm.cmd.upmove = 0;
+		mInput.clear();
 		pm.ps->fLeanAngle = 0.0f;
 	}
 
@@ -1559,7 +1570,7 @@ void Pmove::moveSingle()
 	// don't fall down stairs or do really short falls
 	if( !pml.walking && ( walking || ( ( pml.previous_velocity[ 2 ] >= 0 ) && ( pm.ps->velocity[ 2 ] <= 0 ) ) ) )
 	{
-		Vector   point;
+		vec3_t   point;
 		trace_t  trace;
 
 		point[ 0 ] = pm.ps->origin[ 0 ];
@@ -1587,8 +1598,9 @@ void Pmove::moveSingle()
 void Pmove::move_GroundTrace()
 {
 	memset( &pml, 0, sizeof( pml ) );
-	pml.msec = 1;
-	pml.frametime = 0.001f;
+	using namespace ticks;
+	pml.msec = milliseconds(1);
+	pml.frametime = deltaTimeFloat_t(0.001f);
 	PM_CheckDuck();
 	PM_GroundTrace();
 }
@@ -1602,40 +1614,41 @@ Can be called by either the server or the client
 */
 void Pmove::move()
 {
-	unsigned int finalTime = pm.cmd.serverTime;
+	using namespace ticks;
+	const tickTime_t finalTime = pm.cmd.getServerTime();
 
-	if (finalTime < pm.ps->commandTime)
+	if (finalTime < time_cast<tickTime_t>(pm.ps->getCommandTime()))
 	{
 		// should not happen
 		return;
 	}
 
-	if (finalTime > pm.ps->commandTime + 1000) {
-		pm.ps->commandTime = finalTime - 1000;
+	if (finalTime > time_cast<tickTime_t>(pm.ps->getCommandTime() + milliseconds(1000))) {
+		pm.ps->commandTime = time_cast<netTime_t>(finalTime - milliseconds(1000));
 	}
 
 	// chop the move up if it is too long, to prevent framerate
 	// dependent behavior
-	while (pm.ps->commandTime != finalTime) {
-		int		msec;
-
-		msec = finalTime - pm.ps->commandTime;
+	while (pm.ps->getCommandTime() != time_cast<netTime_t>(finalTime))
+	{
+		const tickTime_t commandTime = time_cast<tickTime_t>(pm.ps->getCommandTime());
+		deltaTime_t msec = duration_cast<deltaTime_t>(finalTime - commandTime);
 
 		if (pm.pmove_fixed)
 		{
-			if (msec > pm.pmove_msec) {
-				msec = pm.pmove_msec;
+			if (msec > milliseconds(pm.pmove_msec)) {
+				msec = milliseconds(pm.pmove_msec);
 			}
 		}
-		else if (msec > 66) {
-			msec = 66;
+		else if (msec > milliseconds(66)) {
+			msec = milliseconds(66);
 		}
 
-		pm.cmd.serverTime = pm.ps->commandTime + msec;
+		pm.cmd.setServerTime(commandTime + msec);
 		moveSingle();
 	}
 }
-void Pmove::moveAdjustViewAngleSettings_OnLadder(Vector& vViewAngles, Vector& vAngles, playerState_t *pPlayerState, entityState_t *pEntState)
+void Pmove::moveAdjustViewAngleSettings_OnLadder(vec3r_t vViewAngles, vec3r_t vAngles, playerState_t *pPlayerState, entityState_t *pEntState)
 {
 	float fDelta;
 	float deltayaw;
@@ -1679,10 +1692,10 @@ void Pmove::moveAdjustViewAngleSettings_OnLadder(Vector& vViewAngles, Vector& vA
 	}
 }
 
-void Pmove::moveAdjustAngleSettings(Vector& vViewAngles, Vector& vAngles, playerState_t *pPlayerState, entityState_t *pEntState)
+void Pmove::moveAdjustAngleSettings(vec3r_t vViewAngles, vec3r_t vAngles, playerState_t *pPlayerState, entityState_t *pEntState)
 {
-	Vector temp, temp2;
-	Vector armsAngles, torsoAngles, headAngles;
+	vec3_t temp, temp2;
+	vec3_t armsAngles, torsoAngles, headAngles;
 	float fTmp;
 
 	if( pPlayerState->pm_type == pmType_e::ClimbWall )
@@ -1769,20 +1782,20 @@ void Pmove::moveAdjustAngleSettings(Vector& vViewAngles, Vector& vAngles, player
 	QuatSet( pEntState->bone_quat[ PELVIS_TAG ], 0, 0, 0, 1 );
 }
 
-void Pmove::moveAdjustAngleSettings_Client(Vector& vViewAngles, Vector& vAngles, playerState_t *pPlayerState, entityState_t *pEntState)
+void Pmove::moveAdjustAngleSettings_Client(vec3r_t vViewAngles, vec3r_t vAngles, playerState_t *pPlayerState, entityState_t *pEntState)
 {
-	//Vector torsoAngles, headAngles;
+	//vec3_t torsoAngles, headAngles;
 
 	// called by cgame
 	// FIXME
 }
 
-bool Pmove::canLean(const usercmd_t& cmd)
+bool Pmove::canLean(const UserMovementInput& mInput)
 {
 	// a new setting since SH that allow leaning while moving
-	return (!cmd.forwardmove || canLeanWhileMoving)
-		&& (!cmd.rightmove || canLeanWhileMoving)
-		&& (!cmd.upmove || canLeanWhileMoving);
+	return (!mInput.getForwardValue() || canLeanWhileMoving)
+		&& (!mInput.getRightValue() || canLeanWhileMoving)
+		&& (!mInput.getUpValue() || canLeanWhileMoving);
 }
 
 bool Pmove::shouldClearLean()

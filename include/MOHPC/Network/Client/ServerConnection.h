@@ -7,9 +7,11 @@
 #include "../Remote/Channel.h"
 #include "../Remote/Encoding.h"
 #include "../Remote/Ops.h"
+#include "../Remote/Chain.h"
 #include "../Configstring.h"
 #include "../Parsing/String.h"
 #include "../Parsing/Hash.h"
+#include "../Parsing/Input.h"
 #include "../Types/Snapshot.h"
 #include "../../Utility/HandlerList.h"
 #include "../../Utility/Info.h"
@@ -24,6 +26,7 @@
 #include "DownloadManager.h"
 #include "UserInfo.h"
 #include "Imports.h"
+#include "InputModule.h"
 #include "Packet.h"
 #include "GameState.h"
 #include "ServerSnapshot.h"
@@ -48,9 +51,6 @@ namespace MOHPC
 
 		class Event;
 		class IClientGameProtocol;
-
-		/** Previously 128, the number has been doubled. */
-		static constexpr unsigned long MAX_PACKET_USERCMDS = 32;
 
 		class INetchan;
 		struct gameState_t;
@@ -88,73 +88,10 @@ namespace MOHPC
 			struct LocationPrint : public HandlerNotifyBase<void(uint16_t x, uint16_t y, const char* message)> {};
 
 			/**
-			 * This callback is used to modify the player input before sending.
-			 *
-			 * @param	cmd		User command structure.
-			 * @param	eyes	Eyes information.
-			 */
-			struct UserInput : public HandlerNotifyBase<void(usercmd_t& cmd, usereyes_t& eyes)> {};
-
-			/**
 			 * Called just before writing a packet and sending it.
 			 */
 			struct PreWritePacket : public HandlerNotifyBase<void()> {};
 		}
-
-		class PacketHeaderWriter
-		{
-		public:
-			PacketHeaderWriter(const ServerGameState& clGameStateRef, const ICommandSequence& serverCommandsRef, uint32_t serverMessageSequenceValue);
-
-			void write(MSG& msg);
-
-		private:
-			const ICommandSequence& serverCommands;
-			const ServerGameState& clGameState;
-			uint32_t serverMessageSequence;
-		};
-
-		class ReliableCommandsWriter
-		{
-		public:
-			ReliableCommandsWriter(const IReliableSequence& reliableCommandsRef, const Parsing::IString& stringParserRef);
-
-			void write(MSG& msg);
-
-		private:
-			const IReliableSequence& reliableCommands;
-			const Parsing::IString& stringParser;
-		};
-
-		class UserInputWriter
-		{
-		public:
-			UserInputWriter(
-				const UserInput& userInputRef,
-				OutgoingPackets& outPacketsRef,
-				const ServerSnapshotManager& clSnapshotManRef,
-				const Parsing::IHash& hasherRef,
-				const ICommandSequence* serverCommandsPtr,
-				const ServerGameState& clGameStateRef
-			);
-
-			void write(MSG& msg, uint64_t currentTime, uint32_t outgoingSequence, uint32_t serverMessageSequence);
-
-		private:
-			clc_ops_e getClientOperation(uint32_t serverMessageSequence) const;
-			uint32_t getCommandHashKey(uint32_t serverMessageSequence) const;
-			uint8_t getNumCommandsToWrite(uint32_t oldPacketNum) const;
-			void writeAllCommands(MSG& msg, const usercmd_t*& oldcmd, size_t count, uint32_t key);
-			void storeOutputPacket(uint64_t currentTime, uint32_t serverTime, uint32_t outgoingSequence);
-
-		private:
-			const UserInput& userInput;
-			OutgoingPackets& outPackets;
-			const ServerSnapshotManager& clSnapshotMan;
-			const Parsing::IHash& hasher;
-			const ICommandSequence* serverCommands;
-			const ServerGameState& clGameState;
-		};
 
 		class MOHPC_NET_EXPORTS clientGameSettings_t
 		{
@@ -167,38 +104,65 @@ namespace MOHPC
 			/** Set the maximum number of packets that can be sent per second, in the range of [1, 125]. */
 			void setMaxPackets(uint32_t inMaxPackets);
 
-			/** Return the maximum number of packets that can be processed at once in once tick. */
-			uint32_t getMaxTickPackets() const;
-
-			/** Set the maximum number of packets that can be sent processed at once in one tick, in the range of [1, 1000]. */
-			void setMaxTickPackets(uint32_t inMaxPackets);
-
-			/** Set the maximum radar bounds. The default value is 1024. */
-			void setRadarRange(float value);
-
-			/** Return the radar range. */
-			float getRadarRange() const;
-
-			void setTimeNudge(uint32_t value);
-			uint32_t getTimeNudge() const;
-
 		private:
 			uint32_t maxPackets;
-			uint32_t maxTickPackets;
-			float radarRange;
-			uint32_t timeNudge;
 		};
 
 		class ClientConnectionlessHandler
 		{
 		public:
-			void handle(const IRemoteIdentifierPtr& from, MSG& msg);
+			void handle(MSG& msg);
+		};
+
+		using ChannelCallback = std::function<void(IMessageStream& stream, uint32_t sequenceNum)>;
+		class ServerChannel
+		{
+		public:
+			ServerChannel(const INetchanPtr& netchanPtr, const IRemoteIdentifierPtr& adrPtr);
+
+			/**
+			 * Set the maximum number of packets that can be sent processed at once.
+			 * @param maxPackets the maximum number of packets to process.
+			 *  Use a value that isn't too high to avoid high processing time.
+			 */
+			MOHPC_NET_EXPORTS void setMaxPackets(uint32_t maxPackets);
+
+			/** Return the maximum number of packets that can be processed at once. */
+			MOHPC_NET_EXPORTS uint32_t getMaxPackets() const;
+
+			/**
+			 * Return whether or not the current channel is valid.
+			 * An invalid channel means no more connection to the server.
+			 */
+			MOHPC_NET_EXPORTS bool isChannelValid() const;
+
+			/** Return the network channel associated with the server channel. */
+			const INetchanPtr& getNetchan() const;
+
+			/** Return the IP address of the channel connection. */
+			const IRemoteIdentifierPtr& getAddress() const;
+
+			/**
+			 * Fetch and process pending packets.
+			 * @param from Packets to process from
+			 * @param callback The function to call for each received packets.
+			 */
+			void process(const ChannelCallback& callback);
+
+			/** Transmit data to the remote server. */
+			void transmit(IMessageStream& stream);
+
+			/** This clear the network channel, which will wipe the connection to the server if there are no more references to the channel. */
+			void wipeChannel();
+
+		private:
+			INetchanPtr netchan;
+			IRemoteIdentifierPtr adr;
+			uint32_t maxPacketsAtOnce;
 		};
 
 		/**
-		 * Client game connection class.
-		 *
-		 * Maintains a connection to a server.
+		 * Maintains a connection to a server. Keeps track of the game state and commands.
 		 *
 		 * Call markReady() method to allow client to send user input to server, making it enter the game.
 		 */
@@ -215,7 +179,6 @@ namespace MOHPC
 				FunctionList<ClientHandlers::Error> errorHandler;
 				FunctionList<ClientHandlers::CenterPrint> centerPrintHandler;
 				FunctionList<ClientHandlers::LocationPrint> locationPrintHandler;
-				FunctionList<ClientHandlers::UserInput> userInputHandler;
 				FunctionList<ClientHandlers::PreWritePacket> preWritePacketHandler;
 			};
 
@@ -233,20 +196,25 @@ namespace MOHPC
 
 			// ITickable
 			// ~
-			void tick(uint64_t deltaTime, uint64_t currentTime) override;
+			void tick(deltaTime_t deltaTime, tickTime_t currentTime) override;
 			// ~
 
 			/**
-			 * Get the timeout timer for the client.
+			 * Return the protocol type for this server connection.
 			 */
+			MOHPC_NET_EXPORTS const protocolType_c& getProtocolType() const;
+
+			/** Get the timeout timer for the client. */
 			MOHPC_NET_EXPORTS TimeoutTimer& getTimeoutTimer();
 			MOHPC_NET_EXPORTS const TimeoutTimer& getTimeoutTimer() const;
 
-			/** Return the client time that manages client and remote time. */
-			MOHPC_NET_EXPORTS const ClientTime& getClientTime() const;
+			/** Return the server channel associated with the connection. */
+			MOHPC_NET_EXPORTS const ServerChannel& getServerChannel() const;
+			MOHPC_NET_EXPORTS ServerChannel& getServerChannel();
 
 			/** Return the client time that manages client and remote time. */
-			MOHPC_NET_EXPORTS const UserInput& getUserInput() const;
+			MOHPC_NET_EXPORTS const ClientTime& getClientTime() const;
+			MOHPC_NET_EXPORTS ClientTime& getClientTime();
 
 			/**
 			 * Return a reference to the class that manages remote command.
@@ -263,9 +231,6 @@ namespace MOHPC
 			/** Return the handler list. */
 			MOHPC_NET_EXPORTS HandlerListClient& getHandlerList();
 
-			/** Return the IP address of the remote server. */
-			const IRemoteIdentifierPtr& getRemoteAddress() const;
-
 			/** Retrieve the current game state. */
 			MOHPC_NET_EXPORTS ServerGameState& getGameState();
 			MOHPC_NET_EXPORTS const ServerGameState& getGameState() const;
@@ -273,13 +238,17 @@ namespace MOHPC
 			/** Retrieve the CGame module. */
 			MOHPC_NET_EXPORTS CGame::ModuleBase* getCGModule();
 
+			/** Return the chain for transmission/receive. */
+			MOHPC_NET_EXPORTS const IChainPtr& getChain();
+			MOHPC_NET_EXPORTS void setChain(const IChainPtr& chain);
+
 			/** Return read-only user info. */
 			MOHPC_NET_EXPORTS ConstUserInfoPtr getUserInfo() const;
 
 			/** Return modifiable user info. */
 			MOHPC_NET_EXPORTS const UserInfoPtr& getUserInfo();
 
-			/** Send the server a new user info string. Must be called when done modifying the userinfo. */
+			/** Send the server a new user info string. Must be called after modifying the userinfo. */
 			MOHPC_NET_EXPORTS void updateUserInfo();
 
 			/** Return the settings that the connection is using. */
@@ -298,13 +267,13 @@ namespace MOHPC
 
 			/**
 			 * Return the current reliable sequence (the latest command number on the client).
-			 * Use this to enqueue a new command (reliable).
+			 * Use this to enqueue a new (reliable) command.
 			 */
 			MOHPC_NET_EXPORTS IReliableSequence* getReliableSequence();
 			MOHPC_NET_EXPORTS const IReliableSequence* getReliableSequence() const;
 
-			/** Return the client challenge. */
-			MOHPC_NET_EXPORTS uint32_t getChallenge() const;
+			MOHPC_NET_EXPORTS const IUserInputModulePtr& getInputModule() const;
+			MOHPC_NET_EXPORTS void setInputModule(const IUserInputModulePtr& inputModulePtr);
 
 			/**
 			 * Disconnect the client.
@@ -312,42 +281,26 @@ namespace MOHPC
 			 */
 			MOHPC_NET_EXPORTS void disconnect();
 
-			/**
-			 * Return whether or not an user cmd can be created.
-			 */
-			MOHPC_NET_EXPORTS bool canCreateCommand() const;
-
-			/**
-			 * Mark the client as ready (to send commands). Useful for loading maps.
-			 */
-			MOHPC_NET_EXPORTS void markReady();
-
-			/**
-			 * Make the client not ready (won't send new commands anymore).
-			 */
-			MOHPC_NET_EXPORTS void unmarkReady();
-
 		private:
-			const INetchanPtr& getNetchan() const;
-			void receive(const IRemoteIdentifierPtr& from, MSG& msg, uint64_t currentTime, uint32_t sequenceNum);
-			void wipeChannel();
-			bool isChannelValid() const;
+			void receive(MSG& msg, tickTime_t currentTime, uint32_t sequenceNum);
+			void sequenceReceived(tickTime_t currentTime, IMessageStream& stream, uint32_t sequenceNum);
 			void disconnectCommand(TokenParser& tokenized);
 			void serverDisconnected(const char* reason);
 			void terminateConnection(const char* reason);
 
-			void parseServerMessage(MSG& msg, uint64_t currentTime);
+			void parseServerMessage(MSG& msg, tickTime_t currentTime, uint32_t sequenceNum);
 			void parseCommandString(MSG& msg);
 			void parseCenterprint(MSG& msg);
 			void parseLocprint(MSG& msg);
 
-			void setCGameTime(uint64_t currentTime);
-			void initSnapshot();
+			void setCGameTime(tickTime_t currentTime, uint32_t sequenceNum);
+			void initSnapshot(uint32_t sequenceNum);
 
-			bool readyToSendPacket(uint64_t currentTime) const;
-			bool sendCmd(uint64_t currentTime);
+			bool readyToSendPacket(tickTime_t currentTime) const;
+			//bool sendCmd(uint64_t currentTime);
 
-			void writePacket(uint64_t currentTime);
+			void writePacket(tickTime_t currentTime, uint32_t sequenceNum);
+			uint32_t getCommandHashKey(uint32_t serverMessageSequence) const;
 
 		private:
 			CommandTemplate<ServerConnection, &ServerConnection::disconnectCommand> disconnectHandler;
@@ -356,25 +309,27 @@ namespace MOHPC
 			CGame::ModuleBase* cgameModule;
 			const Parsing::IString* stringParser;
 			const Parsing::IHash* hashParser;
+			const Parsing::IPacketHeader* packetHeaderStream;
+			const Parsing::IRemoteCommand* remoteCommandStream;
+			IUserInputModulePtr inputModule;
 			CommandManager remoteCommandManager;
-			IRemoteIdentifierPtr adr;
-			INetchanPtr netchan;
+			ServerChannel serverChannel;
 			UserInfoPtr userInfo;
 			IReliableSequence* reliableCommands;
 			ICommandSequence* serverCommands;
+			IChainPtr chain;
 			ClientTime clientTime;
-			UserInput input;
 			TimeoutTimer timeout;
 			ServerGameState clGameState;
 			ServerSnapshotManager clSnapshotManager;
 			clientGameSettings_t settings;
 			DownloadManager downloadState;
 			OutgoingPackets outPackets;
-			uint64_t lastPacketSendTime;
+			usereyes_t oldeyes;
+			tickTime_t lastPacketSendTime;
 			uint32_t serverMessageSequence;
-			uint32_t challenge;
+			protocolType_c protocolType;
 			bool isActive : 1;
-			bool isReady : 1;
 		};
 
 		using ServerConnectionPtr = SharedPtr<ServerConnection>;

@@ -41,12 +41,12 @@ void Info::SetValueForKey(const char* key, const char* value)
 	}
 
 	// append at the end
-	const size_t keyLen = str::len(key);
+	const size_t keyLen = strHelpers::len(key);
 
 	// remove existing key
 	RemoveKey(key, keyLen);
 
-	const size_t valueLen = str::len(value);
+	const size_t valueLen = strHelpers::len(value);
 	const size_t sizeNoNul = (size ? size - 1 : 0);
 	const size_t newsz = sizeNoNul + 1 + keyLen + 1 + valueLen + 1;
 
@@ -82,7 +82,7 @@ void Info::SetValueForKey(const char* key, const char* value)
 
 void Info::RemoveKey(const char* key)
 {
-	RemoveKey(key, str::len(key));
+	RemoveKey(key, strHelpers::len(key));
 }
 
 void Info::RemoveKey(const char* key, size_t keyLen)
@@ -111,7 +111,7 @@ void Info::RemoveKey(const char* key, size_t keyLen)
 		while (*endValue && *endValue != '\\') ++endValue;
 
 		const size_t ckeyLen = endKey - pkey;
-		if (keyLen == ckeyLen && !str::cmpn(pkey, key, ckeyLen))
+		if (keyLen == ckeyLen && !strHelpers::cmpn(pkey, key, ckeyLen))
 		{
 			const size_t len = endValue - startKey;
 			memmove(startKey, endValue, keyBuffer + size - endValue);
@@ -141,7 +141,7 @@ str Info::ValueForKey(const char* key) const
 
 		while (*endValue && *endValue != '\\') ++endValue;
 
-		if (!str::cmpn(pkey, key, endKey - pkey))
+		if (!strHelpers::cmpn(pkey, key, endKey - pkey))
 		{
 			return str(
 				startValue,
@@ -158,17 +158,17 @@ str Info::ValueForKey(const char* key) const
 
 bool MOHPC::Info::BoolValueForKey(const char* key) const
 {
-	return atoi(ValueForKey("key")) ? true : false;
+	return atoi(ValueForKey("key").c_str()) ? true : false;
 }
 
 uint32_t Info::IntValueForKey(const char* key) const
 {
-	return atoi(ValueForKey("key"));
+	return atoi(ValueForKey("key").c_str());
 }
 
 uint64_t Info::LongValueForKey(const char* key) const
 {
-	return atoll(ValueForKey("key"));
+	return atoll(ValueForKey("key").c_str());
 }
 
 const char* Info::GetString() const
@@ -238,7 +238,7 @@ const char* ReadOnlyInfo::ValueForKey(const char* key, size_t& outLen) const
 	const char* pkey = keyBuffer;
 	const char* endBuf = keyBuffer + size;
 
-	const size_t myKeyLen = str::len(key);
+	const size_t myKeyLen = strHelpers::len(key);
 
 	outLen = 0;
 
@@ -258,7 +258,7 @@ const char* ReadOnlyInfo::ValueForKey(const char* key, size_t& outLen) const
 		const size_t keyLen = endKey - pkey;
 		if (keyLen > 0)
 		{
-			if (keyLen == myKeyLen && !str::cmpn(pkey, key, keyLen))
+			if (keyLen == myKeyLen && !strHelpers::cmpn(pkey, key, keyLen))
 			{
 				outLen = endValue - startValue;
 				return startValue;
@@ -273,17 +273,17 @@ const char* ReadOnlyInfo::ValueForKey(const char* key, size_t& outLen) const
 
 bool ReadOnlyInfo::BoolValueForKey(const char* key) const
 {
-	return atoi(ValueForKey("key")) ? true : false;
+	return atoi(ValueForKey("key").c_str()) ? true : false;
 }
 
 uint32_t ReadOnlyInfo::IntValueForKey(const char* key) const
 {
-	return atoi(ValueForKey(key));
+	return atoi(ValueForKey(key).c_str());
 }
 
 uint64_t ReadOnlyInfo::LongValueForKey(const char* key) const
 {
-	return atoll(ValueForKey(key));
+	return atoll(ValueForKey(key).c_str());
 }
 
 const char* ReadOnlyInfo::GetString() const

@@ -2,6 +2,8 @@
 
 #include "Common/Common.h"
 
+#include <cassert>
+
 using namespace MOHPC;
 using namespace MOHPC::Network;
 
@@ -10,7 +12,7 @@ static constexpr char MOHPC_LOG_NAMESPACE[] = "test_gamestate";
 void assertConfigString(const ConfigStringManager& csMan, csNum_t num, const char* expected)
 {
 	const char* cs = csMan.getConfigString(num);
-	assert(!str::cmp(cs, expected));
+	assert(!strHelpers::cmp(cs, expected));
 }
 
 void testConfigstring(gameState_t& gs)

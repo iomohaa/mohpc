@@ -101,8 +101,8 @@ const PropertyObject& UserInfo::getPropertyObject() const
 void ClientInfoHelper::fillInfoString(const UserInfo& userInfo, Info& info)
 {
 	// Build mandatory variables
-	info.SetValueForKey("rate", str::printf("%i", userInfo.getRate()));
-	info.SetValueForKey("snaps", str::printf("%i", userInfo.getSnaps()));
+	info.SetValueForKey("rate", std::to_string(userInfo.getRate()).c_str());
+	info.SetValueForKey("snaps", std::to_string(userInfo.getSnaps()).c_str());
 	info.SetValueForKey("name", userInfo.getName());
 
 	// Build miscellaneous values
@@ -110,7 +110,7 @@ void ClientInfoHelper::fillInfoString(const UserInfo& userInfo, Info& info)
 	{
 		info.SetValueForKey(
 			it.key().GetFullPropertyName(),
-			it.value()
+			it.value().c_str()
 		);
 	}
 }

@@ -521,52 +521,5 @@ public:
 
 		virtual ~MsgBaseHelper() = default;
 	};
-
-	class MOHPC_UTILITY_EXPORTS MsgTypesHelper : public MsgBaseHelper
-	{
-	public:
-		MsgTypesHelper(MSG& inMsg)
-			: MsgBaseHelper(inMsg)
-		{}
-
-		/** Read a coordinate value. */
-		float ReadCoord();
-
-		/** Read a coordinate value. */
-		float ReadCoordSmall();
-
-		/** Read a coordinate value. */
-		int32_t ReadDeltaCoord(uint32_t offset);
-
-		/** Read a coordinate value. */
-		int32_t ReadDeltaCoordExtra(uint32_t offset);
-
-		/** Read a coordinate value. */
-		Vector ReadVectorCoord();
-
-		/** Read a coordinate value. */
-		Vector ReadVectorFloat();
-
-		/** Read a coordinate value. */
-		Vector ReadDir();
-
-		/** Write a coordinate value. */
-		void WriteCoord(float value);
-
-		/** Write a coordinate value. */
-		void WriteCoordSmall(float value);
-
-		/** Read a coordinate value. */
-		void WriteDeltaCoord(uint32_t from, uint32_t to);
-
-		/** Read a coordinate value. */
-		void WriteDeltaCoordExtra(uint32_t from, uint32_t to);
-
-		/** Write a coordinate value. */
-		void WriteVectorCoord(Vector& value);
-
-		/** Write a coordinate value. */
-		void WriteDir(Vector& dir);
-	};
 };
 

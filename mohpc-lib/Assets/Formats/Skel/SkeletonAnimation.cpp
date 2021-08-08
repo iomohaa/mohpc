@@ -3,6 +3,7 @@
 #include <MOHPC/Utility/Misc/MSG/Stream.h>
 #include <MOHPC/Files/Managers/FileManager.h>
 #include <MOHPC/Utility/Misc/Endian.h>
+#include <MOHPC/Utility/Misc/EndianCoordHelpers.h>
 #include "SkelPrivate.h"
 #include "../TIKI/TIKI_Private.h"
 
@@ -232,7 +233,7 @@ void SkeletonAnimation::ConvertSkelFileToGame(const File_AnimDataHeader *pHeader
 		return;
 	}
 
-	m_frame.SetNumObjects(numFrames);
+	m_frame.resize(numFrames);
 
 	const uint32_t numChannels = Endian.LittleInteger(pHeader->numChannels);
 	AnimFrame* pGameFrame = &m_frame[0];
@@ -262,7 +263,7 @@ void SkeletonAnimation::ConvertSkelFileToGame(const File_AnimDataHeader *pHeader
 
 	flags = Endian.LittleInteger(pHeader->flags);
 	frameTime = Endian.LittleFloat(pHeader->frameTime);
-	totalDelta = LittleSkelVec(pHeader->totalDelta);
+	EndianHelpers::LittleVector(Endian, (float*)pHeader->totalDelta, totalDelta);
 	totalAngleDelta = Endian.LittleFloat(pHeader->totalAngleDelta);
 	ary_channels.resize(numChannels);
 
@@ -730,9 +731,9 @@ float SkeletonAnimation::GetFrameTime() const
 	return frameTime;
 }
 
-Vector SkeletonAnimation::GetDelta() const
+const_vec3p_t SkeletonAnimation::GetDelta() const
 {
-	return Vector(totalDelta[0], totalDelta[1], totalDelta[2]);
+	return totalDelta;
 }
 
 bool SkeletonAnimation::HasDelta() const
@@ -762,7 +763,7 @@ int32_t SkeletonAnimation::GetFlagsSkel() const
 	return flagsSkel;
 }
 
-void SkeletonAnimation::GetBounds(Vector& OutMins, Vector& OutMaxs) const
+void SkeletonAnimation::GetBounds(vec3r_t OutMins, vec3r_t OutMaxs) const
 {
 	OutMins[0] = bounds[0][0];
 	OutMins[1] = bounds[0][1];

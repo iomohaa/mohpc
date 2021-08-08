@@ -5,6 +5,8 @@
 #include "../Skel/SkelPrivate.h"
 #include <cstring>
 
+#include "../../../Common/VectorPrivate.h"
+
 static constexpr char MOHPC_LOG_NAMESPACE[] = "tikifiles";
 
 using namespace MOHPC;
@@ -78,12 +80,12 @@ void TIKI::LoadAnim(const TIKIAnim* ptikianim)
 		{
 			for (uintptr_t j = 0; j < panimdef->server_cmds.size(); j++)
 			{
-				FixFrameNum(ptikianim, animData, &panimdef->server_cmds[j], panimdef->alias.c_str());
+				FixFrameNum(ptikianim, animData, const_cast<TIKIAnim::Command*>(&panimdef->server_cmds[j]), panimdef->alias.c_str());
 			}
 
 			for (uintptr_t j = 0; j < panimdef->client_cmds.size(); j++)
 			{
-				FixFrameNum(ptikianim, animData, &panimdef->client_cmds[j], panimdef->alias.c_str());
+				FixFrameNum(ptikianim, animData, const_cast<TIKIAnim::Command*>(&panimdef->client_cmds[j]), panimdef->alias.c_str());
 			}
 		}
 	}
@@ -101,7 +103,7 @@ bool MOHPC::TIKI::LoadTIKIAnim(const char* Filename, dloaddef_t* ld)
 	ld->path = Filename;
 
 	const char* token = ld->tikiFile->GetToken(true);
-	if (str::cmp(token, TIKI_HEADER))
+	if (strHelpers::cmp(token, TIKI_HEADER))
 	{
 		MOHPC_LOG(Error, "TIKI_LoadTIKIfile: def file %s has wrong header (%s should be %s)", ld->tikiFile->Filename(), token, TIKI_HEADER);
 
@@ -116,7 +118,7 @@ bool MOHPC::TIKI::LoadTIKIAnim(const char* Filename, dloaddef_t* ld)
 	{
 		token = ld->tikiFile->GetToken(true);
 
-		if (!str::icmp(token, "setup"))
+		if (!strHelpers::icmp(token, "setup"))
 		{
 			if (!ParseSetup(ld))
 			{
@@ -124,15 +126,15 @@ bool MOHPC::TIKI::LoadTIKIAnim(const char* Filename, dloaddef_t* ld)
 				throw TIKIError::BadSetup();
 			}
 		}
-		else if (!str::icmp(token, "init"))
+		else if (!strHelpers::icmp(token, "init"))
 		{
 			ParseInit(ld);
 		}
-		else if (!str::icmp(token, "animations"))
+		else if (!strHelpers::icmp(token, "animations"))
 		{
 			ParseAnimations(ld);
 		}
-		else if (!str::icmp(token, "includes"))
+		else if (!strHelpers::icmp(token, "includes"))
 		{
 			if (!ld->bInIncludesSection)
 			{
@@ -147,11 +149,11 @@ bool MOHPC::TIKI::LoadTIKIAnim(const char* Filename, dloaddef_t* ld)
 				);
 			}
 		}
-		else if (!str::icmp(token, "}") && ld->bInIncludesSection)
+		else if (!strHelpers::icmp(token, "}") && ld->bInIncludesSection)
 		{
 			ld->bInIncludesSection = false;
 		}
-		else if (!str::icmp(token, "/*QUAKED"))
+		else if (!strHelpers::icmp(token, "/*QUAKED"))
 		{
 			ParseQuaked(ld);
 		}
@@ -177,11 +179,14 @@ bool MOHPC::TIKI::LoadTIKIAnim(const char* Filename, dloaddef_t* ld)
 		TIKIAnim* const TikiAnim = InitTiki(ld);
 		if (TikiAnim)
 		{
-			const Vector tempVec = TikiAnim->maxs - TikiAnim->mins;
-			if (tempVec.length() > 100000.0f)
+			constexpr float maxLength = 100000.0f;
+			constexpr float maxLengthSquared = maxLength * maxLength;
+
+			const Eigen::Vector3f tempVec = castVector(TikiAnim->maxs) - castVector(TikiAnim->mins);
+			if (tempVec.squaredNorm() > maxLengthSquared)
 			{
-				TikiAnim->mins = Vector(-4.f, -4.f, -4.f);
-				TikiAnim->maxs = Vector(4.f, 4.f, 4.f);
+				castVector(TikiAnim->mins) = Eigen::Vector3f(-4.f, -4.f, -4.f);
+				castVector(TikiAnim->maxs) = Eigen::Vector3f(4.f, 4.f, 4.f);
 			}
 
 			tikianim = TikiAnim;
@@ -203,7 +208,7 @@ bool MOHPC::TIKI::LoadTIKIAnim(const char* Filename, dloaddef_t* ld)
 
 bool TIKI::LoadTIKIModel(const char* Filename, const dloaddef_t* ld)
 {
-	mfuse::con::Container<dloadsurface_t> loadsurfaces;
+	std::vector<dloadsurface_t> loadsurfaces;
 	LoadSetup(Filename, ld, loadsurfaces);
 
 	if (!meshes.size())
@@ -233,11 +238,11 @@ bool TIKI::LoadTIKIModel(const char* Filename, const dloaddef_t* ld)
 		dloadsurface_t* loadsurf = &loadsurfaces[i];
 		bool bFound = false;
 
-		const char* strptr = str::findchar(loadsurf->name.c_str(), '*');
+		const char* strptr = strHelpers::find(loadsurf->name.c_str(), "*");
 
 		size_t surfOffset = 0;
 
-		if (strptr || !str::icmp(loadsurf->name.c_str(), "all"))
+		if (strptr || !strHelpers::icmp(loadsurf->name.c_str(), "all"))
 		{
 			for (size_t j = 0; j < meshes.size(); j++)
 			{
@@ -251,8 +256,8 @@ bool TIKI::LoadTIKIModel(const char* Filename, const dloaddef_t* ld)
 
 					if ((strptr
 						&& strptr != loadsurf->name.c_str()
-						&& !str::icmpn(loadsurf->name.c_str(), surf->name.c_str(), strptr - loadsurf->name.c_str()))
-						|| !str::icmp(loadsurf->name.c_str(), "all"))
+						&& !strHelpers::icmpn(loadsurf->name.c_str(), surf->name.c_str(), strptr - loadsurf->name.c_str()))
+						|| !strHelpers::icmp(loadsurf->name.c_str(), "all"))
 					{
 						SetupIndividualSurface(tikianim->name.c_str(), tikiSurf, surf->name.c_str(), loadsurf);
 						bFound = true;
@@ -276,7 +281,7 @@ bool TIKI::LoadTIKIModel(const char* Filename, const dloaddef_t* ld)
 				{
 					Skeleton::Surface* surf = &mesh->Surfaces[k];
 
-					if (!str::icmp(loadsurf->name.c_str(), surf->name.c_str()))
+					if (!strHelpers::icmp(loadsurf->name.c_str(), surf->name.c_str()))
 					{
 						SetupIndividualSurface(tikianim->name.c_str(), tikiSurf, surf->name.c_str(), loadsurf);
 						if (!tikiSurf->name[0])
@@ -344,7 +349,7 @@ TIKIAnim *TIKI::InitTiki(dloaddef_t *ld)
 		}
 	}
 
-	mfuse::con::Container<size_t> order;
+	std::vector<size_t> order;
 	GetAnimOrder(ld, order);
 
 	const size_t numAnims = ld->loadanims.size();
@@ -377,7 +382,7 @@ TIKIAnim *TIKI::InitTiki(dloaddef_t *ld)
 		animdef.flags = anim->flags;
 		animdef.animData = data;
 
-		if (!str::icmp(animdef.alias.c_str(), "idle"))
+		if (!strHelpers::icmp(animdef.alias.c_str(), "idle"))
 		{
 			data->GetBounds(panim->mins, panim->maxs);
 			bModelBoundsSet = true;

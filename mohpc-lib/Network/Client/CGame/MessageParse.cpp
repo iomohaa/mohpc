@@ -3,6 +3,7 @@
 #include <MOHPC/Network/Client/CGame/Effect.h>
 #include <MOHPC/Common/Vector.h>
 #include <MOHPC/Utility/Misc/MSG/MSG.h>
+#include <MOHPC/Utility/Misc/MSG/MSGCoord.h>
 
 #include <MOHPC/Network/Client/CGame/MessageInterfaces/IBullet.h>
 #include <MOHPC/Network/Client/CGame/MessageInterfaces/IEffect.h>
@@ -26,32 +27,35 @@ public:
 
 	void impactMelee()
 	{
-		MsgTypesHelper msgHelper(msg);
+		MsgCoordHelper msgHelper(msg);
 
-		const Vector vecStart = msgHelper.ReadVectorCoord();
-		const Vector vecEnd = msgHelper.ReadVectorCoord();
+		vec3_t start, end;
+		msgHelper.ReadVectorCoord(start);
+		msgHelper.ReadVectorCoord(end);
 
-		interfaces.impact->MeleeImpact(vecStart, vecEnd);
+		interfaces.impact->MeleeImpact(start, end);
 	}
 
 	void debrisCrate()
 	{
-		MsgTypesHelper msgHelper(msg);
+		MsgCoordHelper msgHelper(msg);
 
-		const Vector vecStart = msgHelper.ReadVectorCoord();
+		vec3_t start;
+		msgHelper.ReadVectorCoord(start);
 		const uint8_t numDebris = msg.ReadByte();
 
-		interfaces.effect->SpawnDebris(debrisType_e::crate, vecStart, numDebris);
+		interfaces.effect->SpawnDebris(debrisType_e::crate, start, numDebris);
 	}
 
 	void debrisWindow()
 	{
-		MsgTypesHelper msgHelper(msg);
+		MsgCoordHelper msgHelper(msg);
 
-		const Vector vecStart = msgHelper.ReadVectorCoord();
+		vec3_t start;
+		msgHelper.ReadVectorCoord(start);
 		const uint8_t numDebris = msg.ReadByte();
 
-		interfaces.effect->SpawnDebris(debrisType_e::window, vecStart, numDebris);
+		interfaces.effect->SpawnDebris(debrisType_e::window, start, numDebris);
 	}
 
 	void huddrawShader()
@@ -94,7 +98,7 @@ public:
 	{
 		const uint8_t index = msg.ReadByte();
 		// Divide by 255 to get float color
-		const Vector col =
+		const vec3_t col
 		{
 			(float)msg.ReadByte() / 255.f,
 			(float)msg.ReadByte() / 255.f,
@@ -140,15 +144,16 @@ public:
 
 	void playSoundEntity()
 	{
-		MsgTypesHelper msgHelper(msg);
+		MsgCoordHelper msgHelper(msg);
 
-		const Vector vecStart = msgHelper.ReadVectorCoord();
+		vec3_t start;
+		msgHelper.ReadVectorCoord(start);
 
 		const bool temp = msg.ReadBool();
 		const uint8_t index = msg.ReadNumber<uint8_t>(6);
 		const StringMessage strVal = msg.ReadString();
 
-		interfaces.event->PlayVoice(vecStart, temp, index, strVal.c_str());
+		interfaces.event->PlayVoice(start, temp, index, strVal.c_str());
 	}
 
 private:
@@ -190,26 +195,26 @@ public:
 	void handleCGMessage(MSG& msg, const MessageInterfaces& interfaces, uint32_t msgId) const override
 	{
 		StringMessage strVal;
-		MsgTypesHelper msgHelper(msg);
+		MsgCoordHelper msgHelper(msg);
 		CommonMessageHandler commonMessage(msg, interfaces);
 		uint32_t temp;
 		uint32_t count;
 		uint32_t large = false;
-		Vector vecTmp;
-		Vector vecStart, vecEnd;
-		Vector vecArray[64];
+		vec3_t vecTmp;
+		vec3_t vecStart, vecEnd;
+		vec3_t vecArray[64];
 
 		const cgmessage_e msgType((cgmessage_e)msgId);
 		switch (msgType)
 		{
 		case cgmessage_e::bullet1:
-			vecTmp = msgHelper.ReadVectorCoord();
+			msgHelper.ReadVectorCoord(vecTmp);
 		case cgmessage_e::bullet2:
 		case cgmessage_e::bullet5:
 		{
-			vecStart = msgHelper.ReadVectorCoord();
-			vecTmp = vecStart;
-			vecArray[0] = msgHelper.ReadVectorCoord();
+			msgHelper.ReadVectorCoord(vecStart);
+			VectorCopy(vecStart, vecTmp);
+			msgHelper.ReadVectorCoord(vecArray[0]);
 			large = msg.ReadBool();
 
 			if (msgType == cgmessage_e::bullet1 || msgType == cgmessage_e::bullet2)
@@ -231,17 +236,17 @@ public:
 		}
 		case cgmessage_e::bullet3:
 		{
-			vecTmp = msgHelper.ReadVectorCoord();
+			msgHelper.ReadVectorCoord(vecTmp);
 			temp = msg.ReadNumber<uint32_t>(6);
 		}
 		case cgmessage_e::bullet4:
 		{
-			vecStart = msgHelper.ReadVectorCoord();
+			msgHelper.ReadVectorCoord(vecStart);
 			large = msg.ReadBool();
 			count = msg.ReadNumber<uint32_t>(6);
 
 			for (size_t i = 0; i < count; ++i) {
-				vecArray[i] = msgHelper.ReadVectorCoord();
+				msgHelper.ReadVectorCoord(vecArray[i]);
 			}
 
 			interfaces.bullet->CreateBulletTracer(
@@ -260,8 +265,8 @@ public:
 		case cgmessage_e::impact3:
 		case cgmessage_e::impact4:
 		case cgmessage_e::impact5:
-			vecStart = msgHelper.ReadVectorCoord();
-			vecEnd = msgHelper.ReadDir();
+			msgHelper.ReadVectorCoord(vecStart);
+			msgHelper.ReadDir(vecEnd);
 			large = msg.ReadBool();
 
 			interfaces.impact->Impact(
@@ -277,7 +282,7 @@ public:
 		case cgmessage_e::explo2:
 		{
 			uint32_t effectId = msgId == 12 || msgId != 13 ? 63 : 64;
-			vecStart = msgHelper.ReadVectorCoord();
+			msgHelper.ReadVectorCoord(vecStart);
 
 			interfaces.impact->Explosion(
 				vecStart,
@@ -293,8 +298,8 @@ public:
 		case cgmessage_e::effect6:
 		case cgmessage_e::effect7:
 		case cgmessage_e::effect8:
-			vecStart = msgHelper.ReadVectorCoord();
-			vecEnd = msgHelper.ReadDir();
+			msgHelper.ReadVectorCoord(vecStart);
+			msgHelper.ReadDir(vecEnd);
 
 			interfaces.effect->SpawnEffect(
 				vecStart,
@@ -309,9 +314,9 @@ public:
 			commonMessage.debrisWindow();
 			break;
 		case cgmessage_e::tracer_visible:
-			vecTmp = msgHelper.ReadVectorCoord();
-			vecStart = msgHelper.ReadVectorCoord();
-			vecArray[0] = msgHelper.ReadVectorCoord();
+			msgHelper.ReadVectorCoord(vecTmp);
+			msgHelper.ReadVectorCoord(vecStart);
+			msgHelper.ReadVectorCoord(vecArray[0]);
 			large = msg.ReadBool();
 
 			interfaces.bullet->CreateBulletTracer(
@@ -325,9 +330,9 @@ public:
 			);
 			break;
 		case cgmessage_e::tracer_hidden:
-			vecTmp = vec_zero;
-			vecStart = msgHelper.ReadVectorCoord();
-			vecArray[0] = msgHelper.ReadVectorCoord();
+			VectorClear(vecTmp);
+			msgHelper.ReadVectorCoord(vecStart);
+			msgHelper.ReadVectorCoord(vecArray[0]);
 			large = msg.ReadBool();
 
 			interfaces.bullet->CreateBulletTracer(
@@ -566,15 +571,15 @@ public:
 	void handleCGMessage(MSG& msg, const MessageInterfaces& interfaces, uint32_t msgId) const override
 	{
 		StringMessage strVal;
-		MsgTypesHelper msgHelper(msg);
+		MsgCoordHelper msgHelper(msg);
 		CommonMessageHandler commonMessage(msg, interfaces);
 		uint32_t temp;
 		uint32_t count;
 		uint32_t effectId;
 		uint32_t large = 0;
-		Vector vecTmp;
-		Vector vecStart, vecEnd;
-		Vector vecArray[64];
+		vec3_t vecTmp;
+		vec3_t vecStart, vecEnd;
+		vec3_t vecArray[64];
 
 		struct
 		{
@@ -602,13 +607,13 @@ public:
 		switch (msgType)
 		{
 		case cgmessage_e::bullet1:
-			vecTmp = msgHelper.ReadVectorCoord();
+			msgHelper.ReadVectorCoord(vecTmp);
 		case cgmessage_e::bullet2:
 		case cgmessage_e::bullet5:
 		{
-			vecStart = msgHelper.ReadVectorCoord();
-			vecTmp = vecStart;
-			vecArray[0] = msgHelper.ReadVectorCoord();
+			msgHelper.ReadVectorCoord(vecStart);
+			VectorClear(vecTmp);
+			msgHelper.ReadVectorCoord(vecArray[0]);
 
 			const uint8_t iLarge = msg.ReadNumber<uint8_t>(2);
 
@@ -642,14 +647,14 @@ public:
 		{
 			if (msgType == cgmessage_e::bullet3)
 			{
-				vecTmp = msgHelper.ReadVectorCoord();
+				msgHelper.ReadVectorCoord(vecTmp);
 				temp = msg.ReadNumber<uint32_t>(6);
 			}
 			else {
 				temp = 0;
 			}
 
-			vecStart = msgHelper.ReadVectorCoord();
+			msgHelper.ReadVectorCoord(vecStart);
 
 			large = msg.ReadNumber<uint32_t>(2);
 
@@ -658,7 +663,7 @@ public:
 			count = msg.ReadNumber<uint32_t>(6);
 
 			for (size_t i = 0; i < count; ++i) {
-				vecArray[i] = msgHelper.ReadVectorCoord();
+				msgHelper.ReadVectorCoord(vecArray[i]);
 			}
 
 			if (count)
@@ -681,8 +686,8 @@ public:
 		case cgmessage_e::impact4:
 		case cgmessage_e::impact5:
 		{
-			vecStart = msgHelper.ReadVectorCoord();
-			vecEnd = msgHelper.ReadDir();
+			msgHelper.ReadVectorCoord(vecStart);
+			msgHelper.ReadDir(vecEnd);
 
 			const uint8_t iLarge = msg.ReadNumber<uint8_t>(2);
 
@@ -700,7 +705,7 @@ public:
 		case cgmessage_e::explo2:
 		case cgmessage_e::explo3:
 		case cgmessage_e::explo4:
-			vecStart = msgHelper.ReadVectorCoord();
+			msgHelper.ReadVectorCoord(vecStart);
 
 			switch (msgType)
 			{
@@ -733,8 +738,8 @@ public:
 		case cgmessage_e::effect6:
 		case cgmessage_e::effect7:
 		case cgmessage_e::effect8:
-			vecStart = msgHelper.ReadVectorCoord();
-			vecEnd = msgHelper.ReadDir();
+			msgHelper.ReadVectorCoord(vecStart);
+			msgHelper.ReadDir(vecEnd);
 
 			interfaces.effect->SpawnEffect(
 				vecStart,
@@ -750,9 +755,9 @@ public:
 			break;
 		case cgmessage_e::tracer_visible:
 		{
-			vecTmp = msgHelper.ReadVectorCoord();
-			vecStart = msgHelper.ReadVectorCoord();
-			vecArray[0] = msgHelper.ReadVectorCoord();
+			msgHelper.ReadVectorCoord(vecTmp);
+			msgHelper.ReadVectorCoord(vecStart);
+			msgHelper.ReadVectorCoord(vecArray[0]);
 
 			const uint8_t iLarge = msg.ReadNumber<uint8_t>(2);
 			const float bulletSize = utils.readBulletSize(msg);
@@ -770,9 +775,9 @@ public:
 		}
 		case cgmessage_e::tracer_hidden:
 		{
-			vecTmp = vec_zero;
-			vecStart = msgHelper.ReadVectorCoord();
-			vecArray[0] = msgHelper.ReadVectorCoord();
+			VectorClear(vecTmp);
+			msgHelper.ReadVectorCoord(vecStart);
+			msgHelper.ReadVectorCoord(vecArray[0]);
 
 			const uint8_t iLarge = msg.ReadNumber<uint8_t>(2);
 			const float bulletSize = utils.readBulletSize(msg);
@@ -823,8 +828,8 @@ public:
 			break;
 		case cgmessage_e::effect9:
 		{
-			vecStart = msgHelper.ReadVectorCoord();
-			vecEnd = msgHelper.ReadVectorCoord();
+			msgHelper.ReadVectorCoord(vecStart);
+			msgHelper.ReadVectorCoord(vecEnd);
 
 			const uint8_t val1 = msg.ReadByte();
 			const uint8_t val2 = msg.ReadByte();

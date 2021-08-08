@@ -5,10 +5,10 @@ using namespace MOHPC::Network;
 using namespace MOHPC::Network::CGame;
 
 cgsInfo::cgsInfo()
-	: matchStartTime(0)
-	, matchEndTme(0)
-	, levelStartTime(0)
-	, serverLagTime(0)
+	: matchStartTime(ticks::milliseconds())
+	, matchEndTme(ticks::milliseconds())
+	, levelStartTime(ticks::milliseconds())
+	, serverLagTime(ticks::milliseconds())
 	, dmFlags(0)
 	, teamFlags(0)
 	, maxClients(0)
@@ -21,22 +21,22 @@ cgsInfo::cgsInfo()
 {
 }
 
-uint64_t cgsInfo::getMatchStartTime() const
+tickTime_t cgsInfo::getMatchStartTime() const
 {
 	return matchStartTime;
 }
 
-uint64_t cgsInfo::getMatchEndTime() const
+tickTime_t cgsInfo::getMatchEndTime() const
 {
 	return matchEndTme;
 }
 
-uint64_t cgsInfo::getLevelStartTime() const
+tickTime_t cgsInfo::getLevelStartTime() const
 {
 	return levelStartTime;
 }
 
-uint64_t cgsInfo::getServerLagTime() const
+tickTime_t cgsInfo::getServerLagTime() const
 {
 	return serverLagTime;
 }

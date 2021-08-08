@@ -2,6 +2,7 @@
 
 #include "../ProtocolSingleton.h"
 #include "../Types/PlayerState.h"
+#include "../../Common/SimpleVector.h"
 
 namespace MOHPC
 {
@@ -15,7 +16,7 @@ namespace Network
 			pvsParm_t();
 
 		public:
-			Vector origin;
+			vec3_t origin;
 			uint32_t clientNum;
 			float radarRange;
 			float radarFarMult;

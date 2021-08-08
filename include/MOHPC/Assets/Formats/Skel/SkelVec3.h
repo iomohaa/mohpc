@@ -25,9 +25,7 @@ protected:
 public:
 
 	SkelVec3( float x, float y, float z );
-	SkelVec3(float vec[3]);
-	SkelVec3(const float vec[3]);
-	SkelVec3(const Vector& vec);
+	SkelVec3(const vec3r_t vec);
 	SkelVec3();
 
 	operator float *( );
@@ -36,6 +34,7 @@ public:
 	float&		operator[] ( int index );
 	float		operator[] ( int index ) const;
 
+	SkelVec3& operator=(const_vec3r_t vec);
 	const SkelVec3&		operator+=( const SkelVec3 &a );
 	const SkelVec3&		operator+=( float a[3] );
 
@@ -60,23 +59,7 @@ SkelVec3::SkelVec3( float x, float y, float z )
 }
 
 inline
-SkelVec3::SkelVec3( float vec[3] )
-{
-	this->x = vec[ 0 ];
-	this->y = vec[ 1 ];
-	this->z = vec[ 2 ];
-}
-
-inline
-SkelVec3::SkelVec3(const float vec[3])
-{
-	this->x = vec[0];
-	this->y = vec[1];
-	this->z = vec[2];
-}
-
-inline
-SkelVec3::SkelVec3(const Vector& vec)
+SkelVec3::SkelVec3(const vec3r_t vec)
 {
 	this->x = vec[0];
 	this->y = vec[1];
@@ -87,6 +70,15 @@ inline
 SkelVec3::SkelVec3()
 {
 	SetZero();
+}
+
+inline
+SkelVec3& SkelVec3::operator=(const_vec3r_t vec)
+{
+	this->x = vec[0];
+	this->y = vec[1];
+	this->z = vec[2];
+	return *this;
 }
 
 inline

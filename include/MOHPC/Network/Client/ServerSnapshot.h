@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../Utility/HandlerList.h"
+#include "../../Utility/TickTypes.h"
 #include "../Types/Snapshot.h"
 #include "../Types/Protocol.h"
 
@@ -99,7 +100,7 @@ namespace Network
 
 		/** Return the current snapshot number. */
 		MOHPC_NET_EXPORTS uint32_t getCurrentSnapNumber() const;
-		MOHPC_NET_EXPORTS uint32_t getServerTime() const;
+		MOHPC_NET_EXPORTS netTime_t getServerTime() const;
 		MOHPC_NET_EXPORTS bool isSnapshotValid() const;
 		MOHPC_NET_EXPORTS bool hasNewSnapshots() const;
 
@@ -110,8 +111,7 @@ namespace Network
 			const ServerGameState& clGameState,
 			ClientTime& clientTime,
 			ICommandSequence* serverCommands,
-			const OutgoingPackets& outPackets,
-			uint64_t currentTime,
+			tickTime_t currentTime,
 			uint32_t serverMessageSequence,
 			uint32_t outSequenceNum
 		);
@@ -122,7 +122,7 @@ namespace Network
 		void notifySounds(const rawSnapshot_t* newFrame);
 		void serverRestarted();
 		void updateSnapFlags();
-		void calculatePing(uint64_t currentTime, const OutgoingPackets& outPackets, uint32_t sequenceNum);
+		//void calculatePing(uint64_t currentTime, const OutgoingPackets& outPackets, uint32_t sequenceNum);
 		bool firstSnapshot();
 		bool isActive() const;
 

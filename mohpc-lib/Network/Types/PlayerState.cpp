@@ -75,7 +75,16 @@ float radarInfo_t::getYawPrecision()
 }
 
 playerState_t::playerState_t()
-	: commandTime(0)
+	: commandTime(std::chrono::milliseconds())
+	, origin{ 0 }
+	, velocity{ 0 }
+	, falldir{ 0 }
+	, viewangles{ 0 }
+	, camera_origin{ 0 }
+	, camera_angles{ 0 }
+	, camera_offset{ 0 }
+	, camera_posofs{ 0 }
+	, damage_angles{ 0 }
 	, pm_type(pmType_e::Normal)
 	, bobCycle(0)
 	, pm_flags(0)
@@ -112,7 +121,7 @@ playerState_t::playerState_t()
 {
 }
 
-uint32_t playerState_t::getCommandTime() const
+netTime_t playerState_t::getCommandTime() const
 {
 	return commandTime;
 }
@@ -127,7 +136,7 @@ uint16_t playerState_t::getPlayerMoveFlags() const
 	return pm_flags;
 }
 
-uint16_t playerState_t::getPlayerMoveTime() const
+deltaTime16_t playerState_t::getPlayerMoveTime() const
 {
 	return pm_time;
 }
@@ -137,12 +146,12 @@ uint8_t playerState_t::getBobCycle() const
 	return bobCycle;
 }
 
-const Vector& playerState_t::getOrigin() const
+const_vec3p_t playerState_t::getOrigin() const
 {
 	return origin;
 }
 
-const Vector& playerState_t::getVelocity() const
+const_vec3p_t playerState_t::getVelocity() const
 {
 	return velocity;
 }
@@ -157,7 +166,7 @@ uint16_t playerState_t::getSpeed() const
 	return speed;
 }
 
-void playerState_t::getDeltaAngles(uint16_t angles[3]) const
+void playerState_t::getDeltaAngles(netAngles_t& angles) const
 {
 	angles[0] = delta_angles[0];
 	angles[1] = delta_angles[1];
@@ -184,7 +193,7 @@ uint8_t playerState_t::getFeetFalling() const
 	return feetfalling;
 }
 
-const Vector& playerState_t::getFalldir() const
+const_vec3p_t playerState_t::getFalldir() const
 {
 	return falldir;
 }
@@ -199,7 +208,7 @@ uint8_t playerState_t::getClientNum() const
 	return clientNum;
 }
 
-const Vector& playerState_t::getViewAngles() const
+const_vec3p_t playerState_t::getViewAngles() const
 {
 	return viewangles;
 }
@@ -292,12 +301,12 @@ float playerState_t::getFov() const
 	return fov;
 }
 
-const Vector& playerState_t::getCameraOrigin() const
+const_vec3p_t playerState_t::getCameraOrigin() const
 {
 	return camera_origin;
 }
 
-const Vector& playerState_t::getCameraAngles() const
+const_vec3p_t playerState_t::getCameraAngles() const
 {
 	return camera_angles;
 }
@@ -307,12 +316,12 @@ float playerState_t::getCameraTime() const
 	return camera_time;
 }
 
-const Vector& playerState_t::getCameraOffset() const
+const_vec3p_t playerState_t::getCameraOffset() const
 {
 	return camera_offset;
 }
 
-const Vector& playerState_t::getCameraPositionOffset() const
+const_vec3p_t playerState_t::getCameraPositionOffset() const
 {
 	return camera_posofs;
 }
@@ -322,7 +331,7 @@ uint16_t playerState_t::getCameraFlags() const
 	return camera_flags;
 }
 
-const Vector& playerState_t::getDamageAngles() const
+const_vec3p_t playerState_t::getDamageAngles() const
 {
 	return damage_angles;
 }

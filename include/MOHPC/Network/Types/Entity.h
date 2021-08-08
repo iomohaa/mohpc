@@ -80,13 +80,13 @@ namespace Network
 	struct MOHPC_NET_EXPORTS trajectory_t
 	{
 	public:
-		Vector trDelta;
+		vec3_t trDelta;
 		uint32_t trTime;
 
 	public:
 		trajectory_t();
 
-		const Vector& getDelta() const;
+		const_vec3p_t getDelta() const;
 		uint32_t getTime() const;
 	};
 
@@ -193,11 +193,11 @@ namespace Network
 		const trajectory_t& getTrajectory() const;
 
 		/** Network origin. */
-		const Vector& getNetOrigin() const;
+		const_vec3p_t getNetOrigin() const;
 		/** Network secondary origin. */
-		const Vector& getAlternateOrigin() const;
+		const_vec3p_t getAlternateOrigin() const;
 		/** Network angles. */
-		const Vector& getNetAngles() const;
+		const_vec3p_t getNetAngles() const;
 
 		/** Entity's RGBA values from constant light. */
 		uint32_t getConstantLight() const;
@@ -223,7 +223,7 @@ namespace Network
 		/** Whether or not to also bind the entity's angles. */
 		bool doesAttachUseAngle() const;
 		/** Attachment offset (relative location). */
-		const Vector& getAttachOffset() const;
+		const_vec3p_t getAttachOffset() const;
 
 		/** Beam number of the entity. */
 		uint16_t getBeamEntityNum() const;
@@ -244,7 +244,7 @@ namespace Network
 		/** Get bone number for index. */
 		uint8_t getBoneTag(uint8_t boneIndex) const;
 		/** Bone angles at index. */
-		const Vector& getBoneAngles(uint8_t boneIndex);
+		const_vec3p_t getBoneAngles(uint8_t boneIndex);
 		/** Surface flags index. */
 		uint8_t getSurface(uint8_t surfaceIndex) const;
 
@@ -269,12 +269,12 @@ namespace Network
 
 	public:
 		trajectory_t pos;
-		Vector netorigin;
-		Vector origin2;
-		Vector netangles;
-		Vector attach_offset;
-		Vector eyeVector;
-		Vector bone_angles[NUM_BONE_CONTROLLERS];
+		vec3_t netorigin;
+		vec3_t origin2;
+		vec3_t netangles;
+		vec3_t attach_offset;
+		vec3_t eyeVector;
+		vec3_t bone_angles[NUM_BONE_CONTROLLERS];
 		quat_t bone_quat[NUM_BONE_CONTROLLERS];
 
 		uint32_t constantLight;	// r + (g<<8) + (b<<16) + (intensity<<24)

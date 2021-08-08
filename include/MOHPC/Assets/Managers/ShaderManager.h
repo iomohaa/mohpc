@@ -6,8 +6,8 @@
 #include "../../Common/Vector.h"
 #include "../../Utility/SharedPtr.h"
 
-#include <morfuse/Container/Container.h>
-#include <morfuse/Container/set.h>
+#include <vector>
+#include <unordered_map>
 
 namespace MOHPC
 {
@@ -352,7 +352,7 @@ namespace MOHPC
 	{
 		DeformMod deformation;
 
-		Vector moveVector;
+		vec3_t moveVector;
 		WaveForm deformationWave;
 		float deformationSpread;
 
@@ -404,14 +404,14 @@ namespace MOHPC
 
 	struct TextureBundle
 	{
-		mfuse::con::Container<ImageCache*> image;
+		std::vector<ImageCache*> image;
 		float imageAnimationSpeed;
 		float imageAnimationPhase;
 
 		TextureCoordGen tcGen;
-		Vector tcGenVectors[2];
+		vec3_t tcGenVectors[2];
 
-		mfuse::con::Container<TextureModInfo> texMods;
+		std::vector<TextureModInfo> texMods;
 
 		int32_t videoMapHandle;
 		bool isLightmap;
@@ -424,7 +424,7 @@ namespace MOHPC
 
 	struct ShaderStage
 	{
-		mfuse::con::Container<TextureBundle> bundle;
+		std::vector<TextureBundle> bundle;
 
 		WaveForm rgbWave;
 		ColorGen rgbGen;
@@ -451,35 +451,6 @@ namespace MOHPC
 	{
 		friend class ShaderManager;
 		friend class ShaderRef;
-
-	private:
-		class ShaderContainer* shaderContainer;
-		str m_name;
-		int32_t numRef;
-
-		bool bCached;
-
-		ImageCache* m_editorimage;
-
-		int32_t surfaceFlags;
-		int32_t contents;
-
-		float fDistRange;
-		float fDistNear;
-		bool bIsSky;
-		SkyParms sky;
-		bool bIsPortalSky;
-		SpriteParms sprite;
-
-		float portalRange;
-		bool bIsPortal;
-
-		CullType cullType;
-		bool bNoMipMaps;
-		bool bNoPicMip;
-
-		mfuse::con::Container<DeformStage> m_deforms;
-		mfuse::con::Container<ShaderStage> m_stages;
 
 	public:
 		Shader(class ShaderContainer* container);
@@ -522,6 +493,35 @@ namespace MOHPC
 
 		void Precache();
 		void ClearCache();
+
+	private:
+		class ShaderContainer* shaderContainer;
+		str m_name;
+		int32_t numRef;
+
+		bool bCached;
+
+		ImageCache* m_editorimage;
+
+		int32_t surfaceFlags;
+		int32_t contents;
+
+		float fDistRange;
+		float fDistNear;
+		bool bIsSky;
+		SkyParms sky;
+		bool bIsPortalSky;
+		SpriteParms sprite;
+
+		float portalRange;
+		bool bIsPortal;
+
+		CullType cullType;
+		bool bNoMipMaps;
+		bool bNoPicMip;
+
+		std::vector<DeformStage> m_deforms;
+		std::vector<ShaderStage> m_stages;
 	};
 
 	using ShaderPtr = SharedPtr<Shader>;
@@ -553,7 +553,7 @@ namespace MOHPC
 	private:
 		ShaderManager *m_shaderManager;
 		str m_filename;
-		mfuse::con::Container<ShaderPtr> m_shaderList;
+		std::vector<ShaderPtr> m_shaderList;
 
 	public:
 		ShaderContainer(ShaderManager* shaderManager, const str& filename);
@@ -575,16 +575,11 @@ namespace MOHPC
 		MOHPC_ASSET_OBJECT_DECLARATION(ShaderManager);
 
 	private:
-		//std::unordered_map<str, Shader *> m_nametoshader;
-		//std::unordered_map<str, ImageCache *> m_images;
-		//std::unordered_map<str, ShaderContainer*> m_fileShaderMap;
-		//mfuse::con::Container<ShaderContainer*> m_ShaderContainers;
-		mfuse::con::set<str, ShaderPtr> m_nametoshader;
-		mfuse::con::set<str, ImageCachePtr> m_nametoimage;
-		mfuse::con::set<str, ShaderContainerPtr> m_fileShaderMap;
-		//mfuse::con::Container<ShaderPtr> m_shaders;
-		mfuse::con::Container<ImageCachePtr> m_images;
-		mfuse::con::Container<ShaderContainerPtr> m_ShaderContainers;
+		std::unordered_map<str, ShaderPtr> m_nametoshader;
+		std::unordered_map<str, ImageCachePtr> m_nametoimage;
+		std::unordered_map<str, ShaderContainerPtr> m_fileShaderMap;
+		std::vector<ImageCachePtr> m_images;
+		std::vector<ShaderContainerPtr> m_ShaderContainers;
 		ShaderContainer m_defaultShaderContainer;
 		mutable Shader m_defaultshader;
 

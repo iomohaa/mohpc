@@ -245,11 +245,11 @@ void Sound::Load()
 	}
 
 	const char* ext = fileMan->GetFileExtension(fname);
-	if (!str::icmp(ext, "mp3"))
+	if (!strHelpers::icmp(ext, "mp3"))
 	{
 		DecodeLAME(buf, dataLen);
 	}
-	else if (!stricmp(ext, "wav"))
+	else if (!strHelpers::icmp(ext, "wav"))
 	{
 		data = new uint8_t[dataLen];
 		memcpy(data, buf, dataLen);

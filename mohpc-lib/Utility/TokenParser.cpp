@@ -1,6 +1,8 @@
 #include <Shared.h>
 #include <MOHPC/Utility/TokenParser.h>
+
 #include <cstring>
+#include <cassert>
 
 using namespace MOHPC;
 
@@ -19,7 +21,7 @@ TokenParser::TokenParser()
 TokenParser::TokenParser(const char* s)
 	: TokenParser()
 {
-	Parse(s, str::len(s));
+	Parse(s, strHelpers::len(s));
 }
 
 TokenParser::TokenParser(const char* s, size_t len)
@@ -31,7 +33,7 @@ TokenParser::TokenParser(const char* s, size_t len)
 TokenParser::TokenParser(const str& s)
 	: TokenParser()
 {
-	Parse(s, s.length());
+	Parse(s.c_str(), s.length());
 }
 
 TokenParser::~TokenParser()
@@ -542,18 +544,18 @@ const char* TokenParser::GrabNextToken(bool crossline)
 			script_p++;
 			switch (*script_p)
 			{
-			case 'n':	token.append('\n'); break;
-			case 'r':	token.append('\n'); break;
-			case '\'': token.append('\''); break;
-			case '\"': token.append('\"'); break;
-			case '\\': token.append('\\'); break;
-			default:	token.append(*script_p); break;
+			case 'n':	token.append(1, '\n'); break;
+			case 'r':	token.append(1, '\n'); break;
+			case '\'':  token.append(1, '\''); break;
+			case '\"':  token.append(1, '\"'); break;
+			case '\\':  token.append(1, '\\'); break;
+			default:	token.append(1, *script_p); break;
 			}
 			script_p++;
 		}
 		else
 		{
-			token.append(*script_p++);
+			token.append(1, *script_p++);
 		}
 
 		if (script_p == end_p)
@@ -593,7 +595,7 @@ void TokenParser::AddMacroDefinition(bool crossline)
 	else
 		theMacro->macroText = tmpstr;
 
-	macrolist.AddObject(theMacro);
+	macrolist.push_back(theMacro);
 
 }
 
@@ -613,7 +615,7 @@ const char* TokenParser::GetMacroString(const char* theMacroName)
 	{
 		theMacro = macrolist[i];
 
-		if (!str::cmp(theMacro->macroName, theMacroName))
+		if (!strHelpers::cmp(theMacro->macroName.c_str(), theMacroName))
 		{
 			const char* text = theMacro->macroText.c_str();
 
@@ -853,18 +855,18 @@ const char* TokenParser::GetString(bool crossline, bool escape)
 				script_p++;
 				switch (*script_p)
 				{
-				case 'n':	token.append('\n'); break;
-				case 'r':	token.append('\n'); break;
-				case '\'': token.append('\''); break;
-				case '\"': token.append('\"'); break;
-				case '\\': token.append('\\'); break;
+				case 'n':	token.append(1, '\n'); break;
+				case 'r':	token.append(1, '\n'); break;
+				case '\'':  token.append(1, '\''); break;
+				case '\"':  token.append(1, '\"'); break;
+				case '\\':  token.append(1, '\\'); break;
 				default: break;
 				}
 				script_p++;
 			}
 			else
 			{
-				token.append(*script_p++);
+				token.append(1, *script_p++);
 			}
 
 			if (script_p >= end_p)
@@ -879,7 +881,7 @@ const char* TokenParser::GetString(bool crossline, bool escape)
 	{
 		while (*script_p != '"')
 		{
-			token.append(*script_p++);
+			token.append(1, *script_p++);
 
 			if (script_p >= end_p)
 			{
@@ -998,19 +1000,18 @@ float TokenParser::GetFloat(bool crossline)
 ==============
 */
 
-Vector TokenParser::GetVector(bool crossline)
+void TokenParser::GetVector(bool crossline, vec3r_t out)
 {
 	if (AtString(crossline))
 	{
 		const char* xyz = GetToken(crossline);
-		return Vector(xyz);
+		VectorFromString(xyz, out);
 	}
 	else
 	{
-		float	x = GetFloat(crossline);
-		float	y = GetFloat(crossline);
-		float	z = GetFloat(crossline);
-		return Vector(x, y, z);
+		out[0] = GetFloat(crossline);
+		out[1] = GetFloat(crossline);
+		out[2] = GetFloat(crossline);
 	}
 }
 

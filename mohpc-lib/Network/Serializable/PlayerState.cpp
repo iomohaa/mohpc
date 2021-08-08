@@ -4,6 +4,8 @@
 
 #include <MOHPC/Network/Types/PlayerState.h>
 
+#include <MOHPC/Utility/Misc/MSG/MSGCoord.h>
+
 using namespace MOHPC;
 using namespace MOHPC::Network;
 
@@ -178,7 +180,7 @@ void SerializablePlayerState::UnNormalizePlayerState(playerState_t * ps) const
 
 void SerializablePlayerState::SaveDelta(MSG& msg, const ISerializableMessage* from) const
 {
-	MsgTypesHelper msgHelper(msg);
+	MsgCoordHelper msgHelper(msg);
 
 	constexpr size_t numFields = sizeof(playerStateFields) / sizeof(playerStateFields[0]);
 
@@ -365,7 +367,7 @@ void SerializablePlayerState::SaveDelta(MSG& msg, const ISerializableMessage* fr
 
 void SerializablePlayerState::LoadDelta(MSG& msg, const ISerializableMessage* from)
 {
-	MsgTypesHelper msgHelper(msg);
+	MsgCoordHelper msgHelper(msg);
 
 	constexpr size_t numFields = sizeof(playerStateFields) / sizeof(playerStateFields[0]);
 
@@ -514,7 +516,7 @@ SerializablePlayerState_ver15::SerializablePlayerState_ver15(playerState_t& inSt
 
 void SerializablePlayerState_ver15::SaveDelta(MSG& msg, const ISerializableMessage* from) const
 {
-	MsgTypesHelper msgHelper(msg);
+	MsgCoordHelper msgHelper(msg);
 
 	constexpr size_t numFields = sizeof(playerStateFields_ver15) / sizeof(playerStateFields_ver15[0]);
 
@@ -708,7 +710,7 @@ void SerializablePlayerState_ver15::SaveDelta(MSG& msg, const ISerializableMessa
 
 void SerializablePlayerState_ver15::LoadDelta(MSG& msg, const ISerializableMessage* from)
 {
-	MsgTypesHelper msgHelper(msg);
+	MsgCoordHelper msgHelper(msg);
 
 	constexpr size_t numFields = sizeof(playerStateFields_ver15) / sizeof(playerStateFields_ver15[0]);
 

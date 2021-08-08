@@ -3,6 +3,7 @@
 #include "UtilityGlobal.h"
 #include "HandlerList.h"
 
+#include <vector>
 #include <functional>
 #include <cstdint>
 #include <cstddef>
@@ -101,6 +102,6 @@ namespace MOHPC
 
 	private:
 		HandlerList handlerList;
-		mfuse::con::Container<CommandData> commands;
+		std::vector<CommandData> commands;
 	};
 }

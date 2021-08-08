@@ -1,6 +1,12 @@
 #pragma once
 
 #include "../NetGlobal.h"
+#include "../../Utility/DynamicEnum.h"
+#include "../../Utility/TickTypes.h"
+#include "NetTime.h"
+#include "Angles.h"
+#include "UserWeaponCommands.h"
+#include "UserButtons.h"
 
 #include <cstdint>
 
@@ -8,53 +14,73 @@ namespace MOHPC
 {
 namespace Network
 {
-	enum class weaponCommand_e : unsigned char
+	/**
+	 * Manages buttons and weapon commands.
+	 */
+	class MOHPC_NET_EXPORTS UserActionInput
 	{
-		none,
-		usePistol,
-		useRifle,
-		useSmg,
-		useMg,
-		useGrenade,
-		useHeavy,
-		useItem,
-		useItem2,
-		useItem3,
-		useItem4,
-		prevWeapon,
-		nextWeapon,
-		useLast,
-		holster,
-		drop,
-		max
+	public:
+		UserActionInput();
+
+		/** Add a weapon command. */
+		void addWeaponCommand(const WeaponCommand& weaponCommand);
+		/** Remove a weapon command. */
+		void removeWeaponCommand(const WeaponCommand& weaponCommand);
+
+		/** Check if a button is held. */
+		bool isHeld(const UserButton& button);
+
+		/** Check if any of specified user buttons is present. */
+		template<typename...Args>
+		bool checkAnyHeld(Args&&... button)
+		{
+			return (isHeld(std::forward<Args>(button)) || ...);
+		}
+
+		/** Check if all user buttons are present. */
+		template<typename...Args>
+		bool checkAllHeld(Args&&... button)
+		{
+			return (isHeld(std::forward<Args>(button)) && ...);
+		}
+
+		void addButton(const UserButton& newButton);
+		void removeButton(const UserButton& button);
+
+		/** Return this action flags. */
+		uint16_t getFlags() const;
+		/** Set action flags. */
+		void setFlags(uint16_t newFlags);
+
+	private:
+		uint16_t flags;
 	};
 
-	static const unsigned int BUTTON_ATTACK_PRIMARY = (1 << 0);
-	static const unsigned int BUTTON_ATTACK_SECONDARY = (1 << 1);
-	static const unsigned int BUTTON_RUN = (1 << 2);
-	static const unsigned int BUTTON_USE = (1 << 3);
-	static const unsigned int BUTTON_LEANLEFT = (1 << 4);
-	static const unsigned int BUTTON_LEANRIGHT = (1 << 5);
-	static const unsigned int WEAPONCOMMAND_MASK = ((unsigned int)weaponCommand_e::max) - 1;
-
-	class playerState_t;
-
-	class MOHPC_NET_EXPORTS usercmd_t
+	/**
+	 * Represents the user movement and rotation.
+	 */
+	class MOHPC_NET_EXPORTS UserMovementInput
 	{
 	public:
-		uint32_t serverTime;
-		struct buttons_t {
-			uint16_t flags;
-		} buttons;
-		uint16_t angles[3];
-		int8_t forwardmove, rightmove, upmove;
+		UserMovementInput();
 
-	public:
-		usercmd_t();
-		usercmd_t(uint32_t inServerTime);
+		/** Converts and set angles. */
+		void setAngles(float pitch, float yaw, float roll);
+		void setAngles(uint16_t pitch, uint16_t yaw, uint16_t roll);
+		void setAngles(const netAngles_t& newAngles);
 
-		/** Get the user angles. */
-		void getAngles(uint16_t& pitch, uint16_t& yaw, uint16_t& roll);
+		/** Get the user input angles. */
+		void getAngles(netAngles_t& anglesRef);
+		const netAngles_t& getAngles() const;
+
+		/** Move forward by the specified value. Range [-128, 127]. */
+		void moveForward(int8_t value);
+		/** Move right by the specified value. Range [-128, 127]. */
+		void moveRight(int8_t value);
+		/** Move up by the specified value. Range [-128, 127]. */
+		void moveUp(int8_t value);
+		/** Clear all movement. */
+		void clear();
 
 		/** Get the forward value. Range [-128, 127]. */
 		int8_t getForwardValue() const;
@@ -63,35 +89,53 @@ namespace Network
 		/** Get the up value. Range [-128, 127]. */
 		int8_t getUpValue() const;
 
-		/** Sends a weapon command. */
-		void setWeaponCommand(weaponCommand_e weaponCommand);
+	private:
+		netAngles_t angles;
+		int8_t forwardmove, rightmove, upmove;
+	};
 
-		/** Converts and set angles. */
-		void setAngles(float pitch, float yaw, float roll);
+	/** Jump. Same as calling moveUp with a value of 127. */
+	class MOHPC_NET_EXPORTS UserExecuteMovementJump
+	{
+	public:
+		static void execute(UserMovementInput& mInput);
+	};
 
-		/** Set angles relative to player's deltaAngles. */
-		void setAnglesRelativeTo(const playerState_t& ps, float pitch, float yaw, float roll);
+	/** Crouch. Same as calling moveUp with a value of -128. */
+	class MOHPC_NET_EXPORTS UserExecuteMovementCrouch
+	{
+	public:
+		static void execute(UserMovementInput& mInput);
+	};
 
-		/** Move forward by the specified value. Range [-128, 127]. */
-		void moveForward(int8_t value);
+	void setUserRelativeAngles(UserMovementInput& mInput, const netAngles_t& angles, float pitch, float yaw, float roll);
 
-		/** Move right by the specified value. Range [-128, 127]. */
-		void moveRight(int8_t value);
+	/**
+	 * Covers user movement and input.
+	 */
+	class usercmd_t
+	{
+	public:
+		MOHPC_NET_EXPORTS usercmd_t();
+		MOHPC_NET_EXPORTS usercmd_t(tickTime_t serverTimeValue);
+		MOHPC_NET_EXPORTS usercmd_t(const usercmd_t& other);
+		MOHPC_NET_EXPORTS usercmd_t& operator=(const usercmd_t& other);
 
-		/** Move up by the specified value. Range [-128, 127]. */
-		void moveUp(int8_t value);
+		/** Return the movement input. */
+		MOHPC_NET_EXPORTS const UserMovementInput& getMovement() const;
+		MOHPC_NET_EXPORTS UserMovementInput& getMovement();
 
-		/** Jump. Same as calling moveUp with a value of 127. */
-		void jump();
+		/** Return the action input. */
+		MOHPC_NET_EXPORTS const UserActionInput& getAction() const;
+		MOHPC_NET_EXPORTS UserActionInput& getAction();
 
-		/** Crouch. Same as calling moveUp with a value of -128. */
-		void crouch();
+		MOHPC_NET_EXPORTS tickTime_t getServerTime() const;
+		MOHPC_NET_EXPORTS void setServerTime(tickTime_t newTime);
 
-		/** Return buttons that are held. */
-		buttons_t getButtons() const;
-
-		void setButtonFlags(uint32_t flags);
-		void removeButtonFlags(uint32_t flags);
+	private:
+		tickTime_t serverTime;
+		UserMovementInput movement;
+		UserActionInput action;
 	};
 
 	class MOHPC_NET_EXPORTS usereyes_t

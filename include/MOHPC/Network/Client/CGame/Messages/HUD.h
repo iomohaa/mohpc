@@ -52,7 +52,7 @@ namespace Network
 			 * @param	index	HUD index.
 			 * @param	color	[[0...1]...] RGB color of the HUD.
 			 */
-			struct HudDraw_Color : public HandlerNotifyBase<void(uint8_t index, const Vector& color)> {};
+			struct HudDraw_Color : public HandlerNotifyBase<void(uint8_t index, const vec3r_t color)> {};
 
 			/**
 			 * Specify the alpha of the HUD.
@@ -88,7 +88,7 @@ namespace Network
 				void SetAlignment(uint8_t index, horizontalAlign_e horizontalAlign, verticalAlign_e verticalAlign) override;
 				void SetRect(uint8_t index, uint16_t x, uint16_t y, uint16_t width, uint16_t height) override;
 				void SetVirtualScreen(uint8_t index, bool virtualScreen) override;
-				void SetColor(uint8_t index, const Vector& color) override;
+				void SetColor(uint8_t index, const vec3r_t color) override;
 				void SetAlpha(uint8_t index, float alpha) override;
 				void SetString(uint8_t index, const char* string) override;
 				void SetFont(uint8_t index, const char* fontName) override;

@@ -3,7 +3,9 @@
 #include <MOHPC/Assets/Script.h>
 #include <MOHPC/Assets/Managers/AssetManager.h>
 #include <MOHPC/Files/Managers/FileManager.h>
+
 #include <cstring>
+#include <cassert>
 
 using namespace MOHPC;
 
@@ -119,7 +121,7 @@ void Script::Reset( void )
 ==============
 */
 
-void Script::MarkPosition( scriptmarker_t *mark )
+void Script::MarkPosition(scriptmarker_t *mark)
 {
 	assert(mark);
 	
@@ -546,18 +548,18 @@ const char *Script::GrabNextToken( bool crossline )
 			script_p++;
 			switch( *script_p )
 			{
-			case 'n' :	token.append('\n'); break;
-			case 'r' :	token.append('\n'); break;
-			case '\'' : token.append('\''); break;
-			case '\"' : token.append('\"'); break;
-			case '\\' : token.append('\\'); break;
-			default:	token.append(*script_p); break;
+			case 'n' :	token.append(1, '\n'); break;
+			case 'r' :	token.append(1, '\n'); break;
+			case '\'' : token.append(1, '\''); break;
+			case '\"' : token.append(1, '\"'); break;
+			case '\\' : token.append(1, '\\'); break;
+			default:	token.append(1, *script_p); break;
 			}
 			script_p++;
 		}
 		else
 		{
-			token.append(*script_p++);
+			token.append(1, *script_p++);
 		}
 
 		if ( script_p == end_p )
@@ -617,7 +619,7 @@ const char *Script::GetMacroString( const char *theMacroName )
 	{
 		theMacro = macrolist[i];
 		
-		if(str::cmp(theMacro->macroName.c_str(), theMacroName))
+		if(strHelpers::cmp(theMacro->macroName.c_str(), theMacroName))
 		{
 			const char *text = theMacro->macroText.c_str();
 			
@@ -863,18 +865,18 @@ const char *Script::GetString(bool crossline, bool allowMultiLines)
 			script_p++;
 			switch( *script_p )
 			{
-			case 'n' :	token.append('\n'); break;
-			case 'r' :	token.append('\n'); break;
-			case '\'' : token.append('\''); break;
-			case '\"' : token.append('\"'); break;
-			case '\\' : token.append('\\'); break;
-			default:	token.append(*script_p); break;
+			case 'n' :	token.append(1, '\n'); break;
+			case 'r' :	token.append(1, '\n'); break;
+			case '\'' : token.append(1, '\''); break;
+			case '\"' : token.append(1, '\"'); break;
+			case '\\' : token.append(1, '\\'); break;
+			default:	token.append(1, *script_p); break;
 			}
 			script_p++;
 		}
 		else
 		{
-			token.append(*script_p++);
+			token.append(1, *script_p++);
 		}
 		
 		if ( script_p >= end_p )
@@ -988,19 +990,18 @@ float Script::GetFloat( bool crossline )
 ==============
 */
 
-Vector Script::GetVector( bool crossline )
+void Script::GetVector(bool crossline, vec3r_t out)
 {
 	if (AtString(crossline))
 	{
 		const char *xyz = GetToken(crossline);
-		return Vector(xyz);
+		VectorFromString(xyz, out);
 	}
 	else
 	{
-		float	x = GetFloat(crossline);
-		float	y = GetFloat(crossline);
-		float	z = GetFloat(crossline);
-		return Vector(x, y, z);
+		out[0] = GetFloat(crossline);
+		out[1] = GetFloat(crossline);
+		out[2] = GetFloat(crossline);
 	}
 }
 

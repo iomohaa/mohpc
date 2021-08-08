@@ -1,10 +1,10 @@
 #include <Shared.h>
 #include <MOHPC/Utility/Managers/EmitterManager.h>
 #include <MOHPC/Assets/Managers/ShaderManager.h>
-#include <morfuse/Script/Context.h>
-#include <morfuse/Script/EventSystem.h>
 #include <MOHPC/Assets/Formats/TIKI.h>
 #include "../Misc/EmitterListener.h"
+
+#include <morfuse/Script/EventSystem.h>
 
 using namespace MOHPC;
 
@@ -79,7 +79,7 @@ Emitter::Emitter()
 	life = 0.f;
 	randomLife = 0.f;
 	startTime = 0.f;
-	color = Vector(1.f, 1.f, 1.f);
+	color[0] = color[1] = color[2] = 1.f;
 	alpha = 1.f;
 	scaleRate = 0.f;
 	scaleMin = 0.f;
@@ -208,14 +208,14 @@ bool EmitterManager::ParseEmitters(const TIKI* Tiki, EmitterResults& Results)
 	return bAnimHasCommands;
 }
 
-bool EmitterManager::ProcessCommand(const mfuse::con::Container<str>& Arguments, EmitterListener& Listener)
+bool EmitterManager::ProcessCommand(const std::vector<str>& Arguments, EmitterListener& Listener)
 {
 	mfuse::Event ev(mfuse::EventSystem::Get().FindNormalEventNum(Arguments[0].c_str()));
 
 	const size_t numArgs = Arguments.size();
 	for (size_t j = 1; j < numArgs; j++)
 	{
-		ev.AddString(Arguments[j]);
+		ev.AddString(Arguments[j].c_str());
 	}
 
 	Listener.ProcessEvent(ev);

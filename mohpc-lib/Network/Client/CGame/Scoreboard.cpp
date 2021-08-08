@@ -12,7 +12,7 @@ Scoreboard::Scoreboard()
 
 size_t Scoreboard::getNumTeams() const
 {
-	return teamEntries.NumObjects();
+	return teamEntries.size();
 }
 
 const Scoreboard::teamEntry_t& Scoreboard::getTeam(size_t index)
@@ -22,7 +22,7 @@ const Scoreboard::teamEntry_t& Scoreboard::getTeam(size_t index)
 
 const Scoreboard::teamEntry_t* Scoreboard::getTeamByType(teamType_e type)
 {
-	const size_t numTeams = teamEntries.NumObjects();
+	const size_t numTeams = teamEntries.size();
 	for (size_t i = 0; i < numTeams; ++i)
 	{
 		const teamEntry_t& entry = teamEntries[i];
@@ -36,7 +36,7 @@ const Scoreboard::teamEntry_t* Scoreboard::getTeamByType(teamType_e type)
 
 size_t Scoreboard::getNumPlayers() const
 {
-	return playerList.NumObjects();
+	return playerList.size();
 }
 
 const Scoreboard::player_t& Scoreboard::getPlayer(size_t index) const
@@ -101,24 +101,22 @@ bool Scoreboard::player_t::isAlive() const
 
 void Scoreboard::reserveTeamEntries(size_t num)
 {
-	teamEntries.Resize(num);
+	teamEntries.reserve(num);
 }
 
 void Scoreboard::reservePlayerList(size_t num)
 {
-	playerList.Resize(num);
+	playerList.reserve(num);
 }
 
 Scoreboard::teamEntry_t& Scoreboard::createTeamEntry()
 {
-	teamEntry_t* entry = new (teamEntries) teamEntry_t();
-	return *entry;
+	return teamEntries.emplace_back();
 }
 
 Scoreboard::player_t& Scoreboard::createPlayerEntry()
 {
-	player_t* entry = new (playerList) player_t();
-	return *entry;
+	return playerList.emplace_back();
 }
 
 ScoreboardParser::ScoreboardParser(Scoreboard& scoreboardRef, gameType_e gameTypeVal)

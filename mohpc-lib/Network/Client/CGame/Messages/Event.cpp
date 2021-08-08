@@ -15,7 +15,7 @@ void EventImpl::GotKill()
 	gotKillHandler.broadcast();
 }
 
-void EventImpl::PlayVoice(const Vector& origin, bool local, uint8_t clientNum, const char* soundName)
+void EventImpl::PlayVoice(const vec3r_t origin, bool local, uint8_t clientNum, const char* soundName)
 {
 	voiceMessageHandler.broadcast(origin, local, clientNum, soundName);
 }

@@ -6,19 +6,19 @@
 #include <MOHPC/Version.h>
 #include "Utility/Misc/SHA1.h"
 
-#include <morfuse/Container/set_generic_hash.h>
-
 using namespace MOHPC;
 
 #define MOHPC_LOG_NAMESPACE "assetmanager"
 
 MOHPC_OBJECT_DEFINITION(AssetManager);
 
+/*
 template<>
 intptr_t mfuse::Hash<std::type_index>::operator()(const std::type_index& key) const
 {
 	return key.hash_code();
 }
+*/
 
 AssetManager::AssetManager()
 {
@@ -75,7 +75,7 @@ void AssetManager::AddManager(const std::type_index& ti, const SharedPtr<Manager
 	//m_managers[ti] = manager;
 	//manager->AM = this;
 	manager->InitAssetManager(shared_from_this());
-	m_managers.addKeyValue(ti) = manager;
+	m_managers.insert_or_assign(ti, manager);
 	manager->Init();
 }
 
@@ -92,27 +92,31 @@ SharedPtr<Manager> AssetManager::GetManager(const std::type_index& ti) const
 		return nullptr;
 	}
 	*/
-	const SharedPtr<Manager>* manager = m_managers.findKeyValue(ti);
-	if (manager) {
-		return *manager;
+
+	const auto it = m_managers.find(ti);
+	if (it != m_managers.end()) {
+		return it->second;
 	}
+
 	return nullptr;
 }
 
 SharedPtr<Asset> AssetManager::CacheFindAsset(const char *Filename)
 {
-	WeakPtr<Asset>* asset = m_assetCache.findKeyValue(Filename);
-	if (asset)
+	auto it = m_assetCache.find(Filename);
+	if (it != m_assetCache.end())
 	{
-		if(!asset->expired())
+		WeakPtr<Asset>& asset = it->second;
+
+		if(!asset.expired())
 		{
 			// Lock and return the shared pointer
-			return asset->lock();
+			return asset.lock();
 		}
 		else
 		{
 			// Not keeping a null asset
-			m_assetCache.remove(Filename);
+			m_assetCache.erase(it);
 		}
 	}
 	return nullptr;
@@ -127,7 +131,8 @@ bool AssetManager::CacheLoadAsset(const char *Filename, const SharedPtr<Asset>& 
 	A->HashFinalize();
 
 	//m_assetCache[Filename] = A;
-	m_assetCache.addKeyValue(Filename) = A;
+	//m_assetCache.addKeyValue(Filename) = A;
+	m_assetCache.insert_or_assign(Filename, A);
 
 	MOHPC_LOG(Info, "Asset '%s' loaded", Filename);
 	return true;

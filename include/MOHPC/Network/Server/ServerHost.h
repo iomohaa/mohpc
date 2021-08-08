@@ -8,8 +8,7 @@
 #include "../Remote/Channel.h"
 #include "../Types/ReliableTemplate.h"
 
-#include <morfuse/Container/Container.h>
-
+#include <vector>
 #include <chrono>
 
 namespace MOHPC
@@ -51,7 +50,7 @@ namespace MOHPC
 		public:
 			ClientData(const IUdpSocketPtr& socket, const NetAddrPtr& from, uint16_t qport, uint32_t challengeNum);
 
-			const NetAddr& getAddress() const;
+			const NetAddrPtr& getAddress() const;
 			uint16_t getQPort() const;
 			XOREncoding& getEncoder();
 			XOREncoding& getDecoder();
@@ -77,7 +76,7 @@ namespace MOHPC
 		public:
 			MOHPC_NET_EXPORTS ServerHost();
 
-			void tick(uint64_t deltaTime, uint64_t currentTime) override;
+			void tick(deltaTime_t deltaTime, tickTime_t currentTime) override;
 
 			ClientData& createClient(const NetAddrPtr& from, uint16_t qport, uint32_t challengeNum);
 			ClientData* findClient(const NetAddr& from, uint16_t qport) const;
@@ -99,8 +98,8 @@ namespace MOHPC
 			uint32_t serverId;
 			IUdpSocketPtr serverSocket;
 			INetchanPtr conChan;
-			mfuse::con::Container<ClientDataPtr> clientList;
-			mfuse::con::Container<Challenge> challenges;
+			std::vector<ClientDataPtr> clientList;
+			std::vector<Challenge> challenges;
 		};
 		using ServerHostPtr = SharedPtr<ServerHost>;
 }

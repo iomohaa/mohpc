@@ -25,7 +25,7 @@ void HUDImpl::SetVirtualScreen(uint8_t index, bool virtualScreen)
 	setVirtualScreenHandler.broadcast(index, virtualScreen);
 }
 
-void HUDImpl::SetColor(uint8_t index, const Vector& color)
+void HUDImpl::SetColor(uint8_t index, const vec3r_t color)
 {
 	setColorHandler.broadcast(index, color);
 }

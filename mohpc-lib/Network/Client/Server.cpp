@@ -8,6 +8,8 @@
 #include <MOHPC/Utility/MessageDispatcher.h>
 #include <MOHPC/Common/Log.h>
 
+#include <cassert>
+
 using namespace MOHPC;
 using namespace Network;
 

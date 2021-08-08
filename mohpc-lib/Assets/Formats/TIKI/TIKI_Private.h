@@ -3,8 +3,10 @@
 #include <MOHPC/Assets/Formats/TIKI.h>
 #include <MOHPC/Common/Vector.h>
 #include <MOHPC/Utility/SharedPtr.h>
-#include <morfuse/Container/set.h>
 #include "TIKI_Script.h"
+
+#include <vector>
+#include <unordered_map>
 
 // skb skeletor
 static constexpr unsigned char	TIKI_SKB_HEADER_IDENT[]			= "SKL ";
@@ -33,25 +35,25 @@ namespace MOHPC
 	struct TIKI::dtikicmd_t
 	{
 		frameInt_t frame_num;
-		mfuse::con::Container<str> args;
+		std::vector<str> args;
 	};
 
 	struct TIKI::dloadframecmd_t 
 	{
 		frameInt_t frame_num;
-		mfuse::con::Container<str> args;
+		std::vector<str> args;
 		str location;
 	};
 
 	struct TIKI::dloadinitcmd_t
 	{
-		mfuse::con::Container<str> args;
+		std::vector<str> args;
 	};
 
 	struct TIKI::dloadsurface_t
 	{
 		str name;
-		mfuse::con::Container<str> shader;
+		std::vector<str> shader;
 		int flags;
 		float damage_multiplier;
 	};
@@ -64,8 +66,8 @@ namespace MOHPC
 		float weight;
 		float blendtime;
 		int32_t flags;
-		mfuse::con::Container<dloadframecmd_t> loadservercmds;
-		mfuse::con::Container<dloadframecmd_t> loadclientcmds;
+		std::vector<dloadframecmd_t> loadservercmds;
+		std::vector<dloadframecmd_t> loadclientcmds;
 	};
 
 	struct TIKI::dloaddef_t
@@ -73,14 +75,14 @@ namespace MOHPC
 		str path;
 		SharedPtr<TikiScript> tikiFile;
 
-		mfuse::con::set<str, str> keyvalues;
-		mfuse::con::Container<dloadanim_t> loadanims;
-		mfuse::con::Container<dloadinitcmd_t> loadserverinitcmds;
-		mfuse::con::Container<dloadinitcmd_t> loadclientinitcmds;
+		std::unordered_map<str, str> keyvalues;
+		std::vector<dloadanim_t> loadanims;
+		std::vector<dloadinitcmd_t> loadserverinitcmds;
+		std::vector<dloadinitcmd_t> loadclientinitcmds;
 
 		int32_t skelIndex_ld[12];
-		mfuse::con::Container<str> headmodels;
-		mfuse::con::Container<str> headskins;
+		std::vector<str> headmodels;
+		std::vector<str> headskins;
 		bool bIsCharacter;
 
 		struct
@@ -88,11 +90,11 @@ namespace MOHPC
 			float load_scale;
 			float lod_scale;
 			float lod_bias;
-			mfuse::con::Container<str> skelmodel;
-			Vector origin;
-			Vector lightoffset;
+			std::vector<str> skelmodel;
+			vec3_t origin;
+			vec3_t lightoffset;
 			float radius;
-			mfuse::con::Container<dloadsurface_t> surfaces;
+			std::vector<dloadsurface_t> surfaces;
 		} loaddata;
 
 		bool bInIncludesSection;

@@ -1,5 +1,6 @@
 #include <Shared.h>
 #include <MOHPC/Common/Math.h>
+#include <MOHPC/Common/Vector.h>
 #include "Polylib.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -265,7 +266,7 @@ winding_t	*CopyWinding (winding_t *w)
 	winding_t	*c;
 
 	c = AllocWinding (w->numpoints);
-	size = (size_t)((winding_t *)0)->p[w->numpoints];
+	size = (size_t)&((winding_t *)0)->p[w->numpoints][0];
 	memcpy (c, w, size);
 	return c;
 }

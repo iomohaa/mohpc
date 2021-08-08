@@ -11,8 +11,7 @@
 #include "../../../Utility/HandlerList.h"
 #include "../../../Utility/CommandManager.h"
 
-#include <morfuse/Container/Container.h>
-
+#include <vector>
 #include <list>
 
 namespace MOHPC
@@ -142,7 +141,7 @@ namespace Network
 			void optimize();
 
 		private:
-			mfuse::con::Container<VoteListChoice> choiceList;
+			std::vector<VoteListChoice> choiceList;
 		};
 
 		/**
@@ -196,13 +195,13 @@ namespace Network
 
 		private:
 			// using contiguous memory for every type.
-			mfuse::con::Container<VoteOption> noChoicesOptionsList;
-			mfuse::con::Container<VoteOptionList> listOptionsList;
-			mfuse::con::Container<VoteOption> textOptionsList;
-			mfuse::con::Container<VoteOption> intOptionsList;
-			mfuse::con::Container<VoteOption> floatOptionsList;
-			mfuse::con::Container<VoteOption> clientOptionsList;
-			mfuse::con::Container<VoteOption> clientNotSelfOptionsList;
+			std::vector<VoteOption> noChoicesOptionsList;
+			std::vector<VoteOptionList> listOptionsList;
+			std::vector<VoteOption> textOptionsList;
+			std::vector<VoteOption> intOptionsList;
+			std::vector<VoteOption> floatOptionsList;
+			std::vector<VoteOption> clientOptionsList;
+			std::vector<VoteOption> clientNotSelfOptionsList;
 		};
 
 		class VoteOptionsParser

@@ -1,7 +1,9 @@
 #pragma once
 
 #include "Reliable.h"
-#include "../../Common/str.h"
+
+#include <algorithm>
+#include <string>
 
 namespace MOHPC
 {
@@ -34,7 +36,8 @@ namespace Network
 	template<size_t MAX_RELIABLE_COMMANDS, size_t RELIABLE_COMMAND_SIZE>
 	void SequenceTemplate<MAX_RELIABLE_COMMANDS, RELIABLE_COMMAND_SIZE>::set(rsequence_t index, const char* command)
 	{
-		str::copyn(reliableCommands[index], command, RELIABLE_COMMAND_SIZE);
+		const size_t smallest = std::min(std::char_traits<char>::length(command), RELIABLE_COMMAND_SIZE);
+		std::copy(&command[0], &command[smallest], reliableCommands[index]);
 	}
 
 	template<size_t MAX_RELIABLE_COMMANDS, size_t RELIABLE_COMMAND_SIZE>
@@ -46,13 +49,14 @@ namespace Network
 	template<size_t MAX_RELIABLE_COMMANDS, size_t RELIABLE_COMMAND_SIZE>
 	size_t SequenceTemplate<MAX_RELIABLE_COMMANDS, RELIABLE_COMMAND_SIZE>::getMaxElements() const
 	{
-		return RELIABLE_COMMAND_SIZE;
+		return MAX_RELIABLE_COMMANDS;
 	}
 
 	template<size_t MAX_RELIABLE_COMMANDS, size_t RELIABLE_COMMAND_SIZE>
 	void RemoteCommandSequenceTemplate<MAX_RELIABLE_COMMANDS, RELIABLE_COMMAND_SIZE>::set(rsequence_t index, const char* command)
 	{
-		str::copyn(serverCommands[index], command, RELIABLE_COMMAND_SIZE);
+		const size_t smallest = std::min(std::char_traits<char>::length(command), RELIABLE_COMMAND_SIZE);
+		std::copy(&command[0], &command[smallest], serverCommands[index]);
 	}
 
 	template<size_t MAX_RELIABLE_COMMANDS, size_t RELIABLE_COMMAND_SIZE>
@@ -64,7 +68,7 @@ namespace Network
 	template<size_t MAX_RELIABLE_COMMANDS, size_t RELIABLE_COMMAND_SIZE>
 	size_t RemoteCommandSequenceTemplate<MAX_RELIABLE_COMMANDS, RELIABLE_COMMAND_SIZE>::getMaxElements() const
 	{
-		return RELIABLE_COMMAND_SIZE;
+		return MAX_RELIABLE_COMMANDS;
 	}
 }
 }

@@ -4,6 +4,8 @@
 
 #include <MOHPC/Network/Types/Entity.h>
 
+#include <MOHPC/Utility/Misc/MSG/MSGCoord.h>
+
 using namespace MOHPC;
 using namespace MOHPC::Network;
 
@@ -323,7 +325,7 @@ static const entityState_t nullstate;
 
 void SerializableEntityState::SaveDelta(MSG& msg, const ISerializableMessage* from) const
 {
-	MsgTypesHelper msgHelper(msg);
+	MsgCoordHelper msgHelper(msg);
 	MsgTypesEntityHelper msgEntHelper(msg);
 	constexpr size_t numFields = sizeof(entityStateFields) / sizeof(entityStateFields[0]);
 
@@ -432,7 +434,7 @@ void SerializableEntityState::SaveDelta(MSG& msg, const ISerializableMessage* fr
 
 void SerializableEntityState::LoadDelta(MSG& msg, const ISerializableMessage* from)
 {
-	MsgTypesHelper msgHelper(msg);
+	MsgCoordHelper msgHelper(msg);
 
 	const entityState_t* fromEnt = from ? ((const SerializableEntityState*)from)->GetState() : &nullstate;
 
@@ -525,7 +527,7 @@ void SerializableEntityState::LoadDelta(MSG& msg, const ISerializableMessage* fr
 
 void SerializableEntityState_ver15::SaveDelta(MSG& msg, const ISerializableMessage* from) const
 {
-	MsgTypesHelper msgHelper(msg);
+	MsgCoordHelper msgHelper(msg);
 	MsgTypesEntityHelper msgEntHelper(msg);
 	constexpr size_t numFields = sizeof(entityStateFields_ver15) / sizeof(entityStateFields_ver15[0]);
 
@@ -654,7 +656,7 @@ void SerializableEntityState_ver15::SaveDelta(MSG& msg, const ISerializableMessa
 
 void SerializableEntityState_ver15::LoadDelta(MSG& msg, const ISerializableMessage* from)
 {
-	MsgTypesHelper msgHelper(msg);
+	MsgCoordHelper msgHelper(msg);
 
 	const entityState_t* fromEnt = from ? ((SerializableEntityState*)from)->GetState() : &nullstate;
 
@@ -718,12 +720,14 @@ void SerializableEntityState_ver15::LoadDelta(MSG& msg, const ISerializableMessa
 			if (msg.ReadBool())
 			{
 				result = msg.ReadNumber<int>(field->getBits());
+				const float floatTime = EntityField::UnpackAnimTime(result);
 				*(float*)toF = EntityField::UnpackAnimTime(result);
 			}
 			else
 			{
 				// use delta time instead
-				*(float*)toF = *(float*)fromF + timeDelta;
+				const deltaTimeFloat_t newDelta = *(deltaTimeFloat_t*)fromF + timeDelta;
+				*(deltaTimeFloat_t*)toF = newDelta;
 			}
 			break;
 		case fieldType_ver15_e::animWeight:
@@ -763,7 +767,12 @@ void SerializableEntityState_ver15::LoadDelta(MSG& msg, const ISerializableMessa
 	CopyFields<entityState_t>(fromEnt, GetState(), lc, numFields, entityStateFields_ver15);
 }
 
-SerializableEntityState_ver15::SerializableEntityState_ver15(entityState_t& inState, entityNum_t newNum, float timeDeltaValue)
+SerializableEntityState::SerializableEntityState(entityState_t& inState, entityNum_t newNum)
+	: state(inState)
+	, entNum(newNum)
+{}
+
+SerializableEntityState_ver15::SerializableEntityState_ver15(entityState_t& inState, entityNum_t newNum, deltaTimeFloat_t timeDeltaValue)
 	: SerializableEntityState(inState, newNum)
 	, timeDelta(timeDeltaValue)
 {

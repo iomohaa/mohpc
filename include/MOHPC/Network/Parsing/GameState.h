@@ -47,7 +47,7 @@ namespace Network
 			gameStateResults_t();
 
 		public:
-			uint64_t serverDeltaTime;
+			uint32_t serverDeltaTime;
 			float serverDeltaTimeSeconds;
 			uint32_t serverId;
 		};

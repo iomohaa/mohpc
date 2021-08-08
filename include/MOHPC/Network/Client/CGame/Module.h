@@ -31,8 +31,7 @@
 
 #include <type_traits>
 #include <cstdint>
-
-#include <morfuse/Container/Container.h>
+#include <chrono>
 
 namespace MOHPC
 {
@@ -82,7 +81,6 @@ namespace Network
 	public:
 		const ServerSnapshotManager& snapshotManager;
 		const ClientTime& clientTime;
-		const UserInput& userInput;
 		const ICommandSequence& commandSequence;
 		ServerGameState& gameState;
 		const UserInfoPtr& userInfo;
@@ -167,20 +165,17 @@ namespace Network
 		void init(uintptr_t serverMessageSequence, rsequence_t serverCommandSequence);
 
 		/** Tick function for CGame module. */
-		void tick(uint64_t deltaTime, uint64_t currentTime, uint64_t serverTime);
+		void tick(deltaTime_t deltaTime, tickTime_t currentTime, tickTime_t simulatedServerTime);
 
 		/** Return the handler list. */
 		MOHPC_NET_EXPORTS HandlerList& handlers();
 		MOHPC_NET_EXPORTS const HandlerList& handlers() const;
 		
 		/** Get the current client time. */
-		MOHPC_NET_EXPORTS uint64_t getTime() const;
+		MOHPC_NET_EXPORTS tickTime_t getTime() const;
 
 		MOHPC_NET_EXPORTS GameplayNotify& getGameplayNotify();
 		MOHPC_NET_EXPORTS const GameplayNotify& getGameplayNotify() const;
-
-		MOHPC_NET_EXPORTS Prediction& getPrediction();
-		MOHPC_NET_EXPORTS const Prediction& getPrediction() const;
 
 		/** Return a reference to the snapshot manager/processor. */
 		MOHPC_NET_EXPORTS SnapshotProcessor& getSnapshotProcessor();
@@ -189,9 +184,6 @@ namespace Network
 		/** Return a reference to the vote manager. */
 		MOHPC_NET_EXPORTS VoteManager& getVoteManager();
 		MOHPC_NET_EXPORTS const VoteManager& getVoteManager() const;
-
-		/** Return a reference to the class that manages trace and collision. */
-		MOHPC_NET_EXPORTS const TraceManager& getTraceManager() const;
 
 		/** Return server rain settings. */
 		MOHPC_NET_EXPORTS const rain_t& getRain() const;
@@ -231,7 +223,7 @@ namespace Network
 		void SCmd_Stufftext(TokenParser& args);
 
 	private:
-		uint64_t svTime;
+		tickTime_t svTime;
 
 		const Parsing::IEnvironment* environmentParse;
 		const Parsing::IGameState* gameStateParse;
@@ -240,7 +232,6 @@ namespace Network
 		HandlerList handlerList;
 		ServerGameState* gameState;
 		fnHandle_t configStringHandler;
-		Prediction prediction;
 		GameplayNotify gameplayNotify;
 		cgsInfo cgs;
 		environment_t environment;
@@ -249,7 +240,6 @@ namespace Network
 		ObjectiveManager objectiveManager;
 		ClientInfoList clientInfoList;
 		SnapshotProcessor processedSnapshots;
-		TraceManager traceManager;
 
 		CommandTemplate<ModuleBase, &ModuleBase::SCmd_Print> printHandler;
 		CommandTemplate<ModuleBase, &ModuleBase::SCmd_HudPrint> hudPrintHandler;
@@ -261,32 +251,6 @@ namespace Network
 		CommandTemplate<ModuleBase, &ModuleBase::SCmd_Stufftext> stufftextHandler;
 
 		CommandManager serverCommandManager;
-	};
-
-	/**
-	 * CG Module for protocol version 6.
-	 * => MOH:AA ver 1.00.
-	 */
-	class CGameModule6 : public ModuleBase
-	{
-	public:
-		CGameModule6();
-	};
-
-	/**
-	 * CG Module for protocol version 15.
-	 * => MOH ver 2.00 and above (since SH).
-	 */
-	class CGameModule15 : public ModuleBase
-	{
-	public:
-		CGameModule15();
-	};
-
-	class ModuleInstancier : public IProtocolClassInstancier<ModuleBase>
-	{
-	public:
-		ModuleBase* createInstance() const override = 0;
 	};
 
 	namespace CGError

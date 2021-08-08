@@ -2,7 +2,9 @@
 #include <MOHPC/Assets/Formats/Image.h>
 #include <MOHPC/Utility/Misc/Endian.h>
 #include "ImagePrivate.h"
-#include <string.h>
+
+#include <cstring>
+#include <cassert>
 
 using namespace MOHPC;
 

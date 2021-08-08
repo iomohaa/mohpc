@@ -1,5 +1,6 @@
 #include <MOHPC/Network/Client/ServerConnection.h>
 #include <MOHPC/Network/Client/TimeManager.h>
+#include <MOHPC/Network/Client/ChainEncode.h>
 #include <MOHPC/Network/Client/CGame/Module.h>
 #include <MOHPC/Network/Remote/Channel.h>
 #include <MOHPC/Network/Serializable/UserInput.h>
@@ -11,6 +12,7 @@
 #include <MOHPC/Common/Log.h>
 #include <MOHPC/Network/Types/ReliableTemplate.h>
 
+#include <cassert>
 #include <typeinfo>
 #include <filesystem>
 #include <fstream>
@@ -28,47 +30,13 @@ class RemoteCommandSequenceTemplate_ver8 : public RemoteCommandSequenceTemplate<
 class SequenceTemplate_ver17 : public SequenceTemplate<64, 2048> {};
 class RemoteCommandSequenceTemplate_ver17 : public RemoteCommandSequenceTemplate<64, 2048> {};
 
-class ClientEncoding
-{
-public:
-	static void encode(IMessageStream& stream, const ICommandSequence* serverCommands, const ServerGameState& gameState, uint32_t challenge, uint32_t serverMessageSequence)
-	{
-		static constexpr size_t encodeStart = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t);
+ProtocolClassInstancier_Template<SequenceTemplate_ver8, IReliableSequence, 5, 8> sequenceTemplateInstancier8;
+ProtocolClassInstancier_Template<SequenceTemplate_ver17, IReliableSequence, 15, 17> sequenceTemplateInstancier17;
 
-		stream.Seek(encodeStart, IMessageStream::SeekPos::Begin);
+ProtocolClassInstancier_Template<RemoteCommandSequenceTemplate_ver8, ICommandSequence, 5, 8> remoteSequenceTemplateInstancier8;
+ProtocolClassInstancier_Template<RemoteCommandSequenceTemplate_ver17, ICommandSequence, 15, 17> remoteSequenceTemplateInstancier17;
 
-		XOREncoding encoder(challenge, *serverCommands);
-		encoder.setSecretKey(gameState.getServerId());
-		encoder.setMessageAcknowledge(serverMessageSequence);
-		encoder.setReliableAcknowledge(serverCommands->getCommandSequence());
-		encoder.convert(stream, stream);
-
-		stream.Seek(0, IMessageStream::SeekPos::Begin);
-	}
-
-	static void decode(MSG& msg, const IReliableSequence* reliableCommands, const ServerGameState& gameState, uint32_t challenge, uint32_t serverMessageSequence)
-	{
-		static constexpr size_t decodeStart = sizeof(uint32_t) + sizeof(uint32_t);
-
-		// decode the stream itself
-		IMessageStream& stream = msg.stream();
-		stream.Seek(decodeStart, IMessageStream::SeekPos::Begin);
-
-		XOREncoding decoder(challenge, *reliableCommands);
-		decoder.setReliableAcknowledge(reliableCommands->getReliableAcknowledge());
-		decoder.setSecretKey(serverMessageSequence);
-		decoder.convert(stream, stream);
-		// seek after sequence number
-		stream.Seek(sizeof(uint32_t));
-
-		// needs to be reset as the stream has been decoded
-		msg.Reset();
-		// read again to get the right bits
-		msg.ReadInteger();
-	}
-};
-
-void ClientConnectionlessHandler::handle(const IRemoteIdentifierPtr& from, MSG& msg)
+void ClientConnectionlessHandler::handle(MSG& msg)
 {
 	msg.SetCodec(MessageCodecs::OOB);
 
@@ -89,12 +57,12 @@ void ClientConnectionlessHandler::handle(const IRemoteIdentifierPtr& from, MSG& 
 	// get the connectionless command
 	const char* cmd = parser.GetToken(true);
 
-	if (!str::icmp(cmd, "disconnect"))
+	if (!strHelpers::icmp(cmd, "disconnect"))
 	{
 		// disconnect message, may happen during map loading
 		throw ClientError::DisconnectException();
 	}
-	else if (!str::icmp(cmd, "droperror"))
+	else if (!strHelpers::icmp(cmd, "droperror"))
 	{
 		// server is kicking the client due to an error
 
@@ -108,19 +76,96 @@ void ClientConnectionlessHandler::handle(const IRemoteIdentifierPtr& from, MSG& 
 	}
 }
 
+ServerChannel::ServerChannel(const INetchanPtr& netchanPtr, const IRemoteIdentifierPtr& adrPtr)
+	: netchan(netchanPtr)
+	, adr(adrPtr)
+	, maxPacketsAtOnce(60)
+{
+}
+
+void ServerChannel::setMaxPackets(uint32_t inMaxPackets)
+{
+	maxPacketsAtOnce = inMaxPackets;
+	if (maxPacketsAtOnce < 1)
+	{
+		// wouldn't make sense ¯\_(°)_/¯
+		maxPacketsAtOnce = 1;
+	}
+}
+
+uint32_t ServerChannel::getMaxPackets() const
+{
+	return maxPacketsAtOnce;
+}
+
+void ServerChannel::wipeChannel()
+{
+	netchan = nullptr;
+}
+
+bool ServerChannel::isChannelValid() const
+{
+	return netchan != nullptr;
+}
+
+const MOHPC::Network::INetchanPtr& ServerChannel::getNetchan() const
+{
+	return netchan;
+}
+
+const MOHPC::IRemoteIdentifierPtr& ServerChannel::getAddress() const
+{
+	return adr;
+}
+
+void ServerChannel::process(const ChannelCallback& callback)
+{
+	if (!isChannelValid())
+	{
+		// invalid channel so don't process anything
+		return;
+	}
+
+	size_t count = 0;
+
+	ICommunicator* const socket = getNetchan()->getRawSocket();
+	// Loop until there is no valid data
+	// or the max number of processed packets has reached the limit
+	while (isChannelValid() && socket->getIncomingSize() && count++ < maxPacketsAtOnce)
+	{
+		// don't process packets from other IPs otherwise the state may get corrupted
+		IRemoteIdentifierPtr receivedFrom = adr;
+
+		DynamicDataMessageStream stream;
+		// reserve a minimum amount to reduce the amount of reallocations
+		stream.reserve(MINIMUM_RECEIVE_BUFFER_SIZE);
+
+		uint32_t sequenceNum;
+		if (getNetchan()->receive(receivedFrom, stream, sequenceNum))
+		{
+			// got the sequence
+			callback(stream, sequenceNum);
+		}
+	}
+}
+
+void ServerChannel::transmit(IMessageStream& stream)
+{
+	getNetchan()->transmit(*adr, stream);
+}
+
 MOHPC_OBJECT_DEFINITION(ServerConnection);
 
 ServerConnection::ServerConnection(const INetchanPtr& inNetchan, const IRemoteIdentifierPtr& inAdr, uint32_t challengeResponse, const protocolType_c& protoType, const UserInfoPtr& cInfo)
-	: netchan(inNetchan)
-	, adr(inAdr)
+	: serverChannel(inNetchan, inAdr)
 	, timeout(std::chrono::milliseconds(60000))
 	, isActive(false)
-	, isReady(false)
 	, userInfo(cInfo)
 	, clGameState(protoType, &clientTime)
 	, clSnapshotManager(protoType)
 	, disconnectHandler(*this)
-	, lastPacketSendTime(0)
+	, serverMessageSequence(0)
+	, protocolType(protoType)
 {
 	if (!userInfo)
 	{
@@ -130,33 +175,35 @@ ServerConnection::ServerConnection(const INetchanPtr& inNetchan, const IRemoteId
 
 	const uint32_t protocol = protoType.getProtocolVersionNumber();
 
-	stringParser = Parsing::IString::get(protocol);
 	hashParser = Parsing::IHash::get(protocol);
+	packetHeaderStream = Parsing::IPacketHeader::get(protocol);
+	remoteCommandStream = Parsing::IRemoteCommand::get(protocol);
+	stringParser = Parsing::IString::get(protocol);
 
-	// from now always use version 17
-	// the maximum command char is different across versions
-	// would it alter the gameplay?
-	//  the command size is bigger than moh:aa (protocol version 5-8)
-	reliableCommands = new SequenceTemplate_ver17();
-	serverCommands = new RemoteCommandSequenceTemplate_ver17();
+	const IProtocolClassInstancier<ICommandSequence>* remoteCommandInstancier = IProtocolClassInstancier<ICommandSequence>::get(protocol);
+	const IProtocolClassInstancier<IReliableSequence>* reliableSequenceInstancier = IProtocolClassInstancier<IReliableSequence>::get(protocol);
 
-	// from now always use version 17
-	// the maximum command char is different across versions
-	// would it alter the gameplay?
-	//  the command size is bigger than moh:aa (protocol version 5-8)
-	reliableCommands = new SequenceTemplate_ver17();
-	serverCommands = new RemoteCommandSequenceTemplate_ver17();
-
-	cgameModule = CGame::ModuleInstancier::get(protocol)->createInstance();
-	cgameModule->setProtocol(protoType);
-	if (!cgameModule)
-	{
-		throw ClientError::BadProtocolVersionException((uint8_t)protoType.getProtocolVersion());
+	if (!remoteCommandInstancier || !reliableSequenceInstancier) {
+		throw ClientError::BadProtocolVersionException(protocol);
 	}
+
+	// use protocol-specific command length
+	// otherwise it may cause trouble if the string length doesn't match
+	reliableCommands = reliableSequenceInstancier->createInstance();
+	serverCommands = remoteCommandInstancier->createInstance();
+
+	// set default chain as encoding/decoding
+	setChain(ClientEncoding::create(clGameState.get(), reliableCommands, serverCommands, challengeResponse));
+
+	// no input module by default
+	inputModule = nullptr;
+
+	cgameModule = new CGame::ModuleBase();
+	cgameModule->setProtocol(protoType);
+
 	CGame::Imports cgImports{
 		clSnapshotManager,
 		clientTime,
-		input,
 		*serverCommands,
 		clGameState,
 		userInfo
@@ -172,11 +219,9 @@ ServerConnection::ServerConnection(const INetchanPtr& inNetchan, const IRemoteId
 	using namespace std::placeholders;
 	remoteCommandManager.add("disconnect", &disconnectHandler);
 
-	//encoder = std::make_shared<Encoding>(challengeResponse, *reliableCommands, *serverCommands);
-
 	using namespace std::chrono;
 	const steady_clock::time_point currentTime = steady_clock::now();
-	clientTime.setStartTime(currentTime.time_since_epoch().count());
+	clientTime.setStartTime(currentTime);
 
 	timeout.update();
 }
@@ -184,6 +229,7 @@ ServerConnection::ServerConnection(const INetchanPtr& inNetchan, const IRemoteId
 ServerConnection::~ServerConnection()
 {
 	disconnect();
+
 	delete reliableCommands;
 	delete serverCommands;
 }
@@ -193,12 +239,8 @@ ServerConnection::HandlerListClient& ServerConnection::getHandlerList()
 	return handlerList;
 }
 
-void ServerConnection::tick(uint64_t deltaTime, uint64_t currentTime)
+void ServerConnection::tick(deltaTime_t deltaTime, tickTime_t currentTime)
 {
-	if (!isChannelValid()) {
-		return;
-	}
-
 	if (timeout.hasTimedOut())
 	{
 		// The server or the client has timed out
@@ -213,47 +255,30 @@ void ServerConnection::tick(uint64_t deltaTime, uint64_t currentTime)
 
 	try
 	{
-		ICommunicator* socket = getNetchan()->getRawSocket();
-		// Loop until there is no valid data
-		// or the max number of processed packets has reached the limit
-		while (isChannelValid() && socket->getIncomingSize() && count++ < settings.getMaxTickPackets())
+		using namespace std::placeholders;
+		serverChannel.process(std::bind(&ServerConnection::sequenceReceived, this, currentTime, _1, _2));
+
+		if (cgameModule)
 		{
-			DynamicDataMessageStream stream;
-			// reserve a minimum amount to reduce the amount of reallocations
-			stream.reserve(MINIMUM_RECEIVE_BUFFER_SIZE);
+			setCGameTime(currentTime, serverMessageSequence);
 
-			uint32_t sequenceNum;
-			IRemoteIdentifierPtr from;
-
-			if (getNetchan()->receive(from, stream, sequenceNum))
+			if (inputModule)
 			{
-				// Prepare for reading
-				MSG msg(stream, msgMode_e::Reading);
-				if (sequenceNum != -1)
+				inputModule->process(clientTime);
+			}
+
+			// build and send client commands
+			//if (sendCmd(currentTime))
+			{
+				// send packets if there are new commands
+				if (readyToSendPacket(currentTime))
 				{
-					// received connection packet
-					receive(from, msg, currentTime, sequenceNum);
-				}
-				else
-				{
-					// can only happen when disconnected
-					ClientConnectionlessHandler handler;
-					handler.handle(from, msg);
+					// time to write a packet to server
+					writePacket(currentTime, serverMessageSequence);
 				}
 			}
-		}
 
-		// Build and send client commands
-		if (sendCmd(currentTime))
-		{
-			// Send packets if there are new commands
-			writePacket(currentTime);
-		}
-
-		setCGameTime(currentTime);
-
-		if (cgameModule) {
-			cgameModule->tick(deltaTime, currentTime, clientTime.getRemoteTime());
+			cgameModule->tick(deltaTime, currentTime, clientTime.getSimulatedRemoteTime());
 		}
 	}
 	catch (ClientError::DisconnectException& exception)
@@ -272,6 +297,28 @@ void ServerConnection::tick(uint64_t deltaTime, uint64_t currentTime)
 	}
 }
 
+void ServerConnection::sequenceReceived(tickTime_t currentTime, IMessageStream& stream, uint32_t sequenceNum)
+{
+	// Prepare for reading
+	MSG msg(stream, msgMode_e::Reading);
+	if (sequenceNum != -1)
+	{
+		// received connection packet
+		receive(msg, currentTime, sequenceNum);
+	}
+	else
+	{
+		// can only happen when disconnected
+		ClientConnectionlessHandler handler;
+		handler.handle(msg);
+	}
+}
+
+const protocolType_c& ServerConnection::getProtocolType() const
+{
+	return protocolType;
+}
+
 TimeoutTimer& ServerConnection::getTimeoutTimer()
 {
 	return timeout;
@@ -282,21 +329,38 @@ const TimeoutTimer& ServerConnection::getTimeoutTimer() const
 	return timeout;
 }
 
-const INetchanPtr& ServerConnection::getNetchan() const
+const ServerChannel& ServerConnection::getServerChannel() const
 {
-	return netchan;
+	return serverChannel;
 }
 
-void ServerConnection::receive(const IRemoteIdentifierPtr& from, MSG& msg, uint64_t currentTime, uint32_t sequenceNum)
+ServerChannel& ServerConnection::getServerChannel()
 {
+	return serverChannel;
+}
+
+void ServerConnection::receive(MSG& msg, tickTime_t currentTime, uint32_t sequenceNum)
+{
+	if (sequenceNum < serverMessageSequence)
+	{
+		// that's an out of order packet
+		MOHPC_LOG(Warn, "out of order packet received, got %d, was %d", sequenceNum, serverMessageSequence);
+	}
+
 	serverMessageSequence = sequenceNum;
 
 	msg.SetCodec(MessageCodecs::Bit);
 
-	// Read the ack
+	// update the last acknowledge command from server
 	reliableCommands->updateAcknowledge(msg.ReadUInteger());
 
-	ClientEncoding::decode(msg, reliableCommands, clGameState, getChallenge(), serverMessageSequence);
+	// handle decode/decrypt
+	chain->handleReceive(msg.stream());
+
+	// needs to be reset as the stream has been decoded
+	msg.Reset();
+	// read again to get the right bits
+	msg.ReadInteger();
 
 	// as data has been received, update the last timeout time
 	timeout.update();
@@ -304,7 +368,7 @@ void ServerConnection::receive(const IRemoteIdentifierPtr& from, MSG& msg, uint6
 	try
 	{
 		// All messages will be parsed from there
-		parseServerMessage(msg, currentTime);
+		parseServerMessage(msg, currentTime, sequenceNum);
 	}
 	catch (NetworkException& e)
 	{
@@ -320,7 +384,7 @@ void ServerConnection::receive(const IRemoteIdentifierPtr& from, MSG& msg, uint6
 	}
 }
 
-void ServerConnection::parseServerMessage(MSG& msg, uint64_t currentTime)
+void ServerConnection::parseServerMessage(MSG& msg, tickTime_t currentTime, uint32_t sequenceNum)
 {
 	while(cgameModule)
 	{
@@ -345,10 +409,9 @@ void ServerConnection::parseServerMessage(MSG& msg, uint64_t currentTime)
 				clGameState,
 				clientTime,
 				serverCommands,
-				outPackets,
 				currentTime,
-				serverMessageSequence,
-				getNetchan()->getOutgoingSequence()
+				sequenceNum,
+				getServerChannel().getNetchan()->getOutgoingSequence()
 			);
 			break;
 		case svc_ops_e::Download:
@@ -399,14 +462,6 @@ void ServerConnection::parseCommandString(MSG& msg)
 
 	serverCommands->addCommand(s, seq);
 
-#if _DEBUG
-	if (!str::icmpn(s.c_str(), "stufftext ", 10))
-	{
-		// Warn about stufftext
-		MOHPC_LOG(Warn, "Stufftext command detected. Handle it with high precautions. Arguments : %s", s.getData() + 10);
-	}
-#endif
-
 	// notify handlers about the new command
 	remoteCommandManager.process(s.c_str());
 }
@@ -426,29 +481,25 @@ void ServerConnection::parseLocprint(MSG& msg)
 	handlerList.locationPrintHandler.broadcast(x, y, const_cast<const char*>(string.getData()));
 }
 
+/*
 bool ServerConnection::sendCmd(uint64_t currentTime)
 {
-	if (cgameModule && canCreateCommand())
+	if (inputModule)
 	{
 		// only create commands if the client is completely ready
-
-		usercmd_t* newCmd;
-		usereyes_t* newEyes;
-		input.createCommand(currentTime, clientTime.getRemoteTime(), newCmd, newEyes);
+		usercmd_t& newCmd = input.createCommand(clientTime);
+		usereyes_t& newEyes = input.createEyes();
 
 		// all movement will happen through the event notification
-		// the callee is responsible for making user input
-		getHandlerList().userInputHandler.broadcast(*newCmd, *newEyes);
-	}
-
-	if (!readyToSendPacket(currentTime)) {
-		return false;
+		// the callee is responsible for filling the user input
+		getHandlerList().userInputHandler.broadcast(newCmd, newEyes);
 	}
 
 	return true;
 }
+*/
 
-void ServerConnection::writePacket(uint64_t currentTime)
+void ServerConnection::writePacket(tickTime_t currentTime, uint32_t sequenceNum)
 {
 	handlerList.preWritePacketHandler.broadcast();
 
@@ -459,14 +510,19 @@ void ServerConnection::writePacket(uint64_t currentTime)
 	stream.reserve(32);
 
 	// write the packet header
-	PacketHeaderWriter headerWriter(clGameState, *serverCommands, serverMessageSequence);
-	headerWriter.write(msg);
-	// write commands the server didn't acknowledge
-	ReliableCommandsWriter cmdWriter(*reliableCommands, *stringParser);
-	cmdWriter.write(msg);
-	// write user commands
-	UserInputWriter inputWriter(input, outPackets, clSnapshotManager, *hashParser, serverCommands, clGameState);
-	inputWriter.write(msg, clientTime.getRemoteTime(), getNetchan()->getOutgoingSequence(), serverMessageSequence);
+	packetHeaderStream->writeHeader(msg, clGameState.get().getMapInfo(), *serverCommands, sequenceNum);
+	// write commands that the server didn't acknowledge
+	remoteCommandStream->writeCommands(msg, *reliableCommands, *stringParser);
+
+	if (inputModule)
+	{
+		bool deltaMove = false;
+		if (clSnapshotManager.isSnapshotValid() && sequenceNum == clSnapshotManager.getCurrentSnapNumber()) {
+			deltaMove = true;
+		}
+
+		inputModule->write(msg, getCommandHashKey(sequenceNum), deltaMove);
+	}
 
 	// end of packet
 	msg.WriteByte(clc_ops_e::eof);
@@ -475,10 +531,10 @@ void ServerConnection::writePacket(uint64_t currentTime)
 	msg.Flush();
 
 	// encode the stream
-	ClientEncoding::encode(stream, serverCommands, clGameState, getChallenge(), serverMessageSequence);
+	chain->handleTransmit(stream);
 	
 	// transmit the encoded message
-	getNetchan()->transmit(*adr, stream);
+	getServerChannel().transmit(stream);
 
 	lastPacketSendTime = currentTime;
 }
@@ -486,11 +542,6 @@ void ServerConnection::writePacket(uint64_t currentTime)
 CGame::ModuleBase* ServerConnection::getCGModule()
 {
 	return cgameModule;
-}
-
-const IRemoteIdentifierPtr& ServerConnection::getRemoteAddress() const
-{
-	return adr;
 }
 
 ServerGameState& ServerConnection::getGameState()
@@ -518,7 +569,7 @@ void ServerConnection::updateUserInfo()
 	Info info;
 	ClientInfoHelper::fillInfoString(*userInfo, info);
 	// send the new user info to the server
-	reliableCommands->addCommand(str::printf("userinfo \"%s\"", info.GetString()));
+	reliableCommands->addCommand((str("userinfo ") + '"' + str(info.GetString()) + '"').c_str());
 }
 
 clientGameSettings_t& ServerConnection::getSettings()
@@ -546,9 +597,9 @@ const ClientTime& ServerConnection::getClientTime() const
 	return clientTime;
 }
 
-const UserInput& ServerConnection::getUserInput() const
+ClientTime& ServerConnection::getClientTime()
 {
-	return input;
+	return clientTime;
 }
 
 IReliableSequence& ServerConnection::getClientCommands() const
@@ -561,11 +612,6 @@ ICommandSequence& ServerConnection::getServerCommands() const
 {
 	assert(serverCommands);
 	return *serverCommands;
-}
-
-uint32_t ServerConnection::getCurrentServerMessageSequence() const
-{
-	return serverMessageSequence;
 }
 
 const ICommandSequence* ServerConnection::getCommandSequence() const
@@ -585,35 +631,19 @@ const IReliableSequence* ServerConnection::getReliableSequence() const
 
 void ServerConnection::disconnect()
 {
-	if(getNetchan())
+	if(getServerChannel().isChannelValid())
 	{
 		reliableCommands->addCommand("disconnect");
 
 		for (size_t i = 0; i < 3; ++i) {
-			writePacket(0);
+			writePacket(tickTime_t(), serverMessageSequence);
 		}
 
 		// Network channel is not needed anymore
-		wipeChannel();
+		getServerChannel().wipeChannel();
 	}
 
-	// Terminate the connection
 	terminateConnection(nullptr);
-}
-
-void ServerConnection::markReady()
-{
-	isReady = true;
-}
-
-void ServerConnection::unmarkReady()
-{
-	isReady = false;
-}
-
-bool ServerConnection::canCreateCommand() const
-{
-	return isReady;
 }
 
 void ServerConnection::disconnectCommand(TokenParser& tokenized)
@@ -624,9 +654,8 @@ void ServerConnection::disconnectCommand(TokenParser& tokenized)
 
 void ServerConnection::serverDisconnected(const char* reason)
 {
-	wipeChannel();
+	getServerChannel().wipeChannel();
 
-	// Terminate after wiping channel
 	terminateConnection(reason);
 }
 
@@ -645,55 +674,42 @@ void ServerConnection::terminateConnection(const char* reason)
 	}
 }
 
-void ServerConnection::wipeChannel()
-{
-	netchan = nullptr;
-}
-
-bool ServerConnection::isChannelValid() const
-{
-	return netchan != nullptr && cgameModule != nullptr;
-}
-
-void ServerConnection::setCGameTime(uint64_t currentTime)
+void ServerConnection::setCGameTime(tickTime_t currentTime, uint32_t sequenceNum)
 {
 	ClientTimeManager timeManager(clientTime, clSnapshotManager);
 	timeManager.setTime(currentTime);
 
 	if (timeManager.hasEntered())
 	{
-		initSnapshot();
+		initSnapshot(sequenceNum);
 	}
 }
 
-void ServerConnection::initSnapshot()
+void ServerConnection::initSnapshot(uint32_t sequenceNum)
 {
 	// make the game active
 	isActive = true;
 
-	cgameModule->init(serverMessageSequence, serverCommands->getCommandSequence());
+	cgameModule->init(sequenceNum, serverCommands->getCommandSequence());
 
 	// update the userinfo to not let the server hold garbage fields like the challenge
 	updateUserInfo();
 }
 
-bool ServerConnection::readyToSendPacket(uint64_t currentTime) const
+bool ServerConnection::readyToSendPacket(tickTime_t currentTime) const
 {
-	if (!cgameModule)
-	{
-		// it happens if disconnected from server
-		return false;
-	}
+	using namespace std::chrono;
 
-	if (!clGameState.getServerId() || !canCreateCommand())
+	if (!clGameState.get().getMapInfo().getServerId() || !inputModule)
 	{
 		// allow one packet per second when not entered
-		return currentTime >= lastPacketSendTime + 1000;
+		return currentTime >= lastPacketSendTime + milliseconds(1000);
 	}
 
-	const size_t oldPacketNum = getNetchan()->getOutgoingSequence() % PACKET_BACKUP;
-	const uint64_t delta = currentTime - outPackets[oldPacketNum].p_currentTime;
-	if (delta < 1000 / settings.getMaxPackets()) {
+	//const size_t oldPacketNum = getNetchan()->getOutgoingSequence() % PACKET_BACKUP;
+	//const uint64_t delta = currentTime - outPackets[oldPacketNum].p_currentTime;
+	const deltaTime_t delta = currentTime - lastPacketSendTime;
+	if (delta < milliseconds(1000 / settings.getMaxPackets())) {
 		return false;
 	}
 
@@ -705,172 +721,46 @@ CommandManager& ServerConnection::getRemoteCommandManager()
 	return remoteCommandManager;
 }
 
-uint32_t ServerConnection::getChallenge() const
+uint32_t ServerConnection::getCommandHashKey(uint32_t serverMessageSequence) const
 {
-	return challenge;
-}
-
-PacketHeaderWriter::PacketHeaderWriter(const ServerGameState& clGameStateRef, const ICommandSequence& serverCommandsRef, uint32_t serverMessageSequenceValue)
-	: clGameState(clGameStateRef)
-	, serverCommands(serverCommandsRef)
-	, serverMessageSequence(serverMessageSequenceValue)
-{
-}
-
-void PacketHeaderWriter::write(MSG& msg)
-{
-	// write the server id (given with the gameState)
-	msg.WriteUInteger(clGameState.getServerId());
-	// write the server sequence number (packet number)
-	msg.WriteUInteger(serverMessageSequence);
-	// write the command sequence acknowledge
-	msg.WriteUInteger(serverCommands.getCommandSequence());
-}
-
-ReliableCommandsWriter::ReliableCommandsWriter(const IReliableSequence& reliableCommandsRef, const Parsing::IString& stringParserRef)
-	: reliableCommands(reliableCommandsRef)
-	, stringParser(stringParserRef)
-{
-}
-
-void ReliableCommandsWriter::write(MSG& msg)
-{
-	const rsequence_t reliableAcknowledge = reliableCommands.getReliableAcknowledge();
-	const rsequence_t reliableSequence = reliableCommands.getReliableSequence();
-	for (uint32_t i = reliableAcknowledge + 1; i <= reliableSequence; ++i)
-	{
-		msg.WriteByte(clc_ops_e::ClientCommand);
-		msg.WriteInteger(i);
-		stringParser.writeString(msg, reliableCommands.getSequence(i));
-	}
-}
-
-UserInputWriter::UserInputWriter(
-	const UserInput& userInputRef,
-	OutgoingPackets& outPacketsRef,
-	const ServerSnapshotManager& clSnapshotManRef,
-	const Parsing::IHash& hasherRef,
-	const ICommandSequence* serverCommandsPtr,
-	const ServerGameState& clGameStateRef
-)
-	: userInput(userInputRef)
-	, outPackets(outPacketsRef)
-	, clSnapshotMan(clSnapshotManRef)
-	, hasher(hasherRef)
-	, serverCommands(serverCommandsPtr)
-	, clGameState(clGameStateRef)
-{
-}
-
-void UserInputWriter::write(MSG& msg, uint64_t currentTime, uint32_t outgoingSequence, uint32_t serverMessageSequence)
-{
-	const uint32_t oldPacketNum = (outgoingSequence - 1) % PACKET_BACKUP;
-	const uint8_t count = getNumCommandsToWrite(oldPacketNum);
-
-	static const usercmd_t nullcmd;
-	const usercmd_t* oldcmd = &nullcmd;
-
-	if (count >= 1)
-	{
-		const clc_ops_e cmdOp = getClientOperation(serverMessageSequence);
-
-		// write the operation type
-		msg.WriteByteEnum<clc_ops_e>(cmdOp);
-		// write the number of commands
-		msg.WriteByte(count);
-		// write delta eyes
-		const SerializableUserEyes oldEyeInfo(outPackets[oldPacketNum].p_eyeinfo);
-		SerializableUserEyes userEyesWrite(const_cast<usereyes_t&>(userInput.getEyeInfo()));
-		msg.WriteDeltaClass(&oldEyeInfo, &userEyesWrite);
-
-		// get the key used to xor user command data
-		const uint32_t key = getCommandHashKey(serverMessageSequence);
-
-		// now write all commands
-		writeAllCommands(msg, oldcmd, count, key);
-	}
-
-	// save values for later
-	storeOutputPacket(currentTime, oldcmd->serverTime, outgoingSequence);
-
-	// Write end of user commands
-	msg.WriteByte(clc_ops_e::eof);
-}
-
-clc_ops_e UserInputWriter::getClientOperation(uint32_t serverMessageSequence) const
-{
-	if (clSnapshotMan.isSnapshotValid() && serverMessageSequence == clSnapshotMan.getCurrentSnapNumber()) {
-		return clc_ops_e::Move;
-	}
-	else {
-		return clc_ops_e::MoveNoDelta;
-	}
-}
-
-uint32_t UserInputWriter::getCommandHashKey(uint32_t serverMessageSequence) const
-{
-	uint32_t key = clGameState.getChecksumFeed();
+	uint32_t key = clGameState.get().getMapInfo().getChecksumFeed();
 	// also use the message acknowledge
 	key ^= serverMessageSequence;
 	// also use the last acknowledged server command in the key
-	key ^= hasher.hashKey(serverCommands->getLastSequence(), 32);
+	key ^= hashParser->hashKey(serverCommands->getLastSequence(), 32);
 
 	return key;
 }
 
-uint8_t UserInputWriter::getNumCommandsToWrite(uint32_t oldPacketNum) const
+const IChainPtr& ServerConnection::getChain()
 {
-	const uint32_t cmdNumber = userInput.getCurrentCmdNumber();
-	if (cmdNumber > outPackets[oldPacketNum].p_cmdNumber + MAX_PACKET_USERCMDS)
-	{
-		MOHPC_LOG(Warn, "MAX_PACKET_USERCMDS");
-		return MAX_PACKET_USERCMDS;
-	}
-
-	return cmdNumber - outPackets[oldPacketNum].p_cmdNumber;
+	return chain;
 }
 
-void UserInputWriter::writeAllCommands(MSG& msg, const usercmd_t*& oldcmd, size_t count, uint32_t key)
+void ServerConnection::setChain(const IChainPtr& chainPtr)
 {
-	// write all the commands, including the predicted command
-	for (size_t i = 0; i < count; i++)
-	{
-		const usercmd_t& cmd = userInput.getCommandFromLast(count + i + 1);
-		// write a delta of the command by using the old
-		SerializableUsercmd oldCmdRead(*const_cast<usercmd_t*>(oldcmd));
-		SerializableUsercmd inputCmd(const_cast<usercmd_t&>(cmd));
-		msg.WriteDeltaClass(&oldCmdRead, &inputCmd, key);
-
-		oldcmd = &cmd;
-	}
+	chain = chainPtr;
 }
 
-void UserInputWriter::storeOutputPacket(uint64_t currentTime, uint32_t serverTime, uint32_t outgoingSequence)
+const IUserInputModulePtr& ServerConnection::getInputModule() const
 {
-	const uint32_t packetNum = outgoingSequence % PACKET_BACKUP;
-	outPackets[packetNum].p_currentTime = currentTime;
-	outPackets[packetNum].p_serverTime = serverTime;
-	outPackets[packetNum].p_cmdNumber = userInput.getCurrentCmdNumber();
-	outPackets[packetNum].p_eyeinfo = userInput.getEyeInfo();
+	return inputModule;
+}
+
+void ServerConnection::setInputModule(const IUserInputModulePtr& inputModulePtr)
+{
+	inputModule = inputModulePtr;
+}
+
+uint32_t ServerConnection::getCurrentServerMessageSequence() const
+{
+	return serverMessageSequence;
 }
 
 clientGameSettings_t::clientGameSettings_t()
 	: maxPackets(30)
-	, maxTickPackets(60)
-	, radarRange(1024.f)
-	, timeNudge(0)
 {
 
-}
-
-void clientGameSettings_t::setRadarRange(float value)
-{
-	radarRange = value;
-}
-
-float clientGameSettings_t::getRadarRange() const
-{
-	return radarRange;
 }
 
 uint32_t clientGameSettings_t::getMaxPackets() const
@@ -889,32 +779,6 @@ void clientGameSettings_t::setMaxPackets(uint32_t inMaxPackets)
 	}
 }
 
-uint32_t clientGameSettings_t::getMaxTickPackets() const
-{
-	return maxTickPackets;
-}
-
-void clientGameSettings_t::setMaxTickPackets(uint32_t inMaxPackets)
-{
-	maxTickPackets = inMaxPackets;
-	if (maxTickPackets < 1) {
-		maxTickPackets = 1;
-	}
-	else if (maxTickPackets > 1000) {
-		maxTickPackets = 1000;
-	}
-}
-
-void clientGameSettings_t::setTimeNudge(uint32_t value)
-{
-	timeNudge = value;
-}
-
-uint32_t clientGameSettings_t::getTimeNudge() const
-{
-	return timeNudge;
-}
-
 //=============================
 // EXCEPTIONS
 //=============================
@@ -930,7 +794,7 @@ uint32_t ClientError::BadProtocolVersionException::getProtocolVersion() const
 
 str ClientError::BadProtocolVersionException::what() const
 {
-	return str((int)getProtocolVersion());
+	return std::to_string(getProtocolVersion());
 }
 
 ClientError::IllegibleServerMessageException::IllegibleServerMessageException(uint8_t inCmdNum)
@@ -944,7 +808,7 @@ uint8_t ClientError::IllegibleServerMessageException::getLength() const
 
 str ClientError::IllegibleServerMessageException::what() const
 {
-	return str((int)getLength());
+	return std::to_string(getLength());
 }
 
 ClientError::BaselineOutOfRangeException::BaselineOutOfRangeException(uint16_t inBaselineNum)
@@ -958,7 +822,7 @@ uint16_t ClientError::BaselineOutOfRangeException::getBaselineNum() const
 
 str ClientError::BaselineOutOfRangeException::what() const
 {
-	return str((int)getBaselineNum());
+	return std::to_string(getBaselineNum());
 }
 
 ClientError::DisconnectException::DisconnectException()

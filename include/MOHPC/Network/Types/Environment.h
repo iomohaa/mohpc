@@ -19,7 +19,7 @@ namespace Network
 		MOHPC_NET_EXPORTS float getFarplane() const;
 
 		/** Fog color. */
-		MOHPC_NET_EXPORTS const Vector& getFarplaneColor() const;
+		MOHPC_NET_EXPORTS const_vec3p_t getFarplaneColor() const;
 
 		/** SH/BT: Fog bias. */
 		MOHPC_NET_EXPORTS float getFarplaneBias() const;
@@ -34,7 +34,7 @@ namespace Network
 		MOHPC_NET_EXPORTS float getFarclipOverride() const;
 
 		/** SH/BT: Colors for temporarily overriding fog. */
-		MOHPC_NET_EXPORTS const Vector& getFarplaneColorOverride() const;
+		MOHPC_NET_EXPORTS const_vec3p_t getFarplaneColorOverride() const;
 
 		/** SH/BT: True if terrain should be rendered. */
 		MOHPC_NET_EXPORTS bool shouldRenderTerrain() const;
@@ -46,8 +46,8 @@ namespace Network
 		MOHPC_NET_EXPORTS bool isSkyPortal() const;
 
 	public:
-		Vector farplaneColor;
-		Vector farplaneColorOverride;
+		vec3_t farplaneColor;
+		vec3_t farplaneColorOverride;
 		float farplaneDistance;
 		float skyAlpha;
 		float skyboxFarplane;

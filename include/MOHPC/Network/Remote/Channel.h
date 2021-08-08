@@ -24,19 +24,6 @@ namespace MOHPC
 		// a fragment is no more than FRAGMENT_SIZE
 		using fragmentLen_t = uint16_t;
 
-		class BadFragmentLengthException : public NetworkException
-		{
-		private:
-			size_t length;
-
-		public:
-			BadFragmentLengthException(size_t inLength)
-				: length(inLength)
-			{}
-
-			size_t getLength() const { return length; }
-		};
-
 		class INetchan
 		{
 		private:
@@ -103,6 +90,19 @@ namespace MOHPC
 
 			virtual bool receive(IRemoteIdentifierPtr& from, IMessageStream& stream, uint32_t& sequenceNum) override;
 			virtual bool transmit(const IRemoteIdentifier& to, IMessageStream& stream) override;
+		};
+
+		class BadFragmentLengthException : public NetworkException
+		{
+		private:
+			size_t length;
+
+		public:
+			BadFragmentLengthException(size_t inLength)
+				: length(inLength)
+			{}
+
+			size_t getLength() const { return length; }
 		};
 	}
 }

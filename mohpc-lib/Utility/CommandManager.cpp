@@ -9,12 +9,12 @@ CommandManager::CommandManager()
 
 void CommandManager::reserve(size_t num)
 {
-	commands.Resize(commands.NumObjects() + num);
+	commands.reserve(commands.size() + num);
 }
 
 void CommandManager::add(const char* name, ICommand* command)
 {
-	commands.AddObject(CommandData(name, command));
+	commands.emplace_back(name, command);
 }
 
 void CommandManager::process(const char* commandString)
@@ -26,11 +26,11 @@ void CommandManager::process(const char* commandString)
 
 	const char* command = tokenized.GetToken(false);
 	// find the command in list
-	const size_t numCmds = commands.NumObjects();
+	const size_t numCmds = commands.size();
 	for (size_t i = 0; i < numCmds; ++i)
 	{
 		const CommandData& cmd = commands[i];
-		if (!str::icmp(command, cmd.getName()))
+		if (!strHelpers::icmp(command, cmd.getName()))
 		{
 			// Call the correct function
 			cmd.getCommand()->execute(tokenized);

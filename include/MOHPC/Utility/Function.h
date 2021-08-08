@@ -1,6 +1,6 @@
 #pragma once
 
-#include <morfuse/Container/Container.h>
+#include <vector>
 #include <functional>
 
 namespace MOHPC
@@ -89,7 +89,7 @@ namespace MOHPC
 		};
 
 	private:
-		mfuse::con::Container<FnStorage> functionList;
+		std::vector<FnStorage> functionList;
 		fnHandle_t cid;
 
 	public:
@@ -105,7 +105,7 @@ namespace MOHPC
 		fnHandle_t add(FunctionType&& func)
 		{
 			// Add the function and return the id
-			new(functionList) FnStorage(++cid, std::forward<FunctionType>(func));
+			functionList.emplace_back(++cid, std::forward<FunctionType>(func));
 
 			// Return the handle
 			return cid;
@@ -118,12 +118,12 @@ namespace MOHPC
 		 */
 		void remove(fnHandle_t handle)
 		{
-			for (size_t i = functionList.NumObjects(); i > 0; i--)
+			for(auto it = functionList.begin(); it != functionList.end(); ++it)
 			{
-				FnStorage& fn = functionList[i - 1];
+				const FnStorage& fn = *it;
 				if (fn.id == handle)
 				{
-					functionList.RemoveObjectAt(i);
+					functionList.erase(it);
 					return;
 				}
 			}
@@ -138,10 +138,9 @@ namespace MOHPC
 		void broadcast(Args&&... args) const
 		{
 			// Call all registered functions
-			for (size_t i = functionList.NumObjects(); i > 0; i--)
+			for (auto it = functionList.begin(); it != functionList.end(); ++it)
 			{
-				const FnStorage& fn = functionList[i - 1];
-				fn.func(std::forward<Args>(args)...);
+				it->func(std::forward<Args>(args)...);
 			}
 		}
 	};

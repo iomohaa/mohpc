@@ -21,7 +21,7 @@ size_t UDPCommunicator::send(const IRemoteIdentifier& identifier, const uint8_t*
 	if(ipId)
 	{
 		// send to the address
-		return socket->send(*ipId->getAddress(), data, size);
+		return socket->send(ipId->getAddress(), data, size);
 	}
 
 	return 0;
@@ -92,12 +92,12 @@ size_t UDPBroadcastCommunicator::send(const IRemoteIdentifier& identifier, const
 	}
 
 	// ignore the identifier and do a broadcast instead
-	NetAddr4 addr;
-	addr.setIp(-1, -1, -1, -1);
+	NetAddr4Ptr addr = NetAddr4::create();
+	addr->setIp(-1, -1, -1, -1);
 
 	for (uint16_t i = startPort; i < endPort; ++i)
 	{
-		addr.setPort(i);
+		addr->setPort(i);
 		socket->send(addr, data, size);
 	}
 

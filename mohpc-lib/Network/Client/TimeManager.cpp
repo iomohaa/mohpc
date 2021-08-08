@@ -12,14 +12,15 @@ ClientTimeManager::ClientTimeManager(ClientTime& clientTimeRef, ServerSnapshotMa
 {
 }
 
-void ClientTimeManager::setTime(uint64_t currentTime)
+void ClientTimeManager::setTime(tickTime_t currentTime)
 {
 	ClientTimeManager timeManager(clientTime, snapshotManager);
 
+	const bool adjustTime = snapshotManager.hasNewSnapshots();
 	if (snapshotManager.checkTime(clientTime))
 	{
 		// at this point the client has entered the game
-		clientTime.initRemoteTime(snapshotManager.getServerTime(), currentTime);
+		clientTime.initRemoteTime(currentTime, snapshotManager.getServerTime());
 		entered = true;
 	}
 
@@ -33,7 +34,7 @@ void ClientTimeManager::setTime(uint64_t currentTime)
 	clientTime.setTime(
 		currentTime,
 		snapshotManager.getServerTime(),
-		snapshotManager.hasNewSnapshots()
+		adjustTime
 	);
 }
 

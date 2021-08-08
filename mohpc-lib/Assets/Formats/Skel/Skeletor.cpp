@@ -1,11 +1,13 @@
 #include <Shared.h>
 #include "SkelPrivate.h"
 #include "../TIKI/TIKI_Private.h"
+#include "../../../Common/VectorPrivate.h"
+
 #include <chrono>
 
 using namespace MOHPC;
 
-#define EPSILON		0.000000000001f
+constexpr float EPSILON = 0.000000000001f;
 
 MOHPC_OBJECT_DEFINITION(SkeletorManager);
 SkeletorManager::SkeletorManager()
@@ -103,13 +105,12 @@ size_t SkeletonAnimation::GetFrameNums(float timeSeconds, float timeTolerance, s
 	return 2;
 }
 
-Vector SkeletonAnimation::GetDeltaOverTime(float time1, float time2)
+void SkeletonAnimation::GetDeltaOverTime(float time1, float time2, vec3r_t delta)
 {
 	float deltaWeight1;
 	int frameNum1;
 	float deltaWeight2;
 	int frameNum2;
-	Vector delta;
 	int currFrame;
 	float s, d;
 
@@ -125,15 +126,15 @@ Vector SkeletonAnimation::GetDeltaOverTime(float time1, float time2)
 
 	if (frameNum1 < frameNum2)
 	{
-		delta.x = m_frame[frameNum1 % numFrames].delta.x;
-		delta.y = m_frame[frameNum1 % numFrames].delta.y;
-		delta.z = m_frame[frameNum1 % numFrames].delta.z;
+		delta[0] = m_frame[frameNum1 % numFrames].delta[0];
+		delta[1] = m_frame[frameNum1 % numFrames].delta[1];
+		delta[2] = m_frame[frameNum1 % numFrames].delta[2];
 
 		for (currFrame = frameNum1 + 1; currFrame < frameNum2; currFrame++)
 		{
-			delta.x += m_frame[currFrame % numFrames].delta.x;
-			delta.y += m_frame[currFrame % numFrames].delta.y;
-			delta.z += m_frame[currFrame % numFrames].delta.z;
+			delta[0] += m_frame[currFrame % numFrames].delta[0];
+			delta[1] += m_frame[currFrame % numFrames].delta[1];
+			delta[2] += m_frame[currFrame % numFrames].delta[2];
 		}
 	}
 	else
@@ -141,21 +142,19 @@ Vector SkeletonAnimation::GetDeltaOverTime(float time1, float time2)
 		s = s - (1.0f - d);
 	}
 
-	delta.x += m_frame[frameNum2 % numFrames].delta.x * s;
-	delta.y += m_frame[frameNum2 % numFrames].delta.y * s;
-	delta.z += m_frame[frameNum2 % numFrames].delta.z * s;
+	delta[0] += m_frame[frameNum2 % numFrames].delta[0] * s;
+	delta[1] += m_frame[frameNum2 % numFrames].delta[1] * s;
+	delta[2] += m_frame[frameNum2 % numFrames].delta[2] * s;
 
-	if (delta.x > -0.001f && delta.x < 0.001f) {
-		delta.x = 0;
+	if (delta[0] > -0.001f && delta[0] < 0.001f) {
+		delta[0] = 0;
 	}
-	if (delta.y > -0.001f && delta.y < 0.001f) {
-		delta.y = 0;
+	if (delta[1] > -0.001f && delta[1] < 0.001f) {
+		delta[1] = 0;
 	}
-	if (delta.z > -0.001f && delta.z < 0.001f) {
-		delta.z = 0;
+	if (delta[2] > -0.001f && delta[2] < 0.001f) {
+		delta[2] = 0;
 	}
-
-	return delta;
 }
 
 Skeletor::Skeletor(TIKI *tiki)
@@ -463,7 +462,7 @@ SkelMat4 GlobalToLocal(skelBone_Base *bone, SkelMat4 pGlobalPosition)
 	return lLocalPosition;
 }
 
-void BoneGetFrames(Skeleton *skelmodel, SkeletonAnimation *animData, SkeletonChannelList *boneList, int boneNum, mfuse::con::Container<SkanAnimFrame>& outFrames)
+void BoneGetFrames(Skeleton *skelmodel, SkeletonAnimation *animData, SkeletonChannelList *boneList, int boneNum, std::vector<SkanAnimFrame>& outFrames)
 {
 	skelBone_Base **bone;
 	SkanAnimFrame frame;
@@ -1078,7 +1077,7 @@ size_t Skeletor::GetMorphWeightFrame(int64_t *data)
 		}
 	}
 
-	if (m_headBoneIndex >= 0 && !m_eyeTargetPos.FuzzyEqual(vec_zero, EPSILON))
+	if (m_headBoneIndex >= 0 && !castVector(m_eyeTargetPos).isMuchSmallerThan(castVector(vec3_zero), EPSILON))
 	{
 		SkelVec3 lookPos;
 		SkelVec3 temp;

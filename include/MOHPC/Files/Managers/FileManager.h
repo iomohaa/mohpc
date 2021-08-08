@@ -4,7 +4,7 @@
 #include "../../Common/str.h"
 #include "../../Utility/SharedPtr.h"
 
-#include <morfuse/Container/Container.h>
+#include <vector>
 #include <istream>
 #include <vector>
 #include <string>
@@ -57,11 +57,11 @@ namespace MOHPC
 	class FileEntryList
 	{
 	private:
-		mfuse::con::Container<FileEntry> fileList;
+		std::vector<FileEntry> fileList;
 
 	public:
 		MOHPC_FILES_EXPORTS FileEntryList();
-		FileEntryList(mfuse::con::Container<FileEntry>&& inFileList) noexcept;
+		FileEntryList(std::vector<FileEntry>&& inFileList) noexcept;
 		MOHPC_FILES_EXPORTS FileEntryList(const FileEntryList& other) = delete;
 		MOHPC_FILES_EXPORTS FileEntryList& operator=(const FileEntryList& other) = delete;
 		MOHPC_FILES_EXPORTS FileEntryList(FileEntryList&& other) noexcept = default;
@@ -129,13 +129,6 @@ namespace MOHPC
 		 */
 		bool AddPakFile(const char* Filename, const char* CategoryName = nullptr);
 
-		/**
-		 * Auto add standard pak files and directories from root game directory.
-		 *
-		 * @param Directory - The full path to the game directory.
-		 */
-		bool FillGameDirectory(const char* Directory);
-
 		/** Return the number of added game dirs. */
 		size_t GetNumDirectories() const;
 
@@ -176,7 +169,7 @@ namespace MOHPC
 		 * @param bInPakOnly - True to list files that are only in paks
 		 * @return a list of files.
 		 */
-		FileEntryList ListFilteredFiles(const char* Directory, const mfuse::con::Container<str>& Extensions = mfuse::con::Container<str>(), bool bRecursive = true, bool bInPakOnly = true, const char* CategoryName = nullptr) const;
+		FileEntryList ListFilteredFiles(const char* Directory, const std::vector<str>& Extensions = std::vector<str>(), bool bRecursive = true, bool bInPakOnly = true, const char* CategoryName = nullptr) const;
 		FileEntryList ListFilteredFiles(const char* Directory, const char* Extension = "", bool bRecursive = true, bool bInPakOnly = true, const char* CategoryName = nullptr) const;
 		
 		/**
@@ -184,7 +177,7 @@ namespace MOHPC
 		 *
 		 * @param FileList - List of files
 		 */
-		void SortFileList(mfuse::con::Container<FileEntry>& FileList);
+		void SortFileList(std::vector<FileEntry>& FileList);
 
 		/**
 		 * Return a corrected game path
@@ -198,7 +191,7 @@ namespace MOHPC
 		 *
 		 * @param OutList - The list of category names.
 		 */
-		void GetCategoryList(mfuse::con::Container<const char*>& OutList) const;
+		void GetCategoryList(std::vector<const char*>& OutList) const;
 
 		/**
 		 * Return the extension of the given filename (without the dot), an empty string is returned if there is no extension.
@@ -246,4 +239,9 @@ namespace MOHPC
 		size_t numGamePaths;
 		size_t numPaks;
 	};
+
+	namespace strHelpers
+	{
+		const char* getExtension(const char* val);
+	}
 }

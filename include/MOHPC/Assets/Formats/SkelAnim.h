@@ -2,8 +2,9 @@
 
 #include "../Asset.h"
 #include "../../Utility/SharedPtr.h"
-#include <morfuse/Container/set.h>
-#include <stdint.h>
+#include "../../Common/SimpleVector.h"
+
+#include <cstdint>
 
 namespace MOHPC
 {
@@ -19,8 +20,8 @@ namespace MOHPC
 	struct SkanAnimFrame
 	{
 		size_t nFrameNum;
-		Vector pos;
-		Vector rot;
+		vec3_t pos;
+		vec3_t rot;
 	};
 
 	class SkeletonAnimation : public Asset
@@ -52,7 +53,7 @@ namespace MOHPC
 
 		struct SkanChannelHdr
 		{
-			mfuse::con::Container<SkanGameFrame> ary_frames;
+			std::vector<SkanGameFrame> ary_frames;
 		};
 
 	private:
@@ -61,13 +62,13 @@ namespace MOHPC
 		bool bHasDelta;
 		bool bHasMorph;
 		bool bHasUpper;
-		SkelVec3 totalDelta;
+		vec3_t totalDelta;
 		float totalAngleDelta;
 		float frameTime;
 		SkeletonChannelList channelList;
 		SkelVec3 bounds[2];
-		mfuse::con::Container<AnimFrame> m_frame;
-		mfuse::con::Container<SkanChannelHdr> ary_channels;
+		std::vector<AnimFrame> m_frame;
+		std::vector<SkanChannelHdr> ary_channels;
 
 	public:
 		void Load() override;
@@ -97,13 +98,13 @@ namespace MOHPC
 		MOHPC_ASSETS_EXPORTS float GetFrameTime() const;
 
 		/** Returns the total delta of the animation. */
-		MOHPC_ASSETS_EXPORTS Vector GetDelta() const;
+		MOHPC_ASSETS_EXPORTS const_vec3p_t GetDelta() const;
 
 		/** Returns true if the animation contains a delta data. */
 		MOHPC_ASSETS_EXPORTS bool HasDelta() const;
 
 		/** Returns the delta between two times in seconds. */
-		MOHPC_ASSETS_EXPORTS Vector GetDeltaOverTime(float Time1, float Time2);
+		MOHPC_ASSETS_EXPORTS void GetDeltaOverTime(float Time1, float Time2, vec3r_t delta);
 
 		/** Returns the animation flags. */
 		MOHPC_ASSETS_EXPORTS int32_t GetFlags() const;
@@ -112,7 +113,7 @@ namespace MOHPC
 		MOHPC_ASSETS_EXPORTS int32_t GetFlagsSkel() const;
 
 		/** Returns the bounds an animation takes. */
-		MOHPC_ASSETS_EXPORTS void GetBounds(Vector& OutMins, Vector& OutMaxs) const;
+		MOHPC_ASSETS_EXPORTS void GetBounds(vec3r_t OutMins, vec3r_t OutMaxs) const;
 		MOHPC_ASSETS_EXPORTS void GetBounds(SkelVec3& OutMins, SkelVec3& OutMaxs) const;
 
 		/** Returns the channel list of the animation. */

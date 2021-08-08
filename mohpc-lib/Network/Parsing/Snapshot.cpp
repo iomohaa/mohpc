@@ -7,6 +7,7 @@
 #include <MOHPC/Network/Serializable/Entity.h>
 #include <MOHPC/Network/Serializable/EntityField.h>
 #include <MOHPC/Utility/Misc/MSG/MSG.h>
+#include <MOHPC/Utility/Misc/MSG/MSGCoord.h>
 #include <MOHPC/Common/Log.h>
 
 using namespace MOHPC;
@@ -25,7 +26,6 @@ public:
 	}
 
 	void parseSnapshot(
-		uint64_t currentTime,
 		MSG& msg,
 		const gameState_t& gameState,
 		ICommandSequence* serverCommands,
@@ -36,7 +36,8 @@ public:
 	{
 		rawSnapshot.serverCommandNum = serverCommands->getCommandSequence();
 
-		rawSnapshot.serverTime = msg.ReadUInteger();
+		using namespace std::chrono;
+		rawSnapshot.serverTime = netTime_t(milliseconds(msg.ReadUInteger()));
 		rawSnapshot.serverTimeResidual = msg.ReadByte();
 
 		// Insert the sequence num
@@ -241,7 +242,7 @@ public:
 
 		const EntityList& entityBaselines = gameState.getEntityBaselines();
 
-		MsgTypesHelper msgHelper(msg);
+		MsgCoordHelper msgHelper(msg);
 		for (size_t i = 0; i < numSounds; ++i)
 		{
 			sound_t& sound = newFrame->sounds[i];
@@ -261,7 +262,7 @@ public:
 				sound.isSpatialized = msg.ReadBool();
 
 				if (sound.isSpatialized) {
-					sound.origin = msgHelper.ReadVectorFloat();
+					msgHelper.ReadVectorFloat(sound.origin);
 				}
 
 				const uint16_t entityNum = msg.ReadNumber<uint16_t>(11);
@@ -378,5 +379,5 @@ uint8_t SnapshotError::AreaMaskBadSize::getSize() const
 
 str SnapshotError::AreaMaskBadSize::what() const
 {
-	return str((int)getSize());
+	return std::to_string(getSize());
 }

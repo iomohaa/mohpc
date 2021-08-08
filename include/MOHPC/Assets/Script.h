@@ -3,7 +3,8 @@
 #include "Asset.h"
 #include "../Common/Vector.h"
 #include "../Common/str.h"
-#include <morfuse/Container/Container.h>
+
+#include <vector>
 
 #define TOKENCOMMENT		(';')
 #define TOKENCOMMENT2		('#')
@@ -39,7 +40,7 @@ namespace MOHPC
 		str filename;
 		const char	*script_p;
 		const char	*end_p;
-		mfuse::con::Container<macro *> macrolist;
+		std::vector<macro *> macrolist;
 
 		int32_t line;
 		str token;
@@ -85,7 +86,7 @@ namespace MOHPC
 		MOHPC_ASSETS_EXPORTS int GetInteger(bool crossline);
 		MOHPC_ASSETS_EXPORTS double GetDouble(bool crossline);
 		MOHPC_ASSETS_EXPORTS float GetFloat(bool crossline);
-		MOHPC_ASSETS_EXPORTS Vector GetVector(bool crossline);
+		MOHPC_ASSETS_EXPORTS void GetVector(bool crossline, vec3r_t out);
 		MOHPC_ASSETS_EXPORTS int LinesInFile(void);
 		MOHPC_ASSETS_EXPORTS void Parse(const char* data, uintmax_t length, const char* name = "");
 		MOHPC_ASSETS_EXPORTS void LoadFile(const char* name);
@@ -102,7 +103,7 @@ namespace MOHPC
 		MOHPC_ASSETS_EXPORTS bool EndOfFile();
 		MOHPC_ASSETS_EXPORTS bool isValid(void);
 
-		MOHPC_ASSETS_EXPORTS mfuse::con::Container<macro *> *GetMacroList() { return &macrolist; }
+		MOHPC_ASSETS_EXPORTS std::vector<macro *> *GetMacroList() { return &macrolist; }
 		MOHPC_ASSETS_EXPORTS void AddMacro(const char *name, const char *value);
 	};
 };

@@ -3,7 +3,10 @@
 #include "../NetGlobal.h"
 #include "../../Common/Vector.h"
 #include "../../Utility/Collision/Collision.h"
+#include "../../Utility/TickTypes.h"
+#include "NetTime.h"
 #include "Entity.h"
+#include "Angles.h"
 
 #include <cstdint>
 
@@ -278,7 +281,7 @@ namespace Network
 		float yaw;
 	};
 
-	class MOHPC_NET_EXPORTS playerState_t
+	class playerState_t
 	{
 	public:
 		static constexpr unsigned long MAX_STATS = 32;
@@ -288,13 +291,13 @@ namespace Network
 		static constexpr unsigned long MAX_MAX_AMMO_AMOUNT = 16;
 
 	public:
-		Vector origin;
-		Vector velocity;
-		Vector falldir;
+		vec3_t origin;
+		vec3_t velocity;
+		vec3_t falldir;
 		// for fixed views
-		Vector viewangles;
-		Vector camera_origin, camera_angles;
-		Vector camera_offset, camera_posofs, damage_angles;
+		vec3_t viewangles;
+		vec3_t camera_origin, camera_angles;
+		vec3_t camera_offset, camera_posofs, damage_angles;
 
 		float fLeanAngle;
 		float music_volume;
@@ -305,7 +308,7 @@ namespace Network
 		float camera_time;
 
 		// cmd->serverTime of last executed command
-		uint32_t commandTime;
+		netTime_t commandTime;
 		radarInfo_t radarInfo;
 		// last trace on ground
 		trace_t groundTrace;
@@ -313,12 +316,12 @@ namespace Network
 		// for view bobbing and footstep generation
 		// ducked, jump_held, etc
 		uint16_t pm_flags;
-		uint16_t pm_time;
+		deltaTime16_t pm_time;
 		uint16_t gravity;
 		uint16_t speed;
 		// add to command angles to get view direction
 		// changed by spawns, rotating objects, and teleporters
-		uint16_t delta_angles[3];
+		netAngles_t delta_angles;
 
 		// ENTITYNUM_NONE = in air
 		entityNum_t groundEntityNum;
@@ -347,114 +350,114 @@ namespace Network
 		bool groundPlane;
 
 	public:
-		playerState_t();
+		MOHPC_NET_EXPORTS playerState_t();
 
 		// Accessor for cross-dll access
 
 		/** Elapsed playerState server time. */
-		uint32_t getCommandTime() const;
+		MOHPC_NET_EXPORTS netTime_t getCommandTime() const;
 		/** Movement type. */
-		pmType_e getPlayerMoveType() const;
+		MOHPC_NET_EXPORTS pmType_e getPlayerMoveType() const;
 		/** Movement flags (see PMF_*). */
-		uint16_t getPlayerMoveFlags() const;
+		MOHPC_NET_EXPORTS uint16_t getPlayerMoveFlags() const;
 		/** Time in PM code. */
-		uint16_t getPlayerMoveTime() const;
+		MOHPC_NET_EXPORTS deltaTime16_t getPlayerMoveTime() const;
 		/** Bob movement cycle. */
-		uint8_t getBobCycle() const;
+		MOHPC_NET_EXPORTS uint8_t getBobCycle() const;
 
 		/** The origin of the playerState. */
-		const Vector& getOrigin() const;
+		MOHPC_NET_EXPORTS const_vec3p_t getOrigin() const;
 		/** The movement velocity. */
-		const Vector& getVelocity() const;
+		MOHPC_NET_EXPORTS const_vec3p_t getVelocity() const;
 
 		/** Current gravity. (Can be different across playerState in rare cases)*/
-		uint16_t getGravity() const;
+		MOHPC_NET_EXPORTS uint16_t getGravity() const;
 		/** Current speed. Often changes when crouching, jumping... */
-		uint16_t getSpeed() const;
+		MOHPC_NET_EXPORTS uint16_t getSpeed() const;
 		/** Delta angles. Set on spawning and on firing weapons with recoil. */
-		void getDeltaAngles(uint16_t angles[3]) const;
+		MOHPC_NET_EXPORTS void getDeltaAngles(netAngles_t& angles) const;
 
 		/** The current entity the player is landing at. */
-		entityNum_t getGroundEntityNum() const;
+		MOHPC_NET_EXPORTS entityNum_t getGroundEntityNum() const;
 
 		/** Whether or not the player is walking or in air. */
-		bool isWalking() const;
+		MOHPC_NET_EXPORTS bool isWalking() const;
 		/** True if the player is on a valid plane. */
-		bool isGroundPlane() const;
+		MOHPC_NET_EXPORTS bool isGroundPlane() const;
 		/** Set when the player is landing on a ledge so that he slides. */
-		uint8_t getFeetFalling() const;
+		MOHPC_NET_EXPORTS uint8_t getFeetFalling() const;
 		/** The fall direction of the player. */
-		const Vector& getFalldir() const;
+		MOHPC_NET_EXPORTS const_vec3p_t getFalldir() const;
 		/** The last valid trace_t on ground. */
-		const trace_t& getGroundTrace() const;
+		MOHPC_NET_EXPORTS const trace_t& getGroundTrace() const;
 
 		/** Player cient number. */
-		uint8_t getClientNum() const;
+		MOHPC_NET_EXPORTS uint8_t getClientNum() const;
 
 		/** Current view angles of the player. */
-		const Vector& getViewAngles() const;
+		MOHPC_NET_EXPORTS const_vec3p_t getViewAngles() const;
 		/** The view height. */
-		uint8_t getViewHeight() const;
+		MOHPC_NET_EXPORTS uint8_t getViewHeight() const;
 
 		/** The angles at which the player is leaning. */
-		float getLeanAngles() const;
+		MOHPC_NET_EXPORTS float getLeanAngles() const;
 		/** Return the current view model animation number. */
-		uint8_t getViewModelAnim() const;
+		MOHPC_NET_EXPORTS uint8_t getViewModelAnim() const;
 		/** Value that changes when the current viewmodelanim is the same but is repeating. */
-		uint8_t getViewModelAnimChanges() const;
+		MOHPC_NET_EXPORTS uint8_t getViewModelAnimChanges() const;
 
 		/** Return the value for the specified stats at index. */
-		uint16_t getStats(playerstat_e statIndex) const;
+		MOHPC_NET_EXPORTS uint16_t getStats(playerstat_e statIndex) const;
 		/** Return the index of the active item. */
-		uint16_t getActiveItems(uint32_t index) const;
+		MOHPC_NET_EXPORTS uint16_t getActiveItems(uint32_t index) const;
 		/** Ammo name in CS_* at the specified index. */
-		uint16_t getAmmoNameIndex(uint32_t index) const;
+		MOHPC_NET_EXPORTS uint16_t getAmmoNameIndex(uint32_t index) const;
 		/** Ammo amount at index. */
-		uint16_t getAmmoAmount(uint32_t index) const;
+		MOHPC_NET_EXPORTS uint16_t getAmmoAmount(uint32_t index) const;
 		/** Max ammo amount at index. */
-		uint16_t getMaxAmmoAmount(uint32_t index) const;
+		MOHPC_NET_EXPORTS uint16_t getMaxAmmoAmount(uint32_t index) const;
 
 		/** Mood of the current music. */
-		uint8_t getCurrentMusicMood() const;
+		MOHPC_NET_EXPORTS uint8_t getCurrentMusicMood() const;
 		/** Mood to fallback on. */
-		uint8_t getFallbackMusicMood() const;
+		MOHPC_NET_EXPORTS uint8_t getFallbackMusicMood() const;
 		/** Volume of the current music. */
-		float getMusicVolume() const;
+		MOHPC_NET_EXPORTS float getMusicVolume() const;
 		/** Time to fade to 0. */
-		float getMusicVolumeFadeTime() const;
+		MOHPC_NET_EXPORTS float getMusicVolumeFadeTime() const;
 		/** Type of the reverb to use. */
-		uint8_t getReverbType() const;
+		MOHPC_NET_EXPORTS uint8_t getReverbType() const;
 		/** The level of reverb to use. */
-		float getReverbLevel() const;
+		MOHPC_NET_EXPORTS float getReverbLevel() const;
 		/** View target blending (RGBA colors). */
-		void getBlend(float outBlend[4]) const;
+		MOHPC_NET_EXPORTS void getBlend(float outBlend[4]) const;
 		/** Field-of-View the player was assigned (usually 80). */
-		float getFov() const;
+		MOHPC_NET_EXPORTS float getFov() const;
 
 		/** The following values are valid when pm_flags is set to PMF_CAMERA_VIEW. */
 		//
 		/** The current camera origin. */
-		const Vector& getCameraOrigin() const;
+		MOHPC_NET_EXPORTS const_vec3p_t getCameraOrigin() const;
 		/** The current camera angles. */
-		const Vector& getCameraAngles() const;
+		MOHPC_NET_EXPORTS const_vec3p_t getCameraAngles() const;
 		/** Time elapsed in camera mode. */
-		float getCameraTime() const;
+		MOHPC_NET_EXPORTS float getCameraTime() const;
 		/** Get the camera offset to add to origin (relative location). */
-		const Vector& getCameraOffset() const;
+		MOHPC_NET_EXPORTS const_vec3p_t getCameraOffset() const;
 		/** Get the position offset of camera to add to origin. */
-		const Vector& getCameraPositionOffset() const;
+		MOHPC_NET_EXPORTS const_vec3p_t getCameraPositionOffset() const;
 		/** Camera flags (see CF_* values). */
 		uint16_t getCameraFlags() const;
 		//
 
 		/** Additive angles when damaged. */
-		const Vector& getDamageAngles() const;
+		MOHPC_NET_EXPORTS const_vec3p_t getDamageAngles() const;
 
 		/** Information on the player compass in an SH/BT server. */
-		radarInfo_t getRadarInfo() const;
+		MOHPC_NET_EXPORTS radarInfo_t getRadarInfo() const;
 
 		/** Whether or not the player has voted in an SH/BT server. */
-		bool hasVoted() const;
+		MOHPC_NET_EXPORTS bool hasVoted() const;
 	};
 }
 }

@@ -5,101 +5,200 @@
 using namespace MOHPC;
 using namespace MOHPC::Network;
 
-usercmd_t::usercmd_t(uint32_t inServerTime)
-	: usercmd_t()
+static const unsigned int WEAPONCOMMAND_MASK = WeaponCommand::getCount();
+
+uint32_t GetWeaponCommandMask()
 {
-	serverTime = inServerTime;
+	return WeaponCommand::getCount() - 1;
 }
 
 usercmd_t::usercmd_t()
-	: serverTime(0)
-	, buttons{ 0 }
-	, angles{ 0 }
+	: serverTime(std::chrono::milliseconds())
+{
+}
+
+usercmd_t::usercmd_t(tickTime_t serverTimeValue)
+	: serverTime(serverTimeValue)
+{
+}
+
+usercmd_t::usercmd_t(const usercmd_t& other)
+	: serverTime(other.serverTime)
+	, movement(other.movement)
+	, action(other.action)
+{
+}
+
+usercmd_t& usercmd_t::operator=(const usercmd_t& other)
+{
+	serverTime = other.serverTime;
+	movement = other.movement;
+	action = other.action;
+	return *this;
+}
+
+tickTime_t usercmd_t::getServerTime() const
+{
+	return serverTime;
+}
+
+void usercmd_t::setServerTime(tickTime_t newTime)
+{
+	serverTime = newTime;
+}
+
+UserMovementInput& usercmd_t::getMovement()
+{
+	return movement;
+}
+
+const UserMovementInput& usercmd_t::getMovement() const
+{
+	return movement;
+}
+
+UserActionInput& usercmd_t::getAction()
+{
+	return action;
+}
+
+const UserActionInput& usercmd_t::getAction() const
+{
+	return action;
+}
+
+UserActionInput::UserActionInput()
+	: flags(0)
+{
+}
+
+bool UserActionInput::isHeld(const UserButton& button)
+{
+	return flags & button.getIndex();
+}
+
+uint16_t UserActionInput::getFlags() const
+{
+	return flags;
+}
+
+void UserActionInput::addWeaponCommand(const WeaponCommand& weaponCommand)
+{
+	flags |= (weaponCommand.getIndex() & GetWeaponCommandMask()) << 7;
+}
+
+void UserActionInput::removeWeaponCommand(const WeaponCommand& weaponCommand)
+{
+	flags &= ~((weaponCommand.getIndex() & GetWeaponCommandMask()) << 7);
+}
+
+void UserActionInput::setFlags(uint16_t newFlags)
+{
+	flags = newFlags;
+}
+
+void UserActionInput::addButton(const UserButton& newButton)
+{
+	flags |= newButton.getIndex();
+}
+
+void UserActionInput::removeButton(const UserButton& button)
+{
+	flags &= ~button.getIndex();
+}
+
+UserMovementInput::UserMovementInput()
+	: angles{ 0 }
 	, forwardmove(0)
 	, rightmove(0)
 	, upmove(0)
 {
+
 }
 
-int8_t usercmd_t::getForwardValue() const
+void UserMovementInput::setAngles(float pitch, float yaw, float roll)
+{
+	setAngles(AngleToShort(pitch), AngleToShort(yaw), AngleToShort(roll));
+}
+
+void UserMovementInput::setAngles(uint16_t pitch, uint16_t yaw, uint16_t roll)
+{
+	setAngles({ pitch, yaw, roll });
+}
+
+void UserMovementInput::setAngles(const netAngles_t& newAngles)
+{
+	angles[0] = newAngles[0];
+	angles[1] = newAngles[1];
+	angles[2] = newAngles[2];
+}
+
+int8_t UserMovementInput::getForwardValue() const
 {
 	return forwardmove;
 }
 
-int8_t usercmd_t::getRightValue() const
+int8_t UserMovementInput::getRightValue() const
 {
 	return rightmove;
 }
 
-int8_t usercmd_t::getUpValue() const
+int8_t UserMovementInput::getUpValue() const
 {
 	return upmove;
 }
 
-void usercmd_t::getAngles(uint16_t& pitch, uint16_t& yaw, uint16_t& roll)
+void UserMovementInput::getAngles(netAngles_t& anglesRef)
 {
-	pitch = angles[0];
-	yaw = angles[1];
-	roll = angles[2];
+	anglesRef[0] = angles[0];
+	anglesRef[1] = angles[1];
+	anglesRef[2] = angles[2];
 }
 
-usercmd_t::buttons_t usercmd_t::getButtons() const
+void setUserRelativeAngles(UserMovementInput& mInput, const netAngles_t& angles, float pitch, float yaw, float roll)
 {
-	return buttons;
+	mInput.setAngles(
+		uint16_t(AngleToShort(pitch) - angles[0]),
+		uint16_t(AngleToShort(yaw) - angles[1]),
+		uint16_t(AngleToShort(roll) + angles[2])
+	);
 }
 
-void usercmd_t::setWeaponCommand(weaponCommand_e weaponCommand)
-{
-	buttons.flags |= ((uint16_t)weaponCommand & WEAPONCOMMAND_MASK) << 7;
-}
-
-void usercmd_t::setAngles(float pitch, float yaw, float roll)
-{
-	angles[0] = AngleToShort(pitch);
-	angles[1] = AngleToShort(yaw);
-	angles[2] = AngleToShort(roll);
-}
-
-void usercmd_t::setAnglesRelativeTo(const playerState_t& ps, float pitch, float yaw, float roll)
-{
-	angles[0] = AngleToShort(pitch) - ps.delta_angles[0];
-	angles[1] = AngleToShort(yaw) - ps.delta_angles[1];
-	angles[2] = AngleToShort(roll) + ps.delta_angles[2];
-}
-
-void usercmd_t::moveForward(int8_t value)
+void UserMovementInput::moveForward(int8_t value)
 {
 	forwardmove = value;
 }
 
-void usercmd_t::moveRight(int8_t value)
+void UserMovementInput::moveRight(int8_t value)
 {
 	rightmove = value;
 }
 
-void usercmd_t::moveUp(int8_t value)
+void UserMovementInput::moveUp(int8_t value)
 {
 	upmove = value;
 }
 
-void usercmd_t::jump()
+void UserMovementInput::clear()
 {
-	upmove = 127;
+	forwardmove = 0;
+	rightmove = 0;
+	upmove = 0;
 }
 
-void usercmd_t::crouch()
+void UserExecuteMovementJump::execute(UserMovementInput& mInput)
 {
-	upmove = -128;
+	mInput.moveUp(127);
 }
 
-void usercmd_t::setButtonFlags(uint32_t flags)
+void UserExecuteMovementCrouch::execute(UserMovementInput& mInput)
 {
-	buttons.flags |= flags;
+	mInput.moveUp(-128);
 }
 
-void usercmd_t::removeButtonFlags(uint32_t flags)
+const netAngles_t& UserMovementInput::getAngles() const
 {
-	buttons.flags &= ~flags;
+	return angles;
 }
 
 usereyes_t::usereyes_t()

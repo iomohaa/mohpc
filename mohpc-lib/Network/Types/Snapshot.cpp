@@ -6,7 +6,7 @@ using namespace MOHPC::Network;
 rawSnapshot_t::rawSnapshot_t()
 	: valid(false)
 	, snapFlags(0)
-	, serverTime(0)
+	, serverTime(std::chrono::milliseconds())
 	, serverTimeResidual(0)
 	, messageNum(0)
 	, deltaNum(0)
@@ -23,7 +23,7 @@ rawSnapshot_t::rawSnapshot_t()
 Network::SnapshotInfo::SnapshotInfo()
 	: snapFlags(SNAPFLAG_NOT_ACTIVE)
 	, ping(0)
-	, serverTime(0)
+	, serverTime(std::chrono::milliseconds())
 	, areamask{ 0 }
 	, numEntities(0)
 	, numServerCommands(0)
@@ -58,7 +58,7 @@ const char* sound_t::getName() const
 	return soundName;
 }
 
-const Vector& sound_t::getOrigin() const
+const_vec3p_t sound_t::getOrigin() const
 {
 	return origin;
 }
@@ -148,7 +148,7 @@ uint32_t SnapshotInfo::getPing() const
 	return ping;
 }
 
-uint32_t SnapshotInfo::getServerTime() const
+netTime_t SnapshotInfo::getServerTime() const
 {
 	return serverTime;
 }

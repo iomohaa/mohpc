@@ -20,7 +20,6 @@
 
 namespace MOHPC
 {
-	vec3_t vec3_origin = { 0,0,0 };
 	vec3_t bytedirs[NUMVERTEXNORMALS] =
 	{
 		{ -0.525731f, 0.000000f, 0.850651f },{ -0.442863f, 0.238856f, 0.864188f },
@@ -567,24 +566,6 @@ void MOHPC::Matrix4_3Copy(float in[4][3], float out[3][3])
 	out[0][2] = in[0][2]; out[1][2] = in[1][2]; out[2][2] = in[2][2];
 }
 
-void MOHPC::AddPointToBounds(const Vector& v, Vector& mins, Vector& maxs)
-{
-	for (int i = 0; i < 3; i++)
-	{
-		float val = (float)v[i];
-		if (val < mins[i])
-			mins[i] = val;
-		if (val > maxs[i])
-			maxs[i] = val;
-	}
-}
-
-void MOHPC::ClearBounds(Vector& mins, Vector& maxs)
-{
-	mins[0] = mins[1] = mins[2] = 99999;
-	maxs[0] = maxs[1] = maxs[2] = -99999;
-}
-
 void MOHPC::AxisClear(vec3_t axis[3])
 {
 	axis[0][0] = 1;
@@ -603,28 +584,6 @@ void MOHPC::AxisCopy(const vec3_t in[3], vec3_t out[3])
 	VecCopy(in[0], out[0]);
 	VecCopy(in[1], out[1]);
 	VecCopy(in[2], out[2]);
-}
-static constexpr float NORMAL_EPSILON = 0.0001f;
-static constexpr float DIST_EPSILON = 0.02f;
-
-void MOHPC::SnapVector(vec3_t normal) {
-	int		i;
-
-	for (i = 0; i < 3; i++)
-	{
-		if (::fabs(normal[i] - 1) < NORMAL_EPSILON)
-		{
-			VectorClear(normal);
-			normal[i] = 1;
-			break;
-		}
-		if (::fabs(normal[i] - -1) < NORMAL_EPSILON)
-		{
-			VectorClear(normal);
-			normal[i] = -1;
-			break;
-		}
-	}
 }
 
 void MOHPC::VecCopy(const vec3_t in, vec3_t out)
@@ -738,13 +697,6 @@ void MOHPC::VectorNormalizeFast(vec3_t vec)
 	vec[2] *= ilength;
 }
 
-void MOHPC::VectorMA(const vec3_t veca, float scale, const vec3_t vecb, vec3_t vecc)
-{
-	vecc[0] = veca[0] + scale * vecb[0];
-	vecc[1] = veca[1] + scale * vecb[1];
-	vecc[2] = veca[2] + scale * vecb[2];
-}
-
 void MOHPC::VectorInverse(vec3_t vec)
 {
 	vec[0] = -vec[0];
@@ -764,13 +716,6 @@ void MOHPC::VectorScale(const vec3_t in, vec_t scale, vec3_t out)
 	out[0] = in[0] * scale;
 	out[1] = in[1] * scale;
 	out[2] = in[2] * scale;
-}
-
-void MOHPC::VectorClear(vec3_t vec)
-{
-	vec[0] = 0.f;
-	vec[1] = 0.f;
-	vec[2] = 0.f;
 }
 
 void MOHPC::VecMatrixInverse(void* DstMatrix, const void* SrcMatrix)
@@ -900,19 +845,21 @@ void MOHPC::ByteToDir(int b, vec3_t dir)
 	VecCopy(bytedirs[b], dir);
 }
 
-MOHPC::Vector MOHPC::GetMovedir(float angle)
+void MOHPC::GetMovedir(vec3r_t out, float angle)
 {
 	if (angle == -1.0f)
 	{
-		return Vector(0.0f, 0.0f, 1.0f);
+		VectorClear(out);
+		return;
 	}
 	else if (angle == -2.0f)
 	{
-		return Vector(0.0f, 0.0f, -1.0f);
+		VecSet(out, 0.f, 0.f, -1.f);
+		return;
 	}
 
 	angle *= (M_PI_FLOAT * 2.0f / 360.0f);
-	return Vector(cosf(angle), sinf(angle), 0.0f);
+	VecSet(out, cosf(angle), sinf(angle), 0.f);
 }
 
 float MOHPC::Random(float value)

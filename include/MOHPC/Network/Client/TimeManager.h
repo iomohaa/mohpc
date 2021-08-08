@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../NetGlobal.h"
+#include "../../Utility/TickTypes.h"
 
 #include <cstdint>
 #include <cstddef>
@@ -17,7 +18,7 @@ namespace Network
 	public:
 		ClientTimeManager(ClientTime& clientTimeRef, ServerSnapshotManager& snapshotManagerRef);
 
-		void setTime(uint64_t currentTime);
+		void setTime(tickTime_t currentTime);
 		bool hasEntered() const;
 
 	private:

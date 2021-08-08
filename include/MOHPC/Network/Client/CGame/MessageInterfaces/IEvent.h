@@ -1,13 +1,12 @@
 #pragma once
 
 #include "Base.h"
+#include "../../../../Common/SimpleVector.h"
 
 #include <cstdint>
 
 namespace MOHPC
 {
-class Vector;
-
 namespace Network
 {
 	namespace CGame
@@ -19,7 +18,7 @@ namespace Network
 			public:
 				virtual void Hit() = 0;
 				virtual void GotKill() = 0;
-				virtual void PlayVoice(const Vector& origin, bool local, uint8_t clientNum, const char* soundName) = 0;
+				virtual void PlayVoice(const vec3r_t origin, bool local, uint8_t clientNum, const char* soundName) = 0;
 			};
 		}
 	}

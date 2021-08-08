@@ -12,9 +12,7 @@ ServerGameState::ServerGameState()
 	: csHandler(*this)
 	, gameStateParser(nullptr)
 	, clientTime(nullptr)
-	, serverId(0)
 	, clientNum(0)
-	, checksumFeed(0)
 {
 }
 
@@ -29,9 +27,7 @@ void ServerGameState::reset()
 {
 	get().reset();
 
-	serverId = 0;
 	clientNum = 0;
-	checksumFeed = 0;
 }
 
 void ServerGameState::registerCommands(CommandManager& commandManager)
@@ -92,8 +88,9 @@ bool ServerGameState::parseGameState(MSG& msg, ICommandSequence* serverCommands)
 	serverCommands->setSequence(clientData.commandSequence);
 
 	clientNum = clientData.clientNum;
-	// seems to be always zero, is it really useful?
-	checksumFeed = clientData.checksumFeed;
+
+	// initialize the new map info
+	gameState.getMapInfo() = mapInfo_t(0, clientData.checksumFeed);
 
 	const bool isDiff = reloadGameState();
 
@@ -121,12 +118,18 @@ bool ServerGameState::reloadGameState()
 
 	if (clientTime)
 	{
+		using namespace std::chrono;
 		// set the new delta time from the game state
-		clientTime->setDeltaTime(results.serverDeltaTime);
+		clientTime->setDeltaTime(milliseconds(results.serverDeltaTime));
 	}
 
-	const bool isDiff = serverId != results.serverId;
-	serverId = results.serverId;
+	mapInfo_t& mapInfo = get().getMapInfo();
+	const bool isDiff = mapInfo.getServerId() != results.serverId;
+	if (isDiff)
+	{
+		// different map
+		mapInfo = mapInfo_t(results.serverId, mapInfo.getChecksumFeed());
+	}
 
 	return isDiff;
 }
@@ -156,17 +159,7 @@ void ServerGameState::ConfigstringCommand(TokenParser& tokenized)
 	}
 }
 
-uint32_t ServerGameState::getServerId() const
-{
-	return serverId;
-}
-
 uint32_t ServerGameState::getClientNum() const
 {
 	return clientNum;
-}
-
-uint32_t ServerGameState::getChecksumFeed() const
-{
-	return checksumFeed;
 }

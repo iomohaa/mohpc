@@ -15,7 +15,7 @@ TraceManager::TraceManager()
 	boxHull->InitBoxHull();
 }
 
-void TraceManager::clipMoveToEntities(CollisionWorld& cm, const Vector& start, const Vector& mins, const Vector& maxs, const Vector& end, uint16_t skipNumber, uint32_t mask, bool cylinder, trace_t& tr) const
+void TraceManager::clipMoveToEntities(CollisionWorld& cm, const_vec3r_t start, const_vec3r_t mins, const_vec3r_t maxs, const_vec3r_t end, uint16_t skipNumber, uint32_t mask, bool cylinder, trace_t& tr) const
 {
 	// iterate through entities and test their collision
 	for (size_t i = 0; i < numSolidEntities; i++)
@@ -29,24 +29,24 @@ void TraceManager::clipMoveToEntities(CollisionWorld& cm, const Vector& start, c
 
 		CollisionWorld* world = &cm;
 		clipHandle_t cmodel;
-		Vector bmins, bmaxs;
-		Vector origin, angles;
+		vec3_t bmins, bmaxs;
+		vec3_t origin, angles;
 
 		if (ent->solid == SOLID_BMODEL)
 		{
 			// special value for bmodel
 			cmodel = cm.inlineModel(ent->modelindex);
 			if (!cmodel) continue;
-			angles = cent->currentState.netangles;
-			origin = cent->currentState.netorigin;
+			VectorCopy(cent->currentState.netangles, angles);
+			VectorCopy(cent->currentState.netorigin, origin);
 		}
 		else
 		{
 			// encoded bbox
 			IntegerToBoundingBox(ent->solid, bmins, bmaxs);
 			cmodel = boxHull->TempBoxModel(bmins, bmaxs, ContentFlags::CONTENTS_BODY);
-			angles = vec3_origin;
-			origin = cent->currentState.netorigin;
+			VectorClear(angles);
+			VectorCopy(cent->currentState.netorigin, origin);
 			// trace to the boxhull instead
 			// entities with a boundingbox use a boxhull
 			world = boxHull.get();
@@ -67,7 +67,7 @@ void TraceManager::clipMoveToEntities(CollisionWorld& cm, const Vector& start, c
 	}
 }
 
-void TraceManager::trace(CollisionWorld& cm, trace_t& tr, const Vector& start, const Vector& mins, const Vector& maxs, const Vector& end, uint16_t skipNumber, uint32_t mask, bool cylinder, bool cliptoentities) const
+void TraceManager::trace(CollisionWorld& cm, trace_t& tr, const_vec3r_t start, const_vec3r_t mins, const_vec3r_t maxs, const_vec3r_t end, uint16_t skipNumber, uint32_t mask, bool cylinder, bool cliptoentities) const
 {
 	// if there is a loaded collision from the game, use it instead
 	cm.BoxTrace(&tr, start, end, mins, maxs, 0, mask, cylinder);
@@ -85,7 +85,7 @@ void TraceManager::trace(CollisionWorld& cm, trace_t& tr, const Vector& start, c
 	}
 }
 
-uint32_t TraceManager::pointContents(CollisionWorld& cm, const Vector& point, uintptr_t passEntityNum) const
+uint32_t TraceManager::pointContents(CollisionWorld& cm, const_vec3r_t point, uintptr_t passEntityNum) const
 {
 	// get the contents in world
 	uint32_t contents = cm.PointContents(point, 0);

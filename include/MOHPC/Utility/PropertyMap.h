@@ -3,6 +3,7 @@
 #include "UtilityGlobal.h"
 #include "../Common/str.h"
 #include "../Common/Vector.h"
+
 #include <map>
 
 namespace MOHPC
@@ -74,7 +75,7 @@ namespace MOHPC
 		MOHPC_UTILITY_EXPORTS float GetPropertyFloatValue(const char* Key, float defaultValue = 0) const;
 		MOHPC_UTILITY_EXPORTS double GetPropertyDoubleValue(const char* Key, double defaultValue = 0) const;
 		MOHPC_UTILITY_EXPORTS long double GetPropertyLongDoubleValue(const char* Key, long double defaultValue = 0) const;
-		MOHPC_UTILITY_EXPORTS Vector GetPropertyVectorValue(const char* Key, const Vector& defaultValue = Vector(0, 0, 0)) const;
+		MOHPC_UTILITY_EXPORTS void GetPropertyVectorValue(const char* Key, vec3r_t out, const vec3r_t defaultValue = vec3_zero) const;
 		MOHPC_UTILITY_EXPORTS void SetPropertyValue(const char* Key, const char* Value);
 		void SetPropertyDef(const PropertyDef& Key, str&& Value);
 

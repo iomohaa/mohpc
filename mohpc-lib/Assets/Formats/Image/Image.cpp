@@ -41,14 +41,14 @@ void Image::Load()
 		{ "dds", &Image::LoadDDS }
 	};
 
-	const char* ext = GetFilename().GetExtension();
+	const char* ext = strHelpers::getExtension(GetFilename().c_str());
 
 	ExtensionWrapper::_ExtensionFunction ExtensionFunction = nullptr;
 
 	const size_t numExtensions = sizeof(ExtensionWrappers) / sizeof(ExtensionWrappers[0]);
 	for (intptr_t i = 0; i < numExtensions; i++)
 	{
-		if (!str::icmp(ext, ExtensionWrappers[i].Extension))
+		if (!strHelpers::icmp(ext, ExtensionWrappers[i].Extension))
 		{
 			ExtensionFunction = ExtensionWrappers[i].ExtensionFunction;
 			break;

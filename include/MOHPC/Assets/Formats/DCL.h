@@ -14,10 +14,10 @@ namespace MOHPC
 		ShaderPtr shader;
 
 		/** Location of the decal. */
-		Vector position;
+		vec3_t position;
 
 		/** The direction of the decal. */
-		Vector projection;
+		vec3_t projection;
 
 		/** The radius at which the decal will be applied on walls. */
 		float radius;

@@ -7,7 +7,7 @@
 #include "Communicator.h"
 
 #include <MOHPC/Common/str.h>
-#include <morfuse/Container/Container.h>
+#include <vector>
 
 namespace MOHPC
 {
@@ -58,7 +58,7 @@ namespace MOHPC
 		uint64_t getWaitTime() const;
 
 	private:
-		mfuse::con::Container<ICommunicatorPtr> commList;
+		std::vector<ICommunicatorPtr> commList;
 		IncomingMessageHandler* root;
 		IncomingMessageHandler* last;
 	};

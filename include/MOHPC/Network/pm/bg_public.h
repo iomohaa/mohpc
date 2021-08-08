@@ -133,6 +133,10 @@ namespace Network
 		// state (in / out)
 		playerState_t* ps;
 
+		// callbacks to test the world
+		// these will be different functions during game and cgame
+		ITraceFunction* traceInterface;
+
 		// command (in)
 		usercmd_t cmd;
 		// collide against these types of surfaces
@@ -150,25 +154,21 @@ namespace Network
 
 		// indicates whether 2the player's movement was blocked and how
 		int moveresult;
-		bool stepped;
 
 		// events predicted on client side
 		int pmoveEvent;
 		// bounding box size
-		Vector mins, maxs;
+		vec3_t mins, maxs;
 
 		int watertype;
 		int waterlevel;
 
 		float xyspeed;
 
+		uint32_t pmove_msec;
 		// for fixed msec Pmove
-		int pmove_fixed;
-		int pmove_msec;
-
-		// callbacks to test the world
-		// these will be different functions during game and cgame
-		ITraceFunction* traceInterface;
+		bool pmove_fixed;
+		bool stepped;
 
 	public:
 		pmove_t();
@@ -179,11 +179,11 @@ namespace Network
 	// any differences when running on client or server
 	struct pml_t
 	{
-		Vector forward, left, up;
-		Vector flat_forward, flat_left, flat_up;
-		float frametime;
+		vec3_t forward, left, up;
+		vec3_t flat_forward, flat_left, flat_up;
+		deltaTimeFloat_t frametime;
 
-		int msec;
+		deltaTime_t msec;
 
 		bool walking;
 		bool groundPlane;
@@ -191,8 +191,8 @@ namespace Network
 
 		float impactSpeed;
 
-		Vector previous_origin;
-		Vector previous_velocity;
+		vec3_t previous_origin;
+		vec3_t previous_velocity;
 		int previous_waterlevel;
 
 	public:
@@ -210,17 +210,17 @@ namespace Network
 
 		// if a full pmove isn't done on the client, you can just update the angles
 		void PM_GetMove(float* pfForward, float* pfRight);
-		static void PM_UpdateViewAngles(playerState_t* ps, const usercmd_t* cmd);
+		static void PM_UpdateViewAngles(playerState_t* ps, const UserMovementInput& mInput);
 		void move_GroundTrace();
 		MOHPC_NET_EXPORTS void move();
-		void moveAdjustAngleSettings(Vector& vViewAngles, Vector& vAngles, playerState_t* pPlayerState, entityState_t* pEntState);
-		void moveAdjustAngleSettings_Client(Vector& vViewAngles, Vector& vAngles, playerState_t* pPlayerState, entityState_t* pEntState);
+		void moveAdjustAngleSettings(vec3r_t vViewAngles, vec3r_t vAngles, playerState_t* pPlayerState, entityState_t* pEntState);
+		void moveAdjustAngleSettings_Client(vec3r_t vViewAngles, vec3r_t vAngles, playerState_t* pPlayerState, entityState_t* pEntState);
 
 	private:
 		void PM_AirMove();
-		bool PM_FeetOnGround(const Vector& pos);
-		bool PM_FindBestFallPos(const Vector& pos, Vector& bestdir);
-		void PM_CheckFeet(const Vector& vWishdir);
+		bool PM_FeetOnGround(const_vec3r_t pos);
+		bool PM_FindBestFallPos(const_vec3r_t pos, vec3r_t bestdir);
+		void PM_CheckFeet(const_vec3r_t vWishdir);
 		void PM_WalkMove();
 		void PM_DeadMove();
 		void PM_NoclipMove();
@@ -233,18 +233,18 @@ namespace Network
 		void PM_WaterEvents();
 		void PM_DropTimers();
 		void moveSingle();
-		void moveAdjustViewAngleSettings_OnLadder(Vector& vViewAngles, Vector& vAngles, playerState_t* pPlayerState, entityState_t* pEntState);
+		void moveAdjustViewAngleSettings_OnLadder(vec3r_t vViewAngles, vec3r_t vAngles, playerState_t* pPlayerState, entityState_t* pEntState);
 		bool PM_SlideMove(bool gravity);
 		void PM_StepSlideMove(bool gravity);
 		void PM_AddEvent(int newEvent);
-		void PM_ClipVelocity(const Vector& in, const Vector& normal, Vector& out, float overbounce);
+		void PM_ClipVelocity(const_vec3r_t in, const_vec3r_t normal, vec3r_t out, float overbounce);
 		void PM_AddTouchEnt(int entityNum);
 		void PM_Friction(void);
-		void PM_Accelerate(const Vector& wishdir, float wishspeed, float accel);
-		float PM_CmdScale(usercmd_t* cmd);
+		void PM_Accelerate(const_vec3r_t wishdir, float wishspeed, float accel);
+		float PM_CmdScale(const UserMovementInput& mInput);
 		void PM_CheckTerminalVelocity();
 
-		bool canLean(const usercmd_t& cmd);
+		bool canLean(const UserMovementInput& mInput);
 		bool shouldClearLean();
 
 	private:

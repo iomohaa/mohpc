@@ -88,6 +88,39 @@ void EntityList::reset()
 	}
 }
 
+mapInfo_t::mapInfo_t()
+	: serverId(0)
+	, checksumFeed(0)
+{
+}
+
+mapInfo_t::mapInfo_t(uint32_t serverIdVal, uint32_t checksumFeedVal)
+	: serverId(serverIdVal)
+	, checksumFeed(checksumFeedVal)
+{
+}
+
+uint32_t mapInfo_t::getServerId() const
+{
+	return serverId;
+}
+
+uint32_t mapInfo_t::getChecksumFeed() const
+{
+	return checksumFeed;
+}
+
+mapInfo_t& gameState_t::getMapInfo()
+{
+	return mapInfo;
+}
+
+const mapInfo_t& gameState_t::getMapInfo() const
+{
+	return mapInfo;
+}
+
+
 gameState_t::gameState_t()
 {
 }
@@ -139,6 +172,7 @@ void gameState_t::reset()
 {
 	csMan.reset();
 	entityBaselines.reset();
+	mapInfo = mapInfo_t();
 }
 
 GameStateErrors::EntityOutOfRangeException::EntityOutOfRangeException(entityNum_t inEntityNum)
@@ -152,5 +186,5 @@ entityNum_t GameStateErrors::EntityOutOfRangeException::getEntityNum() const
 
 str GameStateErrors::EntityOutOfRangeException::what() const
 {
-	return str((entityNum_t)getEntityNum());
+	return std::to_string(getEntityNum());
 }

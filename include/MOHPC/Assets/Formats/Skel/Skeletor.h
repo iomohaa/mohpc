@@ -14,7 +14,7 @@ namespace MOHPC
 	{
 		float radius;
 		SkelVec3 bounds[2];
-		mfuse::con::Container<SkelMat4> bones;
+		std::vector<SkelMat4> bones;
 	};
 
 	struct skelAnimTime
@@ -71,8 +71,8 @@ namespace MOHPC
 		int64_t m_targetBlink;
 		int64_t m_timeNextBlink;
 		size_t m_headBoneIndex;
-		Vector m_eyeTargetPos;
-		Vector m_eyePrevTargetPos;
+		vec3_t m_eyeTargetPos;
+		vec3_t m_eyePrevTargetPos;
 		class skelBone_Base *m_leftFoot;
 		class skelBone_Base *m_rightFoot;
 		SkeletonChannelList m_morphTargetList;
@@ -107,32 +107,6 @@ namespace MOHPC
 		static class ChannelNameTable *ChannelNames();
 		SkelMat4 *BoneTransformation(int, int *, float(*)[4]);
 	};
-
-	/*
-		//
-		// skeletor.cpp
-		//
-
-		void ConvertToRotationName(const char *boneName, char *rotChannelName);
-		void ConvertToPositionName(const char *boneName, char *posChannelName);
-		void ConvertToFKRotationName(const char *boneName, char *rotChannelName);
-		void ConvertToFKPositionName(const char *boneName, char *rotChannelName);
-		void AddToBounds(SkelVec3 *bounds, SkelVec3 *newBounds);
-		void BoneGetFrames(skelHeaderGame_t *skelmodel, skelAnimDataGameHeader_t *animData, skelChannelList_c *boneList, int boneNum, mfuse::con::Container< skanAnimFrame >& outFrames);
-		void TIKI_GetSkelAnimFrameInternal2(dtiki_t *tiki, skelBoneCache_t *bones, skelAnimStoreFrameList_c *frameList, float *radius, vec3_t *mins, vec3_t *maxes);
-		void SkeletorGetAnimFrame2(skelHeaderGame_t *skelmodel, skelChannelList_c *boneList, skelBoneCache_t *bones, skelAnimStoreFrameList_c *frameList, float *radius, vec3_t *mins, vec3_t *maxes);
-		void SkeletorGetAnimFrame(skelHeaderGame_t *skelmodel, skelAnimDataGameHeader_t *animData, skelChannelList_c *boneList, skelBoneCache_t *bones, int frame, float *radius, vec3_t *mins, vec3_t *maxes);
-		void TIKI_GetSkelAnimFrame(dtiki_t *tiki, skelBoneCache_t *bones, float *radius, vec3_t *mins, vec3_t *maxes);
-		void TIKI_GetSkelAnimFrame2(dtiki_t *tiki, skelBoneCache_t *bones, int anim, int frame, float *radius, vec3_t *mins, vec3_t *maxes);
-		void TIKI_GetSkelAnimFrameInternal(dtiki_t *tiki, skelBoneCache_t *bones, skelAnimDataGameHeader_t *animData, int frame, float *radius, vec3_t *mins, vec3_t *maxes);
-
-		//
-		// skeletorbones.cpp
-		//
-
-		void SkeletorLoadBoneFromBuffer(skelChannelList_c *boneList, boneData_t *boneData, skelBone_Base **bone);
-		void SkeletorLoadBonesFromBuffer(skelChannelList_c *boneList, skelHeaderGame_t *buffer, skelBone_Base **bone);
-	*/
 };
 
 const vec4_t* DecodeFrameValue(const SkeletonAnimation::SkanChannelHdr* channelFrames, size_t desiredFrameNum);

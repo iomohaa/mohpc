@@ -58,7 +58,7 @@ namespace Network
 		public:
 			entityState_t currentState;
 			entityState_t nextState;
-			uint32_t snapshotTime;
+			netTime_t snapshotTime;
 			bool currentValid : 1;
 			bool interpolate : 1;
 			bool teleported : 1;
@@ -71,7 +71,7 @@ namespace Network
 			/** Get the next entity state from the next incoming snap. */
 			MOHPC_NET_EXPORTS const entityState_t& getNextState() const;
 			/** Get the last updated time (snapshot time). */
-			MOHPC_NET_EXPORTS uint32_t getSnapshotTime() const;
+			MOHPC_NET_EXPORTS netTime_t getSnapshotTime() const;
 			/** Whether or not this entity info exists in world. */
 			MOHPC_NET_EXPORTS bool isValid() const;
 			/** Whether or not this entity info should interpolate. */
@@ -101,6 +101,8 @@ namespace Network
 			MOHPC_NET_EXPORTS const HandlerList& handlers() const;
 			MOHPC_NET_EXPORTS HandlerList& handlers();
 
+			/** Return the previous snap. */
+			MOHPC_NET_EXPORTS const SnapshotInfo& getOldSnap() const;
 			/** Return the current active snap. Can be null. */
 			MOHPC_NET_EXPORTS const SnapshotInfo* getSnap() const;
 			/** Return the next snap. Can be null. */
@@ -124,7 +126,7 @@ namespace Network
 			 * Snapshot parsing
 			 */
 			SnapshotInfo* readNextSnapshot();
-			void processSnapshots(uint64_t serverTime);
+			void processSnapshots(tickTime_t simulatedRemoteTime);
 			void setNextSnap(SnapshotInfo* newSnap);
 			void setInitialSnapshot(SnapshotInfo* newSnap);
 			void executeNewServerCommands(uintptr_t serverCommandSequence, bool differentServer);
@@ -173,16 +175,16 @@ namespace Network
 			class NextSnapTimeWentBackward : public Base
 			{
 			public:
-				NextSnapTimeWentBackward(uint64_t inPrevTime, uint64_t inTime);
+				NextSnapTimeWentBackward(netTime_t inPrevTime, netTime_t inTime);
 
 				/** Return the client time. */
-				MOHPC_NET_EXPORTS uint64_t getClientTime() const;
+				MOHPC_NET_EXPORTS netTime_t getClientTime() const;
 				/** Return the time of the snap. */
-				MOHPC_NET_EXPORTS uint64_t getSnapTime() const;
+				MOHPC_NET_EXPORTS netTime_t getSnapTime() const;
 
 			private:
-				uint64_t oldTime;
-				uint64_t time;
+				netTime_t oldTime;
+				netTime_t time;
 			};
 
 			/**

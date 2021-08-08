@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../Types/UserInput.h"
+#include "../../Utility/WarpArray.h"
 
 #include <cstdint>
 #include <cstddef>
@@ -31,6 +32,19 @@ namespace Network
 		outPacket_t();
 	};
 
+	template<typename T>
+	using PacketBackup = StaticWarpArray<T, PACKET_BACKUP>;
+
 	using OutgoingPackets = outPacket_t[PACKET_BACKUP];
+
+	class OutClientPackets
+	{
+	public:
+		/** eyeInfo when packet was sent */
+		PacketBackup<usereyes_t> eyeInfo;
+
+		/** cl.cmdNumber when packet was sent */
+		PacketBackup<uint32_t> cmdNumber;
+	};
 }
 }

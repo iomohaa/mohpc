@@ -1,12 +1,16 @@
 #pragma once
 
 #include "../../NetGlobal.h"
+#include "../../NetObject.h"
 #include "../../ProtocolSingleton.h"
 #include "../../Types/PlayerState.h"
 #include "../../Types/Protocol.h"
+#include "../../Types/NetTime.h"
 
 #include "../../../Common/Vector.h"
 #include "../../../Utility/HandlerList.h"
+#include "../../../Utility/SharedPtr.h"
+#include "../../../Utility/TickTypes.h"
 
 #include "../../pm/bg_trace.h"
 
@@ -21,6 +25,7 @@ namespace Network
 	class usercmd_t;
 	class UserInput;
 	class ITraceFunction;
+	class ClientTime;
 
 	namespace CGame
 	{
@@ -30,18 +35,20 @@ namespace Network
 		namespace CGameHandlers
 		{
 			/**
-			 * Called each frame for replaying move that have not been executed yet on server.
+			 * Called for replaying a move that have not been executed yet on server. At this point movement has been predicted.
+			 * This is purely for movement/calculation algorithm.
 			 *
 			 * @param	ucmd		Input to replay.
 			 * @param	ps			Player state where to apply movement.
 			 * @param	frameTime	delta time between last cmd time and playerState command time. Usually client's frametime.
 			 */
-			struct ReplayMove : public HandlerNotifyBase<void(const usercmd_t& ucmd, playerState_t& ps, float frameTime)> {};
+			struct ReplayMove : public HandlerNotifyBase<void(const usercmd_t& ucmd, playerState_t& ps, deltaTimeFloat_t frameTime)> {};
+
 			/**
-			 * Called each frame for replaying move that have not been executed yet on server.
+			 * Called when done predicting player state (transitioned). Can be used for predicting effects like fire and stance.
 			 *
-			 * @param	ucmd		Input to replay.
-			 * @param	ps			Player state where to apply movement.
+			 * @param	current		The final predicted player state.
+			 * @param	old			Player state before prediction.
 			 * @param	frameTime	delta time between last cmd time and playerState command time. Usually client's frametime.
 			 */
 			struct TransitionPlayerState : public HandlerNotifyBase<void(const playerState_t& current, const playerState_t& old)> {};
@@ -74,19 +81,9 @@ namespace Network
 			/** Return whether or not pmove sub-ticking is a fixed time. */
 			bool isPmoveFixed() const;
 
-			/** Disable local prediction on client. */
-			void disablePrediction();
-
-			/** Enable local prediction on client. */
-			void enablePrediction();
-
-			/** Return whether or not the prediction is disabled. */
-			bool isPredictionDisabled() const;
-
 		private:
 			uint32_t pmove_msec;
 			bool pmove_fixed : 1;
-			bool forceDisablePrediction : 1;
 		};
 
 		struct PredictionParm
@@ -94,6 +91,7 @@ namespace Network
 		public:
 			SnapshotProcessor& processedSnapshots;
 			const cgsInfo& serverInfo;
+			const UserInput* userInput;
 		};
 
 		class IPmovePredict : public IProtocolSingleton<IPmovePredict>
@@ -102,8 +100,13 @@ namespace Network
 			virtual void setupPmove(const cgsInfo& serverInfo, Pmove& pmove) const = 0;
 		};
 
+		/**
+		 * This module predicts input and movement that were sent to the server.
+		 */
 		class Prediction
 		{
+			MOHPC_NET_OBJECT_DECLARATION(Prediction);
+
 		public:
 			struct HandlerList
 			{
@@ -112,12 +115,12 @@ namespace Network
 			};
 
 		public:
-			Prediction();
+			MOHPC_NET_EXPORTS Prediction(const protocolType_c& protocolType);
 
-			void setProtocol(protocolType_c protocol);
-
-			void setUserInputPtr(const UserInput* userInputPtr);
-			void process(uint64_t serverTime, const PredictionParm& pparm);
+			/**
+			 * Process the prediction.
+			 */
+			MOHPC_NET_EXPORTS void process(const ClientTime& clientTime, const PredictionParm& pparm, bool predict);
 
 			/** Return the prediction settings. */
 			MOHPC_NET_EXPORTS PredictionSettings& getSettings();
@@ -133,16 +136,17 @@ namespace Network
 			 * It is not called in the tick() function. It gives a chance for the caller
 			 * to immediately predict player state after the input has been processed.
 			 */
-			MOHPC_NET_EXPORTS void predictPlayerState(uint64_t serverTime, const PredictionParm& pparm);
+			void predictPlayerState(tickTime_t simulatedRemoteTime, const PredictionParm& pparm);
 
 			MOHPC_NET_EXPORTS const HandlerList& handlers() const;
 			MOHPC_NET_EXPORTS HandlerList& handlers();
 
+		private:
 			/**
 			 * Player state calculation
 			 */
-			void interpolatePlayerState(uint64_t serverTime, const PredictionParm& pparm, bool grabAngles);
-			void interpolatePlayerStateCamera(uint64_t serverTime, const PredictionParm& pparm);
+			void interpolatePlayerState(tickTime_t simulatedRemoteTime, const PredictionParm& pparm, bool grabAngles);
+			void interpolatePlayerStateCamera(tickTime_t simulatedRemoteTime, const PredictionParm& pparm);
 			//====
 
 			/**
@@ -151,27 +155,27 @@ namespace Network
 			bool replayAllCommands(const PredictionParm& pparm);
 			bool tryReplayCommand(Pmove& pmove, const PredictionParm& pparm, const playerState_t& oldPlayerState, const usercmd_t& latestCmd, uintptr_t cmdNum);
 			bool replayMove(Pmove& pmove, usercmd_t& cmd);
-			void extendMove(Pmove& pmove, uint32_t msec);
-			void physicsNoclip(Pmove& pmove, float frametime);
+			void extendMove(Pmove& pmove, deltaTime_t deltaTime);
+			void physicsNoclip(Pmove& pmove, deltaTimeFloat_t frametime);
 
 		private:
 			void transitionPlayerState(const PredictionParm& pparm, const playerState_t& current, const playerState_t* old);
 
 		private:
-			const UserInput* userInput;
 			const IPmovePredict* pmovePredict;
 			ITraceFunctionPtr traceFunction;
-			uint32_t physicsTime;
+			netTime_t physicsTime;
 			float frameInterpolation;
 			float cameraFov;
-			Vector predictedError;
-			Vector cameraAngles;
-			Vector cameraOrigin;
+			vec3_t predictedError;
+			vec3_t cameraAngles;
+			vec3_t cameraOrigin;
 			playerState_t predictedPlayerState;
 			PredictionSettings settings;
 			HandlerList handlerList;
 			bool validPPS : 1;
 		};
+		using PredictionPtr = SharedPtr<Prediction>;
 	}
 }
 }

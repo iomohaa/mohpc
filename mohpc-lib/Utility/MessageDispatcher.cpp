@@ -1,6 +1,8 @@
 #include <MOHPC/Utility/MessageDispatcher.h>
 #include <MOHPC/Utility/RequestHandler.h>
 
+#include <cassert>
+
 using namespace MOHPC;
 
 bool IRemoteIdentifier::operator==(const IRemoteIdentifier& other) const
@@ -17,7 +19,7 @@ MOHPC_OBJECT_DEFINITION(MessageDispatcher);
 
 MessageDispatcher::MessageDispatcher()
 {
-	commList.Resize(1);
+	commList.reserve(1);
 	root = last = nullptr;
 }
 
@@ -106,7 +108,7 @@ uint64_t MessageDispatcher::getWaitTime() const
 		return duration_cast<milliseconds>(minDeferredTime - currentTime).count();
 	}
 
-	const size_t numObjects = commList.NumObjects();
+	const size_t numObjects = commList.size();
 	return 1000 / numObjects;
 }
 
@@ -122,7 +124,7 @@ bool MessageDispatcher::processIncomingMessages(uint64_t maxProcessTime)
 	{
 		IncomingMessageHandler* next;
 
-		const size_t numComms = commList.NumObjects();
+		const size_t numComms = commList.size();
 		if(numComms)
 		{
 			const uint64_t waitTime = std::min(getWaitTime(), maxProcessTime);
@@ -173,12 +175,12 @@ bool MessageDispatcher::hasMessagesToProcess() const
 
 void MessageDispatcher::addComm(const ICommunicatorPtr& comm)
 {
-	commList.AddObject(comm);
+	commList.push_back(comm);
 }
 
 void MessageDispatcher::clearComms()
 {
-	commList.FreeObjectList();
+	commList.clear();
 }
 
 bool MessageDispatcher::processComm(ICommunicator& comm, uint64_t maxWaitTime)

@@ -17,36 +17,36 @@ namespace MOHPC
 	struct ModelSurfaceMaterial
 	{
 		str name;
-		mfuse::con::Container<ShaderPtr> shaders;
+		std::vector<ShaderPtr> shaders;
 	};
 
 	struct ModelMorph
 	{
 		int32_t morphIndex;
-		Vector offset;
+		vec3_t offset;
 	};
 
 	struct ModelWeight
 	{
 		uintptr_t boneIndex;
 		float boneWeight;
-		Vector offset;
+		vec3_t offset;
 	};
 
 	struct ModelVertice
 	{
-		Vector normal;
+		vec3_t normal;
 		float st[2];
-		Vector xyz;
-		mfuse::con::Container<ModelWeight> weights;
-		mfuse::con::Container<ModelMorph> morphs;
+		vec3_t xyz;
+		std::vector<ModelWeight> weights;
+		std::vector<ModelMorph> morphs;
 	};
 
 	struct ModelSurface
 	{
 		const ModelSurfaceMaterial* material;
-		mfuse::con::Container<ModelVertice> vertices;
-		mfuse::con::Container<intptr_t> indexes;
+		std::vector<ModelVertice> vertices;
+		std::vector<intptr_t> indexes;
 	};
 
 	struct ModelBone
@@ -58,7 +58,7 @@ namespace MOHPC
 	struct ModelBoneTransform
 	{
 		const ModelBone* baseBone;
-		Vector offset;
+		vec3_t offset;
 		float matrix[3][3];
 		quat_t quat;
 	};
@@ -85,16 +85,16 @@ namespace MOHPC
 		};
 
 	private:
-		mfuse::con::Container<WeakPtr<Skeleton>> meshes;
-		mfuse::con::Container<ModelSurfaceMaterial> materials;
-		mfuse::con::Container<ModelBoneTransform> bonesTransform;
-		mfuse::con::Container<ModelBone> bones;
-		mfuse::con::Container<ModelSurface> surfaces;
+		std::vector<WeakPtr<Skeleton>> meshes;
+		std::vector<ModelSurfaceMaterial> materials;
+		std::vector<ModelBoneTransform> bonesTransform;
+		std::vector<ModelBone> bones;
+		std::vector<ModelSurface> surfaces;
 		skelBone_Base** skelBones;
 		SkeletonChannelList boneList;
 		SkeletonChannelList m_morphTargetList;
 		Pose poses[MAX_ANIM_POSES];
-		Vector delta;
+		vec3_t delta;
 
 	private:
 		/** Requires AssetManager in order to access skeleton names table. */
@@ -157,7 +157,7 @@ namespace MOHPC
 		MOHPC_UTILITY_EXPORTS const ModelBoneTransform* GetBoneTransform(size_t index) const;
 
 		/** Returns the delta since frame 0. */
-		MOHPC_UTILITY_EXPORTS const Vector& GetDelta() const;
+		MOHPC_UTILITY_EXPORTS const_vec3p_t GetDelta() const;
 
 		/** Returns the number of material this model has captured. */
 		MOHPC_UTILITY_EXPORTS size_t GetNumMaterials() const;
@@ -178,10 +178,10 @@ namespace MOHPC
 		void ClearBonesCache();
 		void LoadMorphTargetNames(const Skeleton* skelmodel);
 
-		void SkelVertGetNormal(const Skeleton::SkeletorVertex *vert, const ModelBoneTransform *bone, Vector& out);
-		void SkelWeightGetXyz(const Skeleton::SkeletorWeight *weight, const ModelBoneTransform *bone, Vector& out);
-		void SkelWeightMorphGetXyz(const Skeleton::SkeletorWeight *weight, const ModelBoneTransform *bone, const Vector& totalmorph, Vector& out);
-		void SkelMorphGetXyz(const Skeleton::SkeletorMorph *morph, int *morphcache, Vector& out);
+		void SkelVertGetNormal(const Skeleton::SkeletorVertex *vert, const ModelBoneTransform *bone, vec3r_t out);
+		void SkelWeightGetXyz(const Skeleton::SkeletorWeight *weight, const ModelBoneTransform *bone, vec3r_t out);
+		void SkelWeightMorphGetXyz(const Skeleton::SkeletorWeight *weight, const ModelBoneTransform *bone, const vec3r_t totalmorph, vec3r_t out);
+		void SkelMorphGetXyz(const Skeleton::SkeletorMorph *morph, int *morphcache, vec3r_t out);
 		const ModelSurfaceMaterial* FindMaterialByName(const str& name);
 	};
 	using ModelRendererPtr = SharedPtr<ModelRenderer>;

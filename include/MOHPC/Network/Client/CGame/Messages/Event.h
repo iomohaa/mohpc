@@ -26,7 +26,7 @@ namespace Network
 			 * @param	clientNum	Player responsible for the voice.
 			 * @param	soundName	Sound to play.
 			 */
-			struct VoiceMessage : public HandlerNotifyBase<void(const Vector& origin, bool local, uint8_t clientNum, const char* soundName)> {};
+			struct VoiceMessage : public HandlerNotifyBase<void(const vec3r_t origin, bool local, uint8_t clientNum, const char* soundName)> {};
 		}
 
 		namespace Messages
@@ -36,7 +36,7 @@ namespace Network
 			public:
 				void Hit() override;
 				void GotKill() override;
-				void PlayVoice(const Vector& origin, bool local, uint8_t clientNum, const char* soundName) override;
+				void PlayVoice(const vec3r_t origin, bool local, uint8_t clientNum, const char* soundName) override;
 
 			public:
 				FunctionList<Handlers::HitNotify> hitHandler;

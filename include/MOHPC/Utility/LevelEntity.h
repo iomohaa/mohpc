@@ -13,19 +13,6 @@ namespace MOHPC
 
 	class LevelEntity
 	{
-	private:
-		size_t entnum;
-		str classname;
-		int32_t spawnflags;
-		str targetname;
-		str target;
-		PropertyObject propertyObject;
-
-	public:
-		str model;
-		Vector origin;
-		Vector angles;
-
 	public:
 		LevelEntity(size_t entnum);
 
@@ -39,8 +26,8 @@ namespace MOHPC
 		MOHPC_UTILITY_EXPORTS bool IsClassOf(const char* classname) const;
 		MOHPC_UTILITY_EXPORTS bool HasSubmodel() const;
 
-		MOHPC_UTILITY_EXPORTS const Vector& GetOrigin() const;
-		MOHPC_UTILITY_EXPORTS const Vector& GetAngles() const;
+		MOHPC_UTILITY_EXPORTS const_vec3p_t GetOrigin() const;
+		MOHPC_UTILITY_EXPORTS const_vec3p_t GetAngles() const;
 
 		MOHPC_UTILITY_EXPORTS bool HasProperty(const char* Key) const;
 		MOHPC_UTILITY_EXPORTS const char* GetPropertyRawValue(const char* Key) const;
@@ -56,7 +43,7 @@ namespace MOHPC
 		MOHPC_UTILITY_EXPORTS float GetPropertyFloatValue(const char* Key, float defaultValue = 0) const;
 		MOHPC_UTILITY_EXPORTS double GetPropertyDoubleValue(const char* Key, double defaultValue = 0) const;
 		MOHPC_UTILITY_EXPORTS long double GetPropertyLongDoubleValue(const char* Key, long double defaultValue = 0) const;
-		MOHPC_UTILITY_EXPORTS Vector GetPropertyVectorValue(const char* Key, const Vector& defaultValue = Vector(0, 0, 0)) const;
+		MOHPC_UTILITY_EXPORTS void GetPropertyVectorValue(const char* Key, vec3r_t out, const vec3r_t defaultValue = vec3_zero) const;
 		MOHPC_UTILITY_EXPORTS bool TrySetMemberValue(const char* Key, const char* Value);
 		MOHPC_UTILITY_EXPORTS void SetPropertyValue(const char* Key, const char* Value);
 		void SetPropertyDef(const PropertyDef& Key, str&& Value);
@@ -64,5 +51,16 @@ namespace MOHPC
 		MOHPC_UTILITY_EXPORTS PropertyMapIterator GetIterator() const;
 
 		MOHPC_UTILITY_EXPORTS const PropertyObject& GetPropertyObject() const;
+
+	private:
+		str model;
+		vec3_t origin;
+		vec3_t angles;
+		size_t entnum;
+		str classname;
+		int32_t spawnflags;
+		str targetname;
+		str target;
+		PropertyObject propertyObject;
 	};
 }

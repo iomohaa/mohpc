@@ -51,7 +51,7 @@ namespace MOHPC
 		PakFile* Next;
 		FileManagerCategory* Category;
 		unzFile ZipFile;
-		mfuse::con::Container<PakFileEntry*> entries;
+		std::vector<PakFileEntry*> entries;
 	};
 
 	struct FileNameCompare
@@ -227,7 +227,7 @@ namespace MOHPC
 	{
 		str categoryName;
 		std::unordered_map<str, PakFileEntry*, FileNameHash, FileNameMapCompare> m_PakFilesMap;
-		mfuse::con::Container<PakFileEntry*> m_PakFilesList;
+		std::vector<PakFileEntry*> m_PakFilesList;
 	};
 
 	struct FileManagerData
@@ -237,27 +237,29 @@ namespace MOHPC
 	};
 }
 
-#ifdef _WIN32
-static constexpr unsigned char PLATFORM_SLASH = '\\';
-#define PLATFORM_SLASH_MACRO "\\"
-#else
-static constexpr unsigned char PLATFORM_SLASH = '/';
-#define PLATFORM_SLASH_MACRO "/"
-#endif
-
-static bool HasTrailingSlash(const char* dir)
+const char* strHelpers::getExtension(const char* val)
 {
-	const size_t dirLen = strlen(dir);
+	if (!val || !*val)
+	{
+		// empty string
+		return "";
+	}
 
-	const char last = dir[dirLen - 1];
-	return last == PLATFORM_SLASH;
+	while (*val && *val != '.')
+	{
+		++val;
+	}
+
+	if (*val == '.') ++val;
+
+	return val;
 }
 
 FileEntryList::FileEntryList()
 {
 }
 
-FileEntryList::FileEntryList(mfuse::con::Container<FileEntry>&& inFileList) noexcept
+FileEntryList::FileEntryList(std::vector<FileEntry>&& inFileList) noexcept
 	: fileList(std::move(inFileList))
 {
 }
@@ -268,12 +270,12 @@ FileEntryList::~FileEntryList()
 
 size_t FileEntryList::GetNumFiles() const
 {
-	return fileList.NumObjects();
+	return fileList.size();
 }
 
 const FileEntry* FileEntryList::GetFileEntry(size_t Index) const
 {
-	return Index < fileList.NumObjects() ? &fileList[Index] : nullptr;
+	return Index < fileList.size() ? &fileList[Index] : nullptr;
 }
 
 File::File()
@@ -462,49 +464,6 @@ bool FileManager::AddPakFile(const char* Filename, const char* CategoryName)
 	return true;
 }
 
-bool FileManager::FillGameDirectory(const char* Directory)
-{
-	const char* gameDir;
-	str gameDirStr;
-
-	MOHPC_LOG(Info, "Loading pak files...");
-
-	if(!HasTrailingSlash(Directory))
-	{
-		gameDirStr = Directory;
-		gameDirStr += '/';
-		gameDir = gameDirStr.c_str();
-	}
-	else {
-		gameDir = Directory;
-	}
-
-	#define PSL PLATFORM_SLASH_MACRO
-
-	bool success = true;
-	success &= AddGameDirectory(str::printf("%smain", gameDir), "AA");
-	success &= AddPakFile(str::printf("%smain" PSL "Pak0.pk3", gameDir), "AA");
-	success &= AddPakFile(str::printf("%smain" PSL "Pak1.pk3", gameDir), "AA");
-	success &= AddPakFile(str::printf("%smain" PSL "Pak2.pk3", gameDir), "AA");
-	success &= AddPakFile(str::printf("%smain" PSL "Pak3.pk3", gameDir), "AA");
-	success &= AddPakFile(str::printf("%smain" PSL "Pak4.pk3", gameDir), "AA");
-	success &= AddPakFile(str::printf("%smain" PSL "Pak5.pk3", gameDir), "AA");
-	success &= AddPakFile(str::printf("%smain" PSL "Pak6.pk3", gameDir), "AA");
-	success &= AddPakFile(str::printf("%smainta" PSL "Pak1.pk3", gameDir), "SH");
-	success &= AddPakFile(str::printf("%smainta" PSL "Pak2.pk3", gameDir), "SH");
-	success &= AddPakFile(str::printf("%smainta" PSL "Pak3.pk3", gameDir), "SH");
-	success &= AddPakFile(str::printf("%smainta" PSL "Pak4.pk3", gameDir), "SH");
-	success &= AddPakFile(str::printf("%smainta" PSL "Pak5.pk3", gameDir), "SH");
-	success &= AddPakFile(str::printf("%smaintt" PSL "Pak1.pk3", gameDir), "BT");
-	success &= AddPakFile(str::printf("%smaintt" PSL "Pak2.pk3", gameDir), "BT");
-	success &= AddPakFile(str::printf("%smaintt" PSL "Pak3.pk3", gameDir), "BT");
-	success &= AddPakFile(str::printf("%smaintt" PSL "Pak4.pk3", gameDir), "BT");
-
-	MOHPC_LOG(Info, "%d pak(s) loaded in %s.", numPaks, Directory);
-
-	return success;
-}
-
 size_t FileManager::GetNumDirectories() const
 {
 	return numGamePaths;
@@ -517,7 +476,7 @@ size_t FileManager::GetNumPakFiles() const
 
 bool FileManager::FileExists(const char* Filename, bool bInPakOnly, const char* CategoryName) const
 {
-	if (!m_pData->defaultCategory.m_PakFilesList.NumObjects())
+	if (!m_pData->defaultCategory.m_PakFilesList.size())
 	{
 		FileManager *This = (FileManager *)this;
 		This->CacheFiles();
@@ -556,7 +515,7 @@ bool FileManager::FileExists(const char* Filename, bool bInPakOnly, const char* 
 
 FilePtr FileManager::OpenFile(const char* Filename, const char* CategoryName)
 {
-	if (!m_pData->defaultCategory.m_PakFilesList.NumObjects()) {
+	if (!m_pData->defaultCategory.m_PakFilesList.size()) {
 		CacheFiles();
 	}
 
@@ -615,7 +574,7 @@ FilePtr FileManager::OpenFile(const char* Filename, const char* CategoryName)
 
 str FileManager::GetFileHash(const char* Filename, const char* CategoryName)
 {
-	if (!m_pData->defaultCategory.m_PakFilesList.NumObjects())
+	if (!m_pData->defaultCategory.m_PakFilesList.size())
 	{
 		FileManager *This = (FileManager *)this;
 		This->CacheFiles();
@@ -676,9 +635,9 @@ static bool AreFilesEqual(const str& s1, const str& s2)
 	return !stricmp(s1.c_str(), s2.c_str());
 }
 
-static void InsertVirtualFile(const std::string& dir, const fs::path& path, const std::string& requestedDir, const mfuse::con::Container<str>& Extensions, std::set<FileEntry, FileNameCompare>& fileList)
+static void InsertVirtualFile(const std::string& dir, const fs::path& path, const std::string& requestedDir, const std::vector<str>& Extensions, std::set<FileEntry, FileNameCompare>& fileList)
 {
-	const bool bAnyExtension = Extensions.NumObjects() <= 0;
+	const bool bAnyExtension = Extensions.size() <= 0;
 
 	if (!path.empty())
 	{
@@ -701,7 +660,7 @@ static void InsertVirtualFile(const std::string& dir, const fs::path& path, cons
 				else
 				{
 					const char *fileExtension = FileNameCompare::GetExtension(virtualPath);
-					for (size_t e = 0; e < Extensions.NumObjects(); e++)
+					for (size_t e = 0; e < Extensions.size(); e++)
 					{
 						if (!stricmp(Extensions[e].c_str(), fileExtension))
 						{
@@ -714,23 +673,23 @@ static void InsertVirtualFile(const std::string& dir, const fs::path& path, cons
 	}
 }
 
-FileEntryList FileManager::ListFilteredFiles(const char* Directory, const mfuse::con::Container<str>& Extensions, bool bRecursive, bool bInPakOnly, const char* CategoryName) const
+FileEntryList FileManager::ListFilteredFiles(const char* Directory, const std::vector<str>& Extensions, bool bRecursive, bool bInPakOnly, const char* CategoryName) const
 {
 	FileManagerCategory* Category = GetCategory(CategoryName);
 
-	if (!Category->m_PakFilesList.NumObjects())
+	if (!Category->m_PakFilesList.size())
 	{
 		FileManager *This = const_cast<FileManager*>(this);
 		This->CacheFiles();
 	}
 
 	if (*Directory != '/' && *Directory != '\\') {
-		return mfuse::con::Container<FileEntry>();
+		return std::vector<FileEntry>();
 	}
 
 	std::set<FileEntry, FileNameCompare> fileList;
 
-	const bool bAnyExtension = Extensions.NumObjects() <= 0;
+	const bool bAnyExtension = Extensions.size() <= 0;
 
 	fs::path requestedPath;
 
@@ -755,8 +714,8 @@ FileEntryList FileManager::ListFilteredFiles(const char* Directory, const mfuse:
 	size_t requestedDirLength = requestedDir.length();
 
 	bool bInDir = false;
-	PakFileEntry **Entries = Category->m_PakFilesList.Data();
-	size_t numEntries = Category->m_PakFilesList.NumObjects();
+	PakFileEntry **Entries = Category->m_PakFilesList.data();
+	size_t numEntries = Category->m_PakFilesList.size();
 	for (size_t i = 0; i < numEntries; i++)
 	{
 		const PakFileEntry *Entry = Entries[i];
@@ -773,7 +732,7 @@ FileEntryList FileManager::ListFilteredFiles(const char* Directory, const mfuse:
 				else
 				{
 					const char *fileExtension = FileNameCompare::GetExtension(Entry->Name);
-					for (size_t e = 0; e < Extensions.NumObjects(); e++)
+					for (size_t e = 0; e < Extensions.size(); e++)
 					{
 						if (!stricmp(Extensions[e].c_str(), fileExtension)) {
 							fileList.insert(Entry->Name);
@@ -824,8 +783,8 @@ FileEntryList FileManager::ListFilteredFiles(const char* Directory, const mfuse:
 	}
 
 	const size_t numFiles = fileList.size();
-	mfuse::con::Container<FileEntry> out;
-	out.SetNumObjects(numFiles);
+	std::vector<FileEntry> out;
+	out.resize(numFiles);
 	std::move(fileList.begin(), fileList.end(), out.begin());
 
 	return out;
@@ -833,28 +792,29 @@ FileEntryList FileManager::ListFilteredFiles(const char* Directory, const mfuse:
 
 FileEntryList FileManager::ListFilteredFiles(const char* Directory, const char* Extension, bool bRecursive, bool bInPakOnly, const char* CategoryName) const
 {
-	mfuse::con::Container<str> Extensions;
+	std::vector<str> Extensions;
 
 	if (*Extension && strlen(Extension)) {
-		Extensions.AddObject(Extension);
+		Extensions.push_back(Extension);
 	}
 
 	return ListFilteredFiles(Directory, Extensions, bRecursive, bInPakOnly, CategoryName);
 }
 
-void FileManager::SortFileList(mfuse::con::Container<FileEntry>& FileList)
+void FileManager::SortFileList(std::vector<FileEntry>& FileList)
 {
 	std::sort(FileList.begin(), FileList.end(), ::SortFileList);
 	//FileList.erase(std::unique(FileList.begin(), FileList.end(), AreFilesEqual), FileList.end());
 
 	// Remove duplicate file names
-	for (size_t i = FileList.NumObjects(); i > 0; i--)
+	for (size_t i = FileList.size(); i > 0; i--)
 	{
 		for (size_t j = i; j > 0; j--)
 		{
-			if (AreFilesEqual(FileList[i].GetStr(), FileList[j].GetStr()))
+			if (AreFilesEqual(FileList[i - 1].GetStr(), FileList[j - 1].GetStr()))
 			{
-				FileList.RemoveObjectAt(i);
+				auto it = FileList.begin() + i;
+				FileList.erase(it);
 				break;
 			}
 		}
@@ -901,7 +861,7 @@ str FileManager::GetFixedPath(const str& Path) const
 	return out;
 }
 
-void FileManager::GetCategoryList(mfuse::con::Container<const char*>& OutList) const
+void FileManager::GetCategoryList(std::vector<const char*>& OutList) const
 {
 	const size_t numCategories = m_pData->categoryList.size();
 	for (size_t i = 0; i < numCategories; i++)
@@ -1069,7 +1029,7 @@ void FileManager::CacheFilesCategory(FileManagerCategory* Category)
 void FileManager::CategorizeFiles(std::set<PakFileEntry*, PakFileEntryCompare>& FileList, FileManagerCategory* Category)
 {
 	size_t numFiles = FileList.size();
-	Category->m_PakFilesList.SetNumObjectsUninitialized(numFiles);
+	Category->m_PakFilesList.resize(numFiles);
 	std::move(FileList.begin(), FileList.end(), Category->m_PakFilesList.begin());
 
 	Category->m_PakFilesMap.reserve(numFiles);

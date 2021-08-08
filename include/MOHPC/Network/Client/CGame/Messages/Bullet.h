@@ -24,7 +24,7 @@ namespace Network
 			 * @param	tracerVisible	Specify if this tracer is visible.
 			 * @param	bulletSize		The length of the bullet.
 			 */
-			struct CreateBulletTracer : public HandlerNotifyBase<void(const Vector& barrel, const Vector& start, const Vector& end, uint32_t numBullets, uint32_t iLarge, uint32_t numTracersVisible, float bulletSize)> {};
+			struct CreateBulletTracer : public HandlerNotifyBase<void(const vec3r_t barrel, const vec3r_t start, const vec3r_t end, uint32_t numBullets, uint32_t iLarge, uint32_t numTracersVisible, float bulletSize)> {};
 
 			/**
 			 * Underwater bubble trail.
@@ -34,7 +34,7 @@ namespace Network
 			 * @param	iLarge		If it's a large trail.
 			 * @param	bulletSize	Length of the trail.
 			 */
-			struct CreateBubbleTrail : public HandlerNotifyBase<void(const Vector& start, const Vector& end, uint32_t iLarge, float bulletSize)> {};
+			struct CreateBubbleTrail : public HandlerNotifyBase<void(const vec3r_t start, const vec3r_t end, uint32_t iLarge, float bulletSize)> {};
 		}
 
 		namespace Messages
@@ -42,8 +42,8 @@ namespace Network
 			class BulletImpl : public IBullet
 			{
 			public:
-				void CreateBulletTracer(const Vector& barrel, const Vector& start, const Vector& end, uint32_t numBullets, uint32_t iLarge, uint32_t numTracersVisible, float bulletSize) override;
-				void CreateBubbleTrail(const Vector& start, const Vector& end, uint32_t iLarge, float bulletSize) override;
+				void CreateBulletTracer(const vec3r_t barrel, const vec3r_t start, const vec3r_t end, uint32_t numBullets, uint32_t iLarge, uint32_t numTracersVisible, float bulletSize) override;
+				void CreateBubbleTrail(const vec3r_t start, const vec3r_t end, uint32_t iLarge, float bulletSize) override;
 
 			public:
 				FunctionList<Handlers::CreateBulletTracer> createBulletTracerHandler;

@@ -12,8 +12,8 @@ namespace MOHPC
 {
 namespace Network
 {
-	using TraceFunction = Function<void(trace_t* results, const Vector& start, const Vector& mins, const Vector& maxs, const Vector& end, uintptr_t passEntityNum, uintptr_t contentMask, bool capsule, bool traceDeep)>;
-	using PointContentsFunction = Function<uint32_t(const Vector& point, uintptr_t passEntityNum)>;
+	using TraceFunction = Function<void(trace_t* results, const_vec3r_t start, const_vec3r_t mins, const_vec3r_t maxs, const_vec3r_t end, uintptr_t passEntityNum, uintptr_t contentMask, bool capsule, bool traceDeep)>;
+	using PointContentsFunction = Function<uint32_t(const_vec3r_t point, uintptr_t passEntityNum)>;
 
 	class MOHPC_NET_EXPORTS ITraceFunction
 	{
@@ -23,10 +23,10 @@ namespace Network
 		/** @see CollisionWorld::BoxTrace. */
 		virtual void trace(
 			trace_t* results,
-			const Vector& start,
-			const Vector& mins,
-			const Vector& maxs,
-			const Vector& end,
+			const_vec3r_t start,
+			const_vec3r_t mins,
+			const_vec3r_t maxs,
+			const_vec3r_t end,
 			entityNum_t passEntityNum,
 			uint32_t contentMask,
 			bool capsule,
@@ -34,7 +34,7 @@ namespace Network
 		) = 0;
 
 		/** @see CollisionWorld::PointContents. */
-		virtual uint32_t pointContents(const Vector& point, uintptr_t passEntityNum) = 0;
+		virtual uint32_t pointContents(const_vec3r_t point, uintptr_t passEntityNum) = 0;
 	};
 	using ITraceFunctionPtr = SharedPtr<ITraceFunction>;
 

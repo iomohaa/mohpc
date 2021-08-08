@@ -3,6 +3,7 @@
 #ifdef _WIN32
 #include <conio.h>
 #include <Windows.h>
+#include <timeapi.h>
 #else
 #include <curses.h>
 #include <unistd.h>
@@ -45,6 +46,15 @@ int getConsoleChar()
 {
 	return getchar();
 }
+
+void setTimerResolution(uint64_t resolution)
+{
+}
+
+void restoreTimerSolution()
+{
+}
+
 #else
 void initConsole()
 {
@@ -63,5 +73,15 @@ bool isKeyboardHit()
 int getConsoleChar()
 {
 	return _getch();
+}
+
+void setTimerResolution(uint64_t resolution)
+{
+	timeBeginPeriod((UINT)resolution);
+}
+
+void restoreTimerSolution(uint64_t resolution)
+{
+	timeEndPeriod((UINT)resolution);
 }
 #endif

@@ -27,17 +27,17 @@ namespace Network
 
 			void trace(
 				trace_t* results,
-				const Vector& start,
-				const Vector& mins,
-				const Vector& maxs,
-				const Vector& end,
+				const_vec3r_t start,
+				const_vec3r_t mins,
+				const_vec3r_t maxs,
+				const_vec3r_t end,
 				entityNum_t passEntityNum,
 				uint32_t contentMask,
 				bool capsule,
 				bool traceDeep
 			) override;
 
-			uint32_t pointContents(const Vector& point, uintptr_t passEntityNum) override;
+			uint32_t pointContents(const_vec3r_t point, uintptr_t passEntityNum) override;
 
 		private:
 			CollisionWorldPtr cm;

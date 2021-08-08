@@ -14,6 +14,7 @@
 #include <MOHPC/Common/Log.h>
 
 #include <chrono>
+#include <random>
 
 using namespace MOHPC;
 using namespace MOHPC::Network;
@@ -62,9 +63,9 @@ ClientData::ClientData(const IUdpSocketPtr& inSocket, const NetAddrPtr& from, ui
 	//encoding = Encoding::create(challengeNum, (const char**)serverCommandList, (const char**)reliableCommandList);
 }
 
-const NetAddr& ClientData::getAddress() const
+const NetAddrPtr& ClientData::getAddress() const
 {
-	return *source;
+	return source;
 }
 
 uint16_t ClientData::getQPort() const
@@ -103,20 +104,19 @@ ServerHost::ServerHost()
 ClientData& ServerHost::createClient(const NetAddrPtr& from, uint16_t qport, uint32_t challengeNum)
 {
 	ClientDataPtr data = ClientData::create(serverSocket, from, qport, challengeNum);
-	clientList.AddObject(data);
+	clientList.push_back(data);
 
 	return *data;
 }
 
 ClientData* ServerHost::findClient(const NetAddr& from, uint16_t qport) const
 {
-	const size_t numClients = clientList.NumObjects();
-	for (size_t i = 1; i <= numClients; ++i)
+	for(auto clientDataPtr = clientList.begin(); clientDataPtr != clientList.end(); ++clientDataPtr)
 	{
-		const ClientDataPtr& clientData = clientList.ObjectAt(i);
-		if (clientData->getAddress() == from && clientData->getQPort() == qport)
+		ClientData* clientData = clientDataPtr->get();
+		if (*clientData->getAddress() == from && clientData->getQPort() == qport)
 		{
-			return clientData.get();
+			return clientData;
 		}
 	}
 
@@ -125,34 +125,32 @@ ClientData* ServerHost::findClient(const NetAddr& from, uint16_t qport) const
 
 Challenge& ServerHost::createChallenge(const NetAddrPtr& from)
 {
-	Challenge* challenge = new (challenges) Challenge(from, std::chrono::steady_clock::now(), rand());
-	return *challenge;
+	std::random_device rd;
+
+	return challenges.emplace_back(from, std::chrono::steady_clock::now(), rd());
 }
 
 uintptr_t ServerHost::getChallenge(const NetAddr& from) const
 {
-	const size_t numChallenges = challenges.NumObjects();
-	for (size_t i = 1; i <= numChallenges; ++i)
+	for (auto challenge = challenges.begin(); challenge != challenges.end(); ++challenge)
 	{
-		const Challenge& challenge = challenges.ObjectAt(i);
-		if (challenge.getSourceAddress() == from)
+		if (challenge->getSourceAddress() == from)
 		{
-			return i;
+			return challenge - challenges.begin();
 		}
 	}
 
 	return 0;
 }
 
-void ServerHost::tick(uint64_t deltaTime, uint64_t currentTime)
+void ServerHost::tick(deltaTime_t deltaTime, tickTime_t currentTime)
 {
-	for (size_t i = challenges.NumObjects(); i > 0; i--)
+	for (auto challenge = challenges.begin(); challenge != challenges.end(); ++challenge)
 	{
-		Challenge& challenge = challenges.ObjectAt(i);
-		if (challenge.hasElapsed(std::chrono::milliseconds(10000)))
+		if (challenge->hasElapsed(std::chrono::milliseconds(10000)))
 		{
 			// remove the challenge if it has expired
-			challenges.RemoveObjectAt(i);
+			challenge = challenges.erase(challenge);
 		}
 	}
 
@@ -206,7 +204,7 @@ void ServerHost::processRequests()
 		}
 
 		StringMessage command = msg.ReadString();
-		if (!str::icmp(command, "getchallenge"))
+		if (!strHelpers::icmp(command.c_str(), "getchallenge"))
 		{
 			Challenge* challenge;
 
@@ -214,7 +212,7 @@ void ServerHost::processRequests()
 			if (challengeIndex)
 			{
 				// a challenge already exist for this ip
-				challenge = &challenges.ObjectAt(challengeIndex);
+				challenge = &challenges.at(challengeIndex);
 			}
 			else
 			{
@@ -223,9 +221,9 @@ void ServerHost::processRequests()
 			}
 
 			// send the client challenge
-			connectionLessReply(from, str::printf("challengeResponse %d", challenge->getChallenge()));
+			connectionLessReply(from, ("challengeResponse " + std::to_string(challenge->getChallenge())).c_str());
 		}
-		else if (!str::icmp(command, "connect "))
+		else if (!strHelpers::icmp(command.c_str(), "connect "))
 		{
 			FixedDataMessageStream compressedStream(data + 13, len - 13);
 
@@ -256,14 +254,14 @@ void ServerHost::processRequests()
 				return;
 			}
 
-			const Challenge& challenge = challenges.ObjectAt(challengeIndex);
+			const Challenge& challenge = challenges.at(challengeIndex);
 			if (challenge.getChallenge() != challengeNum)
 			{
 				// bad challenge
 				return;
 			}
 
-			challenges.RemoveObjectAt(challengeIndex);
+			challenges.erase(challenges.begin() + challengeIndex);
 
 			uint16_t qport = info.IntValueForKey("qport");
 
@@ -366,7 +364,7 @@ void ServerHost::sendGameStateToClient(ClientData& client)
 
 	clientMessage.WriteByte((uint8_t)svc_ops_e::Configstring);
 	clientMessage.WriteUShort(CS_SYSTEMINFO);
-	clientMessage.WriteString(str::printf("\\test\\value\\sv_serverid\\%.03d", serverId).c_str());
+	clientMessage.WriteString("\\test\\value\\sv_serverid\\" + std::to_string(serverId));
 
 	clientMessage.WriteByte((uint8_t)svc_ops_e::Configstring);
 	clientMessage.WriteUShort(11);

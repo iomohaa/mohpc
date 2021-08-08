@@ -6,4 +6,4 @@
 #include <MOHPC/Assets/Formats/Skel/Skeletor.h>
 #include "SkeletonAnimationFileFormat.h"
 #include "SkeletonModelFileFormat.h"
-#include <MOHPC/Utility/Managers/SkeletorManager.h>
+#include <MOHPC/Assets/Managers/SkeletorManager.h>

@@ -5,6 +5,13 @@ using namespace MOHPC::Network;
 
 entityState_t::entityState_t()
 	: number(0)
+	, netorigin{0}
+	, origin2{0}
+	, netangles{0}
+	, attach_offset{0}
+	, eyeVector{0}
+	, bone_angles{0}
+	, bone_quat{ 0 }
 	, eType(entityType_e::modelanim_skel)
 	, eFlags(0)
 	, constantLight(-1)
@@ -59,17 +66,17 @@ const trajectory_t& entityState_t::getTrajectory() const
 	return pos;
 }
 
-const Vector& entityState_t::getNetOrigin() const
+const_vec3p_t entityState_t::getNetOrigin() const
 {
 	return netorigin;
 }
 
-const MOHPC::Vector& entityState_t::getAlternateOrigin() const
+const_vec3p_t entityState_t::getAlternateOrigin() const
 {
 	return origin2;
 }
 
-const Vector& entityState_t::getNetAngles() const
+const_vec3p_t entityState_t::getNetAngles() const
 {
 	return netangles;
 }
@@ -127,7 +134,7 @@ bool entityState_t::doesAttachUseAngle() const
 	return attach_use_angles;
 }
 
-const Vector& entityState_t::getAttachOffset() const
+const_vec3p_t entityState_t::getAttachOffset() const
 {
 	return attach_offset;
 }
@@ -172,7 +179,7 @@ uint8_t entityState_t::getBoneTag(uint8_t index) const
 	return bone_tag[index];
 }
 
-const Vector& entityState_t::getBoneAngles(uint8_t index)
+const_vec3p_t entityState_t::getBoneAngles(uint8_t index)
 {
 	return bone_angles[index];
 }
@@ -224,9 +231,10 @@ float entityState_t::getShaderTime() const
 
 trajectory_t::trajectory_t()
 	: trTime(0)
+	, trDelta{ 0 }
 {}
 
-const Vector& trajectory_t::getDelta() const
+const_vec3p_t trajectory_t::getDelta() const
 {
 	return trDelta;
 }

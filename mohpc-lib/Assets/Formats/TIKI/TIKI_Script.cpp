@@ -399,7 +399,7 @@ void TikiScript::AddMacro(const char *name, const char *expansion)
 
 	for (i = 0; i < nummacros; i++)
 	{
-		if (!str::icmp(name, macros[i].name))
+		if (!strHelpers::icmp(name, macros[i].name))
 			return;
 	}
 
@@ -437,13 +437,13 @@ bool TikiScript::ProcessCommand(bool crossline)
 
 	sscanf(script_p, "%c%s %s %s\n", &dummy, &command, &argument1, &argument2);
 
-	if (!str::icmp(command, "define"))
+	if (!strHelpers::icmp(command, "define"))
 	{
 		AddMacro(argument1, argument2);
 		SkipToEOL();
 		SkipWhiteSpace(crossline);
 	}
-	else if (!str::icmp(command, "include"))
+	else if (!strHelpers::icmp(command, "include"))
 	{
 		SkipToEOL();
 		SkipWhiteSpace(crossline);
@@ -464,7 +464,7 @@ bool TikiScript::ProcessCommand(bool crossline)
 			Uninclude();
 		}
 	}
-	else if (!str::icmp(command, "path"))
+	else if (!strHelpers::icmp(command, "path"))
 	{
 		strcpy(path, argument1);
 		len = strlen(path);
@@ -511,7 +511,7 @@ const char *TikiScript::FindMacro(const char *macro)
 
 	for (i = 0; i < nummacros; i++)
 	{
-		if (!str::icmp(macro, macros[i].name))
+		if (!strHelpers::icmp(macro, macros[i].name))
 			return macros[i].macro;
 	}
 

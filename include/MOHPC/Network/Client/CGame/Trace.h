@@ -35,7 +35,7 @@ namespace Network
 			 * @param	mask		Trace mask.
 			 * @param	tr			Input/Output results.
 			 */
-			MOHPC_NET_EXPORTS void clipMoveToEntities(CollisionWorld& cm, const Vector& start, const Vector& mins, const Vector& maxs, const Vector& end, entityNum_t skipNumber, uint32_t mask, bool cylinder, trace_t& tr) const;
+			MOHPC_NET_EXPORTS void clipMoveToEntities(CollisionWorld& cm, const_vec3r_t start, const_vec3r_t mins, const_vec3r_t maxs, const_vec3r_t end, entityNum_t skipNumber, uint32_t mask, bool cylinder, trace_t& tr) const;
 
 			/**
 			 * Perform a trace from start to the end, taking entities into account.
@@ -49,7 +49,7 @@ namespace Network
 			 * @param	mask		Trace mask.
 			 * @param	tr			Input/Output results.
 			 */
-			MOHPC_NET_EXPORTS void trace(CollisionWorld& cm, trace_t& tr, const Vector& start, const Vector& mins, const Vector& maxs, const Vector& end, entityNum_t skipNumber, uint32_t mask, bool cylinder, bool cliptoentities) const;
+			MOHPC_NET_EXPORTS void trace(CollisionWorld& cm, trace_t& tr, const_vec3r_t start, const_vec3r_t mins, const_vec3r_t maxs, const_vec3r_t end, entityNum_t skipNumber, uint32_t mask, bool cylinder, bool cliptoentities) const;
 
 			/**
 			 * Get contents of point.
@@ -58,7 +58,7 @@ namespace Network
 			 * @param	point			Location to get contents from.
 			 * @param	passEntityNum	Entity number to skip.
 			 */
-			MOHPC_NET_EXPORTS uint32_t pointContents(CollisionWorld& cm, const Vector& point, uintptr_t passEntityNum) const;
+			MOHPC_NET_EXPORTS uint32_t pointContents(CollisionWorld& cm, const_vec3r_t point, uintptr_t passEntityNum) const;
 
 			/**
 			 * Build the solid list from snapshot.

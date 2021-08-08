@@ -4,6 +4,8 @@
 #include <MOHPC/Utility/TokenParser.h>
 #include <MOHPC/Utility/CommandManager.h>
 
+#include <cassert>
+
 using namespace MOHPC;
 using namespace MOHPC::Network;
 using namespace MOHPC::Network::CGame;
@@ -12,7 +14,7 @@ EntityInfo::EntityInfo()
 	: currentValid(false)
 	, interpolate(false)
 	, teleported(false)
-	, snapshotTime(0)
+	, snapshotTime(std::chrono::milliseconds())
 {
 }
 
@@ -26,7 +28,7 @@ const entityState_t& EntityInfo::getNextState() const
 	return nextState;
 }
 
-uint32_t EntityInfo::getSnapshotTime() const
+netTime_t EntityInfo::getSnapshotTime() const
 {
 	return snapshotTime;
 }
@@ -63,6 +65,11 @@ void SnapshotProcessor::init(uintptr_t serverMessageSequence, rsequence_t server
 	processedSnapshotNum = serverMessageSequence;
 	latestSnapshotNum = processedSnapshotNum;
 	latestCommandSequence = serverCommandSequence;
+}
+
+const SnapshotInfo& SnapshotProcessor::getOldSnap() const
+{
+	return oldSnap;
 }
 
 const MOHPC::Network::SnapshotInfo* SnapshotProcessor::getSnap() const
@@ -111,8 +118,10 @@ SnapshotInfo* SnapshotProcessor::readNextSnapshot()
 	return nullptr;
 }
 
-void SnapshotProcessor::processSnapshots(uint64_t serverTime)
+void SnapshotProcessor::processSnapshots(tickTime_t simulatedRemoteTime)
 {
+	using namespace std::chrono;
+
 	const uintptr_t n = snapshotManager->getCurrentSnapNumber();
 	if (n != latestSnapshotNum)
 	{
@@ -165,18 +174,20 @@ void SnapshotProcessor::processSnapshots(uint64_t serverTime)
 			if (nextSnap->serverTime < snap->serverTime)
 			{
 				// server time went backward
-				throw CGSnapshotError::NextSnapTimeWentBackward(snap->serverTime, nextSnap->serverTime);
+				throw CGSnapshotError::NextSnapTimeWentBackward(snap->getServerTime(), nextSnap->getServerTime());
 			}
 		}
 
-		const uint64_t serverStartTime = clientTime->getStartTime();
+		const tickTime_t serverStartTime = time_cast<tickTime_t>(clientTime->getRemoteStartTime());
+		const tickTime_t snapTime = time_cast<tickTime_t>(snap->getServerTime());
+		const tickTime_t nextSnapTime = time_cast<tickTime_t>(nextSnap->getServerTime());
 		// if our time is < nextFrame's, we have a nice interpolating state
-		if (serverTime >= snap->serverTime && serverTime < nextSnap->serverTime && snap->serverTime > serverStartTime) {
+		if (simulatedRemoteTime >= snapTime && simulatedRemoteTime < snapTime && snapTime > serverStartTime) {
 			break;
 		}
 
 		// we have passed the transition from nextFrame to frame
-		transitionSnapshot(snap->serverTime <= serverStartTime);
+		transitionSnapshot(snapTime <= serverStartTime);
 	}
 
 	assert(this->snap);
@@ -184,12 +195,12 @@ void SnapshotProcessor::processSnapshots(uint64_t serverTime)
 		throw CGSnapshotError::NullSnapshot();
 	}
 
-	if (serverTime < snap->serverTime) {
-		serverTime = snap->serverTime;
+	if (simulatedRemoteTime < time_cast<tickTime_t>(snap->getServerTime())) {
+		simulatedRemoteTime = time_cast<tickTime_t>(snap->getServerTime());
 	}
 
-	if (nextSnap && nextSnap->serverTime <= serverTime) {
-		throw CGSnapshotError::NextSnapTimeWentBackward(serverTime, nextSnap->serverTime);
+	if (nextSnap && time_cast<tickTime_t>(nextSnap->getServerTime()) <= simulatedRemoteTime) {
+		throw CGSnapshotError::NextSnapTimeWentBackward(time_cast<netTime_t>(simulatedRemoteTime), nextSnap->getServerTime());
 	}
 }
 
@@ -248,7 +259,7 @@ void SnapshotProcessor::setNextSnap(SnapshotInfo* newSnap)
 		nextFrameCameraCut = false;
 	}
 
-	if (snap->serverTime < clientTime->getRemoteStartTime()) {
+	if (snap->getServerTime() < clientTime->getRemoteStartTime()) {
 		nextFrameTeleport = true;
 	}
 
@@ -358,7 +369,7 @@ void SnapshotProcessor::transitionSnapshot(bool differentServer)
 	{
 		EntityInfo& entInfo = clientEnts[snap->entities[i].number];
 		transitionEntity(entInfo);
-		entInfo.snapshotTime = this->snap->serverTime;
+		entInfo.snapshotTime = this->snap->getServerTime();
 	}
 
 	this->nextSnap = nullptr;
@@ -435,18 +446,18 @@ void SnapshotProcessor::setPtrs(const ClientTime* clientTimePtr, const ServerSna
 	commandSequence = commandSequencePtr;
 }
 
-CGSnapshotError::NextSnapTimeWentBackward::NextSnapTimeWentBackward(uint64_t inPrevTime, uint64_t inTime)
+CGSnapshotError::NextSnapTimeWentBackward::NextSnapTimeWentBackward(netTime_t inPrevTime, netTime_t inTime)
 	: oldTime(inPrevTime)
 	, time(inTime)
 {
 }
 
-uint64_t CGSnapshotError::NextSnapTimeWentBackward::getClientTime() const
+netTime_t CGSnapshotError::NextSnapTimeWentBackward::getClientTime() const
 {
 	return oldTime;
 }
 
-uint64_t CGSnapshotError::NextSnapTimeWentBackward::getSnapTime() const
+netTime_t CGSnapshotError::NextSnapTimeWentBackward::getSnapTime() const
 {
 	return time;
 }

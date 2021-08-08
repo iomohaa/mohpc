@@ -3,6 +3,8 @@
 
 #include <MOHPC/Utility/Misc/Endian.h>
 
+#include <cassert>
+
 using namespace MOHPC;
 
 void Skeleton::BoneFileData::getBaseData(float* outData, size_t num, uintptr_t start) const
@@ -106,7 +108,7 @@ void Skeleton::CreatePosRotBoneData(const char* newBoneName, const char* newBone
 
 	boneData->channel = boneNamesTable->RegisterChannel(newBoneName);
 
-	if (!str::cmp(newBoneParentName, "worldbone"))
+	if (!strHelpers::cmp(newBoneParentName, "worldbone"))
 	{
 		boneData->parent = -1;
 	}

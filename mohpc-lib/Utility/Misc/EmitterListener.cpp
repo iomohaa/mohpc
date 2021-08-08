@@ -2,6 +2,7 @@
 #include "EmitterListener.h"
 #include <MOHPC/Assets/Managers/AssetManager.h>
 #include <MOHPC/Utility/Managers/EmitterManager.h>
+#include <MOHPC/Files/Managers/FileManager.h>
 #include <morfuse/Script/EventSystem.h>
 #include <MOHPC/Assets/Managers/ShaderManager.h>
 #include <MOHPC/Assets/Formats/TIKI.h>
@@ -1333,7 +1334,7 @@ void EmitterListener::StartSFXInternal(mfuse::Event* ev, bool bDelayed)
 	emitter->startTime = bDelayed ? ev->GetFloat(1) : 0.f;
 	str commandName = ev->GetString(bDelayed + 1);
 
-	mfuse::Event newEvent(mfuse::EventSystem::Get().FindNormalEventNum(commandName));
+	mfuse::Event newEvent(mfuse::EventSystem::Get().FindNormalEventNum(commandName.c_str()));
 	for (size_t i = bDelayed + 2; i < ev->NumArgs(); i++)
 	{
 		newEvent.AddString(ev->GetString(i));
@@ -1342,32 +1343,32 @@ void EmitterListener::StartSFXInternal(mfuse::Event* ev, bool bDelayed)
 	ProcessEvent(newEvent);
 }
 
-void EmitterListener::SetBaseAndAmplitude(mfuse::Event* ev, mfuse::Vector& Base, mfuse::Vector& Amplitude)
+void EmitterListener::SetBaseAndAmplitude(mfuse::Event* ev, vec3r_t Base, vec3r_t Amplitude)
 {
 	int32_t i = 1;
 
 	for (int32_t j = 0; j < 3; j++)
 	{
 		const str org = ev->GetString(i++);
-		if (!str::cmp(org, "crandom"))
+		if (!strHelpers::cmp(org.c_str(), "crandom"))
 		{
 			const float ampl = ev->GetFloat(i++);
 			Amplitude[j] = ampl + ampl;
 			Base[j] = -ampl;
 		}
-		else if (!str::cmp(org, "random"))
+		else if (!strHelpers::cmp(org.c_str(), "random"))
 		{
 			Base[j] = 0.f;
 			Amplitude[j] = ev->GetFloat(i++);
 		}
-		else if (!str::cmp(org, "range"))
+		else if (!strHelpers::cmp(org.c_str(), "range"))
 		{
 			Base[j] = ev->GetFloat(i++);
 			Amplitude[j] = ev->GetFloat(i++);
 		}
 		else
 		{
-			Base[j] = (float)atof(org);
+			Base[j] = (float)atof(org.c_str());
 			Amplitude[j] = 0.f;
 		}
 	}
@@ -1413,26 +1414,26 @@ void EmitterListener::SetModel(mfuse::Event* ev)
 	str resourceName = ev->GetString(1);
 	if (resourceName.length() > 0)
 	{
-		const char* extension = resourceName.GetExtension();
+		const char* extension = strHelpers::getExtension(resourceName.c_str());
 		
-		if (!str::icmp(extension, "spr"))
+		if (!strHelpers::icmp(extension, "spr"))
 		{
-			resourceName.StripExtension();
+			resourceName = str(resourceName, extension - resourceName.c_str());
 			emitter->sprite.spriteType = Sprite::ST_Shader;
 			const ShaderManagerPtr shaderManager = assetManager->GetManager<ShaderManager>();
 			if(shaderManager)
 			{
-				ShaderPtr shader = shaderManager->GetShader(resourceName);
+				ShaderPtr shader = shaderManager->GetShader(resourceName.c_str());
 				if (shader)
 				{
 					emitter->sprite.Shader = new ShaderPtr(std::move(shader));
 				}
 			}
 		}
-		else if (!str::icmp(extension, "tik"))
+		else if (!strHelpers::icmp(extension, "tik"))
 		{
 			emitter->sprite.spriteType = Sprite::ST_Tiki;
-			auto Tiki = assetManager->LoadAsset<TIKI>(resourceName);
+			auto Tiki = assetManager->LoadAsset<TIKI>(resourceName.c_str());
 			if (Tiki)
 			{
 				emitter->sprite.Tiki = new SharedPtr<TIKI>(std::move(Tiki));

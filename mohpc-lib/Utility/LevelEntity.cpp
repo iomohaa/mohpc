@@ -29,6 +29,8 @@ LevelEntity::LevelEntity(size_t num)
 {
 	entnum = num;
 	spawnflags = 0;
+	VectorClear(origin);
+	VectorClear(angles);
 }
 
 size_t LevelEntity::GetEntNum() const
@@ -38,7 +40,7 @@ size_t LevelEntity::GetEntNum() const
 
 const char* LevelEntity::GetClassName() const
 {
-	return !classname.isEmpty() ? classname.c_str() : "";
+	return !classname.empty() ? classname.c_str() : "";
 }
 
 int32_t LevelEntity::GetSpawnflags() const
@@ -48,12 +50,12 @@ int32_t LevelEntity::GetSpawnflags() const
 
 const char* LevelEntity::GetTargetName() const
 {
-	return !targetname.isEmpty() ? targetname.c_str() : "";
+	return !targetname.empty() ? targetname.c_str() : "";
 }
 
 const char* LevelEntity::GetTarget() const
 {
-	return !target.isEmpty() ? target.c_str() : "";
+	return !target.empty() ? target.c_str() : "";
 }
 
 void MOHPC::LevelEntity::SetTargetName(const char* newTargetName)
@@ -63,22 +65,22 @@ void MOHPC::LevelEntity::SetTargetName(const char* newTargetName)
 
 const char* MOHPC::LevelEntity::GetModel() const
 {
-	return !model.isEmpty() ? model.c_str() : "";
+	return !model.empty() ? model.c_str() : "";
 }
 
-const Vector& MOHPC::LevelEntity::GetOrigin() const
+const_vec3p_t MOHPC::LevelEntity::GetOrigin() const
 {
 	return origin;
 }
 
-const Vector& MOHPC::LevelEntity::GetAngles() const
+const_vec3p_t MOHPC::LevelEntity::GetAngles() const
 {
 	return angles;
 }
 
 bool LevelEntity::IsClassOf(const char* c) const
 {
-	return !stricmp(classname.c_str(), c);
+	return !strHelpers::icmp(classname.c_str(), c);
 }
 
 bool LevelEntity::HasSubmodel() const
@@ -156,9 +158,9 @@ long double LevelEntity::GetPropertyLongDoubleValue(const char* Key, long double
 	return propertyObject.GetPropertyLongDoubleValue(Key, defaultValue);
 }
 
-Vector LevelEntity::GetPropertyVectorValue(const char* Key, const Vector& defaultValue) const
+void LevelEntity::GetPropertyVectorValue(const char* Key, vec3r_t out, const vec3r_t defaultValue) const
 {
-	return propertyObject.GetPropertyVectorValue(Key, defaultValue);
+	propertyObject.GetPropertyVectorValue(Key, out, defaultValue);
 }
 
 bool MOHPC::LevelEntity::TrySetMemberValue(const char* Key, const char* Value)
@@ -169,26 +171,28 @@ bool MOHPC::LevelEntity::TrySetMemberValue(const char* Key, const char* Value)
 	}
 	else if (!stricmp(Key, "origin"))
 	{
-		origin = Vector(Value);
+		VectorFromString(Value, origin);
 	}
 	else if (!stricmp(Key, "angles"))
 	{
-		angles = Vector(Value);
+		VectorFromString(Value, angles);
 	}
 	else if (!stricmp(Key, "angle"))
 	{
 		try
 		{
-			angles = Vector(0, (float)atof(Value), 0);
+			angles[0] = 0.f;
+			angles[1] = (float)atof(Key);
+			angles[2] = 0.f;
 		}
 		catch (const std::exception&)
 		{
-			angles = vec_zero;
+			VectorClear(angles);
 		}
 	}
 	else if (!stricmp(Key, "classname"))
 	{
-		if (classname.isEmpty())
+		if (classname.empty())
 		{
 			// Only set if not set already
 			classname = Value;

@@ -66,8 +66,6 @@ XOREncoding::XOREncoding(uint32_t challengeValue, const IAbstractSequence& remot
 
 void XOREncoding::convert(IMessageStream& in, IMessageStream& out)
 {
-	uint32_t sequenceNum = 0;
-
 	const size_t savedPos = in.GetPosition();
 	const size_t len = in.GetLength();
 

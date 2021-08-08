@@ -54,6 +54,23 @@ namespace Network
 		entityNum_t maxEntities;
 	};
 
+	struct mapInfo_t
+	{
+	public:
+		mapInfo_t();
+		mapInfo_t(uint32_t serverIdVal, uint32_t checksumFeedVal);
+
+		/** Return the server id of the game state (represents an ID of the current map). */
+		MOHPC_NET_EXPORTS uint32_t getServerId() const;
+
+		/** Return the map checksum. */
+		MOHPC_NET_EXPORTS uint32_t getChecksumFeed() const;
+
+	private:
+		uint32_t serverId;
+		uint32_t checksumFeed;
+	};
+
 	/**
 	 * The gameState handles config-strings and base entities.
 	 */
@@ -74,11 +91,17 @@ namespace Network
 		MOHPC_NET_EXPORTS EntityList& getEntityBaselines();
 		MOHPC_NET_EXPORTS const EntityList& getEntityBaselines() const;
 
+		/** Return information about the current map. */
+		MOHPC_NET_EXPORTS mapInfo_t& getMapInfo();
+		MOHPC_NET_EXPORTS const mapInfo_t& getMapInfo() const;
+
+		/** Reset the entire game state, reset data without freeing them. */
 		MOHPC_NET_EXPORTS void reset();
 
 	private:
 		ConfigStringManager csMan;
 		EntityList entityBaselines;
+		mapInfo_t mapInfo;
 	};
 
 	namespace GameStateErrors

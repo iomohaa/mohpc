@@ -64,14 +64,14 @@ public:
 		closeSocket(conn);
 	}
 
-	virtual size_t send(const NetAddr& to, const void* buf, size_t bufsize) override
+	virtual size_t send(const NetAddrPtr& to, const void* buf, size_t bufsize) override
 	{
-		const size_t inAddrSize = to.getAddrSize();
+		const size_t inAddrSize = to->getAddrSize();
 		if(inAddrSize != addressSize) {
 			return 0;
 		}
 
-		const uint8_t* inAddr = to.getAddress();
+		const uint8_t* inAddr = to->getAddress();
 
 		// check if the address is a broadcast ip
 		if (memcmp(inAddr, broadcastIP, addressSize))
@@ -87,7 +87,7 @@ public:
 
 		sockaddr_in srvAddr{0};
 		srvAddr.sin_family = family;
-		srvAddr.sin_port = htons(to.port);
+		srvAddr.sin_port = htons(to->port);
 		memcpy(&srvAddr.sin_addr, inAddr, sizeof(srvAddr.sin_addr));
 
 		return sendto(

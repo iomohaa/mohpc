@@ -6,7 +6,7 @@
 #include "../../Utility/SharedPtr.h"
 #include "../../Utility/WeakPtr.h"
 
-#include <morfuse/Container/set.h>
+#include <unordered_map>
 #include <typeinfo>
 #include <typeindex>
 #include <exception>
@@ -77,13 +77,13 @@ namespace MOHPC
 		 * Shared pointer, because each manager is a storage, part of the asset manager
 		 * and must be destroyed during or after AssetManager destruction.
 		 */
-		mfuse::con::set<std::type_index, SharedPtr<Manager>> m_managers;
+		std::unordered_map<std::type_index, SharedPtr<Manager>> m_managers;
 
 		/**
 		 * Weak pointer, because it's just a cache of loaded assets.
 		 * They can be destroyed anytime.
 		 */
-		mfuse::con::set<str, WeakPtr<Asset>> m_assetCache;
+		std::unordered_map<str, WeakPtr<Asset>> m_assetCache;
 	};
 	using AssetManagerPtr = SharedPtr<AssetManager>;
 

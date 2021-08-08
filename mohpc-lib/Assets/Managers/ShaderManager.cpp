@@ -7,21 +7,23 @@
 #include <MOHPC/Utility/SharedPtr.h>
 #include <MOHPC/Common/Log.h>
 
+#include <cassert>
+
 using namespace MOHPC;
 
 #define MOHPC_LOG_NAMESPACE "shaderman"
 
 static unsigned NameToAFunc(const char *funcname)
 {
-	if (!str::icmp(funcname, "GT0"))
+	if (!strHelpers::icmp(funcname, "GT0"))
 	{
 		return GLS_ATEST_GT_0;
 	}
-	else if (!str::icmp(funcname, "LT128"))
+	else if (!strHelpers::icmp(funcname, "LT128"))
 	{
 		return GLS_ATEST_LT_80;
 	}
-	else if (!str::icmp(funcname, "GE128"))
+	else if (!strHelpers::icmp(funcname, "GE128"))
 	{
 		return GLS_ATEST_GE_80;
 	}
@@ -31,27 +33,27 @@ static unsigned NameToAFunc(const char *funcname)
 
 static GenFunc NameToGenFunc(const char *funcname)
 {
-	if (!str::icmp(funcname, "sin"))
+	if (!strHelpers::icmp(funcname, "sin"))
 	{
 		return GF_SIN;
 	}
-	else if (!str::icmp(funcname, "square"))
+	else if (!strHelpers::icmp(funcname, "square"))
 	{
 		return GF_SQUARE;
 	}
-	else if (!str::icmp(funcname, "triangle"))
+	else if (!strHelpers::icmp(funcname, "triangle"))
 	{
 		return GF_TRIANGLE;
 	}
-	else if (!str::icmp(funcname, "sawtooth"))
+	else if (!strHelpers::icmp(funcname, "sawtooth"))
 	{
 		return GF_SAWTOOTH;
 	}
-	else if (!str::icmp(funcname, "inversesawtooth"))
+	else if (!strHelpers::icmp(funcname, "inversesawtooth"))
 	{
 		return GF_INVERSE_SAWTOOTH;
 	}
-	else if (!str::icmp(funcname, "noise"))
+	else if (!strHelpers::icmp(funcname, "noise"))
 	{
 		return GF_NOISE;
 	}
@@ -62,39 +64,39 @@ static GenFunc NameToGenFunc(const char *funcname)
 
 static int NameToSrcBlendMode(const char *name)
 {
-	if (!str::icmp(name, "GL_ONE"))
+	if (!strHelpers::icmp(name, "GL_ONE"))
 	{
 		return GLS_SRCBLEND_ONE;
 	}
-	else if (!str::icmp(name, "GL_ZERO"))
+	else if (!strHelpers::icmp(name, "GL_ZERO"))
 	{
 		return GLS_SRCBLEND_ZERO;
 	}
-	else if (!str::icmp(name, "GL_DST_COLOR"))
+	else if (!strHelpers::icmp(name, "GL_DST_COLOR"))
 	{
 		return GLS_SRCBLEND_DST_COLOR;
 	}
-	else if (!str::icmp(name, "GL_ONE_MINUS_DST_COLOR"))
+	else if (!strHelpers::icmp(name, "GL_ONE_MINUS_DST_COLOR"))
 	{
 		return GLS_SRCBLEND_ONE_MINUS_DST_COLOR;
 	}
-	else if (!str::icmp(name, "GL_SRC_ALPHA"))
+	else if (!strHelpers::icmp(name, "GL_SRC_ALPHA"))
 	{
 		return GLS_SRCBLEND_SRC_ALPHA;
 	}
-	else if (!str::icmp(name, "GL_ONE_MINUS_SRC_ALPHA"))
+	else if (!strHelpers::icmp(name, "GL_ONE_MINUS_SRC_ALPHA"))
 	{
 		return GLS_SRCBLEND_ONE_MINUS_SRC_ALPHA;
 	}
-	else if (!str::icmp(name, "GL_DST_ALPHA"))
+	else if (!strHelpers::icmp(name, "GL_DST_ALPHA"))
 	{
 		return GLS_SRCBLEND_DST_ALPHA;
 	}
-	else if (!str::icmp(name, "GL_ONE_MINUS_DST_ALPHA"))
+	else if (!strHelpers::icmp(name, "GL_ONE_MINUS_DST_ALPHA"))
 	{
 		return GLS_SRCBLEND_ONE_MINUS_DST_ALPHA;
 	}
-	else if (!str::icmp(name, "GL_SRC_ALPHA_SATURATE"))
+	else if (!strHelpers::icmp(name, "GL_SRC_ALPHA_SATURATE"))
 	{
 		return GLS_SRCBLEND_ALPHA_SATURATE;
 	}
@@ -109,35 +111,35 @@ NameToDstBlendMode
 */
 static int NameToDstBlendMode(const char *name)
 {
-	if (!str::icmp(name, "GL_ONE"))
+	if (!strHelpers::icmp(name, "GL_ONE"))
 	{
 		return GLS_DSTBLEND_ONE;
 	}
-	else if (!str::icmp(name, "GL_ZERO"))
+	else if (!strHelpers::icmp(name, "GL_ZERO"))
 	{
 		return GLS_DSTBLEND_ZERO;
 	}
-	else if (!str::icmp(name, "GL_SRC_ALPHA"))
+	else if (!strHelpers::icmp(name, "GL_SRC_ALPHA"))
 	{
 		return GLS_DSTBLEND_SRC_ALPHA;
 	}
-	else if (!str::icmp(name, "GL_ONE_MINUS_SRC_ALPHA"))
+	else if (!strHelpers::icmp(name, "GL_ONE_MINUS_SRC_ALPHA"))
 	{
 		return GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA;
 	}
-	else if (!str::icmp(name, "GL_DST_ALPHA"))
+	else if (!strHelpers::icmp(name, "GL_DST_ALPHA"))
 	{
 		return GLS_DSTBLEND_DST_ALPHA;
 	}
-	else if (!str::icmp(name, "GL_ONE_MINUS_DST_ALPHA"))
+	else if (!strHelpers::icmp(name, "GL_ONE_MINUS_DST_ALPHA"))
 	{
 		return GLS_DSTBLEND_ONE_MINUS_DST_ALPHA;
 	}
-	else if (!str::icmp(name, "GL_SRC_COLOR"))
+	else if (!strHelpers::icmp(name, "GL_SRC_COLOR"))
 	{
 		return GLS_DSTBLEND_SRC_COLOR;
 	}
-	else if (!str::icmp(name, "GL_ONE_MINUS_SRC_COLOR"))
+	else if (!strHelpers::icmp(name, "GL_ONE_MINUS_SRC_COLOR"))
 	{
 		return GLS_DSTBLEND_ONE_MINUS_SRC_COLOR;
 	}
@@ -321,12 +323,12 @@ Shader::~Shader()
 
 const char* Shader::GetFilename() const
 {
-	return shaderContainer->GetFilename();
+	return shaderContainer->GetFilename().c_str();
 }
 
 const char* Shader::GetName() const
 {
-	return m_name;
+	return m_name.c_str();
 }
 
 int32_t Shader::GetContents() const
@@ -449,38 +451,38 @@ void Shader::ParseShader(Script& script)
 	{
 		const char *token = script.GetToken(false);
 
-		if (!str::icmp(token, "qer_editorimage"))
+		if (!strHelpers::icmp(token, "qer_editorimage"))
 		{
 			//m_editorimage = GetShaderManager()->GetFileManager()->GetFixedPath(script.GetToken(false));
 			token = script.GetToken(false);
 			m_editorimage = GetShaderManager()->FindImage(token);
 		}
-		else if (!str::icmp(token, "deformVertexes"))
+		else if (!strHelpers::icmp(token, "deformVertexes"))
 		{
 			ParseDeform(script);
 		}
-		else if (!str::icmp(token, "spriteGen"))
+		else if (!strHelpers::icmp(token, "spriteGen"))
 		{
 			token = script.GetToken(false);
 
-			if (!str::icmp(token, "parallel"))
+			if (!strHelpers::icmp(token, "parallel"))
 			{
 				this->sprite.type = SPRITE_PARALLEL;
 			}
-			else if (!str::icmp(token, "parallel_oriented"))
+			else if (!strHelpers::icmp(token, "parallel_oriented"))
 			{
 				sprite.type = SPRITE_PARALLEL_ORIENTED;
 			}
-			else if (!str::icmp(token, "parallel_upright"))
+			else if (!strHelpers::icmp(token, "parallel_upright"))
 			{
 				sprite.type = SPRITE_PARALLEL_UPRIGHT;
 			}
-			else if (!str::icmp(token, "oriented"))
+			else if (!strHelpers::icmp(token, "oriented"))
 			{
 				sprite.type = SPRITE_ORIENTED;
 			}
 		}
-		else if (!str::icmp(token, "spriteScale"))
+		else if (!strHelpers::icmp(token, "spriteScale"))
 		{
 			token = script.GetToken(false);
 
@@ -490,27 +492,27 @@ void Shader::ParseShader(Script& script)
 
 			sprite.scale = (float)atof(token);
 		}
-		else if (!str::icmp(token, "surfaceparm"))
+		else if (!strHelpers::icmp(token, "surfaceparm"))
 		{
 			ParseSurfaceParm(script);
 		}
 		// no mip maps
-		else if (!str::icmp(token, "nomipmaps"))
+		else if (!strHelpers::icmp(token, "nomipmaps"))
 		{
 			bNoMipMaps = true;
 			bNoPicMip = true;
 		}
 		// no picmip adjustment
-		else if (!str::icmp(token, "nopicmip"))
+		else if (!strHelpers::icmp(token, "nopicmip"))
 		{
 			bNoPicMip = true;
 		}
 		// portal
-		else if (!str::icmp(token, "portal"))
+		else if (!strHelpers::icmp(token, "portal"))
 		{
 			bIsPortal = true;
 		}
-		else if (!str::icmp(token, "skyparms"))
+		else if (!strHelpers::icmp(token, "skyparms"))
 		{
 			//token = script.GetToken(false);
 			//m_env = GetShaderManager()->GetFileManager()->GetFixedPath(string(token) + "_ft");
@@ -518,7 +520,7 @@ void Shader::ParseShader(Script& script)
 			ParseSkyParms(script);
 		}
 		// cull <face>
-		else if (!str::icmp(token, "cull"))
+		else if (!strHelpers::icmp(token, "cull"))
 		{
 			token = script.GetToken(false);
 			if (token[0] == 0)
@@ -527,30 +529,30 @@ void Shader::ParseShader(Script& script)
 				continue;
 			}
 
-			if (!str::icmp(token, "none") || !str::icmp(token, "twosided") || !str::icmp(token, "disable"))
+			if (!strHelpers::icmp(token, "none") || !strHelpers::icmp(token, "twosided") || !strHelpers::icmp(token, "disable"))
 			{
 				cullType = CT_TWO_SIDED;
 			}
-			else if (!str::icmp(token, "back") || !str::icmp(token, "backside") || !str::icmp(token, "backsided")) {
+			else if (!strHelpers::icmp(token, "back") || !strHelpers::icmp(token, "backside") || !strHelpers::icmp(token, "backsided")) {
 				cullType = CT_BACK_SIDED;
 			}
-			else if (!str::icmp(token, "front") || !str::icmp(token, "frontside") || !str::icmp(token, "frontsided")) {
+			else if (!strHelpers::icmp(token, "front") || !strHelpers::icmp(token, "frontside") || !strHelpers::icmp(token, "frontsided")) {
 				cullType = CT_FRONT_SIDED;
 			}
 			else {
 				MOHPC_LOG(Warn, "invalid cull parm '%s' in shader '%s' (file %s)", token, GetName(), GetFilename());
 			}
 		}
-		else if (!str::icmp(token, "portalsky"))
+		else if (!strHelpers::icmp(token, "portalsky"))
 		{
 			bIsPortalSky = true;
 		}
 		// stage definition
 		else if (token[0] == '{')
 		{
-			ShaderStage* shaderStage = new(m_stages) ShaderStage();
+			ShaderStage& shaderStage = m_stages.emplace_back();
 
-			ParseStage(script, shaderStage);
+			ParseStage(script, &shaderStage);
 		}
 		// end of shader definition
 		else if (token[0] == '}')
@@ -609,14 +611,14 @@ void Shader::ParseWaveForm(Script& script, WaveForm *wave)
 void Shader::ParseTexMod(Script& script, ShaderStage *stage)
 {
 	stage->bundle[0].texMods.push_back(TextureModInfo());
-	TextureModInfo* tmi = stage->bundle[0].texMods.Data();
+	TextureModInfo* tmi = stage->bundle[0].texMods.data();
 
 	const char *token = script.GetToken(false);
 
 	//
 	// turb
 	//
-	if (!str::icmp(token, "turb"))
+	if (!strHelpers::icmp(token, "turb"))
 	{
 		token = script.GetToken(false);
 		if (token[0] == 0)
@@ -652,7 +654,7 @@ void Shader::ParseTexMod(Script& script, ShaderStage *stage)
 	//
 	// scale
 	//
-	else if (!str::icmp(token, "scale"))
+	else if (!strHelpers::icmp(token, "scale"))
 	{
 		token = script.GetToken(false);
 		if (token[0] == 0)
@@ -674,7 +676,7 @@ void Shader::ParseTexMod(Script& script, ShaderStage *stage)
 	//
 	// scroll
 	//
-	else if (!str::icmp(token, "scroll"))
+	else if (!strHelpers::icmp(token, "scroll"))
 	{
 		token = script.GetToken(false);
 		if (token[0] == 0)
@@ -695,7 +697,7 @@ void Shader::ParseTexMod(Script& script, ShaderStage *stage)
 	//
 	// stretch
 	//
-	else if (!str::icmp(token, "stretch"))
+	else if (!strHelpers::icmp(token, "stretch"))
 	{
 		token = script.GetToken(false);
 		if (token[0] == 0)
@@ -709,7 +711,7 @@ void Shader::ParseTexMod(Script& script, ShaderStage *stage)
 	//
 	// transform
 	//
-	else if (!str::icmp(token, "transform"))
+	else if (!strHelpers::icmp(token, "transform"))
 	{
 		token = script.GetToken(false);
 		if (token[0] == 0)
@@ -764,7 +766,7 @@ void Shader::ParseTexMod(Script& script, ShaderStage *stage)
 	//
 	// rotate
 	//
-	else if (!str::icmp(token, "rotate"))
+	else if (!strHelpers::icmp(token, "rotate"))
 	{
 		token = script.GetToken(false);
 		if (token[0] == 0)
@@ -778,13 +780,13 @@ void Shader::ParseTexMod(Script& script, ShaderStage *stage)
 	//
 	// entityTranslate
 	//
-	else if (!str::icmp(token, "entityTranslate")) {
+	else if (!strHelpers::icmp(token, "entityTranslate")) {
 		tmi->type = TMOD_ENTITY_TRANSLATE;
 	}
 	//
 	// wavetrant
 	//
-	else if (!str::icmp(token, "wavetrant"))
+	else if (!strHelpers::icmp(token, "wavetrant"))
 	{
 		ParseWaveForm(script, &tmi->wave);
 		tmi->type = TMOD_WAVETRANT;
@@ -792,7 +794,7 @@ void Shader::ParseTexMod(Script& script, ShaderStage *stage)
 	//
 	// parallax
 	//
-	else if(!str::icmp(token, "parallax"))
+	else if(!strHelpers::icmp(token, "parallax"))
 	{
 		token = script.GetToken(false);
 		if (token[0] == 0)
@@ -813,7 +815,7 @@ void Shader::ParseTexMod(Script& script, ShaderStage *stage)
 	//
 	// offset
 	//
-	else if(!str::icmp(token, "offset"))
+	else if(!strHelpers::icmp(token, "offset"))
 	{
 		token = script.GetToken(false);
 		if (token[0] == 0)
@@ -834,7 +836,7 @@ void Shader::ParseTexMod(Script& script, ShaderStage *stage)
 	//
 	// bulge
 	//
-	else if(!str::icmp(token, "bulge"))
+	else if(!strHelpers::icmp(token, "bulge"))
 	{
 		token = script.GetToken(false);
 		if (token[0] == 0)
@@ -871,36 +873,36 @@ bool Shader::ParseStage(Script& script, ShaderStage *stage)
 			break;
 		}
 
-		if (!str::icmp(token, "map") || !str::icmp(token, "clampmap"))
+		if (!strHelpers::icmp(token, "map") || !strHelpers::icmp(token, "clampmap"))
 		{
 			token = script.GetToken(false);
 			stage->bundle[bundleNum].image.push_back(GetShaderManager()->FindImage(token)); // GetShaderManager()->GetFileManager()->GetFixedPath(token);
 		}
-		else if (!str::icmp(token, "alphafunc"))
+		else if (!strHelpers::icmp(token, "alphafunc"))
 		{
 			token = script.GetToken(false);
 			atestBits = NameToAFunc(token);
 		}
-		else if (!str::icmp(token, "blendfunc"))
+		else if (!strHelpers::icmp(token, "blendfunc"))
 		{
 			token = script.GetToken(false);
 
-			if (!str::icmp(token, "add"))
+			if (!strHelpers::icmp(token, "add"))
 			{
 				blendSrcBits = GLS_SRCBLEND_ONE;
 				blendDstBits = GLS_DSTBLEND_ONE;
 			}
-			else if (!str::icmp(token, "filter"))
+			else if (!strHelpers::icmp(token, "filter"))
 			{
 				blendSrcBits = GLS_SRCBLEND_DST_COLOR;
 				blendDstBits = GLS_DSTBLEND_ZERO;
 			}
-			else if (!str::icmp(token, "blend"))
+			else if (!strHelpers::icmp(token, "blend"))
 			{
 				blendSrcBits = GLS_SRCBLEND_SRC_ALPHA;
 				blendDstBits = GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA;
 			}
-			else if (!str::icmp(token, "alphaadd"))
+			else if (!strHelpers::icmp(token, "alphaadd"))
 			{
 				blendSrcBits = GLS_SRCBLEND_SRC_ALPHA;
 				blendDstBits = GLS_DSTBLEND_ONE;
@@ -916,7 +918,7 @@ bool Shader::ParseStage(Script& script, ShaderStage *stage)
 		//
 		// rgbGen
 		//
-		else if (!str::icmp(token, "rgbGen"))
+		else if (!strHelpers::icmp(token, "rgbGen"))
 		{
 			token = script.GetToken(false);
 			if (token[0] == 0)
@@ -925,89 +927,91 @@ bool Shader::ParseStage(Script& script, ShaderStage *stage)
 				continue;
 			}
 
-			if (!str::icmp(token, "wave"))
+			if (!strHelpers::icmp(token, "wave"))
 			{
 				ParseWaveForm(script, &stage->rgbWave);
 				stage->rgbGen = CGEN_WAVEFORM;
 			}
-			else if (!str::icmp(token, "colorwave"))
+			else if (!strHelpers::icmp(token, "colorwave"))
 			{
-				Vector color = script.GetVector(false);
+				vec3_t color;
+				script.GetVector(false, color);
 				stage->constantColor[0] = color[0];
 				stage->constantColor[1] = color[1];
 				stage->constantColor[2] = color[2];
 				ParseWaveForm(script, &stage->rgbWave);
 				stage->rgbGen = CGEN_MULTIPLY_BY_WAVEFORM;
 			}
-			else if (!str::icmp(token, "const") || !str::icmp(token, "constant"))
+			else if (!strHelpers::icmp(token, "const") || !strHelpers::icmp(token, "constant"))
 			{
-				Vector color = script.GetVector(false);
+				vec3_t color;
+				script.GetVector(false, color);
 				stage->constantColor[0] = color[0];
 				stage->constantColor[1] = color[1];
 				stage->constantColor[2] = color[2];
 
 				stage->rgbGen = CGEN_CONST;
 			}
-			else if (!str::icmp(token, "identity"))
+			else if (!strHelpers::icmp(token, "identity"))
 			{
 				stage->rgbGen = CGEN_IDENTITY;
 			}
-			else if (!str::icmp(token, "identityLighting"))
+			else if (!strHelpers::icmp(token, "identityLighting"))
 			{
 				stage->rgbGen = CGEN_IDENTITY_LIGHTING;
 			}
-			else if (!str::icmp(token, "entity") || !str::icmp(token, "fromentity"))
+			else if (!strHelpers::icmp(token, "entity") || !strHelpers::icmp(token, "fromentity"))
 			{
 				stage->rgbGen = CGEN_ENTITY;
 			}
-			else if (!str::icmp(token, "oneMinusEntity"))
+			else if (!strHelpers::icmp(token, "oneMinusEntity"))
 			{
 				stage->rgbGen = CGEN_ONE_MINUS_ENTITY;
 			}
-			else if (!str::icmp(token, "vertex") || !str::icmp(token, "fromclient"))
+			else if (!strHelpers::icmp(token, "vertex") || !strHelpers::icmp(token, "fromclient"))
 			{
 				stage->rgbGen = CGEN_VERTEX;
 				if (stage->alphaGen == AGEN_IDENTITY) {
 					stage->alphaGen = AGEN_VERTEX;
 				}
 			}
-			else if (!str::icmp(token, "exactVertex"))
+			else if (!strHelpers::icmp(token, "exactVertex"))
 			{
 				stage->rgbGen = CGEN_EXACT_VERTEX;
 			}
-			else if (!str::icmp(token, "vertexLit"))
+			else if (!strHelpers::icmp(token, "vertexLit"))
 			{
 				stage->rgbGen = CGEN_VERTEX_LIT;
 				if (stage->alphaGen == AGEN_IDENTITY) {
 					stage->alphaGen = AGEN_VERTEX;
 				}
 			}
-			else if (!str::icmp(token, "exactVertexLit"))
+			else if (!strHelpers::icmp(token, "exactVertexLit"))
 			{
 				stage->rgbGen = CGEN_EXACT_VERTEX_LIT;
 			}
-			else if (!str::icmp(token, "lightingGrid"))
+			else if (!strHelpers::icmp(token, "lightingGrid"))
 			{
 				stage->rgbGen = CGEN_LIGHTING_GRID;
 			}
-			else if (!str::icmp(token, "lightingSpherical"))
+			else if (!strHelpers::icmp(token, "lightingSpherical"))
 			{
 				//stage->rgbGen = CGEN_LIGHTING_SPHERICAL;
 				stage->rgbGen = CGEN_LIGHTING_DIFFUSE;
 			}
-			else if (!str::icmp(token, "lightingDiffuse"))
+			else if (!strHelpers::icmp(token, "lightingDiffuse"))
 			{
 				stage->rgbGen = CGEN_LIGHTING_DIFFUSE;
 			}
-			else if (!str::icmp(token, "oneMinusVertex"))
+			else if (!strHelpers::icmp(token, "oneMinusVertex"))
 			{
 				stage->rgbGen = CGEN_ONE_MINUS_VERTEX;
 			}
-			else if (!str::icmp(token, "global"))
+			else if (!strHelpers::icmp(token, "global"))
 			{
 				stage->rgbGen = CGEN_GLOBAL_COLOR;
 			}
-			else if (!str::icmp(token, "static"))
+			else if (!strHelpers::icmp(token, "static"))
 			{
 				stage->rgbGen = CGEN_STATIC;
 
@@ -1015,12 +1019,12 @@ bool Shader::ParseStage(Script& script, ShaderStage *stage)
 					stage->alphaGen = AGEN_VERTEX;
 				}
 			}
-			else if (!str::icmp(token, "sCoord") || !str::icmp(token, "tCoord"))
+			else if (!strHelpers::icmp(token, "sCoord") || !strHelpers::icmp(token, "tCoord"))
 			{
-				if (!str::icmp(token, "sCoord")) {
+				if (!strHelpers::icmp(token, "sCoord")) {
 					stage->rgbGen = CGEN_SCOORD;
 				}
-				else if (!str::icmp(token, "tCoord")) {
+				else if (!strHelpers::icmp(token, "tCoord")) {
 					stage->rgbGen = CGEN_TCOORD;
 				}
 
@@ -1057,7 +1061,7 @@ bool Shader::ParseStage(Script& script, ShaderStage *stage)
 					}
 				}
 			}
-			else if (!str::icmp(token, "dot"))
+			else if (!strHelpers::icmp(token, "dot"))
 			{
 				//shader.needsNormal = qtrue;
 				stage->alphaMin = 0.0;
@@ -1076,7 +1080,7 @@ bool Shader::ParseStage(Script& script, ShaderStage *stage)
 					}
 				}
 			}
-			else if (!str::icmp(token, "oneminusdot"))
+			else if (!strHelpers::icmp(token, "oneminusdot"))
 			{
 				//shader.needsNormal = qtrue;
 				stage->alphaMin = 0.0;
@@ -1104,7 +1108,7 @@ bool Shader::ParseStage(Script& script, ShaderStage *stage)
 		//
 		// alphaGen 
 		//
-		else if (!str::icmp(token, "alphaGen"))
+		else if (!strHelpers::icmp(token, "alphaGen"))
 		{
 			token = script.GetToken(false);
 			if (token[0] == 0)
@@ -1113,42 +1117,42 @@ bool Shader::ParseStage(Script& script, ShaderStage *stage)
 				continue;
 			}
 
-			if (!str::icmp(token, "wave"))
+			if (!strHelpers::icmp(token, "wave"))
 			{
 				ParseWaveForm(script, &stage->alphaWave);
 				stage->alphaGen = AGEN_WAVEFORM;
 			}
-			else if (!str::icmp(token, "const") || !str::icmp(token, "constant"))
+			else if (!strHelpers::icmp(token, "const") || !strHelpers::icmp(token, "constant"))
 			{
 				token = script.GetToken(false);
 				stage->constantColor[3] = 255 * (float)atof(token);
 				stage->alphaGen = AGEN_CONST;
 			}
-			else if (!str::icmp(token, "identity"))
+			else if (!strHelpers::icmp(token, "identity"))
 			{
 				stage->alphaGen = AGEN_IDENTITY;
 			}
-			else if (!str::icmp(token, "entity") || !str::icmp(token, "fromentity"))
+			else if (!strHelpers::icmp(token, "entity") || !strHelpers::icmp(token, "fromentity"))
 			{
 				stage->alphaGen = AGEN_ENTITY;
 			}
-			else if (!str::icmp(token, "oneMinusEntity"))
+			else if (!strHelpers::icmp(token, "oneMinusEntity"))
 			{
 				stage->alphaGen = AGEN_ONE_MINUS_ENTITY;
 			}
-			else if (!str::icmp(token, "vertex"))
+			else if (!strHelpers::icmp(token, "vertex"))
 			{
 				stage->alphaGen = AGEN_VERTEX;
 			}
-			else if (!str::icmp(token, "lightingSpecular"))
+			else if (!strHelpers::icmp(token, "lightingSpecular"))
 			{
 				stage->alphaGen = AGEN_LIGHTING_SPECULAR;
 			}
-			else if (!str::icmp(token, "oneMinusVertex"))
+			else if (!strHelpers::icmp(token, "oneMinusVertex"))
 			{
 				stage->alphaGen = AGEN_ONE_MINUS_VERTEX;
 			}
-			else if (!str::icmp(token, "portal"))
+			else if (!strHelpers::icmp(token, "portal"))
 			{
 				stage->alphaGen = AGEN_PORTAL;
 				token = script.GetToken(false);
@@ -1162,16 +1166,16 @@ bool Shader::ParseStage(Script& script, ShaderStage *stage)
 					portalRange = (float)atof(token);
 				}
 			}
-			else if (!str::icmp(token, "distFade") || !str::icmp(token, "oneMinusDistFade")
-				|| !str::icmp(token, "tikiDistFade") || !str::icmp(token, "oneMinusTikiDistFade"))
+			else if (!strHelpers::icmp(token, "distFade") || !strHelpers::icmp(token, "oneMinusDistFade")
+				|| !strHelpers::icmp(token, "tikiDistFade") || !strHelpers::icmp(token, "oneMinusTikiDistFade"))
 			{
-				if (!str::icmp(token, "distFade")) {
+				if (!strHelpers::icmp(token, "distFade")) {
 					stage->alphaGen = AGEN_DIST_FADE;
-				} else if (!str::icmp(token, "oneMinusDistFade")) {
+				} else if (!strHelpers::icmp(token, "oneMinusDistFade")) {
 					stage->alphaGen = AGEN_ONE_MINUS_DIST_FADE;
-				} else if (!str::icmp(token, "oneMinusDistFade")) {
+				} else if (!strHelpers::icmp(token, "oneMinusDistFade")) {
 					stage->alphaGen = AGEN_TIKI_DIST_FADE;
-				} else if (!str::icmp(token, "oneMinusDistFade")) {
+				} else if (!strHelpers::icmp(token, "oneMinusDistFade")) {
 					stage->alphaGen = AGEN_ONE_MINUS_TIKI_DIST_FADE;
 				}
 
@@ -1190,7 +1194,7 @@ bool Shader::ParseStage(Script& script, ShaderStage *stage)
 					}
 				}
 			}
-			else if (!str::icmp(token, "heightFade"))
+			else if (!strHelpers::icmp(token, "heightFade"))
 			{
 				stage->alphaGen = AGEN_HEIGHT_FADE;
 				stage->distFadeNear = 256.f;
@@ -1208,7 +1212,7 @@ bool Shader::ParseStage(Script& script, ShaderStage *stage)
 					}
 				}
 			}
-			else if (!str::icmp(token, "dot"))
+			else if (!strHelpers::icmp(token, "dot"))
 			{
 				//shader.needsNormal = qtrue;
 				stage->alphaMin = 0.0;
@@ -1227,7 +1231,7 @@ bool Shader::ParseStage(Script& script, ShaderStage *stage)
 					}
 				}
 			}
-			else if (!str::icmp(token, "dotView"))
+			else if (!strHelpers::icmp(token, "dotView"))
 			{
 				//shader.needsNormal = qtrue;
 				stage->alphaMin = 0.0;
@@ -1246,7 +1250,7 @@ bool Shader::ParseStage(Script& script, ShaderStage *stage)
 					}
 				}
 			}
-			else if (!str::icmp(token, "oneMinusDotView"))
+			else if (!strHelpers::icmp(token, "oneMinusDotView"))
 			{
 				//shader.needsNormal = qtrue;
 				stage->alphaMin = 0.0;
@@ -1265,7 +1269,7 @@ bool Shader::ParseStage(Script& script, ShaderStage *stage)
 					}
 				}
 			}
-			else if (!str::icmp(token, "oneMinusDot"))
+			else if (!strHelpers::icmp(token, "oneMinusDot"))
 			{
 				//shader.needsNormal = qtrue;
 				stage->alphaMin = 0.0;
@@ -1284,20 +1288,20 @@ bool Shader::ParseStage(Script& script, ShaderStage *stage)
 					}
 				}
 			}
-			else if (!str::icmp(token, "skyAlpha"))
+			else if (!strHelpers::icmp(token, "skyAlpha"))
 			{
 				stage->alphaGen = AGEN_SKYALPHA;
 			}
-			else if (!str::icmp(token, "oneMinusSkyAlpha"))
+			else if (!strHelpers::icmp(token, "oneMinusSkyAlpha"))
 			{
 				stage->alphaGen = AGEN_ONE_MINUS_SKYALPHA;
 			}
-			else if (!str::icmp(token, "sCoord") || !str::icmp(token, "tCoord"))
+			else if (!strHelpers::icmp(token, "sCoord") || !strHelpers::icmp(token, "tCoord"))
 			{
-				if (!str::icmp(token, "sCoord")) {
+				if (!strHelpers::icmp(token, "sCoord")) {
 					stage->alphaGen = AGEN_SCOORD;
 				}
-				else if (!str::icmp(token, "tCoord")) {
+				else if (!strHelpers::icmp(token, "tCoord")) {
 					stage->alphaGen = AGEN_TCOORD;
 				}
 
@@ -1334,10 +1338,10 @@ bool Shader::ParseStage(Script& script, ShaderStage *stage)
 					}
 				}
 			}
-			else if(!str::icmp(token, "alphaGen")) {
+			else if(!strHelpers::icmp(token, "alphaGen")) {
 				stage->alphaGen = AGEN_FROM_ENTITY;
 			}
-			else if (!str::icmp(token, "fromClient")) {
+			else if (!strHelpers::icmp(token, "fromClient")) {
 				stage->alphaGen = AGEN_FROM_CLIENT;
 			}
 			else
@@ -1349,7 +1353,7 @@ bool Shader::ParseStage(Script& script, ShaderStage *stage)
 		//
 		// tcGen <function>
 		//
-		else if (!str::icmp(token, "texgen") || !str::icmp(token, "tcGen"))
+		else if (!strHelpers::icmp(token, "texgen") || !strHelpers::icmp(token, "tcGen"))
 		{
 			token = script.GetToken(false);
 			if (token[0] == 0)
@@ -1358,33 +1362,33 @@ bool Shader::ParseStage(Script& script, ShaderStage *stage)
 				continue;
 			}
 
-			if (!str::icmp(token, "environment"))
+			if (!strHelpers::icmp(token, "environment"))
 			{
 				//shader.needsNormal = qtrue;
 				stage->bundle[bundleNum].tcGen = TCGEN_ENVIRONMENT_MAPPED;
 			}
-			else if (!str::icmp(token, "environmentmodel"))
+			else if (!strHelpers::icmp(token, "environmentmodel"))
 			{
 				//shader.needsNormal = qtrue;
 				stage->bundle[bundleNum].tcGen = TCGEN_ENVIRONMENT_MAPPED2;
 			}
-			else if (!str::icmp(token, "sunreflection"))
+			else if (!strHelpers::icmp(token, "sunreflection"))
 			{
 				//shader.needsNormal = qtrue;
 				stage->bundle[bundleNum].tcGen = TCGEN_SUN_REFLECTION;
 			}
-			else if (!str::icmp(token, "lightmap"))
+			else if (!strHelpers::icmp(token, "lightmap"))
 			{
 				stage->bundle[bundleNum].tcGen = TCGEN_LIGHTMAP;
 			}
-			else if (!str::icmp(token, "texture") || !str::icmp(token, "base"))
+			else if (!strHelpers::icmp(token, "texture") || !strHelpers::icmp(token, "base"))
 			{
 				stage->bundle[bundleNum].tcGen = TCGEN_TEXTURE;
 			}
-			else if (!str::icmp(token, "vector"))
+			else if (!strHelpers::icmp(token, "vector"))
 			{
-				stage->bundle[bundleNum].tcGenVectors[0] = script.GetVector(false);
-				stage->bundle[bundleNum].tcGenVectors[1] = script.GetVector(false);
+				script.GetVector(false, stage->bundle[bundleNum].tcGenVectors[0]);
+				script.GetVector(false, stage->bundle[bundleNum].tcGenVectors[1]);
 
 				stage->bundle[bundleNum].tcGen = TCGEN_VECTOR;
 			}
@@ -1396,18 +1400,18 @@ bool Shader::ParseStage(Script& script, ShaderStage *stage)
 		//
 		// tcMod <type> <...>
 		//
-		else if (!str::icmp(token, "tcMod"))
+		else if (!strHelpers::icmp(token, "tcMod"))
 		{
 			ParseTexMod(script, stage);
 		}
-		else if (!str::icmp(token, "nextbundle"))
+		else if (!strHelpers::icmp(token, "nextbundle"))
 		{
 			bundleNum++;
 			stage->bundle.push_back(TextureBundle());
 		}
-		else if (!str::icmp(token, "animmap") || !str::icmp(token, "animmaponce") || !str::icmp(token, "animmapphase"))
+		else if (!strHelpers::icmp(token, "animmap") || !strHelpers::icmp(token, "animmaponce") || !strHelpers::icmp(token, "animmapphase"))
 		{
-			if (!str::icmp(token, "animmap") || !str::icmp(token, "animmaponce"))
+			if (!strHelpers::icmp(token, "animmap") || !strHelpers::icmp(token, "animmaponce"))
 			{
 				token = script.GetToken(false);
 
@@ -1429,7 +1433,7 @@ bool Shader::ParseStage(Script& script, ShaderStage *stage)
 					stage->bundle[bundleNum].imageAnimationSpeed = (float)atof(token);
 				}
 			}
-			else if (!str::icmp(token, "animmapphase"))
+			else if (!strHelpers::icmp(token, "animmapphase"))
 			{
 				stage->bundle[bundleNum].imageAnimationSpeed = script.GetFloat(false);
 				stage->bundle[bundleNum].imageAnimationPhase = script.GetFloat(false);
@@ -1494,18 +1498,18 @@ void Shader::ParseDeform(Script& script)
 	}
 
 	m_deforms.push_back(DeformStage());
-	DeformStage* ds = m_deforms.Data();
+	DeformStage* ds = m_deforms.data();
 
-	if (!str::icmp(token, "projectionShadow"))
+	if (!strHelpers::icmp(token, "projectionShadow"))
 	{
 		ds->deformation = DEFORM_PROJECTION_SHADOW;
 	}
-	else if (!str::icmp(token, "autosprite"))
+	else if (!strHelpers::icmp(token, "autosprite"))
 	{
 		ds->deformation = DEFORM_AUTOSPRITE;
 		sprite.type = SPRITE_ORIENTED;
 	}
-	else if (!str::icmp(token, "autosprite2"))
+	else if (!strHelpers::icmp(token, "autosprite2"))
 	{
 		ds->deformation = DEFORM_AUTOSPRITE2;
 		sprite.type = SPRITE_ORIENTED;
@@ -1520,7 +1524,7 @@ void Shader::ParseDeform(Script& script)
 		}
 		ds->deformation = (DeformMod)(DEFORM_TEXT0 + n);
 	}
-	else if (!str::icmp(token, "bulge"))
+	else if (!strHelpers::icmp(token, "bulge"))
 	{
 		token = script.GetToken(false);
 		if (token[0] == 0)
@@ -1548,7 +1552,7 @@ void Shader::ParseDeform(Script& script)
 
 		ds->deformation = DEFORM_BULGE;
 	}
-	else if (!str::icmp(token, "wave"))
+	else if (!strHelpers::icmp(token, "wave"))
 	{
 		token = script.GetToken(false);
 		if (token[0] == 0)
@@ -1570,7 +1574,7 @@ void Shader::ParseDeform(Script& script)
 		ParseWaveForm(script, &ds->deformationWave);
 		ds->deformation = DEFORM_WAVE;
 	}
-	else if (!str::icmp(token, "normal"))
+	else if (!strHelpers::icmp(token, "normal"))
 	{
 		token = script.GetToken(false);
 		if (token[0] == 0)
@@ -1590,7 +1594,7 @@ void Shader::ParseDeform(Script& script)
 
 		ds->deformation = DEFORM_NORMALS;
 	}
-	else if (!str::icmp(token, "move"))
+	else if (!strHelpers::icmp(token, "move"))
 	{
 		int		i;
 
@@ -1608,7 +1612,7 @@ void Shader::ParseDeform(Script& script)
 		ParseWaveForm(script, &ds->deformationWave);
 		ds->deformation = DEFORM_MOVE;
 	}
-	else if (!str::icmp(token, "flap"))
+	else if (!strHelpers::icmp(token, "flap"))
 	{
 		token = script.GetToken(false);
 		if (token[0] == 0)
@@ -1777,7 +1781,7 @@ void Shader::ParseSurfaceParm(Script& script)
 
 	for (intptr_t i = 0; i < sizeof(paramsToFlags) / sizeof(paramsToFlags[0]); i++)
 	{
-		if (!str::icmp(paramsToFlags[i].param, token))
+		if (!strHelpers::icmp(paramsToFlags[i].param, token))
 		{
 			surfaceFlags |= paramsToFlags[i].surfaceFlags;
 			contents |= paramsToFlags[i].contents;
@@ -2010,7 +2014,7 @@ ShaderContainer::ShaderContainer(ShaderManager* shaderManager, const str& filena
 
 void ShaderContainer::AddShader(const ShaderPtr& Shader)
 {
-	m_shaderList.AddObject(Shader);
+	m_shaderList.push_back(Shader);
 }
 
 void ShaderContainer::RemoveShader(const ShaderPtr& Shader)
@@ -2025,22 +2029,23 @@ void ShaderContainer::RemoveShader(const ShaderPtr& Shader)
 		}
 	}
 	*/
-	m_shaderList.RemoveObject(Shader);
+	auto it = std::find(m_shaderList.begin(), m_shaderList.end(), Shader);
+	if (it != m_shaderList.end()) m_shaderList.erase(it);
 }
 
 size_t ShaderContainer::GetNumShaders() const
 {
-	return m_shaderList.NumObjects();
+	return m_shaderList.size();
 }
 
 const Shader* ShaderContainer::GetShader(size_t num) const
 {
-	if (num >= m_shaderList.NumObjects())
+	if (num >= m_shaderList.size())
 	{
 		return nullptr;
 	}
 
-	return m_shaderList.ObjectAt(num + 1).get();
+	return m_shaderList.at(num).get();
 }
 
 ShaderManager *ShaderContainer::GetShaderManager() const
@@ -2092,8 +2097,8 @@ void ShaderManager::Init()
 	//g_defaultshader = AllocShader();
 
 	// reserve at least 7000 shader objects
-	m_nametoshader.resize(7000);
-	m_images.Resize(7000);
+	m_nametoshader.reserve(7000);
+	m_images.reserve(7000);
 
 	MOHPC_LOG(Info, "loading shaders");
 
@@ -2114,7 +2119,7 @@ void ShaderManager::ParseShaders(const FileEntryList& files)
 	const char *buffer;
 
 	const size_t numFiles = files.GetNumFiles();
-	m_ShaderContainers.Resize(numFiles);
+	m_ShaderContainers.reserve(numFiles);
 
 	for (size_t i = 0; i < numFiles; i++)
 	{
@@ -2129,11 +2134,11 @@ void ShaderManager::ParseShaders(const FileEntryList& files)
 		const uint64_t length = file->ReadBuffer((void**)&buffer);
 
 		// Parse the shader
-		const ShaderContainerPtr ShaderContainer = ParseShaderContainer(filename, buffer, length);
-		if(ShaderContainer)
+		const ShaderContainerPtr shaderContainer = ParseShaderContainer(filename, buffer, length);
+		if(shaderContainer)
 		{
-			m_ShaderContainers.AddObject(ShaderContainer);
-			m_fileShaderMap.addKeyValue(filename) = ShaderContainer;
+			m_ShaderContainers.push_back(shaderContainer);
+			m_fileShaderMap.insert_or_assign(filename, shaderContainer);
 		}
 	}
 }
@@ -2192,7 +2197,7 @@ ShaderContainerPtr ShaderManager::ParseShaderContainer(const str& fileName, cons
 
 		const ShaderPtr shader = AllocShader(shaderContainer.get());
 		shader->m_name = shadername;
-		shader->m_name.tolower();
+		strHelpers::tolower(*&shader->m_name.begin(), shader->m_name.end());
 		//std::transform(shader->m_name.begin(), shader->m_name.end(), shader->m_name.begin(), &shader_tolower);
 
 		shaderContainer->AddShader(shader);
@@ -2235,130 +2240,36 @@ ShaderPtr ShaderManager::AllocShader(ShaderContainer *ShaderContainer)
 void ShaderManager::FreeShader(const ShaderPtr& shader)
 {
 	//m_shaders.RemoveObject(shader);
-	m_nametoshader.remove(shader->GetName());
+	auto it = m_nametoshader.find(shader->GetName());
+	if (it != m_nametoshader.end()) m_nametoshader.erase(it);
 }
 
 void ShaderManager::AddShader(const ShaderPtr &shader)
 {
-	//bool bHasTexture = true;
-
-	/*
-	if (!shader->m_editorimage.length())
-	{
-		if (shader->m_stages.size())
-		{
-			//shader->m_editorimage = shader->m_stages[0].bundle[0].image[0];
-		}
-		else
-		{
-			bHasTexture = false;
-		}
-	}
-	*/
-
 	if (!shader->m_stages.size() && !shader->bIsSky && !shader->m_editorimage) {
 		shader->m_editorimage = FindImage(shader->m_name.c_str());
 	}
 
-	/*
-	if (!shader->m_stages.size())
-	{
-		if (shader->m_editorimage.length())
-		{
-			shader->m_texture.push_back(shader->m_editorimage);
-		}
-		else
-		{
-			bHasTexture = false;
-		}
-	}
-
-	if (!bHasTexture)
-	{
-		string filename;
-
-		if (shader->m_env.length())
-		{
-			filename = ParseTextureExtension(shader->m_env);
-		}
-
-		if (!filename.length())
-		{
-			filename = ParseTextureExtension(shader->m_name);
-
-			if (!filename.length())
-			{
-				delete shader;
-				return;
-			}
-		}
-
-		// finally found a texture
-		shader->m_editorimage = filename;
-		shader->m_texture.push_back(filename);
-	}
-	*/
-
-	ShaderPtr& pExistingShader = m_nametoshader.addKeyValue(shader->m_name, shader);
-	/*
-	if (!pExistingShader)
-	{
-		// don't remove shaders in other mfuse::con::Containers
-		m_nametoshader.addNewKeyValue(shader->m_name) = shader;
-	}
-	*/
-	/*
-	if (pExistingShader) {
-		pExistingShader->get()->GetShaderContainer()->RemoveShader(*pExistingShader);
-	}
-	else {
-		m_nametoshader.addNewKeyValue(shader->m_name) = shader;
-	}
-	*/
-
-	/*
-	auto it = m_nametoshader.find(shader->m_name);
-	if (it != m_nametoshader.end())
-	{
-		Shader* s = it->second;
-		s->GetShaderContainer()->RemoveShader(s);
-		delete s;
-		it->second = shader;
-	}
-	else
-	{
-		m_nametoshader.emplace(shader->m_name, shader);
-	}
-	*/
+	m_nametoshader.insert_or_assign(shader->m_name, shader);
 }
 
 ShaderPtr ShaderManager::GetShader(const char *name) const
 {
+	if (!name || !*name) {
+		return nullptr;
+	}
+
 	str newname;
 
-	if( !name || !*name )
-	{
-		return NULL;
-	}
-
 	newname = name;
-	newname.tolower();
-	//std::transform(newname.begin(), newname.end(), newname.begin(), &shader_tolower);
+	strHelpers::tolower(newname.begin(), newname.end());
 
-	const ShaderPtr* pShader = m_nametoshader.findKeyValue(newname);
-	if (!pShader) {
-		return NULL;
+	const auto it = m_nametoshader.find(newname);
+	if(it == m_nametoshader.end()) {
+		return nullptr;
 	}
 
-	/*
-	auto it = m_nametoshader.find(newname);
-	if(it == m_nametoshader.end())
-	{
-		return NULL;
-	}
-	*/
-
-	return *pShader;
+	return it->second;
 }
 
 Shader* ShaderManager::GetDefaultShader() const
@@ -2368,54 +2279,40 @@ Shader* ShaderManager::GetDefaultShader() const
 
 ImageCache* ShaderManager::FindImage(const char *name)
 {
-	ImageCachePtr* pCachedImage = m_nametoimage.findKeyValue(name);
-	if (pCachedImage) {
-		return pCachedImage->get();
+	const auto it = m_nametoimage.find(name);
+	if (it != m_nametoimage.end()) {
+		return it->second.get();
 	}
 
 	ImageCachePtr cachedImage = makeShared<ImageCache>(this, name);
-	//Image* image = GetAssetManager()->LoadAsset<Image>(imagename.c_str());
 
-	m_nametoimage.addKeyValue(name) = cachedImage;
-	m_images.AddObject(cachedImage);
+	m_nametoimage.insert_or_assign(name, cachedImage);
+	m_images.push_back(cachedImage);
 
 	return cachedImage.get();
 }
 
 size_t ShaderManager::GetNumShaderContainers() const
 {
-	return m_ShaderContainers.NumObjects();
+	return m_ShaderContainers.size();
 }
 
 const ShaderContainer* ShaderManager::GetShaderContainer(size_t num) const
 {
-	if (num >= m_ShaderContainers.NumObjects())
+	if (num >= m_ShaderContainers.size())
 	{
 		return nullptr;
 	}
 
-	return m_ShaderContainers.ObjectAt(num + 1).get();
+	return m_ShaderContainers.at(num).get();
 }
 
 const ShaderContainer* ShaderManager::GetShaderContainer(const char* Filename) const
 {
-	const ShaderContainerPtr* pContainer = m_fileShaderMap.findKeyValue(Filename);
-	if (pContainer) {
-		return pContainer->get();
-	}
-	else {
-		return nullptr;
+	const auto it = m_fileShaderMap.find(Filename);
+	if (it != m_fileShaderMap.end()) {
+		return it->second.get();
 	}
 
-	/*
-	auto it = m_fileShaderMap.find(Filename);
-	if (it != m_fileShaderMap.end())
-	{
-		return it->second;
-	}
-	else
-	{
-		return nullptr;
-	}
-	*/
+	return nullptr;
 }

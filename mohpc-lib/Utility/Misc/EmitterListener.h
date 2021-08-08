@@ -1,19 +1,16 @@
 #pragma once
 
 #include <MOHPC/Assets/Managers/AssetManager.h>
+#include <MOHPC/Common/SimpleVector.h>
 #include <morfuse/Script/Listener.h>
 
 namespace MOHPC
 {
+	struct Emitter;
+
 	class EmitterListener : public mfuse::Listener
 	{
 		MFUS_CLASS_PROTOTYPE(EmitterListener);
-
-	private:
-		struct Emitter* emitter;
-		bool bInBlock;
-		bool bProcessed;
-		AssetManagerPtr assetManager;
 
 	public:
 		EmitterListener();
@@ -30,7 +27,7 @@ namespace MOHPC
 		void StartSFX(mfuse::Event* ev);
 		void StartSFXDelayed(mfuse::Event* ev);
 		void StartSFXInternal(mfuse::Event* ev, bool bDelayed);
-		void SetBaseAndAmplitude(mfuse::Event* ev, mfuse::Vector& Base, mfuse::Vector& Amplitude);
+		void SetBaseAndAmplitude(mfuse::Event* ev, vec3r_t Base, vec3r_t Amplitude);
 		void SetSpawnRate(mfuse::Event* ev);
 		void SetScaleRate(mfuse::Event* ev);
 		void SetCount(mfuse::Event* ev);
@@ -59,5 +56,11 @@ namespace MOHPC
 		void SetFade(mfuse::Event* ev);
 		void SetFadeDelay(mfuse::Event* ev);
 		void SetFadeIn(mfuse::Event* ev);
+
+	private:
+		Emitter* emitter;
+		bool bInBlock;
+		bool bProcessed;
+		AssetManagerPtr assetManager;
 	};
 }

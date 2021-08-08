@@ -12,6 +12,8 @@
 
 #include "Common/Common.h"
 
+#include <cassert>
+
 using namespace MOHPC;
 using namespace MOHPC::Network;
 
@@ -46,7 +48,7 @@ void hashTestInternal(uint32_t version, const char* string, uint32_t expected)
 {
 	const Parsing::IHash* hash = Parsing::IHash::get(version);
 	assert(hash);
-	assert(hash->hashKey(string, str::len(string)) == expected);
+	assert(hash->hashKey(string, std::char_traits<char>::length(string)) == expected);
 }
 
 void hashTest()
@@ -70,7 +72,7 @@ void stringTestInternal(uint32_t version)
 	msg.Reset();
 
 	StringMessage stringMessage = string->readString(msg);
-	assert(!str::cmp(stringMessage.c_str(), "testString"));
+	assert(!strHelpers::cmp(stringMessage.c_str(), "testString"));
 }
 
 void stringTest()
@@ -91,7 +93,7 @@ void entityTestInternal(uint32_t version)
 
 	entityState_t nullState;
 	playerState_t nullPS;
-	const float deltaTime = 0.05f;
+	const deltaTimeFloat_t deltaTime = deltaTimeFloat_t(0.05f);
 
 	{
 		MSG msg(stream, msgMode_e::Writing);
@@ -198,8 +200,8 @@ void gameStateTestInternal(uint32_t version)
 
 			for (uint32_t i = 0; i < 100; ++i)
 			{
-				str keyName = "g_vari_" + str(i);
-				str keyValue(i);
+				str keyName = "g_vari_" + std::to_string(i);
+				str keyValue = std::to_string(i);
 				serverInfo.SetValueForKey(keyName.c_str(), keyValue.c_str());
 			}
 
@@ -236,14 +238,14 @@ void gameStateTestInternal(uint32_t version)
 		ReadOnlyInfo serverInfo(gs.getConfigstringManager().getConfigString(CS_SERVERINFO));
 
 		assert(serverInfo.IntValueForKey("sv_misc_var1") == 5555);
-		assert(!str::cmp(serverInfo.ValueForKey("g_var2"), "stringValue"));
+		assert(!strHelpers::cmp(serverInfo.ValueForKey("g_var2").c_str(), "stringValue"));
 
 		for (uint32_t i = 0; i < 100; ++i)
 		{
-			str keyName = "g_vari_" + str(i);
-			str keyValue(i);
+			str keyName = "g_vari_" + std::to_string(i);
+			str keyValue = std::to_string(i);
 			const char* val = keyValue.c_str();
-			assert(!str::cmp(serverInfo.ValueForKey(keyName.c_str()), keyValue.c_str()));
+			assert(!strHelpers::cmp(serverInfo.ValueForKey(keyName.c_str()).c_str(), keyValue.c_str()));
 		}
 
 		for (InfoIterator it(serverInfo.GetString(), serverInfo.GetInfoLength()); it; ++it)
@@ -258,7 +260,7 @@ void gameStateTest()
 	testAllVersions(&gameStateTestInternal);
 }
 
-void PVSTestAssert(uint32_t version, const Vector& origin1, const Vector& origin2, float yaw)
+void PVSTestAssert(uint32_t version, const_vec3r_t origin1, const_vec3r_t origin2, float yaw)
 {
 	const Parsing::IPVS* pvsParsing = Parsing::IPVS::get(version);
 
@@ -266,12 +268,12 @@ void PVSTestAssert(uint32_t version, const Vector& origin1, const Vector& origin
 	{
 		Parsing::pvsParm_t parm;
 		parm.clientNum = 3;
-		parm.origin = origin1;
+		VectorCopy(origin1, parm.origin);
 
 		radarUnpacked_t unpacked;
 		unpacked.clientNum = 1;
-		unpacked.x = origin2.x;
-		unpacked.y = origin2.y;
+		unpacked.x = origin2[0];
+		unpacked.y = origin2[1];
 		unpacked.yaw = yaw;
 
 		radarInfo = pvsParsing->writeNonPVSClient(parm, unpacked);
@@ -280,31 +282,31 @@ void PVSTestAssert(uint32_t version, const Vector& origin1, const Vector& origin
 	{
 		Parsing::pvsParm_t parm;
 		parm.clientNum = 3;
-		parm.origin = origin1;
+		VectorCopy(origin1, parm.origin);
 		parm.radarRange = radarInfo.getCoordPrecision();
 		parm.radarFarMult = 1.f;
 
-		const float minX = origin1.x + radarInfo.getMinCoord();
-		const float minY = origin1.y + radarInfo.getMinCoord();
-		const float maxX = origin1.x + radarInfo.getMaxCoord();
-		const float maxY = origin1.y + radarInfo.getMaxCoord();
+		const float minX = origin1[0] + radarInfo.getMinCoord();
+		const float minY = origin1[1] + radarInfo.getMinCoord();
+		const float maxX = origin1[0] + radarInfo.getMaxCoord();
+		const float maxY = origin1[1] + radarInfo.getMaxCoord();
 
 		radarUnpacked_t unpacked;
 		if (pvsParsing->readNonPVSClient(radarInfo, parm, unpacked))
 		{
 			assert(approximation(unpacked.yaw, yaw, radarInfo.getYawPrecision()));
-			assert(approximation(unpacked.x, origin2.x, 1.f) || unpacked.x == minX || unpacked.x == maxX);
-			assert(approximation(unpacked.y, origin2.y, 1.f) || unpacked.y == minY || unpacked.y == maxY);
+			assert(approximation(unpacked.x, origin2[0], 1.f) || unpacked.x == minX || unpacked.x == maxX);
+			assert(approximation(unpacked.y, origin2[1], 1.f) || unpacked.y == minY || unpacked.y == maxY);
 		}
 	}
 }
 
 void PVSTestInternal(uint32_t version)
 {
-	PVSTestAssert(version, Vector(100.f, 100.f, 100.f), Vector(105.f, 97.f, 100.f), 275.f);
-	PVSTestAssert(version, Vector(100.f, 104.f, 100.f), Vector(88.f, 55.f, 100.f), 122.f);
-	PVSTestAssert(version, Vector(101.f, 98.f, 100.f), Vector(88.f, 24.f, 100.f), 14.f);
-	PVSTestAssert(version, Vector(311.4f, 250.1f, 100.f), Vector(188.2f, 31.3f, 100.f), 352.f);
+	PVSTestAssert(version, vec3_t{100.f, 100.f, 100.f}, vec3_t{105.f, 97.f, 100.f}, 275.f);
+	PVSTestAssert(version, vec3_t{100.f, 104.f, 100.f}, vec3_t{88.f, 55.f, 100.f}, 122.f);
+	PVSTestAssert(version, vec3_t{ 101.f, 98.f, 100.f }, vec3_t{ 88.f, 24.f, 100.f }, 14.f);
+	PVSTestAssert(version, vec3_t{311.4f, 250.1f, 100.f}, vec3_t{188.2f, 31.3f, 100.f}, 352.f);
 }
 
 void PVSTest()

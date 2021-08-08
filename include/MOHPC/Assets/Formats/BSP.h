@@ -7,7 +7,7 @@
 #include "../../Common/Vector.h"
 #include "../../Utility/SharedPtr.h"
 
-#include <morfuse/Container/Container.h>
+#include <vector>
 #include <exception>
 #include <cstdint>
 
@@ -72,7 +72,7 @@ namespace MOHPC
 				PLANE_NON_PLANAR
 			};
 
-			Vector normal;
+			vec3_t normal;
 			float distance;
 			PlaneType type;
 			uint8_t signBits;
@@ -80,6 +80,11 @@ namespace MOHPC
 
 		struct PatchPlane
 		{
+
+		public:
+			PatchPlane();
+
+		public:
 			float plane[4];
 			uint8_t signbits;
 		};
@@ -93,24 +98,30 @@ namespace MOHPC
 			bool borderNoAdjust[4 + 6 + 16];
 		};
 
-		struct MOHPC_ASSETS_EXPORTS PatchCollide
+		struct PatchCollide
 		{
-			Vector bounds[2];
+		public:
+			~PatchCollide();
+
+		public:
+			vec3_t bounds[2];
 			int32_t numPlanes;
 			PatchPlane* planes;
 			int32_t numFacets;
 			Facet* facets;
-
-		public:
-			~PatchCollide();
 		};
 
 		struct Vertice
 		{
-			Vector xyz;
+
+		public:
+			Vertice();
+
+		public:
+			vec3_t xyz;
 			float st[2];
 			float lightmap[2];
-			Vector normal;
+			vec3_t normal;
 			uint8_t color[4];
 		};
 
@@ -141,17 +152,17 @@ namespace MOHPC
 
 		private:
 			const Shader* shader;
-			mfuse::con::Container<Vertice> vertices;
-			mfuse::con::Container<uint32_t> indexes;
-			Vector centroid;
+			std::vector<Vertice> vertices;
+			std::vector<uint32_t> indexes;
+			vec3_t centroid;
 			bool bIsPatch;
 			int32_t lightmapNum;
 			int32_t lightmapX;
 			int32_t lightmapY;
 			int32_t lightmapWidth;
 			int32_t lightmapHeight;
-			Vector lightmapOrigin;
-			Vector lightmapVecs[3];
+			vec3_t lightmapOrigin;
+			vec3_t lightmapVecs[3];
 			PatchCollide* pc;
 
 			struct
@@ -165,8 +176,8 @@ namespace MOHPC
 				};
 
 				int32_t type;
-				Vector bounds[2];
-				Vector localOrigin;
+				vec3_t bounds[2];
+				vec3_t localOrigin;
 				float radius;
 				Plane plane;
 			} cullInfo;
@@ -188,8 +199,8 @@ namespace MOHPC
 			MOHPC_ASSETS_EXPORTS int32_t GetLightmapY() const;
 			MOHPC_ASSETS_EXPORTS int32_t GetLightmapWidth() const;
 			MOHPC_ASSETS_EXPORTS int32_t GetLightmapHeight() const;
-			MOHPC_ASSETS_EXPORTS const Vector& GetLightmapOrigin() const;
-			MOHPC_ASSETS_EXPORTS const Vector& GetLightmapVec(int32_t num) const;
+			MOHPC_ASSETS_EXPORTS const_vec3p_t GetLightmapOrigin() const;
+			MOHPC_ASSETS_EXPORTS const_vec3p_t GetLightmapVec(int32_t num) const;
 			MOHPC_ASSETS_EXPORTS const PatchCollide* GetPatchCollide() const;
 
 			MOHPC_ASSETS_EXPORTS bool IsPatch() const;
@@ -217,22 +228,22 @@ namespace MOHPC
 			str name;
 			const Shader* shader;
 			int32_t contents;
-			Vector bounds[2];
+			vec3_t bounds[2];
 			size_t numsides;
 			BrushSide* sides;
 			Brush* parent;
-			mfuse::con::Container<const Surface*> surfaces;
+			std::vector<const Surface*> surfaces;
 
 		public:
 			MOHPC_ASSETS_EXPORTS const char* GetName() const;
 			MOHPC_ASSETS_EXPORTS const Shader* GetShader() const;
 			MOHPC_ASSETS_EXPORTS int32_t GetContents() const;
-			MOHPC_ASSETS_EXPORTS const Vector& GetMins() const;
-			MOHPC_ASSETS_EXPORTS const Vector& GetMaxs() const;
+			MOHPC_ASSETS_EXPORTS const_vec3p_t GetMins() const;
+			MOHPC_ASSETS_EXPORTS const_vec3p_t GetMaxs() const;
 			MOHPC_ASSETS_EXPORTS size_t GetNumSides() const;
 			MOHPC_ASSETS_EXPORTS BrushSide* GetSide(size_t Index) const;
 			MOHPC_ASSETS_EXPORTS Brush* GetParent() const;
-			MOHPC_ASSETS_EXPORTS Vector GetOrigin() const;
+			MOHPC_ASSETS_EXPORTS void GetOrigin(vec3r_t out) const;
 		};
 
 		struct Node
@@ -265,10 +276,10 @@ namespace MOHPC
 
 		private:
 			str name;
-			mfuse::con::Container<const Surface*> surfaces;
-			mfuse::con::Container<const Brush*> brushes;
-			Vector bounds[2];
-			Vector origin;
+			std::vector<const Surface*> surfaces;
+			std::vector<const Brush*> brushes;
+			vec3_t bounds[2];
+			vec3_t origin;
 
 		public:
 			MOHPC_ASSETS_EXPORTS const str& GetGroupName() const;
@@ -278,14 +289,14 @@ namespace MOHPC
 			MOHPC_ASSETS_EXPORTS const Brush* GetBrush(size_t index) const;
 			MOHPC_ASSETS_EXPORTS const Surface* const* GetSurfaces() const;
 			MOHPC_ASSETS_EXPORTS const Brush* const* GetBrushes() const;
-			MOHPC_ASSETS_EXPORTS const Vector& GetMinBound() const;
-			MOHPC_ASSETS_EXPORTS const Vector& GetMaxBound() const;
-			MOHPC_ASSETS_EXPORTS const Vector& GetOrigin() const;
+			MOHPC_ASSETS_EXPORTS const_vec3p_t GetMinBound() const;
+			MOHPC_ASSETS_EXPORTS const_vec3p_t GetMaxBound() const;
+			MOHPC_ASSETS_EXPORTS const_vec3p_t GetOrigin() const;
 		};
 
 		struct Model
 		{
-			Vector bounds[2];
+			vec3_t bounds[2];
 			Surface* surface;
 			int32_t numSurfaces;
 			Leaf leaf;
@@ -293,20 +304,20 @@ namespace MOHPC
 
 		struct SphereLight
 		{
-			Vector origin;
-			Vector color;
+			vec3_t origin;
+			vec3_t color;
 			float intensity;
 			bool bNeedsTrace;
 			bool bSpotLight;
 			float spotRadiusByDistance;
-			Vector spotDirection;
+			vec3_t spotDirection;
 		};
 
 		struct StaticModel
 		{
 			str modelName;
-			Vector origin;
-			Vector angles;
+			vec3_t origin;
+			vec3_t angles;
 			float scale;
 			int32_t firstVertexData;
 			int32_t numVertexData;
@@ -414,7 +425,7 @@ namespace MOHPC
 		};
 
 		struct TerrainCollide {
-			Vector vBounds[2];
+			vec3_t vBounds[2];
 			TerrainCollideSquare squares[8][8];
 		};
 
@@ -555,7 +566,7 @@ namespace MOHPC
 		MOHPC_ASSETS_EXPORTS const class LevelEntity* GetEntity(const str& targetName) const;
 
 		/** Returns an array of entities with the specified targetname. */
-		MOHPC_ASSETS_EXPORTS const mfuse::con::Container<class LevelEntity *>* GetEntities(const str& targetName) const;
+		MOHPC_ASSETS_EXPORTS const std::vector<class LevelEntity *>* GetEntities(const str& targetName) const;
 
 		/** Returns the number of grouped surfaces. */
 		MOHPC_ASSETS_EXPORTS size_t GetNumSurfacesGroup() const;
@@ -567,7 +578,7 @@ namespace MOHPC
 		MOHPC_ASSETS_EXPORTS void GenerateTerrainCollide(const BSPData::TerrainPatch* patch, BSPData::TerrainCollide& collision);
 
 		/** Return the leaf number of the point at the specified location. */
-		MOHPC_ASSETS_EXPORTS uintptr_t PointLeafNum(const MOHPC::Vector p);
+		MOHPC_ASSETS_EXPORTS uintptr_t PointLeafNum(const vec3r_t p);
 
 		/** Fill the specified collision world for tracing, etc... */
 		MOHPC_ASSETS_EXPORTS void FillCollisionWorld(CollisionWorld& cm);
@@ -578,8 +589,8 @@ namespace MOHPC
 		void Load() override;
 
 	private:
-		BSPData::Plane::PlaneType PlaneTypeForNormal(const Vector& Normal);
-		uintptr_t PointLeafNum_r(const MOHPC::Vector p, intptr_t num);
+		BSPData::Plane::PlaneType PlaneTypeForNormal(const vec3r_t Normal);
+		uintptr_t PointLeafNum_r(const vec3r_t p, intptr_t num);
 
 		//void PreAllocateLevelData(const File_Header *Header);
 		void LoadShaders(const BSPFile::GameLump* GameLump);
@@ -638,7 +649,7 @@ namespace MOHPC
 		// terrain collision
 		void TR_CalculateTerrainIndices(worknode_t* worknode, int iDiagonal, int iTree);
 		void TR_PrepareGerrainCollide();
-		void TR_PickTerrainSquareMode(BSPData::TerrainCollideSquare* square, const MOHPC::Vector& vTest, terraInt i, terraInt j, const BSPData::TerrainPatch* patch);
+		void TR_PickTerrainSquareMode(BSPData::TerrainCollideSquare* square, const vec3r_t vTest, terraInt i, terraInt j, const BSPData::TerrainPatch* patch);
 
 		void GenerateTerrainPatch(const BSPData::TerrainPatch* Patch, BSPData::Surface* Out);
 		void GenerateTerrainPatch2(const BSPData::TerrainPatch* Patch, BSPData::Surface* Out);
@@ -655,37 +666,37 @@ namespace MOHPC
 		uint32_t LoadLump(const FilePtr& file, BSPFile::flump_t* lump, BSPFile::GameLump* gameLump, size_t size = 0);
 
 	private:
-		mfuse::con::Container<BSPData::Shader> shaders;
-		mfuse::con::Container<BSPData::Lightmap> lightmaps;
-		mfuse::con::Container<BSPData::Surface> surfaces;
-		mfuse::con::Container<BSPData::Plane> planes;
-		mfuse::con::Container<BSPData::SideEquation> sideEquations;
-		mfuse::con::Container<BSPData::BrushSide> brushSides;
-		mfuse::con::Container<BSPData::Brush> brushes;
-		mfuse::con::Container<BSPData::Node> nodes;
-		mfuse::con::Container<BSPData::Leaf> leafs;
-		mfuse::con::Container<uintptr_t> leafBrushes;
-		mfuse::con::Container<uintptr_t> leafSurfaces;
-		mfuse::con::Container<BSPData::TerrainPatch*> leafTerrains;
-		mfuse::con::Container<BSPData::Area> areas;
-		mfuse::con::Container<uintptr_t> areaPortals;
-		mfuse::con::Container<BSPData::Model> brushModels;
-		mfuse::con::Container<BSPData::SphereLight> lights;
-		mfuse::con::Container<BSPData::StaticModel> staticModels;
-		mfuse::con::Container<BSPData::TerrainPatch> terrainPatches;
-		mfuse::con::Container<BSPData::Surface> terrainSurfaces;
-		mfuse::con::Container<class LevelEntity*> entities;
-		mfuse::con::set<str, mfuse::con::Container<class LevelEntity*>> targetList;
-		mfuse::con::Container<BSPData::SurfacesGroup*> surfacesGroups;
+		std::vector<BSPData::Shader> shaders;
+		std::vector<BSPData::Lightmap> lightmaps;
+		std::vector<BSPData::Surface> surfaces;
+		std::vector<BSPData::Plane> planes;
+		std::vector<BSPData::SideEquation> sideEquations;
+		std::vector<BSPData::BrushSide> brushSides;
+		std::vector<BSPData::Brush> brushes;
+		std::vector<BSPData::Node> nodes;
+		std::vector<BSPData::Leaf> leafs;
+		std::vector<uintptr_t> leafBrushes;
+		std::vector<uintptr_t> leafSurfaces;
+		std::vector<BSPData::TerrainPatch*> leafTerrains;
+		std::vector<BSPData::Area> areas;
+		std::vector<uintptr_t> areaPortals;
+		std::vector<BSPData::Model> brushModels;
+		std::vector<BSPData::SphereLight> lights;
+		std::vector<BSPData::StaticModel> staticModels;
+		std::vector<BSPData::TerrainPatch> terrainPatches;
+		std::vector<BSPData::Surface> terrainSurfaces;
+		std::vector<class LevelEntity*> entities;
+		std::unordered_map<str, std::vector<class LevelEntity*>> targetList;
+		std::vector<BSPData::SurfacesGroup*> surfacesGroups;
 		uint32_t numClusters;
 		uint32_t numAreas;
 		uint32_t clusterBytes;
-		mfuse::con::Container<uint8_t> visibility;
+		std::vector<uint8_t> visibility;
 		char* entityString;
 		size_t entityStringLength;
 
-		mfuse::con::Container<BSPData::TerrainVert> trVerts;
-		mfuse::con::Container<BSPData::TerrainTri> trTris;
+		std::vector<BSPData::TerrainVert> trVerts;
+		std::vector<BSPData::TerrainTri> trTris;
 		BSPData::PoolInfo trpiTri;
 		BSPData::PoolInfo trpiVert;
 		BSPData::varnodeIndex varnodeIndexes[2][8][8][2];

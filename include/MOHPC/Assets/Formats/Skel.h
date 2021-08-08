@@ -11,7 +11,7 @@
 #include "../../Common/str.h"
 #include "../../Utility/SharedPtr.h"
 
-#include <morfuse/Container/Container.h>
+#include <vector>
 
 namespace MOHPC
 {
@@ -83,31 +83,31 @@ namespace MOHPC
 		struct SkeletorMorph
 		{
 			int32_t morphIndex;
-			Vector offset;
+			vec3_t offset;
 		};
 
 		struct SkeletorWeight
 		{
 			int32_t boneIndex;
 			float boneWeight;
-			Vector offset;
+			vec3_t offset;
 		};
 
 		struct SkeletorVertex
 		{
-			Vector normal;
+			vec3_t normal;
 			float textureCoords[2];
-			mfuse::con::Container<SkeletorWeight> Weights;
-			mfuse::con::Container<SkeletorMorph> Morphs;
+			std::vector<SkeletorWeight> Weights;
+			std::vector<SkeletorMorph> Morphs;
 		};
 
 		struct Surface
 		{
 			str name;
-			mfuse::con::Container<int32_t> Triangles;
-			mfuse::con::Container<SkeletorVertex> Vertices;
-			mfuse::con::Container<int32_t> Collapse;
-			mfuse::con::Container<int32_t> CollapseIndex;
+			std::vector<int32_t> Triangles;
+			std::vector<SkeletorVertex> Vertices;
+			std::vector<int32_t> Collapse;
+			std::vector<int32_t> CollapseIndex;
 		};
 
 		struct LodControl
@@ -133,12 +133,12 @@ namespace MOHPC
 
 	private:
 		str name;
-		mfuse::con::Container<BoneData> Bones;
-		mfuse::con::Container<Surface> Surfaces;
+		std::vector<BoneData> Bones;
+		std::vector<Surface> Surfaces;
 		uint32_t lodIndex[10];
-		mfuse::con::Container<int32_t> Boxes;
+		std::vector<int32_t> Boxes;
 		LodControl* pLOD;
-		mfuse::con::Container<str> MorphTargets;
+		std::vector<str> MorphTargets;
 	public:
 		MOHPC_ASSETS_EXPORTS Skeleton();
 		void Load() override;

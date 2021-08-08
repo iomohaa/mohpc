@@ -2,6 +2,8 @@
 
 #include "Entity.h"
 #include "PlayerState.h"
+#include "../../Utility/TickTypes.h"
+#include "NetTime.h"
 
 #include <cstdint>
 
@@ -25,7 +27,7 @@ namespace Network
 	public:
 		const entityState_t* entity;
 		const char* soundName;
-		Vector origin;
+		vec3_t origin;
 		float volume;
 		float minDist;
 		float maxDist;
@@ -46,7 +48,7 @@ namespace Network
 		/** The name of the sound (retrieved from configstrings). */
 		MOHPC_NET_EXPORTS const char* getName() const;
 		/** The sound origin if it's spatialized. */
-		MOHPC_NET_EXPORTS const Vector& getOrigin() const;
+		MOHPC_NET_EXPORTS const_vec3p_t getOrigin() const;
 
 		/** Sound's volume. */
 		MOHPC_NET_EXPORTS float getVolume() const;
@@ -77,9 +79,8 @@ namespace Network
 	struct rawSnapshot_t
 	{
 	public:
+		netTime_t serverTime;
 		int32_t deltaNum;
-		uint32_t ping;
-		uint32_t serverTime;
 		uint32_t messageNum;
 		uint32_t numEntities;
 		uint32_t parseEntitiesNum;
@@ -108,7 +109,7 @@ namespace Network
 		MOHPC_NET_EXPORTS uint32_t getPing() const;
 
 		/** Server time when the server sent the snap. */
-		MOHPC_NET_EXPORTS uint32_t getServerTime() const;
+		MOHPC_NET_EXPORTS netTime_t getServerTime() const;
 
 		/** Area mask at index (for visibility). */
 		MOHPC_NET_EXPORTS uint8_t getAreaMask(uint8_t index) const;
@@ -134,13 +135,13 @@ namespace Network
 		MOHPC_NET_EXPORTS const sound_t& getSound(uint8_t index) const;
 
 	public:
+		netTime_t serverTime;
 		size_t numEntities;
 		size_t numSounds;
 		size_t numServerCommands;
 		size_t serverCommandSequence;
 		uint32_t snapFlags;
 		uint32_t ping;
-		uint32_t serverTime;
 		playerState_t ps;
 		entityState_t entities[MAX_ENTITIES_IN_SNAPSHOT];
 		sound_t sounds[MAX_SERVER_SOUNDS];

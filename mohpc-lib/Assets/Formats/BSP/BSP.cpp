@@ -9,9 +9,12 @@
 #include <MOHPC/Assets/Managers/ShaderManager.h>
 #include <MOHPC/Utility/Collision/Collision.h>
 #include <MOHPC/Utility/Misc/Endian.h>
-#include <MOHPC/Utility/Misc/EndianHelpers.h>
+#include <MOHPC/Utility/Misc/EndianCoordHelpers.h>
 
 #include "BSP_Curve.h"
+
+#include "../../../Common/VectorPrivate.h"
+#include <Eigen/Geometry>
 
 #include <chrono>
 #include <algorithm>
@@ -281,7 +284,7 @@ namespace BSPFile
 	{
 		Patch* parent;
 		const BSPData::Surface* surface;
-		Vector bounds[2];
+		vec3_t bounds[2];
 		BSPData::SurfacesGroup* surfaceGroup;
 
 		Patch(const BSPData::Surface* inSurface)
@@ -295,8 +298,8 @@ namespace BSPFile
 			//	AddPointToBounds(surface->GetVertice(k)->xyz, bounds[0], bounds[1]);
 			//}
 
-			bounds[0] = surface->GetPatchCollide()->bounds[0];
-			bounds[1] = surface->GetPatchCollide()->bounds[1];
+			VectorCopy(surface->GetPatchCollide()->bounds[0], bounds[0]);
+			VectorCopy(surface->GetPatchCollide()->bounds[1], bounds[1]);
 		}
 
 		Patch* GetRoot() const
@@ -387,12 +390,12 @@ int32_t BSPData::Brush::GetContents() const
 	return contents;
 }
 
-const Vector& BSPData::Brush::GetMins() const
+const_vec3p_t BSPData::Brush::GetMins() const
 {
 	return bounds[0];
 }
 
-const Vector& BSPData::Brush::GetMaxs() const
+const_vec3p_t BSPData::Brush::GetMaxs() const
 {
 	return bounds[1];
 }
@@ -469,7 +472,7 @@ const BSPData::Shader* BSPData::Surface::GetShader() const
 
 size_t BSPData::Surface::GetNumVertices() const
 {
-	return vertices.NumObjects();
+	return vertices.size();
 }
 
 const BSPData::Vertice *BSPData::Surface::GetVertice(size_t index) const
@@ -480,7 +483,7 @@ const BSPData::Vertice *BSPData::Surface::GetVertice(size_t index) const
 
 size_t BSPData::Surface::GetNumIndexes() const
 {
-	return indexes.NumObjects();
+	return indexes.size();
 }
 
 uint32_t BSPData::Surface::GetIndice(size_t index) const
@@ -513,12 +516,12 @@ int32_t BSPData::Surface::GetLightmapHeight() const
 	return lightmapHeight;
 }
 
-const Vector& BSPData::Surface::GetLightmapOrigin() const
+const_vec3p_t BSPData::Surface::GetLightmapOrigin() const
 {
 	return lightmapOrigin;
 }
 
-const Vector& BSPData::Surface::GetLightmapVec(int32_t num) const
+const_vec3p_t BSPData::Surface::GetLightmapVec(int32_t num) const
 {
 	return lightmapVecs[num];
 }
@@ -535,21 +538,22 @@ bool BSPData::Surface::IsPatch() const
 
 void BSPData::Surface::CalculateCentroid()
 {
-	Vector avgVert = vec_zero;
-	const size_t numVerts = vertices.NumObjects();
-	const Vertice *verts = vertices.Data();
+	Eigen::Vector3f avgVert = castVector(vec3_zero);
+	const size_t numVerts = vertices.size();
+	const Vertice *verts = vertices.data();
 	for (size_t v = 0; v < numVerts; v++)
 	{
 		const Vertice* pVert = &verts[v];
-		avgVert += pVert->xyz;
+		avgVert += castVector(pVert->xyz);
 	}
 
-	centroid = avgVert / (float)numVerts;
+	castVector(centroid) = avgVert / (float)numVerts;
 }
 
-Vector BSPData::Brush::GetOrigin() const
+void BSPData::Brush::GetOrigin(vec3r_t out) const
 {
-	return (bounds[0] + bounds[1]) * 0.5f;
+	Eigen::Vector3f vec = (castVector(bounds[0]) + castVector(bounds[1])) * 0.5f;
+	castVector(out) = vec;
 }
 
 const str& BSPData::SurfacesGroup::GetGroupName() const
@@ -559,7 +563,7 @@ const str& BSPData::SurfacesGroup::GetGroupName() const
 
 size_t BSPData::SurfacesGroup::GetNumSurfaces() const
 {
-	return surfaces.NumObjects();
+	return surfaces.size();
 }
 
 const BSPData::Surface *BSPData::SurfacesGroup::GetSurface(size_t index) const
@@ -569,12 +573,12 @@ const BSPData::Surface *BSPData::SurfacesGroup::GetSurface(size_t index) const
 
 const BSPData::Surface* const *BSPData::SurfacesGroup::GetSurfaces() const
 {
-	return surfaces.Data();
+	return surfaces.data();
 }
 
 size_t BSPData::SurfacesGroup::GetNumBrushes() const
 {
-	return brushes.NumObjects();
+	return brushes.size();
 }
 
 const BSPData::Brush *BSPData::SurfacesGroup::GetBrush(size_t index) const
@@ -584,20 +588,20 @@ const BSPData::Brush *BSPData::SurfacesGroup::GetBrush(size_t index) const
 
 const BSPData::Brush* const *BSPData::SurfacesGroup::GetBrushes() const
 {
-	return brushes.Data();
+	return brushes.data();
 }
 
-const Vector& BSPData::SurfacesGroup::GetMinBound() const
+const_vec3p_t BSPData::SurfacesGroup::GetMinBound() const
 {
 	return bounds[0];
 }
 
-const Vector& BSPData::SurfacesGroup::GetMaxBound() const
+const_vec3p_t BSPData::SurfacesGroup::GetMaxBound() const
 {
 	return bounds[1];
 }
 
-const Vector& BSPData::SurfacesGroup::GetOrigin() const
+const_vec3p_t BSPData::SurfacesGroup::GetOrigin() const
 {
 	return origin;
 }
@@ -650,12 +654,12 @@ BSP::~BSP()
 		entityStringLength = 0;
 	}
 
-	for (size_t i = 0; i < entities.NumObjects(); i++)
+	for (size_t i = 0; i < entities.size(); i++)
 	{
 		delete entities[i];
 	}
 
-	for (size_t i = 0; i < surfacesGroups.NumObjects(); i++)
+	for (size_t i = 0; i < surfacesGroups.size(); i++)
 	{
 		delete surfacesGroups[i];
 	}
@@ -911,7 +915,7 @@ void BSP::PreAllocateLevelData(const File_Header *Header)
 }
 */
 
-BSPData::Plane::PlaneType BSP::PlaneTypeForNormal(const Vector& normal)
+BSPData::Plane::PlaneType BSP::PlaneTypeForNormal(const vec3r_t normal)
 {
 	if (normal[0] == 1.0)
 	{
@@ -938,7 +942,7 @@ BSPData::Plane::PlaneType BSP::PlaneTypeForNormal(const Vector& normal)
 
 size_t BSP::GetNumShaders() const
 {
-	return shaders.NumObjects();
+	return shaders.size();
 }
 
 const BSPData::Shader *BSP::GetShader(size_t shaderNum) const
@@ -948,7 +952,7 @@ const BSPData::Shader *BSP::GetShader(size_t shaderNum) const
 
 size_t BSP::GetNumLightmaps() const
 {
-	return lightmaps.NumObjects();
+	return lightmaps.size();
 }
 
 const BSPData::Lightmap *BSP::GetLightmap(size_t lightmapNum) const
@@ -958,7 +962,7 @@ const BSPData::Lightmap *BSP::GetLightmap(size_t lightmapNum) const
 
 size_t BSP::GetNumSurfaces() const
 {
-	return surfaces.NumObjects();
+	return surfaces.size();
 }
 
 const BSPData::Surface *BSP::GetSurface(size_t surfaceNum)
@@ -968,7 +972,7 @@ const BSPData::Surface *BSP::GetSurface(size_t surfaceNum)
 
 size_t BSP::GetNumPlanes() const
 {
-	return planes.NumObjects();
+	return planes.size();
 }
 
 const BSPData::Plane *BSP::GetPlane(size_t planeNum)
@@ -978,7 +982,7 @@ const BSPData::Plane *BSP::GetPlane(size_t planeNum)
 
 size_t BSP::GetNumSideEquations() const
 {
-	return sideEquations.NumObjects();
+	return sideEquations.size();
 }
 
 const BSPData::SideEquation *BSP::GetSideEquation(size_t equationNum)
@@ -988,7 +992,7 @@ const BSPData::SideEquation *BSP::GetSideEquation(size_t equationNum)
 
 size_t BSP::GetNumBrushSides() const
 {
-	return brushSides.NumObjects();
+	return brushSides.size();
 }
 
 const BSPData::BrushSide *BSP::GetBrushSide(size_t brushSideNum)
@@ -998,7 +1002,7 @@ const BSPData::BrushSide *BSP::GetBrushSide(size_t brushSideNum)
 
 size_t BSP::GetNumBrushes() const
 {
-	return brushes.NumObjects();
+	return brushes.size();
 }
 
 const BSPData::Brush *BSP::GetBrush(size_t brushNum) const
@@ -1013,7 +1017,7 @@ const BSPData::Leaf* BSP::GetLeaf(size_t leafNum) const
 
 size_t BSP::GetNumLeafs() const
 {
-	return leafs.NumObjects();
+	return leafs.size();
 }
 
 const BSPData::Node* BSP::GetNode(size_t nodeNum) const
@@ -1023,7 +1027,7 @@ const BSPData::Node* BSP::GetNode(size_t nodeNum) const
 
 size_t BSP::GetNumNodes() const
 {
-	return nodes.NumObjects();
+	return nodes.size();
 }
 
 uintptr_t BSP::GetLeafBrush(size_t leafBrushNum) const
@@ -1033,7 +1037,7 @@ uintptr_t BSP::GetLeafBrush(size_t leafBrushNum) const
 
 size_t BSP::GetNumLeafBrushes() const
 {
-	return leafBrushes.NumObjects();
+	return leafBrushes.size();
 }
 
 uintptr_t BSP::GetLeafSurface(size_t leafSurfNum) const
@@ -1043,12 +1047,12 @@ uintptr_t BSP::GetLeafSurface(size_t leafSurfNum) const
 
 size_t BSP::GetNumLeafSurfaces() const
 {
-	return leafSurfaces.NumObjects();
+	return leafSurfaces.size();
 }
 
 size_t BSP::GetNumSubmodels() const
 {
-	return brushModels.NumObjects();
+	return brushModels.size();
 }
 
 const BSPData::Model *BSP::GetSubmodel(size_t submodelNum) const
@@ -1075,7 +1079,7 @@ const BSPData::Model *BSP::GetSubmodel(const str& submodelName) const
 
 size_t BSP::GetNumLights() const
 {
-	return lights.NumObjects();
+	return lights.size();
 }
 
 const BSPData::SphereLight *BSP::GetLight(size_t lightNum) const
@@ -1085,7 +1089,7 @@ const BSPData::SphereLight *BSP::GetLight(size_t lightNum) const
 
 size_t BSP::GetNumStaticModels() const
 {
-	return staticModels.NumObjects();
+	return staticModels.size();
 }
 
 const BSPData::StaticModel *BSP::GetStaticModel(size_t staticModelNum) const
@@ -1095,7 +1099,7 @@ const BSPData::StaticModel *BSP::GetStaticModel(size_t staticModelNum) const
 
 size_t BSP::GetNumTerrainPatches() const
 {
-	return terrainPatches.NumObjects();
+	return terrainPatches.size();
 }
 
 const BSPData::TerrainPatch *BSP::GetTerrainPatch(size_t terrainPatchNum) const
@@ -1105,7 +1109,7 @@ const BSPData::TerrainPatch *BSP::GetTerrainPatch(size_t terrainPatchNum) const
 
 size_t BSP::GetNumTerrainSurfaces() const
 {
-	return terrainSurfaces.NumObjects();
+	return terrainSurfaces.size();
 }
 
 const BSPData::Surface *BSP::GetTerrainSurface(size_t terrainSurfaceNum) const
@@ -1115,7 +1119,7 @@ const BSPData::Surface *BSP::GetTerrainSurface(size_t terrainSurfaceNum) const
 
 size_t BSP::GetNumEntities() const
 {
-	return entities.NumObjects();
+	return entities.size();
 }
 
 const LevelEntity* BSP::GetEntity(size_t entityNum) const
@@ -1125,7 +1129,7 @@ const LevelEntity* BSP::GetEntity(size_t entityNum) const
 
 const LevelEntity* BSP::GetEntity(const str& targetName) const
 {
-	const mfuse::con::Container<LevelEntity *>* ents = GetEntities(targetName);
+	const std::vector<LevelEntity *>* ents = GetEntities(targetName);
 	if (ents && ents->size())
 	{
 		return ents->at(0);
@@ -1136,7 +1140,7 @@ const LevelEntity* BSP::GetEntity(const str& targetName) const
 	}
 }
 
-const mfuse::con::Container<LevelEntity *>* BSP::GetEntities(const str& targetName) const
+const std::vector<LevelEntity *>* BSP::GetEntities(const str& targetName) const
 {
 	/*
 	auto it = targetList.find(targetName);
@@ -1149,18 +1153,17 @@ const mfuse::con::Container<LevelEntity *>* BSP::GetEntities(const str& targetNa
 		return nullptr;
 	}
 	*/
-	const mfuse::con::Container<LevelEntity*>* ents = targetList.findKeyValue(targetName);
-	if (ents) {
-		return ents;
+	const auto it = targetList.find(targetName);
+	if (it != targetList.end()) {
+		return &it->second;
 	}
-	else {
-		return nullptr;
-	}
+
+	return nullptr;
 }
 
 size_t BSP::GetNumSurfacesGroup() const
 {
-	return surfacesGroups.NumObjects();
+	return surfacesGroups.size();
 }
 
 const BSPData::SurfacesGroup *BSP::GetSurfacesGroup(size_t surfsGroupNum) const
@@ -1179,10 +1182,10 @@ void BSP::LoadShaders(const BSPFile::GameLump* GameLump)
 	const size_t count = GameLump->length / sizeof(BSPFile::fshader_t);
 	if (count)
 	{
-		shaders.SetNumObjects(count);
+		shaders.resize(count);
 
 		const BSPFile::fshader_t* in = (BSPFile::fshader_t *)GameLump->buffer;
-		BSPData::Shader* out = shaders.Data();
+		BSPData::Shader* out = shaders.data();
 
 		for (size_t i = 0; i < count; i++, in++, out++)
 		{
@@ -1202,7 +1205,7 @@ void BSP::LoadLightmaps(const BSPFile::GameLump* GameLump)
 	}
 
 	const size_t numLightmaps = GameLump->length / lightmapMemSize;
-	lightmaps.SetNumObjects(numLightmaps);
+	lightmaps.resize(numLightmaps);
 
 	const uint8_t* buf = (uint8_t*)GameLump->buffer;
 	for (size_t i = 0; i < numLightmaps; i++)
@@ -1280,14 +1283,14 @@ void BSP::ParseFace(const BSPFile::fsurface_t* InSurface, const BSPFile::fvertic
 
 	out->shader = GetShader(Endian.LittleLong(InSurface->shaderNum));
 
-	out->indexes.SetNumObjects(numIndexes);
-	out->vertices.SetNumObjects(numVerts);
+	out->indexes.resize(numIndexes);
+	out->vertices.resize(numVerts);
 
 	// copy vertexes
 	out->cullInfo.type = out->cullInfo.CULLINFO_PLANE | out->cullInfo.CULLINFO_BOX;
 	ClearBounds(out->cullInfo.bounds[0], out->cullInfo.bounds[1]);
 	InVertices += Endian.LittleLong(InSurface->firstVert);
-	Vertice *OutVertices = out->vertices.Data();
+	Vertice *OutVertices = out->vertices.data();
 	for (i = 0; i < numVerts; i++)
 	{
 		for (j = 0; j < 3; j++)
@@ -1320,7 +1323,7 @@ void BSP::ParseFace(const BSPFile::fsurface_t* InSurface, const BSPFile::fvertic
 	size_t badTriangles = 0;
 	InIndices += Endian.LittleLong(InSurface->firstIndex);
 	uint32_t* tri;
-	for (i = 0, tri = out->indexes.Data(); i < numIndexes; i += 3, tri += 3)
+	for (i = 0, tri = out->indexes.data(); i < numIndexes; i += 3, tri += 3)
 	{
 		for (j = 0; j < 3; j++)
 		{
@@ -1340,14 +1343,14 @@ void BSP::ParseFace(const BSPFile::fsurface_t* InSurface, const BSPFile::fvertic
 
 	if (badTriangles)
 	{
-		out->indexes.SetNumObjects(out->indexes.NumObjects() - badTriangles * 3);
+		out->indexes.resize(out->indexes.size() - badTriangles * 3);
 	}
 
 	for (i = 0; i < 3; i++) {
 		out->cullInfo.plane.normal[i] = Endian.LittleFloat(InSurface->lightmapVecs[2][i]);
 	}
 
-	out->cullInfo.plane.distance = (float)Vector::Dot(out->vertices[0].xyz, out->cullInfo.plane.normal);
+	out->cullInfo.plane.distance = (float)castVector(out->vertices[0].xyz).dot(castVector(out->cullInfo.plane.normal));
 	out->cullInfo.plane.type = PlaneTypeForNormal(out->cullInfo.plane.normal);
 }
 
@@ -1359,14 +1362,14 @@ void BSP::ParseTriSurf(const BSPFile::fsurface_t* InSurface, const BSPFile::fver
 
 	out->shader = GetShader(Endian.LittleLong(InSurface->shaderNum));
 
-	out->indexes.SetNumObjects(numIndexes);
-	out->vertices.SetNumObjects(numVerts);
+	out->indexes.resize(numIndexes);
+	out->vertices.resize(numVerts);
 
 	// copy vertexes
 	out->cullInfo.type = out->cullInfo.CULLINFO_BOX;
 	ClearBounds(out->cullInfo.bounds[0], out->cullInfo.bounds[1]);
 	InVertices += Endian.LittleLong(InSurface->firstVert);
-	Vertice *OutVertices = out->vertices.Data();
+	Vertice *OutVertices = out->vertices.data();
 	for (i = 0; i < numVerts; i++)
 	{
 		for (j = 0; j < 3; j++)
@@ -1399,7 +1402,7 @@ void BSP::ParseTriSurf(const BSPFile::fsurface_t* InSurface, const BSPFile::fver
 	size_t badTriangles = 0;
 	uint32_t* tri;
 	InIndices += Endian.LittleLong(InSurface->firstIndex);
-	for (i = 0, tri = out->indexes.Data(); i < numIndexes; i += 3, tri += 3)
+	for (i = 0, tri = out->indexes.data(); i < numIndexes; i += 3, tri += 3)
 	{
 		for (j = 0; j < 3; j++)
 		{
@@ -1419,7 +1422,7 @@ void BSP::ParseTriSurf(const BSPFile::fsurface_t* InSurface, const BSPFile::fver
 
 	if (badTriangles)
 	{
-		out->indexes.SetNumObjects(out->indexes.NumObjects() - badTriangles * 3);
+		out->indexes.resize(out->indexes.size() - badTriangles * 3);
 	}
 }
 
@@ -1449,10 +1452,10 @@ void BSP::LoadSurfaces(const BSPFile::GameLump* surfaces, const BSPFile::GameLum
 	const size_t count = surfaces->length / sizeof(BSPFile::fsurface_t);
 	if (count)
 	{
-		this->surfaces.SetNumObjects(count);
+		this->surfaces.resize(count);
 
 		const BSPFile::fsurface_t* in = (BSPFile::fsurface_t*)surfaces->buffer;
-		Surface* out = this->surfaces.Data();
+		Surface* out = this->surfaces.data();
 
 		const BSPFile::fvertice_t* InVerts = (BSPFile::fvertice_t*)vertices->buffer;
 		int32_t* InIndexes = (int32_t*)Indices->buffer;
@@ -1464,10 +1467,10 @@ void BSP::LoadSurfaces(const BSPFile::GameLump* surfaces, const BSPFile::GameLum
 			out->lightmapY = Endian.LittleLong(in->lightmapY);
 			out->lightmapWidth = Endian.LittleLong(in->lightmapWidth);
 			out->lightmapHeight = Endian.LittleLong(in->lightmapHeight);
-			out->lightmapOrigin = EndianHelpers::LittleVector(Endian, in->lightmapOrigin);
-			out->lightmapVecs[0] = EndianHelpers::LittleVector(Endian, in->lightmapVecs[0]);
-			out->lightmapVecs[1] = EndianHelpers::LittleVector(Endian, in->lightmapVecs[1]);
-			out->lightmapVecs[2] = EndianHelpers::LittleVector(Endian, in->lightmapVecs[2]);
+			EndianHelpers::LittleVector(Endian, in->lightmapOrigin, out->lightmapOrigin);
+			EndianHelpers::LittleVector(Endian, in->lightmapVecs[0], out->lightmapVecs[0]);
+			EndianHelpers::LittleVector(Endian, in->lightmapVecs[1], out->lightmapVecs[1]);
+			EndianHelpers::LittleVector(Endian, in->lightmapVecs[2], out->lightmapVecs[2]);
 
 			switch (Endian.LittleLong(in->surfaceType))
 			{
@@ -1496,10 +1499,10 @@ void BSP::LoadPlanes(const BSPFile::GameLump* GameLump)
 	const size_t count = GameLump->length / sizeof(BSPFile::fplane_t);
 	if (count)
 	{
-		planes.SetNumObjects(count);
+		planes.resize(count);
 
 		const BSPFile::fplane_t* in = (BSPFile::fplane_t*)GameLump->buffer;
-		Plane* out = planes.Data();
+		Plane* out = planes.data();
 
 		for (size_t i = 0; i < count; i++, in++, out++)
 		{
@@ -1529,10 +1532,10 @@ void BSP::LoadSideEquations(const BSPFile::GameLump* GameLump)
 	const size_t count = GameLump->length / sizeof(BSPFile::fsideequation_t);
 	if (count)
 	{
-		sideEquations.SetNumObjects(count);
+		sideEquations.resize(count);
 
 		const BSPFile::fsideequation_t* in = (BSPFile::fsideequation_t*)GameLump->buffer;
-		SideEquation* out = sideEquations.Data();
+		SideEquation* out = sideEquations.data();
 
 		for (size_t i = 0; i < count; i++, in++, out++)
 		{
@@ -1554,10 +1557,10 @@ void BSP::LoadBrushSides(const BSPFile::GameLump* GameLump)
 	const size_t count = GameLump->length / sizeof(BSPFile::fbrushSide_t);
 	if (count)
 	{
-		brushSides.SetNumObjects(count);
+		brushSides.resize(count);
 
 		const BSPFile::fbrushSide_t* in = (BSPFile::fbrushSide_t*)GameLump->buffer;
-		BrushSide* out = brushSides.Data();
+		BrushSide* out = brushSides.data();
 
 		for (size_t i = 0; i < count; i++, in++, out++)
 		{
@@ -1588,10 +1591,10 @@ void BSP::LoadBrushes(const BSPFile::GameLump* GameLump)
 	const size_t count = GameLump->length / sizeof(BSPFile::fbrush_t);
 	if (count)
 	{
-		brushes.SetNumObjects(count);
+		brushes.resize(count);
 
 		const BSPFile::fbrush_t* in = (BSPFile::fbrush_t*)GameLump->buffer;
-		Brush* out = brushes.Data();
+		Brush* out = brushes.data();
 
 		for (size_t i = 0; i < count; i++, in++, out++)
 		{
@@ -1620,10 +1623,10 @@ void BSP::LoadLeafs(const BSPFile::GameLump* GameLump)
 	const size_t count = GameLump->length / sizeof(BSPFile::fleaf_t);
 	if (count)
 	{
-		leafs.SetNumObjects(count);
+		leafs.resize(count);
 
 		const BSPFile::fleaf_t* in = (BSPFile::fleaf_t*)GameLump->buffer;
-		Leaf* out = leafs.Data();
+		Leaf* out = leafs.data();
 
 		for (size_t i = 0; i < count; ++i, ++in, ++out)
 		{
@@ -1641,8 +1644,8 @@ void BSP::LoadLeafs(const BSPFile::GameLump* GameLump)
 		}
 	}
 
-	areas.SetNumObjects(numAreas);
-	areaPortals.SetNumObjects(numAreas * numAreas);
+	areas.resize(numAreas);
+	areaPortals.resize(numAreas * numAreas);
 }
 
 void BSP::LoadLeafsOld(const BSPFile::GameLump* GameLump)
@@ -1657,10 +1660,10 @@ void BSP::LoadLeafsOld(const BSPFile::GameLump* GameLump)
 	const size_t count = GameLump->length / sizeof(BSPFile::fleaf_ver17_t);
 	if (count)
 	{
-		leafs.SetNumObjects(count);
+		leafs.resize(count);
 
 		const BSPFile::fleaf_ver17_t* in = (BSPFile::fleaf_ver17_t*)GameLump->buffer;
-		Leaf* out = leafs.Data();
+		Leaf* out = leafs.data();
 
 		for (size_t i = 0; i < count; ++i, ++in, ++out)
 		{
@@ -1676,8 +1679,8 @@ void BSP::LoadLeafsOld(const BSPFile::GameLump* GameLump)
 		}
 	}
 
-	areas.SetNumObjects(numAreas);
-	areaPortals.SetNumObjects(numAreas * numAreas);
+	areas.resize(numAreas);
+	areaPortals.resize(numAreas * numAreas);
 }
 
 void BSP::LoadLeafsBrushes(const BSPFile::GameLump* GameLump)
@@ -1689,7 +1692,7 @@ void BSP::LoadLeafsBrushes(const BSPFile::GameLump* GameLump)
 	const size_t count = GameLump->length / sizeof(uint32_t);
 	if (count)
 	{
-		leafBrushes.SetNumObjects(count);
+		leafBrushes.resize(count);
 
 		uint32_t* in = (uint32_t*)GameLump->buffer;
 
@@ -1708,12 +1711,12 @@ void BSP::LoadLeafSurfaces(const BSPFile::GameLump* GameLump)
 	const size_t count = GameLump->length / sizeof(uint32_t);
 	if (count)
 	{
-		leafSurfaces.SetNumObjectsUninitialized(count);
+		leafSurfaces.reserve(count);
 
 		const uint32_t* in = (uint32_t*)GameLump->buffer;
 
 		for (size_t i = 0; i < count; ++i) {
-			leafSurfaces[i] = Endian.LittleLong(in[i]);
+			leafSurfaces.push_back(Endian.LittleLong(in[i]));
 		}
 	}
 }
@@ -1727,10 +1730,10 @@ void BSP::LoadNodes(const BSPFile::GameLump* GameLump)
 	const size_t count = GameLump->length / sizeof(BSPFile::fnode_t);
 	if (count)
 	{
-		nodes.SetNumObjects(count);
+		nodes.resize(count);
 
 		BSPFile::fnode_t* in = (BSPFile::fnode_t*)GameLump->buffer;
-		Node* out = nodes.Data();
+		Node* out = nodes.data();
 
 		for (size_t i = 0; i < count; ++i, ++in, ++out)
 		{
@@ -1751,15 +1754,15 @@ void BSP::LoadVisibility(const BSPFile::GameLump* GameLump)
 	if (!count)
 	{
 		clusterBytes = (numClusters + 31) & ~31;
-		visibility.SetNumObjects(clusterBytes);
-		memset(visibility.Data(), 255, clusterBytes);
+		visibility.resize(clusterBytes);
+		memset(visibility.data(), 255, clusterBytes);
 		return;
 	}
 
-	visibility.SetNumObjects(count);
+	visibility.resize(count);
 	numClusters = Endian.LittleLong(((const uint32_t*)GameLump->buffer)[0]);
 	clusterBytes = Endian.LittleLong(((const uint32_t*)GameLump->buffer)[1]);
-	memcpy(visibility.Data(), (uint8_t*)GameLump->buffer + VIS_HEADER, count - VIS_HEADER);
+	memcpy(visibility.data(), (uint8_t*)GameLump->buffer + VIS_HEADER, count - VIS_HEADER);
 }
 
 void BSP::LoadSubmodels(const BSPFile::GameLump* GameLump)
@@ -1771,10 +1774,10 @@ void BSP::LoadSubmodels(const BSPFile::GameLump* GameLump)
 	const size_t count = GameLump->length / sizeof(BSPFile::fbmodel_t);
 	if (count)
 	{
-		brushModels.SetNumObjects(count);
+		brushModels.resize(count);
 
 		const BSPFile::fbmodel_t* in = (BSPFile::fbmodel_t*)GameLump->buffer;
-		Model* out = brushModels.Data();
+		Model* out = brushModels.data();
 
 		size_t numLeafBrushes = 0;
 		size_t numLeafSurfaces = 0;
@@ -1784,15 +1787,15 @@ void BSP::LoadSubmodels(const BSPFile::GameLump* GameLump)
 			numLeafSurfaces += Endian.LittleLong(in[i].numSurfaces);
 		}
 
-		size_t startLeafBrush = leafBrushes.NumObjects();
-		size_t startLeafSurf = leafSurfaces.NumObjects();
+		size_t startLeafBrush = leafBrushes.size();
+		size_t startLeafSurf = leafSurfaces.size();
 
 		if(numLeafBrushes) {
-			leafBrushes.SetNumObjectsUninitialized(startLeafBrush + numLeafBrushes);
+			leafBrushes.resize(startLeafBrush + numLeafBrushes);
 		}
 
 		if(numLeafSurfaces) {
-			leafSurfaces.SetNumObjectsUninitialized(startLeafSurf + numLeafSurfaces);
+			leafSurfaces.resize(startLeafSurf + numLeafSurfaces);
 		}
 
 		for (size_t i = 0; i < count; i++, in++, out++)
@@ -1803,8 +1806,10 @@ void BSP::LoadSubmodels(const BSPFile::GameLump* GameLump)
 			const uint32_t firstBrush = Endian.LittleLong(in->firstBrush);
 
 			// spread the mins / maxs by a pixel
-			out->bounds[0] = EndianHelpers::LittleVector(Endian, in->mins) - Vector(1, 1, 1);
-			out->bounds[1] = EndianHelpers::LittleVector(Endian, in->maxs) + Vector(1, 1, 1);
+			EndianHelpers::LittleVector(Endian, in->mins, out->bounds[0]);
+			EndianHelpers::LittleVector(Endian, in->maxs, out->bounds[1]);
+			castVector(out->bounds[0]) -= Eigen::Vector3f(1, 1, 1);
+			castVector(out->bounds[1]) += Eigen::Vector3f(1, 1, 1);
 
 			out->numSurfaces = numSurfaces;
 			if (out->numSurfaces) {
@@ -1865,16 +1870,16 @@ void BSP::LoadSphereLights(const BSPFile::GameLump* GameLump)
 	size_t NumLights = GameLump->length / sizeof(BSPFile::fsphereLight_t);
 	if (NumLights)
 	{
-		lights.SetNumObjects(NumLights);
+		lights.resize(NumLights);
 
 		const BSPFile::fsphereLight_t* in = (BSPFile::fsphereLight_t *)GameLump->buffer;
-		SphereLight* out = lights.Data();
+		SphereLight* out = lights.data();
 
 		for (size_t i = 0; i < NumLights; in++, out++, i++)
 		{
-			out->origin = EndianHelpers::LittleVector(Endian, in->origin);
-			out->color = EndianHelpers::LittleVector(Endian, in->color);
-			out->spotDirection = EndianHelpers::LittleVector(Endian, in->spot_dir);
+			EndianHelpers::LittleVector(Endian, in->origin, out->origin);
+			EndianHelpers::LittleVector(Endian, in->color, out->color);
+			EndianHelpers::LittleVector(Endian, in->spot_dir, out->spotDirection);
 
 			out->spotRadiusByDistance = Endian.LittleFloat(in->spot_radiusbydistance);
 			out->intensity = Endian.LittleFloat(in->intensity);
@@ -1893,16 +1898,16 @@ void BSP::LoadStaticModelDefs(const BSPFile::GameLump* GameLump)
 	const size_t NumStaticModels = GameLump->length / sizeof(BSPFile::fstaticModel_t);
 	if (NumStaticModels > 0)
 	{
-		staticModels.SetNumObjects(NumStaticModels);
+		staticModels.resize(NumStaticModels);
 
 		const BSPFile::fstaticModel_t* in = (BSPFile::fstaticModel_t *)GameLump->buffer;
-		StaticModel* out = staticModels.Data();
+		StaticModel* out = staticModels.data();
 
 		for (size_t i = 0; i < NumStaticModels; in++, out++, i++)
 		{
 			out->visCount = 0;
-			out->angles = EndianHelpers::LittleVector(Endian, in->angles);
-			out->origin = EndianHelpers::LittleVector(Endian, in->origin);
+			EndianHelpers::LittleVector(Endian, in->angles, out->angles);
+			EndianHelpers::LittleVector(Endian, in->origin, out->origin);
 			out->scale = Endian.LittleFloat(in->scale);
 			out->firstVertexData = Endian.LittleLong(in->firstVertexData);
 			out->numVertexData = Endian.LittleLong(in->numVertexData);
@@ -1995,10 +2000,10 @@ void BSP::LoadTerrain(const BSPFile::GameLump* GameLump)
 	const size_t count = GameLump->length / sizeof(BSPFile::fterrainPatch_t);
 	if (count > 0)
 	{
-		terrainPatches.SetNumObjects(count);
+		terrainPatches.resize(count);
 
 		BSPFile::fterrainPatch_t* in = (BSPFile::fterrainPatch_t *)GameLump->buffer;
-		TerrainPatch* out = terrainPatches.Data();
+		TerrainPatch* out = terrainPatches.data();
 
 		for (size_t i = 0; i < count; in++, out++, i++) {
 			UnpackTerraPatch(in, out);
@@ -2015,7 +2020,7 @@ void BSP::LoadTerrainIndexes(const BSPFile::GameLump* GameLump)
 	const size_t count = GameLump->length / sizeof(uint16_t);
 	if (count > 0)
 	{
-		leafTerrains.SetNumObjects(count);
+		leafTerrains.resize(count);
 
 		const uint16_t* in = (uint16_t*)GameLump->buffer;
 
@@ -2030,24 +2035,24 @@ void BSP::FillCollisionWorld(CollisionWorld& cm)
 	// Pre-allocate data
 	cm.reserve(
 		0,
-		shaders.NumObjects(),
-		sideEquations.NumObjects(),
-		brushSides.NumObjects(),
-		planes.NumObjects(),
-		nodes.NumObjects(),
-		leafs.NumObjects(),
-		leafBrushes.NumObjects(),
-		leafSurfaces.NumObjects(),
-		leafTerrains.NumObjects(),
-		brushModels.NumObjects(),
-		brushes.NumObjects(),
-		surfaces.NumObjects(),
-		terrainPatches.NumObjects(),
-		surfaces.NumObjects()
+		shaders.size(),
+		sideEquations.size(),
+		brushSides.size(),
+		planes.size(),
+		nodes.size(),
+		leafs.size(),
+		leafBrushes.size(),
+		leafSurfaces.size(),
+		leafTerrains.size(),
+		brushModels.size(),
+		brushes.size(),
+		surfaces.size(),
+		terrainPatches.size(),
+		surfaces.size()
 	);
 
 	// Put shaders
-	for (size_t i = 0; i < shaders.NumObjects(); ++i)
+	for (size_t i = 0; i < shaders.size(); ++i)
 	{
 		const BSPData::Shader& shader = shaders[i];
 
@@ -2058,7 +2063,7 @@ void BSP::FillCollisionWorld(CollisionWorld& cm)
 	}
 
 	// Put side equations
-	for (size_t i = 0; i < sideEquations.NumObjects(); ++i)
+	for (size_t i = 0; i < sideEquations.size(); ++i)
 	{
 		const SideEquation& sideEq = sideEquations[i];
 
@@ -2068,7 +2073,7 @@ void BSP::FillCollisionWorld(CollisionWorld& cm)
 	}
 
 	// Put planes
-	for (size_t i = 0; i < planes.NumObjects(); ++i)
+	for (size_t i = 0; i < planes.size(); ++i)
 	{
 		const Plane& plane = planes[i];
 
@@ -2080,44 +2085,44 @@ void BSP::FillCollisionWorld(CollisionWorld& cm)
 	}
 
 	// Put brushsides
-	for (size_t i = 0; i < brushSides.NumObjects(); ++i)
+	for (size_t i = 0; i < brushSides.size(); ++i)
 	{
 		const BrushSide& bside = brushSides[i];
 
 		collisionBrushSide_t* colBside = cm.createBrushSide();
-		colBside->pEq = bside.Eq ? cm.getSideEquation(bside.Eq - sideEquations.Data()) : nullptr;
-		colBside->plane = cm.getPlane(bside.plane - planes.Data());
-		colBside->shaderNum = bside.shader - shaders.Data();
+		colBside->pEq = bside.Eq ? cm.getSideEquation(bside.Eq - sideEquations.data()) : nullptr;
+		colBside->plane = cm.getPlane(bside.plane - planes.data());
+		colBside->shaderNum = bside.shader - shaders.data();
 		colBside->surfaceFlags = bside.surfaceFlags;
 	}
 
 	// Put nodes
-	for (size_t i = 0; i < nodes.NumObjects(); ++i)
+	for (size_t i = 0; i < nodes.size(); ++i)
 	{
 		const Node& node = nodes[i];
 
 		collisionNode_t* colNode = cm.createNode();
-		colNode->plane = cm.getPlane(node.plane - planes.Data());
+		colNode->plane = cm.getPlane(node.plane - planes.data());
 		colNode->children[0] = node.children[0];
 		colNode->children[1] = node.children[1];
 	}
 
 	// Put brushes
-	for (size_t i = 0; i < brushes.NumObjects(); ++i)
+	for (size_t i = 0; i < brushes.size(); ++i)
 	{
 		const Brush& brush = brushes[i];
 
 		collisionBrush_t* colBrush = cm.createBrush();
-		colBrush->shaderNum = brush.shader - shaders.Data();
+		colBrush->shaderNum = brush.shader - shaders.data();
 		colBrush->numsides = brush.numsides;
-		colBrush->sides = cm.getBrushSide(brush.sides - brushSides.Data());
-		colBrush->bounds[0] = brush.bounds[0];
-		colBrush->bounds[1] = brush.bounds[1];
+		colBrush->sides = cm.getBrushSide(brush.sides - brushSides.data());
+		VectorCopy(brush.bounds[0], colBrush->bounds[0]);
+		VectorCopy(brush.bounds[1], colBrush->bounds[1]);
 		colBrush->contents = brush.contents;
 	}
 
 	// Put patches
-	for (size_t i = 0; i < surfaces.NumObjects(); ++i)
+	for (size_t i = 0; i < surfaces.size(); ++i)
 	{
 		const Surface& patch = surfaces[i];
 
@@ -2126,15 +2131,15 @@ void BSP::FillCollisionWorld(CollisionWorld& cm)
 			const BSPData::Shader* shader = patch.GetShader();
 
 			collisionPatch_t* colPatch = cm.createPatch();
-			colPatch->shaderNum = shader - shaders.Data();
+			colPatch->shaderNum = shader - shaders.data();
 			colPatch->surfaceFlags = shader->surfaceFlags;
 			colPatch->contents = shader->contentFlags;
 			colPatch->subdivisions = shader->subdivisions;
 
 			const PatchCollide* pc = patch.GetPatchCollide();
 
-			colPatch->pc.bounds[0] = pc->bounds[0];
-			colPatch->pc.bounds[1] = pc->bounds[1];
+			VectorCopy(pc->bounds[0], colPatch->pc.bounds[0]);
+			VectorCopy(pc->bounds[1], colPatch->pc.bounds[1]);
 			colPatch->pc.numFacets = pc->numFacets;
 			colPatch->pc.facets = new facet_t[pc->numFacets];
 			colPatch->pc.numPlanes = pc->numPlanes;
@@ -2176,7 +2181,7 @@ void BSP::FillCollisionWorld(CollisionWorld& cm)
 	}
 
 	// Put terrains
-	for (size_t i = 0; i < terrainPatches.NumObjects(); ++i)
+	for (size_t i = 0; i < terrainPatches.size(); ++i)
 	{
 		const TerrainPatch& terrain = terrainPatches[i];
 		const BSPData::Shader* shader = terrain.shader;
@@ -2185,16 +2190,16 @@ void BSP::FillCollisionWorld(CollisionWorld& cm)
 		GenerateTerrainCollide(&terrain, collision);
 
 		collisionTerrain_t* colTerrain = cm.createTerrain();
-		colTerrain->tc.vBounds[0] = collision.vBounds[0];
-		colTerrain->tc.vBounds[1] = collision.vBounds[1];
+		VectorCopy(collision.vBounds[0], colTerrain->tc.vBounds[0]);
+		VectorCopy(collision.vBounds[1], colTerrain->tc.vBounds[1]);
 		memcpy(colTerrain->tc.squares, collision.squares, sizeof(colTerrain->tc.squares));
 		colTerrain->contents = shader->contentFlags;
-		colTerrain->shaderNum = shader - shaders.Data();
+		colTerrain->shaderNum = shader - shaders.data();
 		colTerrain->surfaceFlags = shader->surfaceFlags;
 	}
 
 	// Put leafs
-	for (size_t i = 0; i < leafs.NumObjects(); ++i)
+	for (size_t i = 0; i < leafs.size(); ++i)
 	{
 		const Leaf& leaf = leafs[i];
 
@@ -2210,7 +2215,7 @@ void BSP::FillCollisionWorld(CollisionWorld& cm)
 	}
 
 	// Put leaf brushes
-	for (size_t i = 0; i < leafBrushes.NumObjects(); ++i)
+	for (size_t i = 0; i < leafBrushes.size(); ++i)
 	{
 		const uintptr_t leafNum = leafBrushes[i];
 
@@ -2218,7 +2223,7 @@ void BSP::FillCollisionWorld(CollisionWorld& cm)
 	}
 
 	// Put leaf surfaces
-	for (size_t i = 0; i < leafSurfaces.NumObjects(); ++i)
+	for (size_t i = 0; i < leafSurfaces.size(); ++i)
 	{
 		const uintptr_t leafNum = leafSurfaces[i];
 
@@ -2226,21 +2231,21 @@ void BSP::FillCollisionWorld(CollisionWorld& cm)
 	}
 
 	// Put leaf terrains
-	for (size_t i = 0; i < leafTerrains.NumObjects(); ++i)
+	for (size_t i = 0; i < leafTerrains.size(); ++i)
 	{
 		const TerrainPatch* leafTerrain = leafTerrains[i];
 
-		cm.createLeafTerrain(cm.getTerrain(leafTerrain - terrainPatches.Data()));
+		cm.createLeafTerrain(cm.getTerrain(leafTerrain - terrainPatches.data()));
 	}
 
 	// Put brushmodels
-	for (size_t i = 0; i < brushModels.NumObjects(); ++i)
+	for (size_t i = 0; i < brushModels.size(); ++i)
 	{
 		const Model& bmodel = brushModels[i];
 
 		collisionModel_t* colModel = cm.createModel();
-		colModel->mins = bmodel.bounds[0];
-		colModel->maxs = bmodel.bounds[1];
+		VectorCopy(bmodel.bounds[0], colModel->mins);
+		VectorCopy(bmodel.bounds[1], colModel->maxs);
 		colModel->leaf.area = bmodel.leaf.area;
 		colModel->leaf.cluster = bmodel.leaf.cluster;
 		colModel->leaf.firstLeafBrush = (uint32_t)bmodel.leaf.firstLeafBrush;
@@ -2281,7 +2286,7 @@ void BSP::FloodAreaConnections()
 	uint32_t floodValid = 1;
 	uint32_t floodNum = 0;
 
-	for (uint32_t i = 0; i < areas.NumObjects(); ++i)
+	for (uint32_t i = 0; i < areas.size(); ++i)
 	{
 		Area* area = &areas[i];
 		if (area->floodValid == floodValid) {
@@ -2392,14 +2397,14 @@ void BSP::CreateEntities()
 	while (script.TokenAvailable(true))
 	{
 		const char *token = script.GetToken(false);
-		if (!str::icmp(token, "{"))
+		if (!strHelpers::icmp(token, "{"))
 		{
 			PropertyMap propertiesMap;
 
 			while (script.TokenAvailable(true))
 			{
 				token = script.GetToken(true);
-				if (!str::icmp(token, "}")) {
+				if (!strHelpers::icmp(token, "}")) {
 					break;
 				}
 
@@ -2410,41 +2415,41 @@ void BSP::CreateEntities()
 				str key = token;
 				str value;
 
-				key.tolower();
+				strHelpers::tolower(key.begin(), key.end());
 				//std::transform(key.begin(), key.end(), key.begin(), ::tolower);
 
 				/*
-				if (!str::icmp(token, "targetname"))
+				if (!strHelpers::icmp(token, "targetname"))
 				{
 					token = script.GetToken(false);
 					propertiesMap.insert_or_assign("targetname", token);
 				}
-				else if (!str::icmp(token, "target"))
+				else if (!strHelpers::icmp(token, "target"))
 				{
 					token = script.GetToken(false);
 					propertiesMap.insert_or_assign("target", token);
 				}
-				else if (!str::icmp(token, "classname"))
+				else if (!strHelpers::icmp(token, "classname"))
 				{
 					token = script.GetToken(false);
 					propertiesMap.insert_or_assign("classname", token);
 				}
-				else if (!str::icmp(token, "model"))
+				else if (!strHelpers::icmp(token, "model"))
 				{
 					token = script.GetToken(false);
 					propertiesMap.insert_or_assign("model", CanonicalModelName(token));
 				}
-				else if (!str::icmp(token, "origin"))
+				else if (!strHelpers::icmp(token, "origin"))
 				{
 					token = script.GetString(false);
 					propertiesMap.insert_or_assign("origin", token);
 				}
-				else if (!str::icmp(token, "angles"))
+				else if (!strHelpers::icmp(token, "angles"))
 				{
 					token = script.GetString(false);
 					propertiesMap.insert_or_assign("angles", token);
 				}
-				else if (!str::icmp(token, "angle"))
+				else if (!strHelpers::icmp(token, "angle"))
 				{
 					token = script.GetToken(false);
 					propertiesMap.insert_or_assign("angles", "0 " + str(token) + " 0");
@@ -2499,7 +2504,7 @@ void BSP::CreateEntities()
 			}
 			*/
 
-			LevelEntity* ent = new LevelEntity(entities.NumObjects());
+			LevelEntity* ent = new LevelEntity(entities.size());
 
 			// Set all (members) properties
 			for (PropertyMap::iterator it = propertiesMap.begin(); it != propertiesMap.end(); ++it)
@@ -2513,13 +2518,14 @@ void BSP::CreateEntities()
 				ent->SetTargetName("world");
 			}
 
-			// Insert the entity to the list of named entities
-			if (*ent->GetTargetName()) {
-				//targetList[ent->GetTargetName()].push_back(ent);
-				targetList.addKeyValue(ent->GetTargetName()).AddObject(ent);
+			if (*ent->GetTargetName())
+			{
+				// Insert the entity to the list of named entities
+				auto pair = targetList.insert({ str(ent->GetTargetName()), std::vector<LevelEntity*>() });
+				pair.first->second.push_back(ent);
 			}
 
-			entities.AddObject(ent);
+			entities.push_back(ent);
 		}
 		else {
 			throw BSPError::ExpectedInitBrace(*token);
@@ -2533,21 +2539,21 @@ void BSP::CreateEntities()
 		entityStringLength = 0;
 	}
 
-	MOHPC_LOG(Info, "created %d entities", entities.NumObjects());
+	MOHPC_LOG(Info, "created %d entities", entities.size());
 }
 
 void BSP::MapBrushes()
 {
 	size_t numParentedBrushes = 0;
-	const size_t numBrushes = brushes.NumObjects();
+	const size_t numBrushes = brushes.size();
 
-	Brush* brushesList = brushes.Data();
+	Brush* brushesList = brushes.data();
 
 	// Connects brushes by finding touching brushes that share at least one same shader
 	for (size_t b = 0; b < numBrushes; b++)
 	{
 		Brush* brush = &brushesList[b];
-		brush->name = "brush" + str(b);
+		brush->name = "brush" + std::to_string(b);
 		for (size_t i = 0; i < numBrushes; i++)
 		{
 			Brush* brush2 = &brushesList[i];
@@ -2597,7 +2603,7 @@ void BSP::MapBrushes()
 							continue;
 						}
 
-						if (!str::icmp(brushside2->shader->shaderName.c_str(), brushside->shader->shaderName.c_str()))
+						if (!strHelpers::icmp(brushside2->shader->shaderName.c_str(), brushside->shader->shaderName.c_str()))
 						{
 							// Found one that matches
 							bFound = true;
@@ -2620,7 +2626,7 @@ void BSP::MapBrushes()
 		}
 	}
 
-	assert(brushModels.NumObjects());
+	assert(brushModels.size());
 	Model* worldModel = &brushModels[0];
 
 	// Map brushes
@@ -2631,15 +2637,15 @@ void BSP::MapBrushes()
 	bool bBrushHasMappedSurface = false;
 
 	const size_t numSurfaces = worldModel->numSurfaces;
-	const size_t numTerrainSurfaces = terrainSurfaces.NumObjects();
+	const size_t numTerrainSurfaces = terrainSurfaces.size();
 	const size_t numTotalSurfaces = numSurfaces + numTerrainSurfaces;
 	bool *mappedSurfaces = new bool[numSurfaces]();
 
 	std::unordered_map<const Brush*, SurfacesGroup*> brushToSurfaces(numBrushes);
 	surfacesGroups.reserve(numTotalSurfaces);
 
-	const Surface *surfacesList = surfaces.Data();
-	const Surface *terrainSurfacesList = terrainSurfaces.Data();
+	const Surface *surfacesList = surfaces.data();
+	const Surface *terrainSurfacesList = terrainSurfaces.data();
 
 	// Group surfaces with brushes
 	for (size_t b = 0; b < numBrushes; b++)
@@ -2652,8 +2658,8 @@ void BSP::MapBrushes()
 		}
 
 		//const str& brushname = rootbrush->name;
-		const Vector& mins = brush->bounds[0];
-		const Vector& maxs = brush->bounds[1];
+		const_vec3p_t mins = brush->bounds[0];
+		const_vec3p_t maxs = brush->bounds[1];
 
 		auto it = brushToSurfaces.find(rootbrush);
 
@@ -2671,7 +2677,7 @@ void BSP::MapBrushes()
 					for (size_t s = 0; s < brush->numsides; s++)
 					{
 						const BrushSide* side = &brush->sides[s];
-						if (!str::icmp(side->shader->shaderName.c_str(), surf->shader->shaderName.c_str()))
+						if (!strHelpers::icmp(side->shader->shaderName.c_str(), surf->shader->shaderName.c_str()))
 						{
 							brush->surfaces.push_back(surf);
 
@@ -2679,7 +2685,7 @@ void BSP::MapBrushes()
 							if (it == brushToSurfaces.end())
 							{
 								sg = new SurfacesGroup;
-								sg->name = "surfacesgroup" + str(numSurfacesGroups); // std::to_string(numSurfacesGroups);
+								sg->name = "surfacesgroup" + std::to_string(numSurfacesGroups); // std::to_string(numSurfacesGroups);
 								surfacesGroups.push_back(sg);
 								auto res = brushToSurfaces.emplace(rootbrush, sg);
 								assert(res.second);
@@ -2721,7 +2727,7 @@ void BSP::MapBrushes()
 	// Add the LOD terrain
 	SurfacesGroup *terSg = new SurfacesGroup;
 	terSg->name = "lod_terrain";
-	terSg->surfaces.SetNumObjects(numTerrainSurfaces);
+	terSg->surfaces.resize(numTerrainSurfaces);
 
 	for (size_t k = 0; k < numTerrainSurfaces; k++)
 	{
@@ -2734,7 +2740,7 @@ void BSP::MapBrushes()
 
 	// Gather patches
 	{
-		mfuse::con::Container<Patch> patchList;
+		std::vector<Patch> patchList;
 		patchList.reserve(numSurfaces);
 
 		for (size_t k = 0; k < numSurfaces; k++)
@@ -2746,7 +2752,7 @@ void BSP::MapBrushes()
 			}
 		}
 
-		const size_t numPatches = patchList.NumObjects();
+		const size_t numPatches = patchList.size();
 		for (size_t k = 0; k < numPatches; k++)
 		{
 			Patch* patch1 = &patchList[k];
@@ -2785,13 +2791,13 @@ void BSP::MapBrushes()
 				if (!rootPatch->surfaceGroup)
 				{
 					rootPatch->surfaceGroup = new SurfacesGroup;
-					rootPatch->surfaceGroup->name = "meshpatch_grouped" + str(numGroupedPatches++); // std::to_string(numGroupedPatches++);
+					rootPatch->surfaceGroup->name = "meshpatch_grouped" + std::to_string(numGroupedPatches++); // std::to_string(numGroupedPatches++);
 					surfacesGroups.push_back(rootPatch->surfaceGroup);
 				}
 
 				SurfacesGroup *sg = rootPatch->surfaceGroup;
 
-				sg->surfaces.reserve(sg->surfaces.NumObjects() + numSurfaces);
+				sg->surfaces.reserve(sg->surfaces.size() + numSurfaces);
 				for (Patch* p = patch; p; p = p->parent)
 				{
 					bool& isMappedSurface = mappedSurfaces[p->surface - worldModel->surface];
@@ -2813,7 +2819,7 @@ void BSP::MapBrushes()
 			const Surface *surf = &worldModel->surface[k];
 
 			SurfacesGroup *sg = new SurfacesGroup;
-			sg->name = "surfacesgroup_unmapped" + str(numUnmappedSurfaces); // std::to_string(numUnmappedSurfaces);
+			sg->name = "surfacesgroup_unmapped" + std::to_string(numUnmappedSurfaces); // std::to_string(numUnmappedSurfaces);
 			sg->surfaces.push_back(surf);
 			surfacesGroups.push_back(sg);
 
@@ -2822,52 +2828,52 @@ void BSP::MapBrushes()
 	}
 
 	// Calculate the origin for each group of surfaces
-	for (size_t i = 0; i < surfacesGroups.NumObjects(); i++)
+	for (size_t i = 0; i < surfacesGroups.size(); i++)
 	{
 		SurfacesGroup *sg = surfacesGroups[i];
 
-		Vector avg(0, 0, 0);
+		Eigen::Vector3f avg(0, 0, 0);
 		size_t numVertices = 0;
 
-		for (size_t k = 0; k < sg->surfaces.NumObjects(); k++)
+		for (size_t k = 0; k < sg->surfaces.size(); k++)
 		{
 			const Surface* surf = sg->surfaces[k];
 
-			for (size_t v = 0; v < surf->vertices.NumObjects(); v++)
+			for (size_t v = 0; v < surf->vertices.size(); v++)
 			{
 				const Vertice* vert = &surf->vertices[v];
 
-				avg += vert->xyz;
+				avg += castVector(vert->xyz);
 
 				AddPointToBounds(surf->vertices[v].xyz, sg->bounds[0], sg->bounds[1]);
 			}
 
-			numVertices += surf->vertices.NumObjects();
+			numVertices += surf->vertices.size();
 		}
 
-		sg->origin = avg / (float)numVertices;
+		castVector(sg->origin) = avg / (float)numVertices;
 	}
 
 	surfacesGroups.shrink_to_fit();
 	delete[] mappedSurfaces;
 }
 
-uintptr_t BSP::PointLeafNum(const Vector p)
+uintptr_t BSP::PointLeafNum(const vec3r_t p)
 {
-	if (!nodes.NumObjects()) {
+	if (!nodes.size()) {
 		return 0;
 	}
 
 	return PointLeafNum_r(p, 0);
 }
 
-uintptr_t BSP::PointLeafNum_r(const Vector p, intptr_t num)
+uintptr_t BSP::PointLeafNum_r(const vec3r_t p, intptr_t num)
 {
 	float d;
 
 	while (num >= 0)
 	{
-		const Node* node = nodes.Data() + num;
+		const Node* node = nodes.data() + num;
 		const Plane* plane = node->plane;
 
 		if (plane->type < Plane::PLANE_NON_AXIAL) {
@@ -2884,6 +2890,21 @@ uintptr_t BSP::PointLeafNum_r(const Vector p, intptr_t num)
 	}
 
 	return -1 - num;
+}
+
+Vertice::Vertice()
+	: xyz{ 0 }
+	, st{ 0 }
+	, lightmap{ 0 }
+	, normal{ 0 }
+	, color{ 0 }
+{
+}
+
+PatchPlane::PatchPlane()
+	: plane{ 0 }
+	, signbits{ 0 }
+{
 }
 
 BSPError::BadHeader::BadHeader(const uint8_t inHeader[4])

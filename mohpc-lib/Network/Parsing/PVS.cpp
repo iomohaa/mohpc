@@ -84,8 +84,8 @@ public:
 
 	radarInfo_t writeNonPVSClient(const pvsParm_t& parm, const radarUnpacked_t& unpacked) const override
 	{
-		const float relx = unpacked.x - parm.origin.x;
-		const float rely = unpacked.y - parm.origin.y;
+		const float relx = unpacked.x - parm.origin[0];
+		const float rely = unpacked.y - parm.origin[1];
 
 		const int8_t yaw = int8_t(unpacked.yaw / radarInfo_t::getYawPrecision());
 		int8_t flags = 0;

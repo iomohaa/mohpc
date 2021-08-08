@@ -43,8 +43,7 @@ void ServerSnapshotManager::parseSnapshot(
 	const ServerGameState& clGameState,
 	ClientTime& clientTime,
 	ICommandSequence* serverCommands,
-	const OutgoingPackets& outPackets,
-	uint64_t currentTime,
+	tickTime_t currentTime,
 	uint32_t serverMessageSequence,
 	uint32_t outSequenceNum
 )
@@ -60,7 +59,7 @@ void ServerSnapshotManager::parseSnapshot(
 
 	rawSnapshot_t newSnap;
 
-	snapshotParser->parseSnapshot(currentTime,
+	snapshotParser->parseSnapshot(
 		msg,
 		clGameState.get(),
 		serverCommands,
@@ -88,11 +87,10 @@ void ServerSnapshotManager::parseSnapshot(
 
 	// set the new snap and calculate the ping
 	setNewSnap(newSnap);
-	calculatePing(currentTime, outPackets, outSequenceNum);
 
 	Parsing::pvsParm_t parm;
 	parm.clientNum = clGameState.getClientNum();
-	parm.origin = currentSnap.ps.getOrigin();
+	VectorCopy(currentSnap.ps.getOrigin(), parm.origin);
 	// FIXME: make the value modifiable as an option?
 	// currently 1 radar unit = 63 world units
 	parm.radarRange = radarInfo_t::getCoordPrecision();
@@ -145,22 +143,6 @@ void ServerSnapshotManager::updateSnapFlags()
 	lastSnapFlags = currentSnap.snapFlags;
 }
 
-void ServerSnapshotManager::calculatePing(uint64_t currentTime, const OutgoingPackets& outPackets, uint32_t sequenceNum)
-{
-	currentSnap.ping = 999;
-
-	uint16_t ping = 0;
-	for (size_t i = 0; i < PACKET_BACKUP; ++i)
-	{
-		const uintptr_t packetNum = (sequenceNum - 1 - i) & PACKET_MASK;
-		if (currentSnap.ps.commandTime >= outPackets[packetNum].p_serverTime)
-		{
-			currentSnap.ping = (uint32_t)(currentTime - outPackets[packetNum].p_currentTime);
-			break;
-		}
-	}
-}
-
 bool ServerSnapshotManager::checkTime(ClientTime& clientTime)
 {
 	if (!snapActive)
@@ -178,6 +160,7 @@ bool ServerSnapshotManager::checkTime(ClientTime& clientTime)
 	}
 
 	// already active or no new snapshots
+	newSnapshots = false;
 	return false;
 }
 
@@ -223,7 +206,6 @@ bool ServerSnapshotManager::getSnapshot(uintptr_t snapshotNum, SnapshotInfo& out
 	// Copy snapshot data
 	outSnapshot.snapFlags = foundSnap->snapFlags;
 	outSnapshot.serverCommandSequence = foundSnap->serverCommandNum;
-	outSnapshot.ping = foundSnap->ping;
 	outSnapshot.serverTime = foundSnap->serverTime;
 	memcpy(outSnapshot.areamask, foundSnap->areamask, sizeof(outSnapshot.areamask));
 	outSnapshot.ps = foundSnap->ps;
@@ -258,7 +240,7 @@ bool ServerSnapshotManager::hasNewSnapshots() const
 	return newSnapshots;
 }
 
-uint32_t ServerSnapshotManager::getServerTime() const
+netTime_t ServerSnapshotManager::getServerTime() const
 {
 	return currentSnap.serverTime;
 }

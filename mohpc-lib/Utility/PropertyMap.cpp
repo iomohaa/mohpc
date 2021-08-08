@@ -21,7 +21,7 @@ PropertyDef::PropertyDef(const str& inPropertyName)
 
 bool PropertyDef::operator<(const PropertyDef& right) const
 {
-	return str::icmp(propertyName, right.propertyName) < 0;
+	return strHelpers::icmp(propertyName.c_str(), right.propertyName.c_str()) < 0;
 }
 
 const char* PropertyDef::GetPropertyName() const
@@ -174,14 +174,15 @@ long double PropertyObject::GetPropertyLongDoubleValue(const char* Key, long dou
 	return std::stold(val->c_str());
 }
 
-Vector PropertyObject::GetPropertyVectorValue(const char* Key, const Vector& defaultValue) const
+void PropertyObject::GetPropertyVectorValue(const char* Key, vec3r_t out, const vec3r_t defaultValue) const
 {
 	const str* val = GetPropertyValuePointer(Key);
 	if (!val)
 	{
-		return defaultValue;
+		VectorCopy(defaultValue, out);
+		return;
 	}
-	return Vector(val->c_str());
+	VectorFromString(val->c_str(), out);
 }
 
 const str* PropertyObject::GetPropertyValuePointer(const char* Key) const

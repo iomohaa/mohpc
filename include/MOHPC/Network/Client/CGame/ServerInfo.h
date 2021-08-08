@@ -3,6 +3,7 @@
 #include "../../NetGlobal.h"
 #include "../../Types/Protocol.h"
 #include "../../../Common/str.h"
+#include "../../../Utility/TickTypes.h"
 
 #include "GameType.h"
 
@@ -89,16 +90,16 @@ namespace Network
 			cgsInfo();
 
 			/** Return the server time at which the match has started. */
-			MOHPC_NET_EXPORTS uint64_t getMatchStartTime() const;
+			MOHPC_NET_EXPORTS tickTime_t getMatchStartTime() const;
 
 			/** Return the server time at which the match has ended. */
-			MOHPC_NET_EXPORTS uint64_t getMatchEndTime() const;
+			MOHPC_NET_EXPORTS tickTime_t getMatchEndTime() const;
 
 			/** Return the server time at which the level has started. */
-			MOHPC_NET_EXPORTS uint64_t getLevelStartTime() const;
+			MOHPC_NET_EXPORTS tickTime_t getLevelStartTime() const;
 
 			/** Get the last lag time. */
-			MOHPC_NET_EXPORTS uint64_t getServerLagTime() const;
+			MOHPC_NET_EXPORTS tickTime_t getServerLagTime() const;
 
 			/** Return the current game type. */
 			MOHPC_NET_EXPORTS gameType_e getGameType() const;
@@ -186,10 +187,10 @@ namespace Network
 			MOHPC_NET_EXPORTS const char* getScoreboardPicOver() const;
 
 		public:
-			uint64_t matchStartTime;
-			uint64_t matchEndTme;
-			uint64_t levelStartTime;
-			uint64_t serverLagTime;
+			tickTime_t matchStartTime;
+			tickTime_t matchEndTme;
+			tickTime_t levelStartTime;
+			tickTime_t serverLagTime;
 			str mapName;
 			str mapFilename;
 			str alliedText[NUM_TEAM_OBJECTIVES];

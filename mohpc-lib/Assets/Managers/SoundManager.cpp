@@ -12,43 +12,43 @@ using namespace MOHPC;
 
 static SoundChannel_e S_ChannelNameToNum(const char *pszName)
 {
-	if (!str::icmp(pszName, "auto"))
+	if (!strHelpers::icmp(pszName, "auto"))
 	{
 		return CHAN_AUTO;
 	}
-	else if (!str::icmp(pszName, "local"))
+	else if (!strHelpers::icmp(pszName, "local"))
 	{
 		return CHAN_LOCAL;
 	}
-	else if (!str::icmp(pszName, "weapon"))
+	else if (!strHelpers::icmp(pszName, "weapon"))
 	{
 		return CHAN_WEAPON;
 	}
-	else if (!str::icmp(pszName, "voice"))
+	else if (!strHelpers::icmp(pszName, "voice"))
 	{
 		return CHAN_VOICE;
 	}
-	else if (!str::icmp(pszName, "item"))
+	else if (!strHelpers::icmp(pszName, "item"))
 	{
 		return CHAN_ITEM;
 	}
-	else if (!str::icmp(pszName, "body"))
+	else if (!strHelpers::icmp(pszName, "body"))
 	{
 		return CHAN_BODY;
 	}
-	else if (!str::icmp(pszName, "dialog"))
+	else if (!strHelpers::icmp(pszName, "dialog"))
 	{
 		return CHAN_DIALOG;
 	}
-	else if (!str::icmp(pszName, "dialog_secondary"))
+	else if (!strHelpers::icmp(pszName, "dialog_secondary"))
 	{
 		return CHAN_DIALOG_SECONDARY;
 	}
-	else if (!str::icmp(pszName, "weaponidle"))
+	else if (!strHelpers::icmp(pszName, "weaponidle"))
 	{
 		return CHAN_WEAPONIDLE;
 	}
-	else if (!str::icmp(pszName, "menu"))
+	else if (!strHelpers::icmp(pszName, "menu"))
 	{
 		return CHAN_MENU;
 	}
@@ -71,12 +71,12 @@ size_t SoundHash::operator()(const str& Keyval) const
 
 bool SoundEqual::operator()(const str& Left, const str& Right) const
 {
-	return Left.length() == Right.length() ? !str::icmp(Left.c_str(), Right.c_str()) : false;
+	return Left.length() == Right.length() ? !strHelpers::icmp(Left.c_str(), Right.c_str()) : false;
 }
 
 bool SoundLess::operator()(const SoundNode* Left, const SoundNode* Right) const
 {
-	return str::icmp(Left->GetAliasName(), Right->GetAliasName()) < 0;
+	return strHelpers::icmp(Left->GetAliasName(), Right->GetAliasName()) < 0;
 }
 
 SoundResults::SoundResults()
@@ -218,7 +218,7 @@ void SoundManager::Init()
 
 	MOHPC_LOG(Info, "Loading sound aliases.");
 
-	mfuse::con::Container<const char*> categoryList;
+	std::vector<const char*> categoryList;
 	GetFileManager()->GetCategoryList(categoryList);
 
 	numNodes = 0;
@@ -348,7 +348,7 @@ SoundResults SoundManager::ParseUbersound(const char* filename, const char* cate
 		while (script.TokenAvailable(true))
 		{
 			const char* token = script.GetToken(true);
-			if (!str::icmp(token, "aliascache") || !str::icmp(token, "alias"))
+			if (!strHelpers::icmp(token, "aliascache") || !strHelpers::icmp(token, "alias"))
 			{
 				const size_t soundSize = ParseAlias(script, soundNode) + sizeof(SoundNode);
 				if (soundSize)
@@ -366,12 +366,12 @@ SoundResults SoundManager::ParseUbersound(const char* filename, const char* cate
 					results.totalNodesSize += soundSize;
 				}
 			}
-			else if(!str::icmp(token, "end"))
+			else if(!strHelpers::icmp(token, "end"))
 			{
 				// end instruction reached
 				break;
 			}
-			else if(!str::icmp(token, "settiki"))
+			else if(!strHelpers::icmp(token, "settiki"))
 			{
 				token = script.GetToken(false);
 				// ignore settiki command, not useful in the library
@@ -393,7 +393,7 @@ SoundResults SoundManager::ParseUbersound(const char* filename, const char* cate
 		while (script.TokenAvailable(true))
 		{
 			const char* token = script.GetToken(true);
-			if (!str::icmp(token, "aliascache") || !str::icmp(token, "alias"))
+			if (!strHelpers::icmp(token, "aliascache") || !strHelpers::icmp(token, "alias"))
 			{
 				const size_t soundSize = ParseAlias(script, nullptr) + sizeof(SoundNode);
 				if(soundSize)
@@ -402,12 +402,12 @@ SoundResults SoundManager::ParseUbersound(const char* filename, const char* cate
 					results.totalNodesSize += soundSize;
 				}
 			}
-			else if (!str::icmp(token, "end"))
+			else if (!strHelpers::icmp(token, "end"))
 			{
 				// end instruction reached
 				break;
 			}
-			else if (!str::icmp(token, "settiki"))
+			else if (!strHelpers::icmp(token, "settiki"))
 			{
 				token = script.GetToken(false);
 				// ignore settiki command, not useful in the library
@@ -446,7 +446,7 @@ size_t SoundManager::ParseAlias(Script& script, SoundNode* soundNode)
 	}
 
 	token = script.GetToken(true);
-	if (str::icmp(token, "soundparms"))
+	if (strHelpers::icmp(token, "soundparms"))
 	{
 		script.SkipToEOL();
 		return 0;
@@ -465,7 +465,7 @@ size_t SoundManager::ParseAlias(Script& script, SoundNode* soundNode)
 	bool bStreamed = false;
 
 	token = script.GetToken(true);
-	if (!str::icmp(token, "streamed"))
+	if (!strHelpers::icmp(token, "streamed"))
 	{
 		bStreamed = true;
 	}
@@ -485,13 +485,13 @@ size_t SoundManager::ParseAlias(Script& script, SoundNode* soundNode)
 	size_t subtitleSize = 0;
 
 	token = script.GetToken(true);
-	if(!str::icmp(token, "always"))
+	if(!strHelpers::icmp(token, "always"))
 	{
 		// it is used in SH/BT to indicate that the sound will be always loaded
 		token = script.GetToken(false);
 	}
 
-	if (!str::icmp(token, "subtitle") || !str::icmp(token, "forcesubtitle"))
+	if (!strHelpers::icmp(token, "subtitle") || !strHelpers::icmp(token, "forcesubtitle"))
 	{
 		token = script.GetString(true, true);
 		subtitleSize = strlen(token) + 1;
@@ -506,7 +506,7 @@ size_t SoundManager::ParseAlias(Script& script, SoundNode* soundNode)
 		token = script.GetToken(true);
 	}
 
-	if(!str::icmp(token, "maps"))
+	if(!strHelpers::icmp(token, "maps"))
 	{
 		token = script.GetString(true, true);
 		// for now, ignore maps

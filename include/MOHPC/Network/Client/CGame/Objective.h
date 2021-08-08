@@ -33,7 +33,7 @@ namespace Network
 		public:
 			uint32_t flags;
 			str text;
-			Vector location;
+			vec3_t location;
 
 		public:
 			objective_t();
@@ -46,7 +46,7 @@ namespace Network
 			MOHPC_NET_EXPORTS const char* getText() const;
 
 			/** Objective location. */
-			MOHPC_NET_EXPORTS const Vector& getLocation() const;
+			MOHPC_NET_EXPORTS const_vec3p_t getLocation() const;
 		};
 
 		class ObjectiveManager

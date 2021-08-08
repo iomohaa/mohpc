@@ -64,14 +64,10 @@ void ModuleBase::setProtocol(protocolType_c protocol)
 	environmentParse = Parsing::IEnvironment::get(version);
 	gameStateParse = Parsing::IGameState::get(version);
 	messageParser = IMessageParser::get(version);
-
-	prediction.setProtocol(protocol);
 }
 
 void ModuleBase::setImports(const Imports& imports)
 {
-	prediction.setUserInputPtr(&imports.userInput);
-
 	processedSnapshots.setPtrs(
 		&imports.clientTime,
 		&imports.snapshotManager,
@@ -103,26 +99,13 @@ void ModuleBase::parseCGMessage(MSG& msg)
 	messageParser->parseGameMessage(msg, interfaces);
 }
 
-void ModuleBase::tick(uint64_t deltaTime, uint64_t currentTime, uint64_t serverTime)
+void ModuleBase::tick(deltaTime_t deltaTime, tickTime_t currentTime, tickTime_t simulatedServerTime)
 {
-	svTime = serverTime;
+	svTime = simulatedServerTime;
 
 	// set snapshots transition
 	// and process commands
-	processedSnapshots.processSnapshots(serverTime);
-
-	if (processedSnapshots.getSnap())
-	{
-		traceManager.buildSolidList(processedSnapshots);
-
-		// process prediction stuff
-		PredictionParm predictionParm{
-			processedSnapshots,
-			cgs
-		};
-
-		prediction.process(serverTime, predictionParm);
-	}
+	processedSnapshots.processSnapshots(simulatedServerTime);
 
 	if (voteManager.isModified())
 	{
@@ -131,7 +114,7 @@ void ModuleBase::tick(uint64_t deltaTime, uint64_t currentTime, uint64_t serverT
 	}
 }
 
-uint64_t ModuleBase::getTime() const
+tickTime_t ModuleBase::getTime() const
 {
 	return svTime;
 }
@@ -153,6 +136,8 @@ const cgsInfo& ModuleBase::getServerInfo() const
 
 void ModuleBase::configStringModified(csNum_t num, const char* cs)
 {
+	using namespace ticks;
+
 	switch (num)
 	{
 	case CS_SERVERINFO:
@@ -185,7 +170,7 @@ void ModuleBase::configStringModified(csNum_t num, const char* cs)
 			for (size_t i = 0; i < rain.numShaders; ++i)
 			{
 				// Multiple shaders
-				rain.shader[i] = str::printf("%s%i", cs, i);
+				rain.shader[i] = cs + std::to_string(i);
 			}
 		}
 		else
@@ -201,12 +186,12 @@ void ModuleBase::configStringModified(csNum_t num, const char* cs)
 			for (size_t i = 0; i < rain.numShaders; ++i)
 			{
 				// Append shader number to the previous shader
-				rain.shader[i] = str::printf("%s%i", tmp.c_str(), i);
+				rain.shader[i] = tmp + std::to_string(i);
 			}
 		}
 		break;
 	case CS_WARMUP:
-		cgs.matchStartTime = atoll(cs);
+		cgs.matchStartTime = tickTime_t(milliseconds(atoll(cs)));
 		break;
 	case CS_FOGINFO:
 		// Fog differs between games
@@ -216,10 +201,10 @@ void ModuleBase::configStringModified(csNum_t num, const char* cs)
 		environmentParse->parseSky(cs, environment);
 		break;
 	case CS_LEVEL_START_TIME:
-		cgs.levelStartTime = atoll(cs);
+		cgs.levelStartTime = tickTime_t(milliseconds(atoll(cs)));
 		break;
 	case CS_MATCHEND:
-		cgs.matchEndTme = atoll(cs);
+		cgs.matchEndTme = tickTime_t(milliseconds(atoll(cs)));
 		break;
 	case CS_VOTE_TIME:
 		voteManager.setVoteTime(atoll(cs));
@@ -278,7 +263,7 @@ void ModuleBase::parseServerInfo(const char* cs)
 	const char* mapName = info.ValueForKey("mapname", mapLen);
 	if(*mapName)
 	{
-		const char* lastMapChar = str::findcharn(mapName, '$', mapLen);
+		const char* lastMapChar = strHelpers::findcharn(mapName, '$', mapLen);
 		if(lastMapChar)
 		{
 			// don't put anything from the dollar
@@ -403,7 +388,7 @@ void ModuleBase::SCmd_PrintDeathMsg(TokenParser& args)
 	const str killType = args.GetToken(true);
 
 	hudMessage_e hudMessage;
-	if (*killType == tolower(*killType))
+	if (*killType.c_str() == std::tolower(*killType.c_str()))
 	{
 		// enemy kill
 		hudMessage = hudMessage_e::ChatRed;
@@ -414,30 +399,30 @@ void ModuleBase::SCmd_PrintDeathMsg(TokenParser& args)
 		hudMessage = hudMessage_e::ChatGreen;
 	}
 
-	switch (tolower(*killType))
+	switch (std::tolower(*killType.c_str()))
 	{
 	// suicide
 	case 's':
 	case 'w':
 		handlers().printHandler.broadcast(
 			hudMessage,
-			str::printf("%s %s", attackerName.c_str(), deathMessage1.c_str()).c_str()
+			(attackerName + " " + deathMessage1).c_str()
 			);
 		break;
 	// killed by a player
 	case 'p':
-		if (*deathMessage2 != 'x')
+		if (*deathMessage2.c_str() != 'x')
 		{
 			handlers().printHandler.broadcast(
 				hudMessage,
-				str::printf("%s %s %s %s", attackerName.c_str(), deathMessage1.c_str(), victimName.c_str(), deathMessage2.c_str()).c_str()
+				(attackerName + " " + deathMessage1 + " " + victimName + " " + deathMessage2).c_str()
 			);
 		}
 		else
 		{
 			handlers().printHandler.broadcast(
 				hudMessage,
-				str::printf("%s %s %s", attackerName.c_str(), deathMessage1.c_str(), victimName.c_str()).c_str()
+				(attackerName + " " + deathMessage1 + " " + victimName).c_str()
 			);
 		}
 		break;
@@ -478,21 +463,6 @@ const ClientInfoList& ModuleBase::getClientInfoList() const
 	return clientInfoList;
 }
 
-const TraceManager& ModuleBase::getTraceManager() const
-{
-	return traceManager;
-}
-
-Prediction& ModuleBase::getPrediction()
-{
-	return prediction;
-}
-
-const Prediction& ModuleBase::getPrediction() const
-{
-	return prediction;
-}
-
 GameplayNotify& ModuleBase::getGameplayNotify()
 {
 	return gameplayNotify;
@@ -501,14 +471,6 @@ GameplayNotify& ModuleBase::getGameplayNotify()
 const GameplayNotify& ModuleBase::getGameplayNotify() const
 {
 	return gameplayNotify;
-}
-
-CGameModule6::CGameModule6()
-{
-}
-
-CGameModule15::CGameModule15()
-{
 }
 
 rain_t::rain_t()
@@ -567,6 +529,3 @@ const char* rain_t::getShader(uint8_t index) const
 {
 	return shader[index].c_str();
 }
-
-ProtocolClassInstancier_Template<CGameModule6, ModuleBase, 5, 8> cgameVersion8;
-ProtocolClassInstancier_Template<CGameModule15, ModuleBase, 15, 17> cgameVersion17;

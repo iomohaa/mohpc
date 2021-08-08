@@ -82,14 +82,8 @@ namespace Network
 		 */
 		MOHPC_NET_EXPORTS bool reloadGameState();
 
-		/** Return the server id of the game state (represents an ID of the current map). */
-		MOHPC_NET_EXPORTS uint32_t getServerId() const;
-
 		/** Return the client num in the server for the local client.*/
 		MOHPC_NET_EXPORTS uint32_t getClientNum() const;
-
-		/** Return the map checksum. */
-		MOHPC_NET_EXPORTS uint32_t getChecksumFeed() const;
 
 		void registerCommands(CommandManager& commandManager);
 
@@ -107,9 +101,7 @@ namespace Network
 		ClientTime* clientTime;
 		HandlerList handlerList;
 		gameState_t gameState;
-		uint32_t serverId;
 		uint32_t clientNum;
-		uint32_t checksumFeed;
 	};
 }
 }

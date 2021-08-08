@@ -98,7 +98,7 @@ const char* ConfigStringManager::getConfigStringChecked(csNum_t num) const
 
 void ConfigStringManager::setConfigString(csNum_t num, const char* configString)
 {
-	setConfigString(num, configString, str::len(configString));
+	setConfigString(num, configString, std::char_traits<char>::length(configString));
 }
 
 void ConfigStringManager::setConfigString(csNum_t num, const char* configString, size_t len)
@@ -113,8 +113,8 @@ void ConfigStringManager::setConfigString(csNum_t num, const char* configString,
 		// existing config-string
 
 		char* stringBuffer = &stringData[stringOffset];
-		const size_t currentLen = str::len(stringBuffer);
-		const size_t remainingLen = dataCount - currentLen;
+		const size_t currentLen = std::char_traits<char>::length(stringBuffer);
+		const size_t remainingLen = dataCount - stringOffset;
 		const size_t oldDataCount = dataCount;
 
 		if (len)
@@ -290,7 +290,7 @@ csNum_t ConfigstringErrors::MaxConfigStringException::getConfigstringNum() const
 
 str ConfigstringErrors::MaxConfigStringException::what() const
 {
-	return str((int)getConfigstringNum());
+	return std::to_string(getConfigstringNum());
 }
 
 ConfigstringErrors::MaxGameStateCharsException::MaxGameStateCharsException(size_t inStringLen)
@@ -304,7 +304,7 @@ size_t ConfigstringErrors::MaxGameStateCharsException::GetStringLength() const
 
 str ConfigstringErrors::MaxGameStateCharsException::what() const
 {
-	return str((int)GetStringLength());
+	return std::to_string(GetStringLength());
 }
 
 class ConfigStringTranslator_ver8 : public IConfigStringTranslator

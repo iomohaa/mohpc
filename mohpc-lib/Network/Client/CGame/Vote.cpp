@@ -85,17 +85,17 @@ VoteOptionList::VoteOptionList(const str& inName, const str& inCommand)
 
 void VoteOptionList::createVoteOption(const str& choiceName, const str& voteString)
 {
-	new (choiceList) VoteListChoice(choiceName, voteString);
+	choiceList.emplace_back(choiceName, voteString);
 }
 
 void VoteOptionList::optimize()
 {
-	choiceList.Shrink();
+	choiceList.shrink_to_fit();
 }
 
 size_t VoteOptionList::getNumChoices() const
 {
-	return choiceList.NumObjects();
+	return choiceList.size();
 }
 
 const VoteListChoice* VoteOptionList::getChoice(uintptr_t index) const
@@ -108,19 +108,19 @@ size_t VoteOptions::getNumOptions(optionType_e type) const
 	switch (type)
 	{
 	case optionType_e::nochoices:
-		return noChoicesOptionsList.NumObjects();
+		return noChoicesOptionsList.size();
 	case optionType_e::list:
-		return listOptionsList.NumObjects();
+		return listOptionsList.size();
 	case optionType_e::text:
-		return textOptionsList.NumObjects();
+		return textOptionsList.size();
 	case optionType_e::integerValue:
-		return intOptionsList.NumObjects();
+		return intOptionsList.size();
 	case optionType_e::floatValue:
-		return floatOptionsList.NumObjects();
+		return floatOptionsList.size();
 	case optionType_e::client:
-		return clientOptionsList.NumObjects();
+		return clientOptionsList.size();
 	case optionType_e::clientnotself:
-		return clientNotSelfOptionsList.NumObjects();
+		return clientNotSelfOptionsList.size();
 	default:
 		return 0;
 	}
@@ -131,19 +131,19 @@ const VoteOption* VoteOptions::getOption(optionType_e type, uintptr_t index) con
 	switch (type)
 	{
 	case optionType_e::nochoices:
-		return &noChoicesOptionsList.ObjectAt(index + 1);
+		return &noChoicesOptionsList.at(index);
 	case optionType_e::list:
-		return &listOptionsList.ObjectAt(index + 1);
+		return &listOptionsList.at(index);
 	case optionType_e::text:
-		return &textOptionsList.ObjectAt(index + 1);
+		return &textOptionsList.at(index);
 	case optionType_e::integerValue:
-		return &intOptionsList.ObjectAt(index + 1);
+		return &intOptionsList.at(index);
 	case optionType_e::floatValue:
-		return &floatOptionsList.ObjectAt(index + 1);
+		return &floatOptionsList.at(index);
 	case optionType_e::client:
-		return &clientOptionsList.ObjectAt(index + 1);
+		return &clientOptionsList.at(index);
 	case optionType_e::clientnotself:
-		return &clientNotSelfOptionsList.ObjectAt(index + 1);
+		return &clientNotSelfOptionsList.at(index);
 	default:
 		return nullptr;
 	}
@@ -151,51 +151,50 @@ const VoteOption* VoteOptions::getOption(optionType_e type, uintptr_t index) con
 
 void VoteOptions::addNoChoiceOption(const str& choiceName, const str& voteString)
 {
-	new (noChoicesOptionsList) VoteOption(choiceName, voteString);
+	noChoicesOptionsList.emplace_back(choiceName, voteString);
 }
 
 VoteOptionList& VoteOptions::createListVoteOption(const str& choiceName, const str& voteString)
 {
-	VoteOptionList* const list = new (listOptionsList) VoteOptionList(choiceName, voteString);
-	return *list;
+	return listOptionsList.emplace_back(choiceName, voteString);
 }
 
 void VoteOptions::addTextOption(const str& choiceName, const str& voteString)
 {
-	new (textOptionsList) VoteOption(choiceName, voteString);
+	textOptionsList.emplace_back(choiceName, voteString);
 }
 
 void VoteOptions::addIntegerOption(const str& choiceName, const str& voteString)
 {
-	new (intOptionsList) VoteOption(choiceName, voteString);
+	intOptionsList.emplace_back(choiceName, voteString);
 }
 
 void VoteOptions::addFloatOption(const str& choiceName, const str& voteString)
 {
-	new (floatOptionsList) VoteOption(choiceName, voteString);
+	floatOptionsList.emplace_back(choiceName, voteString);
 }
 
 void VoteOptions::addClientOption(const str& choiceName, const str& voteString, bool allowSelf)
 {
 	if (allowSelf)
 	{
-		new (clientOptionsList) VoteOption(choiceName, voteString);
+		clientOptionsList.emplace_back(choiceName, voteString);
 	}
 	else
 	{
-		new (clientNotSelfOptionsList) VoteOption(choiceName, voteString);
+		clientNotSelfOptionsList.emplace_back(choiceName, voteString);
 	}
 }
 
 void VoteOptions::optimize()
 {
-	noChoicesOptionsList.Shrink();
-	listOptionsList.Shrink();
-	textOptionsList.Shrink();
-	intOptionsList.Shrink();
-	floatOptionsList.Shrink();
-	clientOptionsList.Shrink();
-	clientNotSelfOptionsList.Shrink();
+	noChoicesOptionsList.shrink_to_fit();
+	listOptionsList.shrink_to_fit();
+	textOptionsList.shrink_to_fit();
+	intOptionsList.shrink_to_fit();
+	floatOptionsList.shrink_to_fit();
+	clientOptionsList.shrink_to_fit();
+	clientNotSelfOptionsList.shrink_to_fit();
 }
 
 VoteException::VoteException(const TokenParser& parser)
@@ -300,7 +299,7 @@ void VoteOptionsParser::parseVoteOptions(VoteOptions& voteOptions)
 
 	try
 	{
-		parseVoteOptions(voteOptionsStr, voteOptionsStr.length(), voteOptions);
+		parseVoteOptions(voteOptionsStr.c_str(), voteOptionsStr.length(), voteOptions);
 	}
 	catch (IllegalOptionTypeException& e)
 	{
@@ -332,7 +331,7 @@ void VoteOptionsParser::parseVoteOptions(const char* options, size_t len, VoteOp
 	{
 		// get the option name
 		const char* token = parser.GetToken(true);
-		if (!str::icmp(token, "{") || !str::icmp(token, "}"))
+		if (!strHelpers::icmp(token, "{") || !strHelpers::icmp(token, "}"))
 		{
 			// this is illegal and unexpected
 			throw BadOptionHeaderException(parser);
@@ -356,7 +355,7 @@ void VoteOptionsParser::parseVoteOptions(const char* options, size_t len, VoteOp
 			if (!wasParsed && parser.TokenAvailable(true))
 			{
 				token = parser.GetToken(true);
-				if (!str::icmp(token, "{"))
+				if (!strHelpers::icmp(token, "{"))
 				{
 					// bad option list
 					throw ChoiceListOnNonListOptionException(parser, optionName.c_str());
@@ -375,27 +374,27 @@ void VoteOptionsParser::parseVoteOptions(const char* options, size_t len, VoteOp
 
 bool VoteOptionsParser::parseOptionType(const str& optionName, const str& commandString, const char* optionType, VoteOptions& voteOptions, TokenParser& parser)
 {
-	if (!str::icmp(optionType, "nochoices")) {
+	if (!strHelpers::icmp(optionType, "nochoices")) {
 		voteOptions.addNoChoiceOption(optionName, commandString);
 	}
-	else if (!str::icmp(optionType, "list")) {
+	else if (!strHelpers::icmp(optionType, "list")) {
 		VoteOptionList& list = voteOptions.createListVoteOption(optionName, commandString);
 		parseChoiceList(list, parser);
 		return true;
 	}
-	else if (!str::icmp(optionType, "text")) {
+	else if (!strHelpers::icmp(optionType, "text")) {
 		voteOptions.addTextOption(optionName, commandString);
 	}
-	else if (!str::icmp(optionType, "integer")) {
+	else if (!strHelpers::icmp(optionType, "integer")) {
 		voteOptions.addIntegerOption(optionName, commandString);
 	}
-	else if (!str::icmp(optionType, "float")) {
+	else if (!strHelpers::icmp(optionType, "float")) {
 		voteOptions.addFloatOption(optionName, commandString);
 	}
-	else if (!str::icmp(optionType, "client")) {
+	else if (!strHelpers::icmp(optionType, "client")) {
 		voteOptions.addClientOption(optionName, commandString, true);
 	}
-	else if (!str::icmp(optionType, "clientnotself")) {
+	else if (!strHelpers::icmp(optionType, "clientnotself")) {
 		voteOptions.addClientOption(optionName, commandString, false);
 	}
 	else {
@@ -413,13 +412,13 @@ void VoteOptionsParser::parseChoiceList(VoteOptionList& list, TokenParser& parse
 	{
 		// parse the beginning
 		const char* token = parser.GetToken(true);
-		if (!str::icmp(token, "{"))
+		if (!strHelpers::icmp(token, "{"))
 		{
 			while (parser.TokenAvailable(true))
 			{
 				// get the choice name
 				token = parser.GetToken(true);
-				if (!str::icmp(token, "}"))
+				if (!strHelpers::icmp(token, "}"))
 				{
 					// end of list
 					break;

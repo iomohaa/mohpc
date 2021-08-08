@@ -1,6 +1,8 @@
 #include <MOHPC/Utility/Collision/Collision.h>
 #include <MOHPC/Assets/Managers/ShaderManager.h>
 
+#include <cassert>
+
 using namespace MOHPC;
 
 collisionModel_t box_model;
@@ -43,6 +45,25 @@ collisionPlane_t::collisionPlane_t()
 	, type(0)
 	, signbits(0)
 {
+}
+const_vec3p_t collisionPlane_t::getNormal() const
+{
+	return normal;
+}
+
+float collisionPlane_t::getDist() const
+{
+	return dist;
+}
+
+uint8_t collisionPlane_t::getType() const
+{
+	return type;
+}
+
+uint8_t collisionPlane_t::getSignBits() const
+{
+	return signbits;
 }
 
 collisionNode_t::collisionNode_t()
@@ -210,80 +231,80 @@ CollisionWorld::~CollisionWorld()
 
 collisionFencemask_t* CollisionWorld::createFenceMask()
 {
-	return new(fencemasks) collisionFencemask_t();
+	return &fencemasks.emplace_back();
 }
 
 collisionShader_t* CollisionWorld::createShader()
 {
-	return new(shaders) collisionShader_t();
+	return &shaders.emplace_back();
 }
 
 collisionSideEq_t* CollisionWorld::createSideEquation()
 {
-	return new(sideequations) collisionSideEq_t();
+	return &sideequations.emplace_back();
 }
 
 collisionBrushSide_t* CollisionWorld::createBrushSide()
 {
-	return new(brushsides) collisionBrushSide_t();
+	return &brushsides.emplace_back();
 }
 
 collisionPlane_t* CollisionWorld::createPlane()
 {
-	return new(planes) collisionPlane_t();
+	return &planes.emplace_back();
 }
 
 collisionNode_t* CollisionWorld::createNode()
 {
-	return new(nodes) collisionNode_t();
+	return &nodes.emplace_back();
 }
 
 collisionLeaf_t* CollisionWorld::createLeaf()
 {
-	return new(leafs) collisionLeaf_t();
+	return &leafs.emplace_back();
 }
 
 void CollisionWorld::createLeafTerrain(collisionTerrain_t* terrain)
 {
-	leafterrains.AddObject(terrain);
+	leafterrains.push_back(terrain);
 }
 
 collisionModel_t* CollisionWorld::createModel()
 {
-	return new(cmodels) collisionModel_t();
+	return &cmodels.emplace_back();
 }
 
 collisionBrush_t* CollisionWorld::createBrush()
 {
-	return new(brushes) collisionBrush_t();
+	return &brushes.emplace_back();
 }
 
 collisionPatch_t* CollisionWorld::createPatch()
 {
-	return new(patchList) collisionPatch_t();
+	return &patchList.emplace_back();
 }
 
 collisionTerrain_t* CollisionWorld::createTerrain()
 {
-	return new(terrain) collisionTerrain_t();
+	return &terrain.emplace_back();
 }
 
 void CollisionWorld::clearAll()
 {
-	fencemasks.FreeObjectList();
-	shaders.FreeObjectList();
-	brushsides.FreeObjectList();
-	planes.FreeObjectList();
-	nodes.FreeObjectList();
-	leafs.FreeObjectList();
-	leafbrushes.FreeObjectList();
-	leafsurfaces.FreeObjectList();
-	leafterrains.FreeObjectList();
-	cmodels.FreeObjectList();
-	brushes.FreeObjectList();
-	surfaces.FreeObjectList();
-	terrain.FreeObjectList();
-	patchList.FreeObjectList();
+	fencemasks.clear();
+	shaders.clear();
+	brushsides.clear();
+	planes.clear();
+	nodes.clear();
+	leafs.clear();
+	leafbrushes.clear();
+	leafsurfaces.clear();
+	leafterrains.clear();
+	cmodels.clear();
+	brushes.clear();
+	surfaces.clear();
+	terrain.clear();
+	patchList.clear();
 }
 
 void CollisionWorld::reserve(
@@ -304,175 +325,175 @@ void CollisionWorld::reserve(
 	size_t numPatches
 )
 {
-	fencemasks.Resize(numFenceMasks);
-	shaders.Resize(numShaders);
-	brushsides.Resize(numBrushSides);
-	planes.Resize(numPlanes);
-	nodes.Resize(numNodes);
-	leafs.Resize(numLeafs);
-	leafbrushes.Resize(numLeafBrushes);
-	leafsurfaces.Resize(numLeafSurfaces);
-	leafterrains.Resize(numLeafTerrains);
-	cmodels.Resize(numCModels);
-	brushes.Resize(numBrushes);
-	surfaces.Resize(numSurfaces);
-	terrain.Resize(numTerrains);
-	patchList.Resize(numPatches);
+	fencemasks.reserve(numFenceMasks);
+	shaders.reserve(numShaders);
+	brushsides.reserve(numBrushSides);
+	planes.reserve(numPlanes);
+	nodes.reserve(numNodes);
+	leafs.reserve(numLeafs);
+	leafbrushes.reserve(numLeafBrushes);
+	leafsurfaces.reserve(numLeafSurfaces);
+	leafterrains.reserve(numLeafTerrains);
+	cmodels.reserve(numCModels);
+	brushes.reserve(numBrushes);
+	surfaces.reserve(numSurfaces);
+	terrain.reserve(numTerrains);
+	patchList.reserve(numPatches);
 }
 
 collisionFencemask_t* CollisionWorld::getFenceMask(uintptr_t num) const
 {
-	return &fencemasks[num];
+	return const_cast<collisionFencemask_t*>(&fencemasks[num]);
 }
 
 collisionFencemask_t* CollisionWorld::getFenceMasks()
 {
-	return fencemasks.Data();
+	return fencemasks.data();
 }
 
 size_t CollisionWorld::getNumFenceMasks() const
 {
-	return fencemasks.NumObjects();
+	return fencemasks.size();
 }
 
 collisionShader_t* CollisionWorld::getShader(uintptr_t num) const
 {
-	return &shaders[num];
+	return const_cast<collisionShader_t*>(&shaders[num]);
 }
 
 size_t CollisionWorld::getNumShaders() const
 {
-	return shaders.NumObjects();
+	return shaders.size();
 }
 
 collisionSideEq_t* CollisionWorld::getSideEquation(uintptr_t num) const
 {
-	return &sideequations[num];
+	return const_cast<collisionSideEq_t*>(&sideequations[num]);
 }
 
 collisionSideEq_t* CollisionWorld::getSideEquations()
 {
-	return sideequations.Data();
+	return sideequations.data();
 }
 
 size_t CollisionWorld::getNumSideEquations() const
 {
-	return sideequations.NumObjects();
+	return sideequations.size();
 }
 
 collisionBrushSide_t* CollisionWorld::getBrushSide(uintptr_t num) const
 {
-	return &brushsides[num];
+	return const_cast<collisionBrushSide_t*>(&brushsides[num]);
 }
 
 collisionBrushSide_t* CollisionWorld::getBrushSides()
 {
-	return brushsides.Data();
+	return brushsides.data();
 }
 
 size_t CollisionWorld::getNumBrushSides() const
 {
-	return brushsides.NumObjects();
+	return brushsides.size();
 }
 
 collisionPlane_t* CollisionWorld::getPlane(uintptr_t num) const
 {
-	return &planes[num];
+	return const_cast<collisionPlane_t*>(&planes[num]);
 }
 
 collisionPlane_t* CollisionWorld::getPlanes()
 {
-	return planes.Data();
+	return planes.data();
 }
 
 size_t CollisionWorld::getNumPlanes() const
 {
-	return planes.NumObjects();
+	return planes.size();
 }
 
 collisionNode_t* CollisionWorld::getNode(uintptr_t num) const
 {
-	return &nodes[num];
+	return const_cast<collisionNode_t*>(&nodes[num]);
 }
 
 size_t CollisionWorld::getNumNodes() const
 {
-	return nodes.NumObjects();
+	return nodes.size();
 }
 
 collisionLeaf_t* CollisionWorld::getLeaf(uintptr_t num) const
 {
-	return &leafs[num];
+	return const_cast<collisionLeaf_t*>(&leafs[num]);
 }
 
 size_t CollisionWorld::getNumLeafs() const
 {
-	return leafs.NumObjects();
+	return leafs.size();
 }
 
 void CollisionWorld::createLeafBrush(uintptr_t num)
 {
-	leafbrushes.AddObject(num);
+	leafbrushes.push_back(num);
 }
 
 void CollisionWorld::createLeafSurface(uintptr_t num)
 {
-	leafsurfaces.AddObject(num);
+	leafsurfaces.push_back(num);
 }
 
 collisionModel_t* CollisionWorld::getModel(uintptr_t num) const
 {
-	return &cmodels[num];
+	return const_cast<collisionModel_t*>(&cmodels[num]);
 }
 
 size_t CollisionWorld::getNumModels() const
 {
-	return cmodels.NumObjects();
+	return cmodels.size();
 }
 
 collisionBrush_t* CollisionWorld::getBrush(uintptr_t num) const
 {
-	return &brushes[num];
+	return const_cast<collisionBrush_t*>(&brushes[num]);
 }
 
 size_t CollisionWorld::getNumBrushes() const
 {
-	return brushes.NumObjects();
+	return brushes.size();
 }
 
 collisionPatch_t* CollisionWorld::getPatch(uintptr_t num) const
 {
-	return &patchList[num];
+	return const_cast<collisionPatch_t*>(&patchList[num]);
 }
 
 collisionPatch_t* CollisionWorld::getPatches()
 {
-	return patchList.Data();
+	return patchList.data();
 }
 
 size_t CollisionWorld::getNumPatches() const
 {
-	return patchList.NumObjects();
+	return patchList.size();
 }
 
 collisionTerrain_t* CollisionWorld::getTerrain(uintptr_t num) const
 {
-	return &terrain[num];
+	return const_cast<collisionTerrain_t*>(&terrain[num]);
 }
 
 collisionTerrain_t* CollisionWorld::getTerrains()
 {
-	return terrain.Data();
+	return terrain.data();
 }
 
 size_t CollisionWorld::getNumTerrains() const
 {
-	return terrain.NumObjects();
+	return terrain.size();
 }
 
 size_t CollisionWorld::getNumLeafTerrains() const
 {
-	return leafterrains.NumObjects();
+	return leafterrains.size();
 }
 
 collisionTerrain_t* CollisionWorld::getLeafTerrain(uintptr_t num) const
@@ -482,7 +503,7 @@ collisionTerrain_t* CollisionWorld::getLeafTerrain(uintptr_t num) const
 
 size_t CollisionWorld::getNumLeafBrushes() const
 {
-	return leafbrushes.NumObjects();
+	return leafbrushes.size();
 }
 
 intptr_t CollisionWorld::getLeafBrush(uintptr_t num) const
@@ -492,7 +513,7 @@ intptr_t CollisionWorld::getLeafBrush(uintptr_t num) const
 
 size_t CollisionWorld::getNumLeafSurfaces() const
 {
-	return leafsurfaces.NumObjects();
+	return leafsurfaces.size();
 }
 
 intptr_t CollisionWorld::getLeafSurface(uintptr_t num) const
@@ -502,7 +523,7 @@ intptr_t CollisionWorld::getLeafSurface(uintptr_t num) const
 
 void CollisionWorld::createSurface(collisionPatch_t* patch)
 {
-	surfaces.AddObject(patch);
+	surfaces.push_back(patch);
 }
 
 collisionPatch_t* CollisionWorld::getSurface(uintptr_t num)
@@ -512,12 +533,12 @@ collisionPatch_t* CollisionWorld::getSurface(uintptr_t num)
 
 size_t CollisionWorld::getNumSurfaces() const
 {
-	return surfaces.NumObjects();
+	return surfaces.size();
 }
 
 clipHandle_t CollisionWorld::inlineModel(uint32_t index)
 {
-	if (index >= cmodels.NumObjects()) {
+	if (index >= cmodels.size()) {
 		return 0;
 	}
 
@@ -706,7 +727,7 @@ collisionModel_t* CollisionWorld::ClipHandleToModel(clipHandle_t handle)
 		return nullptr;
 	}
 
-	if (handle < cmodels.NumObjects()) {
+	if (handle < cmodels.size()) {
 		return &cmodels[handle];
 	}
 	if (handle == BOX_MODEL_HANDLE) {
@@ -718,7 +739,7 @@ collisionModel_t* CollisionWorld::ClipHandleToModel(clipHandle_t handle)
 
 }
 
-void CollisionWorld::ModelBounds(clipHandle_t model, Vector& mins, Vector& maxs)
+void CollisionWorld::ModelBounds(clipHandle_t model, vec3r_t mins, vec3r_t maxs)
 {
 	collisionModel_t* cmod;
 
@@ -734,11 +755,11 @@ void CollisionWorld::InitBoxHull()
 	collisionPlane_t* p;
 	collisionBrushSide_t* s;
 
-	planes.SetNumObjectsUninitialized(12);
+	planes.resize(12);
 	box_planes = &planes[0];
 
 	// Create 6 sides
-	brushsides.SetNumObjectsUninitialized(6);
+	brushsides.resize(6);
 
 	box_brush = createBrush();
 	box_brush->numsides = 6;
@@ -746,8 +767,8 @@ void CollisionWorld::InitBoxHull()
 	box_brush->contents = ContentFlags::CONTENTS_BBOX;
 
 	box_model.leaf.numLeafBrushes = 1;
-	box_model.leaf.firstLeafBrush = (uint32_t)this->leafbrushes.NumObjects();
-	createLeafBrush(box_brush - brushes.Data());
+	box_model.leaf.firstLeafBrush = (uint32_t)this->leafbrushes.size();
+	createLeafBrush(box_brush - brushes.data());
 
 	for (i = 0; i < 6; i++)
 	{
@@ -755,7 +776,7 @@ void CollisionWorld::InitBoxHull()
 
 		// brush sides
 		s = &brushsides[i];
-		s->plane = &box_planes[i * 2 + side]; // &this->planes[(this->planes.NumObjects() + i * 2 + side)];
+		s->plane = &box_planes[i * 2 + side]; // &this->planes[(this->planes.size() + i * 2 + side)];
 		s->surfaceFlags = 0;
 
 		// planes
@@ -775,7 +796,7 @@ void CollisionWorld::InitBoxHull()
 	}
 }
 
-clipHandle_t CollisionWorld::TempBoxModel(const vec3_t mins, const vec3_t maxs, int contents)
+clipHandle_t CollisionWorld::TempBoxModel(const vec3r_t mins, const vec3r_t maxs, int contents)
 {
 	box_planes[0].dist = maxs[0];
 	box_planes[1].dist = -maxs[0];
@@ -967,7 +988,7 @@ capsule inside capsule check
 */
 void CollisionWorld::TestCapsuleInCapsule(traceWork_t * tw, clipHandle_t model) {
 	int i;
-	Vector mins, maxs;
+	vec3_t mins, maxs;
 	vec3_t top, bottom;
 	vec3_t p1, p2, tmp;
 	vec3_t offset, symetricSize[2];
@@ -1035,7 +1056,7 @@ bounding box inside capsule check
 ==================
 */
 void CollisionWorld::TestBoundingBoxInCapsule(traceWork_t * tw, clipHandle_t model) {
-	Vector mins, maxs;
+	vec3_t mins, maxs;
 	vec3_t offset, size[2];
 	clipHandle_t h;
 	collisionModel_t* cmod;
@@ -1712,7 +1733,7 @@ capsule vs. capsule collision (not rotated)
 */
 void CollisionWorld::TraceCapsuleThroughCapsule(traceWork_t * tw, clipHandle_t model) {
 	int i;
-	Vector mins, maxs;
+	vec3_t mins, maxs;
 	vec3_t top, bottom, starttop, startbottom, endtop, endbottom;
 	vec3_t offset, symetricSize[2];
 	float radius, halfwidth, halfheight, offs, h;
@@ -1773,7 +1794,7 @@ bounding box vs. capsule collision
 ================
 */
 void CollisionWorld::TraceBoundingBoxThroughCapsule(traceWork_t * tw, clipHandle_t model) {
-	Vector mins, maxs;
+	vec3_t mins, maxs;
 	vec3_t offset, size[2];
 	clipHandle_t h;
 	collisionModel_t* cmod;
@@ -1930,8 +1951,8 @@ void CollisionWorld::TraceThroughTree(traceWork_t * tw, int num, float p1f, floa
 CollisionWorld::BoxTrace
 ==================
 */
-void CollisionWorld::BoxTrace(trace_t * results, const Vector& start, const Vector& end,
-	const Vector& mins, const Vector& maxs,
+void CollisionWorld::BoxTrace(trace_t * results, const vec3r_t start, const vec3r_t end,
+	const vec3r_t mins, const vec3r_t maxs,
 	clipHandle_t model, uint32_t brushmask, bool cylinder) {
 	int			i;
 	traceWork_t	tw;
@@ -2086,10 +2107,10 @@ Handles offseting and rotation of the end points for moving and
 rotating entities
 ==================
 */
-void CollisionWorld::TransformedBoxTrace(trace_t * results, const Vector& start, const Vector& end,
-	const Vector& mins, const Vector& maxs,
+void CollisionWorld::TransformedBoxTrace(trace_t * results, const vec3r_t start, const vec3r_t end,
+	const vec3r_t mins, const vec3r_t maxs,
 	clipHandle_t model, uint32_t brushmask,
-	const Vector& origin, const Vector& angles, bool cylinder) {
+	const vec3r_t origin, const vec3r_t angles, bool cylinder) {
 	trace_t		trace;
 	vec3_t		start_l, end_l;
 	vec3_t		a;
@@ -2410,7 +2431,7 @@ bool CollisionWorld::SightTraceThroughTree(traceWork_t * tw, int num, float p1f,
 CollisionWorld::BoxSightTrace
 ==================
 */
-bool CollisionWorld::BoxSightTrace(const Vector& start, const Vector& end, const Vector& mins, const Vector& maxs, clipHandle_t model, uint32_t brushmask, bool cylinder)
+bool CollisionWorld::BoxSightTrace(const vec3r_t start, const vec3r_t end, const vec3r_t mins, const vec3r_t maxs, clipHandle_t model, uint32_t brushmask, bool cylinder)
 {
 	int			i;
 	traceWork_t	tw;
@@ -2424,7 +2445,7 @@ bool CollisionWorld::BoxSightTrace(const Vector& start, const Vector& end, const
 
 	c_traces++;				// for statistics, may be zeroed
 
-	if (!this->nodes.NumObjects()) {
+	if (!this->nodes.size()) {
 		return false;
 	}
 
@@ -2552,7 +2573,7 @@ bool CollisionWorld::BoxSightTrace(const Vector& start, const Vector& end, const
 CollisionWorld::TransformedBoxSightTrace
 ==================
 */
-bool CollisionWorld::TransformedBoxSightTrace(const Vector& start, const Vector& end, const Vector& mins, const Vector& maxs, clipHandle_t model, uint32_t brushmask, const Vector& origin, const Vector& angles, bool cylinder)
+bool CollisionWorld::TransformedBoxSightTrace(const vec3r_t start, const vec3r_t end, const vec3r_t mins, const vec3r_t maxs, clipHandle_t model, uint32_t brushmask, const vec3r_t origin, const vec3r_t angles, bool cylinder)
 {
 	vec3_t		start_l, end_l;
 	vec3_t		forward, left, up;
@@ -2626,7 +2647,7 @@ CollisionWorld::PointLeafnum_r
 
 ==================
 */
-int CollisionWorld::PointLeafnum_r(const Vector& p, int num) {
+int CollisionWorld::PointLeafnum_r(const vec3r_t p, int num) {
 	float		d;
 	const collisionNode_t* node;
 	const collisionPlane_t* plane;
@@ -2652,9 +2673,9 @@ int CollisionWorld::PointLeafnum_r(const Vector& p, int num) {
 	return -1 - num;
 }
 
-int CollisionWorld::PointLeafnum(const Vector& p)
+int CollisionWorld::PointLeafnum(const vec3r_t p)
 {
-	if (!this->nodes.NumObjects())
+	if (!this->nodes.size())
 	{
 		// collision data not loaded
 		return 0;
@@ -2776,7 +2797,7 @@ void CollisionWorld::BoxLeafnums_r(leafList_t* ll, int nodenum) {
 CollisionWorld::BoxLeafnums
 ==================
 */
-size_t	CollisionWorld::BoxLeafnums(const Vector& mins, const Vector& maxs, int* list, size_t listsize, int* lastLeaf) {
+size_t	CollisionWorld::BoxLeafnums(const vec3r_t mins, const vec3r_t maxs, int* list, size_t listsize, int* lastLeaf) {
 	leafList_t	ll;
 
 	this->checkcount++;
@@ -2801,7 +2822,7 @@ size_t	CollisionWorld::BoxLeafnums(const Vector& mins, const Vector& maxs, int* 
 CollisionWorld::BoxBrushes
 ==================
 */
-size_t CollisionWorld::BoxBrushes(const Vector& mins, const Vector& maxs, collisionBrush_t** list, size_t listsize) {
+size_t CollisionWorld::BoxBrushes(const vec3r_t mins, const vec3r_t maxs, collisionBrush_t** list, size_t listsize) {
 	leafList_t	ll;
 
 	this->checkcount++;
@@ -2840,7 +2861,7 @@ CollisionWorld::PointContents
 
 ==================
 */
-int CollisionWorld::PointContents(const vec3_t p, clipHandle_t model) {
+int CollisionWorld::PointContents(const vec3r_t p, clipHandle_t model) {
 	uintptr_t leafnum;
 	uintptr_t brushnum;
 	collisionLeaf_t* leaf;
@@ -2849,7 +2870,7 @@ int CollisionWorld::PointContents(const vec3_t p, clipHandle_t model) {
 	float		d;
 	collisionModel_t* clipm;
 
-	if (!this->nodes.NumObjects()) {	// map not loaded
+	if (!this->nodes.size()) {	// map not loaded
 		return 0;
 	}
 
@@ -2895,13 +2916,13 @@ int CollisionWorld::PointContents(const vec3_t p, clipHandle_t model) {
 CollisionWorld::PointBrushNum
 ==================
 */
-uintptr_t CollisionWorld::PointBrushNum(const vec3_t p, clipHandle_t model) {
+uintptr_t CollisionWorld::PointBrushNum(const vec3r_t p, clipHandle_t model) {
 	uintptr_t brushnum;
 	collisionLeaf_t* leaf;
 	collisionBrush_t* b;
 	collisionModel_t* clipm;
 
-	if (!this->nodes.NumObjects()) {
+	if (!this->nodes.size()) {
 		return 0;
 	}
 
@@ -2941,7 +2962,7 @@ Handles offseting and rotation of the end points for moving and
 rotating entities
 ==================
 */
-int	CollisionWorld::TransformedPointContents(const Vector& p, clipHandle_t model, const Vector& origin, const Vector& angles) {
+int	CollisionWorld::TransformedPointContents(const vec3r_t p, clipHandle_t model, const vec3r_t origin, const vec3r_t angles) {
 	vec3_t		p_l;
 	vec3_t		temp;
 	vec3_t		forward, right, up;
@@ -2969,7 +2990,7 @@ int	CollisionWorld::TransformedPointContents(const Vector& p, clipHandle_t model
 CollisionWorld::BoundsIntersect
 ====================
 */
-bool CollisionWorld::BoundsIntersect(const Vector& mins, const Vector& maxs, const Vector& mins2, const Vector& maxs2)
+bool CollisionWorld::BoundsIntersect(const vec3r_t mins, const vec3r_t maxs, const vec3r_t mins2, const vec3r_t maxs2)
 {
 	if (maxs[0] < mins2[0] - SURFACE_CLIP_EPSILON ||
 		maxs[1] < mins2[1] - SURFACE_CLIP_EPSILON ||
@@ -2989,7 +3010,7 @@ bool CollisionWorld::BoundsIntersect(const Vector& mins, const Vector& maxs, con
 CollisionWorld::BoundsIntersectPoint
 ====================
 */
-bool CollisionWorld::BoundsIntersectPoint(const Vector& mins, const Vector& maxs, const Vector& point)
+bool CollisionWorld::BoundsIntersectPoint(const vec3r_t mins, const vec3r_t maxs, const vec3r_t point)
 {
 	if (maxs[0] < point[0] - SURFACE_CLIP_EPSILON ||
 		maxs[1] < point[1] - SURFACE_CLIP_EPSILON ||

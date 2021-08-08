@@ -1,4 +1,5 @@
 #include <MOHPC/Network/Client/UserInput.h>
+#include <MOHPC/Network/Client/Time.h>
 
 using namespace MOHPC;
 using namespace MOHPC::Network;
@@ -13,17 +14,20 @@ void UserInput::reset()
 	cmdNumber = 0;
 }
 
-void UserInput::createCommand(uint64_t currentTime, uint64_t remoteTime, usercmd_t*& outCmd, usereyes_t*& outEyes)
+usercmd_t& UserInput::createCommand(tickTime_t time)
 {
-	++cmdNumber;
-	const uint32_t cmdNum = cmdNumber % CMD_BACKUP;
+	using namespace std::chrono;
 
-	usercmd_t& cmd = cmds[cmdNum];
-	cmd = usercmd_t((uint32_t)remoteTime);
+	usercmd_t& cmd = cmds.get(cmdNumber++);
+	cmd = usercmd_t(time);
+
+	return cmd;
+}
+
+usereyes_t& UserInput::createEyes()
+{
 	eyeinfo = usereyes_t();
-
-	outCmd = &cmd;
-	outEyes = &eyeinfo;
+	return eyeinfo;
 }
 
 uint32_t UserInput::getCurrentCmdNumber() const
@@ -31,14 +35,19 @@ uint32_t UserInput::getCurrentCmdNumber() const
 	return cmdNumber;
 }
 
+size_t UserInput::getNumCommands() const
+{
+	return cmds.count();
+}
+
 const usercmd_t& UserInput::getCommand(size_t index) const
 {
-	return cmds[index % CMD_BACKUP];
+	return cmds.get(index);
 }
 
 const usercmd_t& UserInput::getCommandFromLast(size_t index) const
 {
-	const size_t elem = cmdNumber - index;
+	const size_t elem = cmdNumber - (index + 1);
 	return getCommand(elem);
 }
 
@@ -54,12 +63,12 @@ usereyes_t& UserInput::getEyeInfo()
 
 const usercmd_t& UserInput::getLastCommand() const
 {
-	return cmds[cmdNumber % CMD_BACKUP];
+	return cmds.get(cmdNumber);
 }
 
 usercmd_t& UserInput::getLastCommand()
 {
-	return cmds[cmdNumber % CMD_BACKUP];
+	return cmds.get(cmdNumber);
 }
 
 bool UserInput::getUserCmd(uintptr_t cmdNum, usercmd_t& outCmd) const
@@ -67,7 +76,7 @@ bool UserInput::getUserCmd(uintptr_t cmdNum, usercmd_t& outCmd) const
 	// the usercmd has been overwritten in the wrapping
 	// buffer because it is too far out of date
 	const uint32_t cmdNumber = getCurrentCmdNumber();
-	if (cmdNum + CMD_BACKUP < cmdNumber) {
+	if (cmdNum + cmds.count() < cmdNumber) {
 		return false;
 	}
 

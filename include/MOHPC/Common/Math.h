@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../Global.h"
+#include "SimpleVector.h"
 #include <cstdint>
 #include <cstddef>
 #include <climits>
@@ -11,20 +12,10 @@
 
 namespace MOHPC
 {
-	typedef float vec_t;
-	typedef float vec2_t[2];
-	typedef float vec3_t[3];
-	typedef float vec4_t[4];
-	typedef vec4_t quat_t;
-	typedef vec_t matrix_t[16];
-
 	static constexpr float M_PI_FLOAT = 3.14159265358979323846f;
 	static constexpr size_t NUMVERTEXNORMALS = 162;
 	
-	extern MOHPC_EXPORTS vec3_t vec3_origin;
 	extern MOHPC_EXPORTS vec3_t bytedirs[NUMVERTEXNORMALS];
-
-	class Vector;
 
 	MOHPC_EXPORTS vec_t DotProduct(const vec3_t vec1, const vec3_t vec2);
 	MOHPC_EXPORTS vec_t DotProduct2D(const vec2_t vec1, const vec2_t vec2);
@@ -55,11 +46,8 @@ namespace MOHPC
 	MOHPC_EXPORTS void MatrixCopy(const matrix_t in, matrix_t out);
 	MOHPC_EXPORTS void Matrix3Copy(float in[3][3], float out[3][3]);
 	MOHPC_EXPORTS void Matrix4_3Copy(float in[4][3], float out[3][3]);
-	MOHPC_EXPORTS void AddPointToBounds(const Vector& v, Vector& mins, Vector& maxs);
-	MOHPC_EXPORTS void ClearBounds(Vector& mins, Vector& maxs);
 	MOHPC_EXPORTS void AxisClear(vec3_t axis[3]);
 	MOHPC_EXPORTS void AxisCopy(const vec3_t in[3], vec3_t out[3]);
-	MOHPC_EXPORTS void SnapVector(vec3_t normal);
 	MOHPC_EXPORTS void VecCopy(const vec3_t in, vec3_t out);
 	MOHPC_EXPORTS void VecSet(vec3_t out, float x, float y, float z);
 	MOHPC_EXPORTS void Vec4Copy(const vec4_t in, vec4_t out);
@@ -74,16 +62,14 @@ namespace MOHPC
 	MOHPC_EXPORTS vec_t VectorNormalize(vec3_t vec);
 	MOHPC_EXPORTS vec_t VectorNormalize2(const vec3_t v, vec3_t out);
 	MOHPC_EXPORTS void VectorNormalizeFast(vec3_t vec);
-	MOHPC_EXPORTS void VectorMA(const vec3_t veca, float scale, const vec3_t vecb, vec3_t vecc);
 	MOHPC_EXPORTS void VectorInverse(vec3_t vec);
 	MOHPC_EXPORTS void VecNegate(const vec3_t vec, vec3_t out);
 	MOHPC_EXPORTS void VectorScale(const vec3_t in, vec_t scale, vec3_t out);
-	MOHPC_EXPORTS void VectorClear(vec3_t vec);
 	MOHPC_EXPORTS void CrossProduct(const vec3_t v1, const vec3_t v2, vec3_t cross);
 
 	MOHPC_EXPORTS int DirToByte(const vec3_t dir);
 	MOHPC_EXPORTS void ByteToDir(int b, vec3_t dir);
-	MOHPC_EXPORTS Vector GetMovedir(float angle);
+	MOHPC_EXPORTS void GetMovedir(vec3r_t out, float angle);
 	MOHPC_EXPORTS float Random(float value);
 	MOHPC_EXPORTS uint8_t AngleToByte(float v);
 	MOHPC_EXPORTS float ByteToAngle(uint8_t v);

@@ -1,5 +1,7 @@
 #include "TIKI_Private.h"
 
+#include <cassert>
+
 using namespace MOHPC;
 
 MOHPC_OBJECT_DEFINITION(TIKI);
@@ -9,8 +11,8 @@ TIKI::TIKI()
 	loadScale = 0.f;
 	lodScale = 0.f;
 	lodBias = 0.f;
-	lightOffset = Vector(0, 0, 0);
-	loadOrigin = Vector(0, 0, 0);
+	VectorClear(lightOffset);
+	VectorClear(loadOrigin);
 	radius = 0.f;
 }
 

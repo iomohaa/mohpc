@@ -7,6 +7,8 @@
 #include <MOHPC/Utility/Misc/MSG/Stream.h>
 #include <MOHPC/Utility/Misc/MSG/Codec.h>
 
+#include <cassert>
+
 using namespace MOHPC;
 using namespace Network;
 
@@ -54,10 +56,20 @@ uint16_t Network::INetchan::getOutgoingSequence() const
 bool Network::Netchan::receive(IRemoteIdentifierPtr& from, IMessageStream& stream, uint32_t& outSeqNum)
 {
 	uint8_t data[MAX_UDP_DATA_SIZE];
-	size_t len = getSocket()->receive(from, data, sizeof(data));
+	
+	IRemoteIdentifierPtr socketFrom;
+	size_t len = getSocket()->receive(socketFrom, data, sizeof(data));
 	if (len == -1) {
 		return false;
 	}
+
+	if (from && *socketFrom != *from)
+	{
+		// not matching the given IP address
+		return false;
+	}
+
+	from = socketFrom;
 
 	stream.Write(data, len);
 	stream.Seek(0);

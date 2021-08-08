@@ -187,13 +187,14 @@ void EntityField::WriteNumberPlayerStateField(MSG& msg, intptr_t bits, const voi
 	}
 	else
 	{
+		assert(size <= 4);
 		// Integer
-		uint32_t tmp = 0;
+		uint8_t tmp[4];
 		// FIXME: might cause a buffer overflow
-		std::memcpy(&tmp, toF, size);
-		Endian.LittlePointer(&tmp, size);
+		std::memcpy(tmp, toF, size);
+		Endian.LittlePointer(tmp, size);
 
-		msg.WriteBits(&tmp, bits);
+		msg.WriteBits(tmp, bits);
 	}
 }
 
@@ -714,7 +715,7 @@ size_t SerializableErrors::BadEntityNumberException::getNumber() const
 }
 str SerializableErrors::BadEntityNumberException::what() const
 {
-	return str(badNumber);
+	return std::to_string(badNumber);
 }
 
 SerializableErrors::BadEntityFieldException::BadEntityFieldException(uint8_t inFieldType, const char* inFieldName)
@@ -734,7 +735,7 @@ const char* SerializableErrors::BadEntityFieldException::getFieldName() const
 
 str SerializableErrors::BadEntityFieldException::what() const
 {
-	return str::printf("%s: %d", getFieldName(), getFieldType());
+	return str(getFieldName()) + ": " + std::to_string(getFieldType());
 }
 
 SerializableErrors::BadEntityFieldCountException::BadEntityFieldCountException(uint8_t inCount)
@@ -748,5 +749,5 @@ uint8_t SerializableErrors::BadEntityFieldCountException::getCount() const
 
 str SerializableErrors::BadEntityFieldCountException::what() const
 {
-	return str((int)getCount());
+	return std::to_string(getCount());
 }

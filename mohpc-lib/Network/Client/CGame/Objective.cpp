@@ -37,10 +37,10 @@ uint32_t objective_t::getFlags() const
 
 const char* objective_t::getText() const
 {
-	return text;
+	return text.c_str();
 }
 
-const Vector& objective_t::getLocation() const
+const_vec3p_t objective_t::getLocation() const
 {
 	return location;
 }

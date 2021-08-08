@@ -22,7 +22,7 @@ void SkeletonChannelNameTable::PrintContents() const
 	str channelList;
 	int i;
 
-	intptr_t numChannels = m_Channels.NumObjects();
+	intptr_t numChannels = m_Channels.size();
 	for( i = 0; i < numChannels; i++ )
 	{
 		if( !m_Channels[ i ].name[ 0 ] )
@@ -30,7 +30,7 @@ void SkeletonChannelNameTable::PrintContents() const
 			continue;
 		}
 
-		channelList += str("c") + str(m_Channels[i].channelNum) + str(":") + str(m_Channels[i].name) + "\n";
+		channelList += str("c") + std::to_string(m_Channels[i].channelNum) + str(":") + m_Channels[i].name + str("\n");
 	}
 }
 
@@ -41,7 +41,7 @@ bool SkeletonChannelNameTable::FindIndexFromName( const char *name, intptr_t *in
 	intptr_t upperBound;
 	intptr_t index;
 
-	intptr_t numChannels = m_Channels.NumObjects();
+	intptr_t numChannels = m_Channels.size();
 
 	lowerBound = 0;
 	upperBound = numChannels - 1;
@@ -95,7 +95,7 @@ void SkeletonChannelNameTable::SortIntoTable(intptr_t index)
 {
 	SkeletonChannelName tempName;
 
-	intptr_t numChannels = m_Channels.NumObjects() - 1;
+	intptr_t numChannels = m_Channels.size() - 1;
 
 	CopyChannel(&tempName, &m_Channels[numChannels]);
 
@@ -307,9 +307,9 @@ intptr_t SkeletonChannelNameTable::RegisterChannel( const char *name )
 		return m_Channels[index].channelNum;
 	}
 
-	intptr_t numChannels = m_Channels.NumObjects();
+	intptr_t numChannels = m_Channels.size();
 
-	m_Channels.SetNumObjects(numChannels + 1);
+	m_Channels.resize(numChannels + 1);
 	m_lookup.resize(numChannels + 1);
 
 	SetChannelName(&m_Channels[numChannels], name);
@@ -320,7 +320,7 @@ intptr_t SkeletonChannelNameTable::RegisterChannel( const char *name )
 
 const char *SkeletonChannelNameTable::FindNameFromLookup( intptr_t index ) const
 {
-	if (index < (intptr_t)m_Channels.NumObjects())
+	if (index < (intptr_t)m_Channels.size())
 	{
 		return m_Channels[index].name.c_str();
 	}

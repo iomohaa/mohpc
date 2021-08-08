@@ -76,7 +76,7 @@ void DownloadManager::processDownload(MSG& msg, const Parsing::IString& stringPa
 		MOHPC_LOG(Debug, "downloaded block %d size %d", block, size);
 
 		// tell the server to continue downloading
-		sequence->addCommand(str::printf("%s %d", nextDownloadCommand, downloadBlock));
+		sequence->addCommand((nextDownloadCommand + std::to_string(downloadBlock)).c_str());
 
 		downloadSize += size;
 	}
@@ -113,7 +113,7 @@ void DownloadManager::startDownload(const char* downloadNameValue)
 
 	// send the server command
 	const str escapedName = EscapeString(downloadNameValue);
-	sequence->addCommand(str::printf("%s \"%s\"", startDownloadCommand, escapedName.c_str()));
+	sequence->addCommand((startDownloadCommand + '"' + escapedName + '"').c_str());
 	downloadRequested = true;
 	downloadName = downloadNameValue;
 }

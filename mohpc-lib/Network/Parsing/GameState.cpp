@@ -94,13 +94,14 @@ public:
 
 				entityState_t& es = gameState.getEntityBaselines().getEntity(newNum);
 
+				using namespace std::chrono;
 				entityParser->readDeltaEntity(
 					msg,
 					nullptr,
 					&es,
 					newNum,
 					// no frametime yet
-					0.f
+					deltaTimeFloat_t(0.f)
 				);
 			}
 			break;
@@ -125,7 +126,7 @@ public:
 
 		// calculate the server frame time
 		results.serverDeltaTimeSeconds = getFrameTime(serverInfo);
-		results.serverDeltaTime = (uint64_t)floorf(results.serverDeltaTimeSeconds * 1000.f);
+		results.serverDeltaTime = (uint32_t)floorf(results.serverDeltaTimeSeconds * 1000.f);
 	}
 
 	serverType_e parseServerType(const char* version, size_t len) const override
@@ -165,6 +166,7 @@ public:
 
 			entityParser->writeEntityNum(msg, ent.number);
 
+			using namespace std::chrono;
 			entityParser->writeDeltaEntity(
 				msg,
 				nullptr,
@@ -172,7 +174,7 @@ public:
 				ent.number,
 				// the client won't have the frametime
 				// until all commands are processed
-				0.f
+				deltaTimeFloat_t(0.f)
 			);
 		}
 
@@ -212,10 +214,10 @@ public:
 
 	serverType_e parseServerType(const char* version, size_t len) const override
 	{
-		if (str::ifindn(version, "spearhead", len)) {
+		if (strHelpers::ifindn(version, "spearhead", len)) {
 			return serverType_e::spearhead;
 		}
-		else if (str::ifindn(version, "breakthrough", len)) {
+		else if (strHelpers::ifindn(version, "breakthrough", len)) {
 			return serverType_e::breakthrough;
 		}
 		else

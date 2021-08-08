@@ -3,8 +3,7 @@
 #include "../../NetGlobal.h"
 #include "GameType.h"
 
-#include <morfuse/Container/Container.h>
-
+#include <vector>
 #include <cstdint>
 #include <cstddef>
 
@@ -108,8 +107,8 @@ namespace Network
 			uint64_t parseTime(const char* timeStr);
 
 		private:
-			mfuse::con::Container<teamEntry_t> teamEntries;
-			mfuse::con::Container<player_t> playerList;
+			std::vector<teamEntry_t> teamEntries;
+			std::vector<player_t> playerList;
 		};
 
 		class ScoreboardParser

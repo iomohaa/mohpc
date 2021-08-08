@@ -26,7 +26,7 @@ float environment_t::getFarplane() const
 	return farplaneDistance;
 }
 
-const Vector& environment_t::getFarplaneColor() const
+const_vec3p_t environment_t::getFarplaneColor() const
 {
 	return farplaneColor;
 }
@@ -61,7 +61,7 @@ float environment_t::getFarclipOverride() const
 	return farclipOverride;
 }
 
-const Vector& environment_t::getFarplaneColorOverride() const
+const_vec3p_t environment_t::getFarplaneColorOverride() const
 {
 	return farplaneColorOverride;
 }

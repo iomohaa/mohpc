@@ -2,9 +2,9 @@
 
 #include "UtilityGlobal.h"
 #include "UtilityObject.h"
+#include "TickTypes.h"
 
-#include <morfuse/Container/Container.h>
-
+#include <vector>
 #include <chrono>
 
 namespace MOHPC
@@ -28,7 +28,7 @@ namespace MOHPC
 
 	public:
 		/** Tick function. */
-		virtual void tick(uint64_t deltaTime, uint64_t currentTime) = 0;
+		virtual void tick(deltaTime_t deltaTime, tickTime_t currentTime) = 0;
 
 	private:
 		TickableObjects* owner;
@@ -54,8 +54,8 @@ namespace MOHPC
 		MOHPC_UTILITY_EXPORTS void removeTickable(ITickable* tickable);
 
 	private:
-		mfuse::con::Container<ITickable*> tickables;
-		std::chrono::time_point<std::chrono::steady_clock> lastTickTime;
+		std::vector<ITickable*> tickables;
+		tickTime_t lastTickTime;
 	};
 	using TickableObjectsPtr = SharedPtr<TickableObjects>;
 }

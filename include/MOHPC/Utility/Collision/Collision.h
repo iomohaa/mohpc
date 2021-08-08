@@ -7,7 +7,7 @@
 #include "../../Common/str.h"
 #include "../SharedPtr.h"
 
-#include <morfuse/Container/Container.h>
+#include <vector>
 #include <cstdint>
 
 namespace MOHPC
@@ -18,7 +18,16 @@ namespace MOHPC
 
 	struct MOHPC_UTILITY_EXPORTS collisionPlane_t
 	{
-		Vector normal;
+	public:
+		collisionPlane_t();
+
+		const_vec3p_t getNormal() const;
+		float getDist() const;
+		uint8_t getType() const;
+		uint8_t getSignBits() const;
+
+	public:
+		vec3_t normal;
 		float dist;
 		union {
 			struct {
@@ -27,14 +36,6 @@ namespace MOHPC
 			};
 			uint8_t typedata;
 		};
-
-	public:
-		collisionPlane_t();
-
-		const Vector& getNormal() const { return normal; }
-		float getDist() const { return dist; }
-		uint8_t getType() const { return type; }
-		uint8_t getSignBits() const { return signbits; }
 	};
 
 	struct MOHPC_UTILITY_EXPORTS collisionNode_t
@@ -62,7 +63,7 @@ namespace MOHPC
 		collisionLeaf_t();
 	};
 
-	struct MOHPC_UTILITY_EXPORTS collisionFencemask_t
+	struct collisionFencemask_t
 	{
 		str name;
 		uint32_t iWidth;
@@ -74,48 +75,52 @@ namespace MOHPC
 		collisionFencemask_t();
 	};
 
-	struct MOHPC_UTILITY_EXPORTS collisionShader_t
+	struct collisionShader_t
 	{
+	public:
+		collisionShader_t();
+
+	public:
 		str shader;
 		uint32_t surfaceFlags;
 		uint32_t contentFlags;
 		const collisionFencemask_t* mask;
-
-	public:
-		collisionShader_t();
 	};
 
-	struct MOHPC_UTILITY_EXPORTS terrainCollideSquare_t
+	struct terrainCollideSquare_t
 	{
-		vec4_t plane[2];
-		int32_t eMode;
-
 	public:
 		terrainCollideSquare_t();
-	};
-
-	struct MOHPC_UTILITY_EXPORTS terrainCollide_t
-	{
-		Vector vBounds[2];
-		terrainCollideSquare_t squares[8][8];
 
 	public:
-		terrainCollide_t();
+		vec4_t plane[2];
+		int32_t eMode;
 	};
 
-	struct MOHPC_UTILITY_EXPORTS collisionTerrain_t
+	struct terrainCollide_t
 	{
+	public:
+		terrainCollide_t();
+
+	public:
+		vec3_t vBounds[2];
+		terrainCollideSquare_t squares[8][8];
+	};
+
+	struct collisionTerrain_t
+	{
+	public:
+		collisionTerrain_t();
+
+	public:
 		size_t checkcount;
 		int32_t surfaceFlags;
 		int32_t contents;
 		uintptr_t shaderNum;
 		terrainCollide_t tc;
-
-	public:
-		collisionTerrain_t();
 	};
 
-	struct MOHPC_UTILITY_EXPORTS collisionArea_t
+	struct collisionArea_t
 	{
 		int32_t floodnum;
 		int32_t floodvalid;
@@ -124,17 +129,19 @@ namespace MOHPC
 		collisionArea_t();
 	};
 
-	struct MOHPC_UTILITY_EXPORTS collisionModel_t
+	struct collisionModel_t
 	{
-		Vector mins, maxs;
-		// submodels don't reference the main tree
-		collisionLeaf_t leaf;
-
 	public:
 		collisionModel_t();
+
+	public:
+		vec3_t mins;
+		vec3_t maxs;
+		// submodels don't reference the main tree
+		collisionLeaf_t leaf;
 	};
 
-	struct MOHPC_UTILITY_EXPORTS collisionSideEq_t
+	struct collisionSideEq_t
 	{
 		float fSeq[4];
 		float fTeq[4];
@@ -143,7 +150,7 @@ namespace MOHPC
 		collisionSideEq_t();
 	};
 
-	struct MOHPC_UTILITY_EXPORTS collisionBrushSide_t
+	struct collisionBrushSide_t
 	{
 		collisionPlane_t* plane;
 		int32_t surfaceFlags;
@@ -154,22 +161,23 @@ namespace MOHPC
 		collisionBrushSide_t();
 	};
 
-	struct MOHPC_UTILITY_EXPORTS collisionBrush_t
+	struct collisionBrush_t
 	{
+	public:
+		collisionBrush_t();
+
+	public:
 		// the shader that determined the contents
 		uintptr_t shaderNum;
 		int32_t contents;
-		Vector bounds[2];
+		vec3_t bounds[2];
 		size_t numsides;
 		collisionBrushSide_t* sides;
 		// to avoid repeated testings
 		size_t checkcount;
-
-	public:
-		collisionBrush_t();
 	};
 
-	struct MOHPC_UTILITY_EXPORTS patchPlane_t
+	struct patchPlane_t
 	{
 		vec4_t plane;
 		// signx + (signy<<1) + (signz<<2), used as lookup during collision
@@ -179,7 +187,7 @@ namespace MOHPC
 		patchPlane_t();
 	};
 
-	struct MOHPC_UTILITY_EXPORTS facet_t
+	struct facet_t
 	{
 		int32_t surfacePlane;
 		// 3 or four + 6 axial bevels + 4 or 3 * 4 edge bevels
@@ -192,20 +200,22 @@ namespace MOHPC
 		facet_t();
 	};
 
-	struct MOHPC_UTILITY_EXPORTS patchCollide_t
+	struct patchCollide_t
 	{
-		Vector bounds[2];
+
+	public:
+		patchCollide_t();
+
+	public:
+		vec3_t bounds[2];
 		// surface planes plus edge planes
 		uint32_t numPlanes;
 		patchPlane_t* planes;
 		uint32_t numFacets;
 		facet_t* facets;
-
-	public:
-		patchCollide_t();
 	};
 
-	struct MOHPC_UTILITY_EXPORTS collisionPatch_t
+	struct collisionPatch_t
 	{
 		// to avoid repeated testings
 		size_t checkcount;
@@ -226,7 +236,7 @@ namespace MOHPC
 		// time completed, 1.0 = didn't hit anything
 		float fraction;
 		// final position
-		Vector endpos;
+		vec3_t endpos;
 		// surface hit
 		uint32_t surfaceFlags;
 		// contents on other side of surface hit
@@ -249,7 +259,7 @@ namespace MOHPC
 	// Used for oriented capsule collision detection
 	struct sphere_t
 	{
-		Vector offset;
+		vec3_t offset;
 		float radius;
 		bool use;
 
@@ -259,18 +269,18 @@ namespace MOHPC
 
 	struct traceWork_t
 	{
-		Vector start;
-		Vector end;
+		vec3_t start;
+		vec3_t end;
 		// size of the box being swept through the model
-		Vector size[2];
+		vec3_t size[2];
 		// [signbits][x] = either size[0][x] or size[1][x]
-		Vector offsets[8];
+		vec3_t offsets[8];
 		// longest corner length from origin
 		float maxOffset;
 		// greatest of abs(size[0]) and abs(size[1])
-		Vector extents;
+		vec3_t extents;
 		// enclosing box of start and end surrounding by size
-		Vector bounds[2];
+		vec3_t bounds[2];
 		float height;
 		float radius;
 		// ored contents of the model tracing through
@@ -290,7 +300,7 @@ namespace MOHPC
 		size_t maxcount;
 		bool overflowed;
 		int* list;
-		Vector bounds[2];
+		vec3_t bounds[2];
 		int lastLeaf;		// for overflows where each leaf can't be stored individually
 		void (CollisionWorld::*storeLeafs)(leafList_t* ll, int nodenum);
 
@@ -302,8 +312,8 @@ namespace MOHPC
 	{
 		traceWork_t* tw;
 		const terrainCollide_t* tc;
-		Vector vStart;
-		Vector vEnd;
+		vec3_t vStart;
+		vec3_t vEnd;
 		int i;
 		int j;
 		float fSurfaceClipEpsilon;
@@ -395,33 +405,33 @@ namespace MOHPC
 		MOHPC_UTILITY_EXPORTS size_t getNumSurfaces() const;
 
 	public:
-		MOHPC_UTILITY_EXPORTS void ModelBounds(clipHandle_t model, Vector& mins, Vector& maxs);
+		MOHPC_UTILITY_EXPORTS void ModelBounds(clipHandle_t model, vec3r_t mins, vec3r_t maxs);
 		MOHPC_UTILITY_EXPORTS void InitBoxHull();
-		MOHPC_UTILITY_EXPORTS int PointContents(const vec3_t p, clipHandle_t model);
+		MOHPC_UTILITY_EXPORTS int PointContents(const vec3r_t p, clipHandle_t model);
 		MOHPC_UTILITY_EXPORTS clipHandle_t inlineModel(uint32_t index);
-		MOHPC_UTILITY_EXPORTS clipHandle_t TempBoxModel(const vec3_t mins, const vec3_t maxs, int contents);
-		MOHPC_UTILITY_EXPORTS uintptr_t PointBrushNum(const Vector& p, clipHandle_t model);
-		MOHPC_UTILITY_EXPORTS int TransformedPointContents(const Vector& p, clipHandle_t model, const Vector& origin, const Vector& angles);
+		MOHPC_UTILITY_EXPORTS clipHandle_t TempBoxModel(const vec3r_t mins, const vec3r_t maxs, int contents);
+		MOHPC_UTILITY_EXPORTS uintptr_t PointBrushNum(const vec3r_t p, clipHandle_t model);
+		MOHPC_UTILITY_EXPORTS int TransformedPointContents(const vec3r_t p, clipHandle_t model, const vec3r_t origin, const vec3r_t angles);
 
-		MOHPC_UTILITY_EXPORTS bool BoxSightTrace(const Vector& start, const Vector& end,
-			const Vector& mins, const Vector& maxs,
+		MOHPC_UTILITY_EXPORTS bool BoxSightTrace(const vec3r_t start, const vec3r_t end,
+			const vec3r_t mins, const vec3r_t maxs,
 			clipHandle_t model, uint32_t brushmask, bool cylinder);
 
-		MOHPC_UTILITY_EXPORTS bool TransformedBoxSightTrace(const Vector& start, const Vector& end,
-			const Vector& mins, const Vector& maxs,
-			clipHandle_t model, uint32_t brushmask, const Vector& origin, const Vector& angles, bool cylinder);
+		MOHPC_UTILITY_EXPORTS bool TransformedBoxSightTrace(const vec3r_t start, const vec3r_t end,
+			const vec3r_t mins, const vec3r_t maxs,
+			clipHandle_t model, uint32_t brushmask, const vec3r_t origin, const vec3r_t angles, bool cylinder);
 
-		MOHPC_UTILITY_EXPORTS void BoxTrace(trace_t* results, const Vector& start, const Vector& end,
-			const Vector& mins, const Vector& maxs,
+		MOHPC_UTILITY_EXPORTS void BoxTrace(trace_t* results, const vec3r_t start, const vec3r_t end,
+			const vec3r_t mins, const vec3r_t maxs,
 			clipHandle_t model, uint32_t brushmask, bool cylinder);
 
-		MOHPC_UTILITY_EXPORTS void TransformedBoxTrace(trace_t* results, const Vector& start, const Vector& end,
-			const Vector& mins, const Vector& maxs,
+		MOHPC_UTILITY_EXPORTS void TransformedBoxTrace(trace_t* results, const vec3r_t start, const vec3r_t end,
+			const vec3r_t mins, const vec3r_t maxs,
 			clipHandle_t model, uint32_t brushmask,
-			const Vector& origin, const Vector& angles, bool cylinder);
+			const vec3r_t origin, const vec3r_t angles, bool cylinder);
 
 	private:
-		size_t BoxBrushes(const Vector& mins, const Vector& maxs, collisionBrush_t** list, size_t listsize);
+		size_t BoxBrushes(const vec3r_t mins, const vec3r_t maxs, collisionBrush_t** list, size_t listsize);
 
 		void StoreLeafs(leafList_t* ll, int nodenum);
 		void StoreBrushes(leafList_t* ll, int nodenum);
@@ -429,8 +439,8 @@ namespace MOHPC
 		void BoxLeafnums_r(leafList_t* ll, int nodenum);
 
 		collisionModel_t* ClipHandleToModel(clipHandle_t handle);
-		bool BoundsIntersect(const Vector& mins, const Vector& maxs, const Vector& mins2, const Vector& maxs2);
-		bool BoundsIntersectPoint(const Vector& mins, const Vector& maxs, const Vector& point);
+		bool BoundsIntersect(const vec3r_t mins, const vec3r_t maxs, const vec3r_t mins2, const vec3r_t maxs2);
+		bool BoundsIntersectPoint(const vec3r_t mins, const vec3r_t maxs, const vec3r_t point);
 
 	// Trace
 	private:
@@ -459,11 +469,10 @@ namespace MOHPC
 		bool SightTraceThroughTree(traceWork_t* tw, int num, float p1f, float p2f, vec3_t p1, vec3_t p2);
 
 	private:
-		int PointLeafnum_r(const Vector& p, int num);
-		int PointLeafnum(const Vector& p);
-		size_t	BoxLeafnums(const Vector& mins, const Vector& maxs, int* list, size_t listsize, int* lastLeaf);
+		int PointLeafnum_r(const vec3r_t p, int num);
+		int PointLeafnum(const vec3r_t p);
+		size_t	BoxLeafnums(const vec3r_t mins, const vec3r_t maxs, int* list, size_t listsize, int* lastLeaf);
 		collisionShader_t* ShaderPointer(int iShaderNum);
-		uintptr_t PointBrushNum(const vec3_t p, clipHandle_t model);
 		uint8_t* ClusterPVS(int cluster);
 		void FloodArea_r(int areaNum, int floodnum);
 		void FloodAreaConnections(void);
@@ -495,7 +504,7 @@ namespace MOHPC
 
 	// Patch
 	private:
-		bool PlaneFromPoints(vec4_t plane, Vector& a, Vector& b, Vector& c);
+		bool PlaneFromPoints(vec4_t plane, vec3r_t a, vec3r_t b, vec3r_t c);
 		void TraceThroughPatchCollide(traceWork_t* tw, const patchCollide_t* pc);
 		bool PositionTestInPatchCollide(traceWork_t* tw, const patchCollide_t* pc);
 		void ClearLevelPatches(void);
@@ -503,21 +512,21 @@ namespace MOHPC
 		int CheckFacetPlane(float* plane, vec3_t start, vec3_t end, float* enterFrac, float* leaveFrac, uint32_t* hit);
 
 	private:
-		mfuse::con::Container<collisionFencemask_t> fencemasks;
-		mfuse::con::Container<collisionShader_t> shaders;
-		mfuse::con::Container<collisionSideEq_t> sideequations;
-		mfuse::con::Container<collisionBrushSide_t> brushsides;
-		mfuse::con::Container<collisionPlane_t> planes;
-		mfuse::con::Container<collisionNode_t> nodes;
-		mfuse::con::Container<collisionLeaf_t> leafs;
-		mfuse::con::Container<intptr_t> leafbrushes;
-		mfuse::con::Container<intptr_t> leafsurfaces;
-		mfuse::con::Container<collisionTerrain_t*> leafterrains;
-		mfuse::con::Container<collisionModel_t> cmodels;
-		mfuse::con::Container<collisionBrush_t> brushes;
-		mfuse::con::Container<collisionPatch_t*> surfaces;
-		mfuse::con::Container<collisionTerrain_t> terrain;
-		mfuse::con::Container<collisionPatch_t> patchList;
+		std::vector<collisionFencemask_t> fencemasks;
+		std::vector<collisionShader_t> shaders;
+		std::vector<collisionSideEq_t> sideequations;
+		std::vector<collisionBrushSide_t> brushsides;
+		std::vector<collisionPlane_t> planes;
+		std::vector<collisionNode_t> nodes;
+		std::vector<collisionLeaf_t> leafs;
+		std::vector<intptr_t> leafbrushes;
+		std::vector<intptr_t> leafsurfaces;
+		std::vector<collisionTerrain_t*> leafterrains;
+		std::vector<collisionModel_t> cmodels;
+		std::vector<collisionBrush_t> brushes;
+		std::vector<collisionPatch_t*> surfaces;
+		std::vector<collisionTerrain_t> terrain;
+		std::vector<collisionPatch_t> patchList;
 
 		// incremented on each trace
 		size_t checkcount;

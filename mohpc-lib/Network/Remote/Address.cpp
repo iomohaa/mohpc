@@ -79,7 +79,7 @@ str NetAddr4::asString() const
 		adrBuf += ip[i];
 	}
 
-	adrBuf += ":" + str(port);
+	adrBuf += ":" + std::to_string(port);
 
 	return adrBuf;
 }
@@ -124,7 +124,7 @@ str NetAddr6::asString() const
 	adrBuf.reserve(ipNums + 1 + numDigits(port));
 	for (size_t i = 0; i < sizeof(ip); ++i)
 	{
-		if (i != 0) adrBuf += '::';
+		if (i != 0) adrBuf += "::";
 		adrBuf += ip[i];
 	}
 

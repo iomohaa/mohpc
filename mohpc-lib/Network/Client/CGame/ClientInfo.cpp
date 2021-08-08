@@ -65,7 +65,7 @@ const clientInfo_t& ClientInfoList::set(const ReadOnlyInfo& info, uint32_t clien
 	{
 		const char* key = it.key();
 		// Don't add first properties above
-		if (str::icmp(key, "name") && str::icmp(key, "team")) {
+		if (strHelpers::icmp(key, "name") && strHelpers::icmp(key, "team")) {
 			client.properties.SetPropertyValue(key, it.value());
 		}
 	}
@@ -84,7 +84,7 @@ void ClientInfoList::reflectLocalClient(const clientInfo_t& client)
 {
 	const char* currentName = userInfo->getName();
 	// check if the name is different
-	if (str::cmp(client.name, currentName))
+	if (strHelpers::cmp(client.name.c_str(), currentName))
 	{
 		MOHPC_LOG(Info, "Name changed from \"%s\" to \"%s\"", currentName, client.name.c_str());
 		// the name has changed (can be because it was sanitized)

@@ -5,7 +5,7 @@
 #include <MOHPC/Files/Managers/FileManager.h>
 #include <MOHPC/Common/Math.h>
 #include <MOHPC/Utility/Misc/Endian.h>
-#include <MOHPC/Utility/Misc/EndianHelpers.h>
+#include <MOHPC/Utility/Misc/EndianCoordHelpers.h>
 #include <MOHPC/Common/Log.h>
 
 #include <cstring>
@@ -118,8 +118,8 @@ void DCL::Load()
 
 		DCLMarkDef* const pPoly = &dclDecals[i];
 		pPoly->shader = shaderManager->GetShader(saveMark.shader);
-		pPoly->position = EndianHelpers::LittleVector(Endian, saveMark.vPos);
-		pPoly->projection = EndianHelpers::LittleVector(Endian, saveMark.vProjection);
+		EndianHelpers::LittleVector(Endian, saveMark.vPos, pPoly->position);
+		EndianHelpers::LittleVector(Endian, saveMark.vProjection, pPoly->projection);
 		pPoly->radius = Endian.LittleFloat(saveMark.fRadius);
 		pPoly->heightScale = Endian.LittleFloat(saveMark.fHeightScale);
 		pPoly->widthScale = Endian.LittleFloat(saveMark.fWidthScale);

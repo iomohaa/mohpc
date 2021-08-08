@@ -51,19 +51,19 @@ Returns true if the velocity was clipped in some way
 bool Pmove::PM_SlideMove( bool gravity )
 {
 	int			bumpcount, numbumps;
-	Vector		dir;
+	vec3_t		dir;
 	float		d;
 	int			numplanes;
-	Vector		planes[ MAX_CLIP_PLANES ];
-	Vector		primal_velocity;
-	Vector		clipVelocity;
+	vec3_t		planes[ MAX_CLIP_PLANES ];
+	vec3_t		primal_velocity;
+	vec3_t		clipVelocity;
 	int			i, j, k;
 	trace_t	trace;
-	Vector		end;
+	vec3_t		end;
 	float		time_left;
 	float		into;
-	Vector		endVelocity;
-	Vector		endClipVelocity;
+	vec3_t		endVelocity;
+	vec3_t		endClipVelocity;
 
 	numbumps = 4;
 
@@ -71,7 +71,7 @@ bool Pmove::PM_SlideMove( bool gravity )
 
 	if( gravity ) {
 		VecCopy( pm.ps->velocity, endVelocity );
-		endVelocity[ 2 ] -= pm.ps->gravity * pml.frametime;
+		endVelocity[ 2 ] -= pm.ps->gravity * pml.frametime.count();
 		pm.ps->velocity[ 2 ] = ( pm.ps->velocity[ 2 ] + endVelocity[ 2 ] ) * 0.5f;
 		primal_velocity[ 2 ] = endVelocity[ 2 ];
 		if( pml.groundPlane ) {
@@ -81,7 +81,7 @@ bool Pmove::PM_SlideMove( bool gravity )
 		}
 	}
 
-	time_left = pml.frametime;
+	time_left = pml.frametime.count();
 
 	// never turn against the ground plane
 	if( pml.groundPlane ) {
@@ -240,14 +240,14 @@ PM_StepSlideMove
 */
 void Pmove::PM_StepSlideMove( bool gravity )
 {
-	Vector start_o;
-	Vector start_v;
-	Vector nostep_o;
-	Vector nostep_v;
+	vec3_t start_o;
+	vec3_t start_v;
+	vec3_t nostep_o;
+	vec3_t nostep_v;
 	trace_t trace;
 	bool bWasOnGoodGround;
-	Vector up;
-	Vector down;
+	vec3_t up;
+	vec3_t down;
 
 	VecCopy( pm.ps->origin, start_o );
 	VecCopy( pm.ps->velocity, start_v );

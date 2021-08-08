@@ -40,19 +40,17 @@ public:
 
 	void writeEnvironment(const environment_t& env, str& out) const override
 	{
-		out = str::printf(
-			"%d %f %f %f %f",
-			env.farplaneCull,
-			env.farplaneDistance,
-			env.farplaneColor[0],
-			env.farplaneColor[1],
-			env.farplaneColor[2]
-		);
+		out = std::to_string(env.farplaneCull);
+		out += " " + std::to_string(env.farplaneDistance);
+		out += " " + std::to_string(env.farplaneColor[0]);
+		out += " " + std::to_string(env.farplaneColor[1]);
+		out += " " + std::to_string(env.farplaneColor[2]);
 	}
 
 	void writeSky(const environment_t& env, str& out) const override
 	{
-		out = str::printf("%f %d", env.skyAlpha, env.skyPortal);
+		out = std::to_string(env.skyAlpha);
+		out += " " + std::to_string(env.skyPortal);
 	}
 };
 
@@ -92,22 +90,19 @@ public:
 
 	void writeEnvironment(const environment_t& env, str& out) const override
 	{
-		out = str::printf(
-			"%d %f %f %f %f %f %f %f %d %f %f %f %f",
-			env.farplaneCull,
-			env.farplaneDistance,
-			env.farplaneBias,
-			env.skyboxFarplane,
-			env.skyboxSpeed,
-			env.farplaneColor[0],
-			env.farplaneColor[1],
-			env.farplaneColor[2],
-			env.renderTerrain,
-			env.farclipOverride,
-			env.farplaneColorOverride[0],
-			env.farplaneColorOverride[1],
-			env.farplaneColorOverride[2]
-		);
+		out = std::to_string(env.farplaneCull);
+		out += " " + std::to_string(env.farplaneDistance);
+		out += " " + std::to_string(env.farplaneBias);
+		out += " " + std::to_string(env.skyboxFarplane);
+		out += " " + std::to_string(env.skyboxSpeed);
+		out += " " + std::to_string(env.farplaneColor[0]);
+		out += " " + std::to_string(env.farplaneColor[1]);
+		out += " " + std::to_string(env.farplaneColor[2]);
+		out += " " + std::to_string(env.renderTerrain);
+		out += " " + std::to_string(env.farclipOverride);
+		out += " " + std::to_string(env.farplaneColorOverride[0]);
+		out += " " + std::to_string(env.farplaneColorOverride[1]);
+		out += " " + std::to_string(env.farplaneColorOverride[2]);
 	}
 };
 

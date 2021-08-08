@@ -4,12 +4,11 @@
 #include "../UtilityObject.h"
 #include "../../Common/Vector.h"
 #include "../../Common/str.h"
+#include "../../Common/SimpleVector.h"
 #include "../../Assets/Managers/Manager.h"
 #include "../SharedPtr.h"
 
-#include <morfuse/Container/Container.h>
-#include <morfuse/Common/Vector.h>
-#include <morfuse/Script/EventContext.h>
+#include <vector>
 
 namespace MOHPC
 {
@@ -67,20 +66,20 @@ namespace MOHPC
 		int32_t flags;
 		emitterSpawnType_e spawnType;
 		Sprite sprite;
-		mfuse::Vector accel;
-		mfuse::Vector radialVelocity;
-		mfuse::Vector originOffsetBase;
-		mfuse::Vector originOffsetAmplitude;
-		mfuse::Vector anglesOffsetBase;
-		mfuse::Vector anglesOffsetAmplitude;
-		mfuse::Vector randVelocityBase;
-		mfuse::Vector randVelocityAmplitude;
-		mfuse::Vector randAVelocityBase;
-		mfuse::Vector randAVelocityAmplitude;
+		vec3_t accel;
+		vec3_t radialVelocity;
+		vec3_t originOffsetBase;
+		vec3_t originOffsetAmplitude;
+		vec3_t anglesOffsetBase;
+		vec3_t anglesOffsetAmplitude;
+		vec3_t randVelocityBase;
+		vec3_t randVelocityAmplitude;
+		vec3_t randAVelocityBase;
+		vec3_t randAVelocityAmplitude;
 		int32_t count;
 		float life;
 		float randomLife;
-		Vector color;
+		vec3_t color;
 		float alpha;
 		float scaleRate;
 		float scaleMin;
@@ -93,7 +92,7 @@ namespace MOHPC
 		float coneHeight;
 		float spawnRate;
 		float forwardVelocity;
-		mfuse::Vector dlight;
+		vec3_t dlight;
 		float lightRadius;
 
 		MOHPC_UTILITY_EXPORTS Emitter();
@@ -103,7 +102,7 @@ namespace MOHPC
 
 	struct EmitterResults
 	{
-		mfuse::con::Container<Emitter> Emitters;
+		std::vector<Emitter> Emitters;
 		int32_t animNum;
 		str animName;
 
@@ -126,10 +125,7 @@ namespace MOHPC
 		MOHPC_UTILITY_EXPORTS bool ParseEmitters(const TIKI* Tiki, EmitterResults& Results);
 
 	private:
-		bool ProcessCommand(const mfuse::con::Container<str>& Arguments, class EmitterListener& Listener);
-
-	private:
-		mfuse::EventContext context;
+		bool ProcessCommand(const std::vector<str>& Arguments, class EmitterListener& Listener);
 	};
 	using EmitterManagerPtr = SharedPtr<EmitterManager>;
 }

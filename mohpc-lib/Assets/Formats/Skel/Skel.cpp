@@ -4,7 +4,7 @@
 #include <MOHPC/Files/Managers/FileManager.h>
 #include <MOHPC/Common/Log.h>
 #include <MOHPC/Utility/Misc/Endian.h>
-#include <MOHPC/Utility/Misc/EndianHelpers.h>
+#include <MOHPC/Utility/Misc/EndianCoordHelpers.h>
 #include "SkelPrivate.h"
 #include "../TIKI/TIKI_Private.h"
 
@@ -80,7 +80,7 @@ void Skeleton::LoadBoneFromBuffer2(const BoneFileData *fileData, BoneData *boneD
 		newBoneRefName += strlen(newBoneRefName) + 1;
 	}
 
-	if (!str::cmp(fileData->parent, SKEL_BONENAME_WORLD))
+	if (!strHelpers::cmp(fileData->parent, SKEL_BONENAME_WORLD))
 	{
 		// no parent if it's the worldBone in the file
 		boneData->parent = -1;
@@ -228,7 +228,7 @@ void Skeleton::Load()
 	const char* ext = length > 4 ? &Fname[length - 4] : nullptr;
 	if (ext)
 	{
-		if (!str::icmp(ext, ".skb") || !str::icmp(ext, ".skd")) {
+		if (!strHelpers::icmp(ext, ".skb") || !strHelpers::icmp(ext, ".skd")) {
 			LoadModel(Fname);
 		}
 		else
@@ -294,32 +294,32 @@ void MOHPC::Skeleton::LoadSKBSurfaces(const File_SkelHeader* pHeader, size_t len
 
 	for (uint32_t i = 0; i < numSurfaces; i++)
 	{
-		Surface* surf = new(Surfaces) Surface();
+		Surface& surf = Surfaces.emplace_back();
 		const uint32_t numTriangles = Endian.LittleInteger(oldSurf->numTriangles);
 		const uint32_t numVerts = Endian.LittleInteger(oldSurf->numVerts);
 
-		surf->name = oldSurf->name;
-		surf->Triangles.resize(numTriangles * 3);
-		surf->Vertices.reserve(numVerts);
+		surf.name = oldSurf->name;
+		surf.Triangles.resize(numTriangles * 3);
+		surf.Vertices.reserve(numVerts);
 
 		const File_SKB_Vertex* oldVerts = (const File_SKB_Vertex*)((const uint8_t*)oldSurf + Endian.LittleInteger(oldSurf->ofsVerts));
 
 		for (uint32_t j = 0; j < numVerts; j++)
 		{
-			SkeletorVertex* newVert = new(surf->Vertices) SkeletorVertex();
+			SkeletorVertex& newVert = surf.Vertices.emplace_back();
 			const uint32_t numWeights = Endian.LittleInteger(oldVerts->numWeights);
 
-			newVert->normal = EndianHelpers::LittleVector(Endian, oldVerts->normal);
-			newVert->textureCoords[0] = Endian.LittleFloat(oldVerts->texCoords[0]);
-			newVert->textureCoords[1] = Endian.LittleFloat(oldVerts->texCoords[1]);
-			newVert->Weights.reserve(numWeights);
+			EndianHelpers::LittleVector(Endian, oldVerts->normal, newVert.normal);
+			newVert.textureCoords[0] = Endian.LittleFloat(oldVerts->texCoords[0]);
+			newVert.textureCoords[1] = Endian.LittleFloat(oldVerts->texCoords[1]);
+			newVert.Weights.reserve(numWeights);
 
 			for (uint32_t k = 0; k < numWeights; k++)
 			{
-				SkeletorWeight* newWeight = new (newVert->Weights) SkeletorWeight();
-				newWeight->boneIndex = Endian.LittleInteger(oldVerts->weights[k].boneIndex);
-				newWeight->boneWeight = Endian.LittleFloat(oldVerts->weights[k].boneWeight);
-				newWeight->offset = EndianHelpers::LittleVector(Endian, oldVerts->weights[k].offset);
+				SkeletorWeight& newWeight = newVert.Weights.emplace_back();
+				newWeight.boneIndex = Endian.LittleInteger(oldVerts->weights[k].boneIndex);
+				newWeight.boneWeight = Endian.LittleFloat(oldVerts->weights[k].boneWeight);
+				EndianHelpers::LittleVector(Endian, oldVerts->weights[k].offset, newWeight.offset);
 			}
 
 			oldVerts = (const File_SKB_Vertex*)((const uint8_t*)oldVerts + sizeof(File_Weight) * numWeights + (sizeof(File_SKB_Vertex) - sizeof(File_Weight)));
@@ -329,7 +329,7 @@ void MOHPC::Skeleton::LoadSKBSurfaces(const File_SkelHeader* pHeader, size_t len
 
 		for (uint32_t j = 0; j < numTriangles * 3; j++)
 		{
-			surf->Triangles[j] = *oldTriangles;
+			surf.Triangles[j] = *oldTriangles;
 			oldTriangles++;
 		}
 
@@ -347,35 +347,35 @@ void MOHPC::Skeleton::LoadSKDSurfaces(const File_SkelHeader* pHeader, size_t len
 
 	for (uint32_t i = 0; i < numSurfaces; i++)
 	{
-		Surface* surf = new(Surfaces) Surface();
+		Surface& surf = Surfaces.emplace_back();
 		const uint32_t numTriangles = Endian.LittleInteger(oldSurf->numTriangles);
 		const uint32_t numVerts = Endian.LittleInteger(oldSurf->numVerts);
 
-		surf->name = oldSurf->name;
-		surf->Triangles.resize(numTriangles * 3);
-		surf->Vertices.reserve(numVerts);
+		surf.name = oldSurf->name;
+		surf.Triangles.resize(numTriangles * 3);
+		surf.Vertices.reserve(numVerts);
 
 		const File_SKD_Vertex* oldVerts = (const File_SKD_Vertex*)((const uint8_t*)oldSurf + Endian.LittleInteger(oldSurf->ofsVerts));
 
 		for (uint32_t j = 0; j < numVerts; j++)
 		{
-			SkeletorVertex* newVert = new(surf->Vertices) SkeletorVertex();
+			SkeletorVertex& newVert = surf.Vertices.emplace_back();
 			const uint32_t numWeights = Endian.LittleInteger(oldVerts->numWeights);
 			const uint32_t numMorphs = Endian.LittleInteger(oldVerts->numMorphs);
 
-			newVert->normal = EndianHelpers::LittleVector(Endian, oldVerts->normal);
-			newVert->textureCoords[0] = Endian.LittleFloat(oldVerts->texCoords[0]);
-			newVert->textureCoords[1] = Endian.LittleFloat(oldVerts->texCoords[1]);
-			newVert->Weights.reserve(numWeights);
-			newVert->Morphs.reserve(numMorphs);
+			EndianHelpers::LittleVector(Endian, oldVerts->normal, newVert.normal);
+			newVert.textureCoords[0] = Endian.LittleFloat(oldVerts->texCoords[0]);
+			newVert.textureCoords[1] = Endian.LittleFloat(oldVerts->texCoords[1]);
+			newVert.Weights.reserve(numWeights);
+			newVert.Morphs.reserve(numMorphs);
 
 			const File_Morph* morph = (const File_Morph*)((const uint8_t*)oldVerts + sizeof(File_SKD_Vertex));
 
 			for (uint32_t k = 0; k < numMorphs; k++)
 			{
-				SkeletorMorph* newMorph = new(newVert->Morphs) SkeletorMorph();
-				newMorph->morphIndex = Endian.LittleInteger(morph->morphIndex);
-				newMorph->offset = EndianHelpers::LittleVector(Endian, morph->offset);
+				SkeletorMorph& newMorph = newVert.Morphs.emplace_back();
+				newMorph.morphIndex = Endian.LittleInteger(morph->morphIndex);
+				EndianHelpers::LittleVector(Endian, morph->offset, newMorph.offset);
 				++morph;
 			}
 
@@ -383,10 +383,10 @@ void MOHPC::Skeleton::LoadSKDSurfaces(const File_SkelHeader* pHeader, size_t len
 
 			for (uint32_t k = 0; k < numWeights; k++)
 			{
-				SkeletorWeight* newWeight = new(newVert->Weights) SkeletorWeight();
-				newWeight->boneIndex = Endian.LittleInteger(weight->boneIndex);
-				newWeight->boneWeight = Endian.LittleFloat(weight->boneWeight);
-				newWeight->offset = EndianHelpers::LittleVector(Endian, weight->offset);
+				SkeletorWeight& newWeight = newVert.Weights.emplace_back();
+				newWeight.boneIndex = Endian.LittleInteger(weight->boneIndex);
+				newWeight.boneWeight = Endian.LittleFloat(weight->boneWeight);
+				EndianHelpers::LittleVector(Endian, weight->offset, newWeight.offset);
 				++weight;
 			}
 
@@ -397,7 +397,7 @@ void MOHPC::Skeleton::LoadSKDSurfaces(const File_SkelHeader* pHeader, size_t len
 
 		for (uint32_t j = 0; j < numTriangles * 3; j++)
 		{
-			surf->Triangles[j] = Endian.LittleInteger(*oldTriangles);
+			surf.Triangles[j] = Endian.LittleInteger(*oldTriangles);
 			oldTriangles++;
 		}
 
@@ -482,7 +482,7 @@ void MOHPC::Skeleton::LoadBoxes(const File_SkelHeader* pHeader, size_t length)
 		const uint32_t ofsBoxes = Endian.LittleInteger(pHeader->ofsBoxes);
 		if (ofsBoxes >= 0 && (uint32_t)(ofsBoxes + numBoxes * sizeof(uint32_t)) < length)
 		{
-			Boxes.SetNumObjectsUninitialized(numBoxes);
+			Boxes.resize(numBoxes);
 
 			const int32_t* pBoxes = (const int32_t*)((const uint8_t*)pHeader + ofsBoxes);
 			for (uint32_t i = 0; i < numBoxes; i++)
@@ -522,7 +522,7 @@ void MOHPC::Skeleton::LoadMorphs(const File_SkelHeader* pHeader, size_t length)
 
 		if (ofsMorphTargets >= 0 && (uint32_t)(ofsMorphTargets + nMorphBytes) <= length)
 		{
-			MorphTargets.SetNumObjects(numMorphTargets);
+			MorphTargets.resize(numMorphTargets);
 
 			const char* pMorphTargets = (const char*)pHeader + ofsMorphTargets;
 

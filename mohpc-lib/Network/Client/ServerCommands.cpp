@@ -34,7 +34,7 @@ str EngineServer::VerBeforeChallengeRequest::generateRequest()
 
 bool EngineServer::VerBeforeChallengeRequest::supportsEvent(const char* name) const
 {
-	return !str::icmp(name, "infoResponse");
+	return !strHelpers::icmp(name, "infoResponse");
 }
 
 IRequestPtr EngineServer::VerBeforeChallengeRequest::handleResponse(const char* name, TokenParser& parser)
@@ -77,12 +77,12 @@ str EngineServer::ChallengeRequest::generateRequest()
 
 bool EngineServer::ChallengeRequest::supportsEvent(const char* name) const
 {
-	return !str::icmp(name, "getKey") || !str::icmp(name, "challengeResponse");
+	return !strHelpers::icmp(name, "getKey") || !strHelpers::icmp(name, "challengeResponse");
 }
 
 IRequestPtr EngineServer::ChallengeRequest::handleResponse(const char* name, TokenParser& parser)
 {
-	if (!str::icmp(name, "getKey"))
+	if (!strHelpers::icmp(name, "getKey"))
 	{
 		const char* challenge = parser.GetLine(false);
 		MOHPC_LOG(Debug, "forwarding request for getKey: %s", name);
@@ -128,7 +128,7 @@ EngineServer::AuthorizeRequest::AuthorizeRequest(const protocolType_c& proto, Co
 
 bool EngineServer::AuthorizeRequest::supportsEvent(const char* name) const
 {
-	return !str::icmp(name, "getKey") || !str::icmp(name, "challengeResponse");
+	return !strHelpers::icmp(name, "getKey") || !strHelpers::icmp(name, "challengeResponse");
 }
 
 str EngineServer::AuthorizeRequest::generateRequest()
@@ -147,7 +147,7 @@ str EngineServer::AuthorizeRequest::generateRequest()
 
 IRequestPtr EngineServer::AuthorizeRequest::handleResponse(const char* name, TokenParser& parser)
 {
-	if (!str::icmp(name, "challengeResponse"))
+	if (!strHelpers::icmp(name, "challengeResponse"))
 	{
 		int32_t challenge = parser.GetInteger(false);
 		MOHPC_LOG(Debug, "got challenge %d", challenge);
@@ -202,7 +202,7 @@ str EngineServer::ConnectRequest::generateRequest()
 
 	Info info;
 	// append the challenge
-	info.SetValueForKey("challenge", str::printf("%i", challenge));
+	info.SetValueForKey("challenge", std::to_string(challenge).c_str());
 	// send the client version and the protocol
 	const char* version = data.settings ? data.settings->getVersion() : NETWORK_VERSION;
 	info.SetValueForKey("version", version);
@@ -211,7 +211,7 @@ str EngineServer::ConnectRequest::generateRequest()
 	{
 		if (proto->getServerProtocol() == protocol.getProtocolVersionNumber())
 		{
-			info.SetValueForKey("protocol", str::printf("%i", proto->getBestCompatibleProtocol()));
+			info.SetValueForKey("protocol", std::to_string(proto->getBestCompatibleProtocol()).c_str());
 			const char* clientType = proto->getClientType();
 			if (clientType)
 			{
@@ -223,7 +223,7 @@ str EngineServer::ConnectRequest::generateRequest()
 		}
 	}
 	// write the translated port
-	info.SetValueForKey("qport", str::printf("%i", qport));
+	info.SetValueForKey("qport", std::to_string(qport).c_str());
 
 	// fill user settings into an info instance
 	ClientInfoHelper::fillInfoString(*data.info, info);
@@ -250,20 +250,20 @@ bool EngineServer::ConnectRequest::shouldCompressRequest(size_t& offset)
 
 bool EngineServer::ConnectRequest::supportsEvent(const char* name) const
 {
-	return !str::icmp(name, "connectResponse") || !str::icmp(name, "droperror") || !str::icmp(name, "print") || !str::icmp(name, "serverfull");
+	return !strHelpers::icmp(name, "connectResponse") || !strHelpers::icmp(name, "droperror") || !strHelpers::icmp(name, "print") || !strHelpers::icmp(name, "serverfull");
 }
 
 IRequestPtr EngineServer::ConnectRequest::handleResponse(const char* name, TokenParser& parser)
 {
-	if (!str::icmp(name, "droperror"))
+	if (!strHelpers::icmp(name, "droperror"))
 	{
 		const char* error = parser.GetLine(true);
 		data.response(0, 0, protocolType_c(), data.info, error);
 		return nullptr;
 	}
-	else if(str::icmp(name, "connectResponse"))
+	else if(strHelpers::icmp(name, "connectResponse"))
 	{
-		if (!str::icmp(name, "serverfull"))
+		if (!strHelpers::icmp(name, "serverfull"))
 		{
 			// Received other than connect response after multiple time, so don't connect again
 			MOHPC_LOG(Error, "server is full");
@@ -327,7 +327,7 @@ str EngineServer::StatusRequest::generateRequest()
 
 bool EngineServer::StatusRequest::supportsEvent(const char* name) const
 {
-	return !str::icmp(name, "statusResponse");
+	return !strHelpers::icmp(name, "statusResponse");
 }
 
 IRequestPtr EngineServer::StatusRequest::handleResponse(const char* name, TokenParser& parser)
@@ -360,7 +360,7 @@ str EngineServer::InfoRequest::generateRequest()
 
 bool EngineServer::InfoRequest::supportsEvent(const char* name) const
 {
-	return !str::icmp(name, "infoResponse");
+	return !strHelpers::icmp(name, "infoResponse");
 }
 
 IRequestPtr EngineServer::InfoRequest::handleResponse(const char* name, TokenParser& parser)

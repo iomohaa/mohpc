@@ -9,16 +9,16 @@ namespace MOHPC
 	} winding_t;
 
 
-#define MAX_MAP_BOUNDS          16384
-#define MIN_MAP_BOUNDS          ( -MAX_MAP_BOUNDS )
-#define MAP_SIZE                ( MAX_MAP_BOUNDS - MIN_MAP_BOUNDS )
+static constexpr long MAX_MAP_BOUNDS = 16384;
+static constexpr long MIN_MAP_BOUNDS = (-MAX_MAP_BOUNDS);
+static constexpr unsigned long MAP_SIZE = (MAX_MAP_BOUNDS - MIN_MAP_BOUNDS);
 
-#define	MAX_POINTS_ON_WINDING	64
+static constexpr unsigned long MAX_POINTS_ON_WINDING = 64;
 
-#define	SIDE_FRONT	0
-#define	SIDE_BACK	1
-#define	SIDE_ON		2
-#define	SIDE_CROSS	3
+static constexpr unsigned long SIDE_FRONT = 0;
+static constexpr unsigned long SIDE_BACK = 1;
+static constexpr unsigned long SIDE_ON = 2;
+static constexpr unsigned long SIDE_CROSS = 3;
 
 #define	CLIP_EPSILON	0.1f
 

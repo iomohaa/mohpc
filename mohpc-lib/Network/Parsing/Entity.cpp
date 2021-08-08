@@ -29,7 +29,7 @@ public:
 		return helper.WriteEntityNum(num);
 	}
 
-	void readDeltaEntity(MSG& msg, const entityState_t* from, entityState_t* to, entityNum_t newNum, float deltaTime) const override
+	void readDeltaEntity(MSG& msg, const entityState_t* from, entityState_t* to, entityNum_t newNum, deltaTimeFloat_t deltaTime) const override
 	{
 		SerializableEntityState toSerialize(*to, newNum);
 		if (from)
@@ -44,7 +44,7 @@ public:
 		}
 	}
 
-	void writeDeltaEntity(MSG& msg, const entityState_t* from, const entityState_t* to, entityNum_t newNum, float deltaTime) const override
+	void writeDeltaEntity(MSG& msg, const entityState_t* from, const entityState_t* to, entityNum_t newNum, deltaTimeFloat_t deltaTime) const override
 	{
 		SerializableEntityState toSerialize(*const_cast<entityState_t*>(to), newNum);
 		if (from)
@@ -81,7 +81,7 @@ public:
 		return helper.WriteEntityNum2(num);
 	}
 
-	void readDeltaEntity(MSG& msg, const entityState_t* from, entityState_t* to, entityNum_t newNum, float deltaTime) const override
+	void readDeltaEntity(MSG& msg, const entityState_t* from, entityState_t* to, entityNum_t newNum, deltaTimeFloat_t deltaTime) const override
 	{
 		SerializableEntityState_ver15 toSerialize(*to, newNum, deltaTime);
 		if (from)
@@ -96,7 +96,7 @@ public:
 		}
 	}
 
-	void writeDeltaEntity(MSG& msg, const entityState_t* from, const entityState_t* to, entityNum_t newNum, float deltaTime) const override
+	void writeDeltaEntity(MSG& msg, const entityState_t* from, const entityState_t* to, entityNum_t newNum, deltaTimeFloat_t deltaTime) const override
 	{
 		SerializableEntityState_ver15 toSerialize(*const_cast<entityState_t*>(to), newNum, deltaTime);
 		if (from)
