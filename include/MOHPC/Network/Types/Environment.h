@@ -1,7 +1,9 @@
 #pragma once
 
 #include "../NetGlobal.h"
+#include "../NetObject.h"
 #include "../../Common/Vector.h"
+#include "../../Utility/SharedPtr.h"
 
 namespace MOHPC
 {
@@ -9,8 +11,11 @@ namespace Network
 {
 	struct environment_t
 	{
+		MOHPC_NET_OBJECT_DECLARATION(environment_t);
+
 	public:
-		environment_t();
+		MOHPC_NET_EXPORTS environment_t();
+		MOHPC_NET_EXPORTS ~environment_t();
 
 		/** If the farplane culls distant objects. */
 		MOHPC_NET_EXPORTS bool isFarplaneCulling() const;
@@ -21,22 +26,22 @@ namespace Network
 		/** Fog color. */
 		MOHPC_NET_EXPORTS const_vec3p_t getFarplaneColor() const;
 
-		/** SH/BT: Fog bias. */
+		/** The fog bias. */
 		MOHPC_NET_EXPORTS float getFarplaneBias() const;
 
-		/** SH/BT: Farplane in the skybox. */
+		/** The farplane in the skybox. */
 		MOHPC_NET_EXPORTS float getSkyboxFarplane() const;
 
-		/** SH/BT: Skybox movement speed. */
+		/** The skybox movement speed. */
 		MOHPC_NET_EXPORTS float getSkyboxSpeed() const;
 
-		/** SH/BT: Farclip override. */
+		/** The farclip override. */
 		MOHPC_NET_EXPORTS float getFarclipOverride() const;
 
-		/** SH/BT: Colors for temporarily overriding fog. */
+		/** Colors for temporarily overriding fog. */
 		MOHPC_NET_EXPORTS const_vec3p_t getFarplaneColorOverride() const;
 
-		/** SH/BT: True if terrain should be rendered. */
+		/** True if terrain should be rendered. */
 		MOHPC_NET_EXPORTS bool shouldRenderTerrain() const;
 
 		/** Sky alpha. */
@@ -58,5 +63,6 @@ namespace Network
 		bool skyPortal : 1;
 		bool renderTerrain : 1;
 	};
+	using EnvironmentPtr = SharedPtr<environment_t>;
 }
 }

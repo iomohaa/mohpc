@@ -159,10 +159,10 @@ void BSP::GenerateTerrainPatch(const TerrainPatch* Patch, Surface* Out)
 		Vertice* v2 = &Out->vertices[Out->indexes[ndx + 1]];
 		Vertice* v3 = &Out->vertices[Out->indexes[ndx + 2]];
 
-		const Eigen::Vector3f Delta1 = castVector(v1->xyz) - castVector(v2->xyz);
-		const Eigen::Vector3f Delta2 = castVector(v3->xyz) - castVector(v2->xyz);
+		const Vector3 Delta1 = castVector(v1->xyz) - castVector(v2->xyz);
+		const Vector3 Delta2 = castVector(v3->xyz) - castVector(v2->xyz);
 
-		Eigen::Vector3f normal = Delta1.cross(Delta2);
+		Vector3 normal = Delta1.cross(Delta2);
 		normal.normalize();
 
 		castVector(v1->normal) = castVector(v2->normal) = castVector(v3->normal) = normal;
@@ -239,10 +239,10 @@ void BSP::GenerateTerrainPatch2(const TerrainPatch* Patch, Surface* Out)
 		Vertice* v2 = &Out->vertices[Out->indexes[ndx + 1]];
 		Vertice* v3 = &Out->vertices[Out->indexes[ndx + 2]];
 
-		const Eigen::Vector3f Delta1 = castVector(v1->xyz) - castVector(v2->xyz);
-		const Eigen::Vector3f Delta2 = castVector(v3->xyz) - castVector(v2->xyz);
+		const Vector3 Delta1 = castVector(v1->xyz) - castVector(v2->xyz);
+		const Vector3 Delta2 = castVector(v3->xyz) - castVector(v2->xyz);
 		
-		Eigen::Vector3f normal = Delta1.cross(Delta2);
+		Vector3 normal = Delta1.cross(Delta2);
 		normal.normalize();
 
 		castVector(v1->normal) = castVector(v2->normal) = castVector(v3->normal) = normal;

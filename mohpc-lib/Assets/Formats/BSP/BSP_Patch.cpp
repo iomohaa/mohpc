@@ -134,7 +134,7 @@ int PlaneEqual(BSPData::PatchPlane *p, float plane[4], int *flipped) {
 
 bool BSP::PlaneFromPoints(vec4_t plane, vec3_t a, vec3_t b, vec3_t c)
 {
-	Eigen::Vector3f d1, d2;
+	Vector3 d1, d2;
 
 	d1 = castVector(b) - castVector(a);
 	d2 = castVector(c) - castVector(a);
@@ -217,9 +217,9 @@ static int FindPlane(patchWork_t& pw, float *p1, float *p2, float *p3) {
 }
 
 static bool	NeedsSubdivision(vec3_t a, vec3_t b, vec3_t c, float subdivisions) {
-	Eigen::Vector3f cmid;
-	Eigen::Vector3f lmid;
-	Eigen::Vector3f delta;
+	Vector3 cmid;
+	Vector3 lmid;
+	Vector3 delta;
 	float dist;
 	int i;
 
@@ -590,7 +590,7 @@ void AddFacetBevels(patchWork_t& pw, BSPData::Facet *facet) {
 	int axis, dir, order, flipped;
 	float plane[4], d, newplane[4];
 	winding_t *w, *w2;
-	Eigen::Vector3f mins, maxs, vec, vec2;
+	Vector3 mins, maxs, vec, vec2;
 
 	Vector4Copy(pw.planes[facet->surfacePlane].plane, plane);
 
@@ -675,7 +675,7 @@ void AddFacetBevels(patchWork_t& pw, BSPData::Facet *facet) {
 			for (dir = -1; dir <= 1; dir += 2)
 			{
 				// construct a plane
-				vec2 = Eigen::Vector3f();
+				vec2 = Vector3();
 				vec2[axis] = (float)dir;
 				castVector(plane) = vec.cross(vec2);
 				if (castVector(plane).squaredNorm() < 0.5) {

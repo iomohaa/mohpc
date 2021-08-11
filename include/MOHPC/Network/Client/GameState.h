@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../NetGlobal.h"
+#include "../NetObject.h"
 #include "../../Utility/HandlerList.h"
 #include "../../Utility/CommandManager.h"
 #include "../Types/GameState.h"
@@ -44,6 +46,8 @@ namespace Network
 
 	class ServerGameState
 	{
+		MOHPC_NET_OBJECT_DECLARATION(ServerGameState);
+
 	private:
 		struct HandlerList
 		{
@@ -54,9 +58,10 @@ namespace Network
 
 	public:
 		/** Construct a game state without a protocol. */
-		ServerGameState();
+		MOHPC_NET_EXPORTS ServerGameState();
 		/** Construct a game state for remote replication. */
-		ServerGameState(protocolType_c protocol, ClientTime* clientTimePtr);
+		MOHPC_NET_EXPORTS ServerGameState(protocolType_c protocol, ClientTime* clientTimePtr);
+		MOHPC_NET_EXPORTS ~ServerGameState();
 
 		/** Return the handler list specific to the server game state. */
 		MOHPC_NET_EXPORTS HandlerList& handlers();
@@ -102,6 +107,9 @@ namespace Network
 		HandlerList handlerList;
 		gameState_t gameState;
 		uint32_t clientNum;
+		serverType_e serverType;
 	};
+	using ServerGameStatePtr = SharedPtr<ServerGameState>;
+	using ConstServerGameStatePtr = SharedPtr<const ServerGameState>;
 }
 }

@@ -5,6 +5,8 @@ using namespace MOHPC;
 using namespace MOHPC::Network;
 using namespace MOHPC::Network::CGame;
 
+MOHPC_OBJECT_DEFINITION(ObjectiveManager);
+
 const objective_t& ObjectiveManager::get(uint32_t objNum) const
 {
 	return objectives[objNum];
@@ -23,6 +25,16 @@ const objective_t& ObjectiveManager::set(const ReadOnlyInfo& info, uint32_t objN
 	sscanf(locStr, "%f %f %f", &objective.location[0], &objective.location[1], &objective.location[2]);
 
 	return objective;
+}
+
+ObjectiveManager::ObjectiveManager()
+{
+	objectives = new objective_t[CS::MAX_OBJECTIVES];
+}
+
+ObjectiveManager::~ObjectiveManager()
+{
+	delete[] objectives;
 }
 
 objective_t::objective_t()

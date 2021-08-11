@@ -639,7 +639,7 @@ void ModelRenderer::SkelWeightGetXyz(const Skeleton::SkeletorWeight *weight, con
 
 void ModelRenderer::SkelWeightMorphGetXyz(const Skeleton::SkeletorWeight *weight, const ModelBoneTransform *bone, const vec3r_t totalmorph, vec3r_t out)
 {
-	const Eigen::Vector3f point = castVector(totalmorph) + castVector(weight->offset);
+	const Vector3 point = castVector(totalmorph) + castVector(weight->offset);
 
 	out[0] += ((point[0] * bone->matrix[0][0] +
 		point[1] * bone->matrix[1][0] +

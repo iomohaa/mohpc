@@ -47,44 +47,6 @@ namespace Network
 			center,
 			bottom
 		};
-
-		namespace Handlers
-		{
-			/**
-			 * Called to print a message on console.
-			 *
-			 * @param	type	Type of the message (see hudMessage_e).
-			 * @param	text	Text to print.
-			 */
-			struct Print : public HandlerNotifyBase<void(hudMessage_e type, const char* text)> {};
-
-			/**
-			 * Called to print a message that is displayed on HUD, yellow color.
-			 *
-			 * @param	text	Text to print.
-			 */
-			struct HudPrint : public HandlerNotifyBase<void(const char* text)> {};
-
-			/**
-			 * Called from server after score has been parsed.
-			 *
-			 * @param	scores	Score data.
-			 */
-			struct ServerCommand_Scores : public HandlerNotifyBase<void(const Scoreboard& scores)> {};
-
-			/**
-			 * Called to display a stopwatch.
-			 *
-			 * @param	startTime	Start time of the stopwatch.
-			 * @param	endTime		End time of the stopwatch.
-			 */
-			struct ServerCommand_Stopwatch : public HandlerNotifyBase<void(uint64_t startTime, uint64_t endTime)> {};
-
-			/**
-			 * The server notify clients when it experiences lags, such as hitches.
-			 */
-			struct ServerCommand_ServerLag : public HandlerNotifyBase<void()> {};
-		}
 	}
 }
 }

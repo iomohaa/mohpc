@@ -182,11 +182,11 @@ bool MOHPC::TIKI::LoadTIKIAnim(const char* Filename, dloaddef_t* ld)
 			constexpr float maxLength = 100000.0f;
 			constexpr float maxLengthSquared = maxLength * maxLength;
 
-			const Eigen::Vector3f tempVec = castVector(TikiAnim->maxs) - castVector(TikiAnim->mins);
+			const Vector3 tempVec = castVector(TikiAnim->maxs) - castVector(TikiAnim->mins);
 			if (tempVec.squaredNorm() > maxLengthSquared)
 			{
-				castVector(TikiAnim->mins) = Eigen::Vector3f(-4.f, -4.f, -4.f);
-				castVector(TikiAnim->maxs) = Eigen::Vector3f(4.f, 4.f, 4.f);
+				castVector(TikiAnim->mins) = Vector3(-4.f, -4.f, -4.f);
+				castVector(TikiAnim->maxs) = Vector3(4.f, 4.f, 4.f);
 			}
 
 			tikianim = TikiAnim;

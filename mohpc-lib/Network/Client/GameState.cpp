@@ -8,6 +8,8 @@
 using namespace MOHPC;
 using namespace Network;
 
+MOHPC_OBJECT_DEFINITION(ServerGameState);
+
 ServerGameState::ServerGameState()
 	: csHandler(*this)
 	, gameStateParser(nullptr)
@@ -21,6 +23,10 @@ ServerGameState::ServerGameState(protocolType_c protocol, ClientTime* clientTime
 {
 	gameStateParser = Parsing::IGameState::get(protocol.getProtocolVersionNumber());
 	clientTime = clientTimePtr;
+}
+
+ServerGameState::~ServerGameState()
+{
 }
 
 void ServerGameState::reset()
@@ -123,6 +129,9 @@ bool ServerGameState::reloadGameState()
 		clientTime->setDeltaTime(milliseconds(results.serverDeltaTime));
 	}
 
+	// parse the server type
+	serverType = results.serverType;
+
 	mapInfo_t& mapInfo = get().getMapInfo();
 	const bool isDiff = mapInfo.getServerId() != results.serverId;
 	if (isDiff)
@@ -152,7 +161,7 @@ void ServerGameState::ConfigstringCommand(TokenParser& tokenized)
 	// can set the config-string right now
 	modifyConfigString(num, csString);
 
-	if (num == CS_SYSTEMINFO || num == CS_SERVERINFO)
+	if (num == CS::SYSTEMINFO || num == CS::SERVERINFO)
 	{
 		// reload gameState settings including the sv_fps value
 		reloadGameState();

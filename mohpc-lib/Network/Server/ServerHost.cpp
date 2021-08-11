@@ -359,11 +359,11 @@ void ServerHost::sendGameStateToClient(ClientData& client)
 	clientMessage.WriteUInteger(0);
 
 	clientMessage.WriteByte((uint8_t)svc_ops_e::Configstring);
-	clientMessage.WriteUShort(CS_SERVERINFO);
+	clientMessage.WriteUShort(CS::SERVERINFO);
 	clientMessage.WriteString("\\mapname\\dm/mohdm6\\version\\Medal of Honor Allied Assault 1.11 win-x86 Mar  5 2002\\protocol\\8");
 
 	clientMessage.WriteByte((uint8_t)svc_ops_e::Configstring);
-	clientMessage.WriteUShort(CS_SYSTEMINFO);
+	clientMessage.WriteUShort(CS::SYSTEMINFO);
 	clientMessage.WriteString("\\test\\value\\sv_serverid\\" + std::to_string(serverId));
 
 	clientMessage.WriteByte((uint8_t)svc_ops_e::Configstring);

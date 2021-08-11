@@ -7,9 +7,11 @@
 #pragma once
 
 #include "../../NetGlobal.h"
+#include "../../NetObject.h"
 #include "../../../Common/str.h"
 #include "../../../Utility/HandlerList.h"
 #include "../../../Utility/CommandManager.h"
+#include "../../../Utility/SharedPtr.h"
 
 #include <vector>
 #include <list>
@@ -35,13 +37,6 @@ namespace Network
 			 * @param options Vote options.
 			 */
 			struct ReceivedVoteOptions : public HandlerNotifyBase<void(const VoteOptions& options)> {};
-
-			/**
-			 * Called when the vote options has been received and parsed.
-			 *
-			 * @param options Vote options.
-			 */
-			struct VoteModified : public HandlerNotifyBase<void(const VoteManager& voteManager)> {};
 		}
 
 		//=============================
@@ -97,7 +92,6 @@ namespace Network
 			uint32_t numVotesNo;
 			uint32_t numUndecidedVotes;
 			str voteString;
-			bool modified : 1;
 		};
 
 		/**
@@ -223,28 +217,26 @@ namespace Network
 
 		class VoteManager
 		{
+			MOHPC_NET_OBJECT_DECLARATION(VoteManager);
+
 		public:
 			class HandlerList
 			{
 			public:
 				FunctionList<VoteHandlers::ReceivedVoteOptions> receivedVoteOptionsHandler;
-				FunctionList<VoteHandlers::VoteModified> voteModifiedHandler;
 			};
 
 		public:
-			VoteManager();
+			MOHPC_NET_EXPORTS VoteManager();
+			MOHPC_NET_EXPORTS ~VoteManager();
 
 			MOHPC_NET_EXPORTS HandlerList& handlers();
 			MOHPC_NET_EXPORTS const HandlerList& handlers() const;
 
-			size_t getNumCommandsToRegister() const;
 			void registerCommands(CommandManager& commandManager);
-
 			void commandStartReadFromServer(TokenParser& args);
 			void commandContinueReadFromServer(TokenParser& args);
 			void commandFinishReadFromServer(TokenParser& args);
-			bool isModified() const;
-			void notifyDirty();
 
 			void setVoteTime(uint64_t time);
 			MOHPC_NET_EXPORTS uint64_t getVoteTime() const;
@@ -256,9 +248,6 @@ namespace Network
 			void setNumVotesNo(uint32_t count);
 			void setNumVotesUndecided(uint32_t count);
 			MOHPC_NET_EXPORTS void getVotesCount(uint32_t& numYes, uint32_t& numNo, uint32_t& numUndecided) const;
-
-		private:
-			void markDirty();
 
 		public:
 			CommandTemplate<VoteManager, &VoteManager::commandStartReadFromServer> startReadFromServerHandler;
@@ -275,6 +264,7 @@ namespace Network
 			str voteString;
 			bool modified : 1;
 		};
+		using VoteManagerPtr = SharedPtr<VoteManager>;
 
 		//=============================
 		// Vote exceptions

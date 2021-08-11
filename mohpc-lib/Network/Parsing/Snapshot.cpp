@@ -277,7 +277,7 @@ public:
 
 				const uint16_t soundIndex = msg.ReadNumber<uint16_t>(9);
 
-				if (soundIndex < MAX_SOUNDS)
+				if (soundIndex < CS::MAX_SOUNDS)
 				{
 					// Get the sound name from configstrings
 					sound.soundName = gameState.getConfigstringManager().getConfigString(soundIndex);

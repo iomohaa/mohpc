@@ -11,12 +11,105 @@ using namespace MOHPC::Network::CGame;
 
 static constexpr char MOHPC_LOG_NAMESPACE[] = "cg_vote";
 
+MOHPC_OBJECT_DEFINITION(VoteManager)
+
+VoteManager::VoteManager()
+	: startReadFromServerHandler(*this)
+	, continueReadFromServerHandler(*this)
+	, finishReadFromServerHandler(*this)
+	, voteTime(0)
+	, numVotesYes(0)
+	, numVotesNo(0)
+	, numUndecidedVotes(0)
+	, modified(false)
+{
+}
+
+VoteManager::~VoteManager()
+{
+}
+
+VoteManager::HandlerList& VoteManager::handlers()
+{
+	return handlerList;
+}
+
+const VoteManager::HandlerList& VoteManager::handlers() const
+{
+	return handlerList;
+}
+
+void VoteManager::registerCommands(CommandManager& commandManager)
+{
+	commandManager.add("vo0", &startReadFromServerHandler);
+	commandManager.add("vo1", &continueReadFromServerHandler);
+	commandManager.add("vo2", &finishReadFromServerHandler);
+}
+
+void VoteManager::commandStartReadFromServer(TokenParser& args)
+{
+	voteOptionsParser.begin(args.GetString(true, false));
+}
+
+void VoteManager::commandContinueReadFromServer(TokenParser& args)
+{
+	voteOptionsParser.append(args.GetString(true, false));
+}
+
+void VoteManager::commandFinishReadFromServer(TokenParser& args)
+{
+	voteOptionsParser.end(args.GetString(true, false), voteOptions);
+
+	handlers().receivedVoteOptionsHandler.broadcast(voteOptions);
+}
+
+void VoteManager::setVoteTime(uint64_t time)
+{
+	voteTime = time;
+}
+
+uint64_t VoteManager::getVoteTime() const
+{
+	return voteTime;
+}
+
+void VoteManager::setVoteString(const char* string)
+{
+	voteString = string;
+}
+
+const char* VoteManager::getVoteString() const
+{
+	return voteString.c_str();
+}
+
+void VoteManager::setNumVotesYes(uint32_t count)
+{
+	numVotesYes = count;
+}
+
+void VoteManager::setNumVotesNo(uint32_t count)
+{
+	numVotesNo = count;
+}
+
+void VoteManager::setNumVotesUndecided(uint32_t count)
+{
+	numUndecidedVotes = count;
+}
+
+void VoteManager::getVotesCount(uint32_t& numYes, uint32_t& numNo, uint32_t& numUndecided) const
+{
+	numYes = numVotesYes;
+	numNo = numVotesNo;
+	numUndecided = numUndecidedVotes;
+}
+
 voteInfo_t::voteInfo_t()
 	: voteTime(0)
 	, numVotesYes(0)
 	, numVotesNo(0)
 	, numUndecidedVotes(0)
-	, modified(false)
 {
 
 }
@@ -451,113 +544,4 @@ void VoteOptionsParser::parseChoiceList(VoteOptionList& list, TokenParser& parse
 	}
 
 	list.optimize();
-}
-
-VoteManager::VoteManager()
-	: startReadFromServerHandler(*this)
-	, continueReadFromServerHandler(*this)
-	, finishReadFromServerHandler(*this)
-	, voteTime(0)
-	, numVotesYes(0)
-	, numVotesNo(0)
-	, numUndecidedVotes(0)
-	, modified(false)
-{
-}
-
-VoteManager::HandlerList& VoteManager::handlers()
-{
-	return handlerList;
-}
-
-const VoteManager::HandlerList& VoteManager::handlers() const
-{
-	return handlerList;
-}
-
-size_t VoteManager::getNumCommandsToRegister() const
-{
-	return 3;
-}
-
-void VoteManager::registerCommands(CommandManager& commandManager)
-{
-	commandManager.add("vo0", &startReadFromServerHandler);
-	commandManager.add("vo1", &continueReadFromServerHandler);
-	commandManager.add("vo2", &finishReadFromServerHandler);
-}
-
-void VoteManager::commandStartReadFromServer(TokenParser& args)
-{
-	voteOptionsParser.begin(args.GetString(true, false));
-}
-
-void VoteManager::commandContinueReadFromServer(TokenParser& args)
-{
-	voteOptionsParser.append(args.GetString(true, false));
-}
-
-void VoteManager::commandFinishReadFromServer(TokenParser& args)
-{
-	voteOptionsParser.end(args.GetString(true, false), voteOptions);
-
-	handlers().receivedVoteOptionsHandler.broadcast(voteOptions);
-}
-
-bool VoteManager::isModified() const
-{
-	return modified;
-}
-
-void VoteManager::notifyDirty()
-{
-	modified = false;
-	handlers().voteModifiedHandler.broadcast(*this);
-}
-
-void VoteManager::setVoteTime(uint64_t time)
-{
-	voteTime = time;
-}
-
-uint64_t VoteManager::getVoteTime() const
-{
-	return voteTime;
-}
-
-void VoteManager::setVoteString(const char* string)
-{
-	voteString = string;
-}
-
-const char* VoteManager::getVoteString() const
-{
-	return voteString.c_str();
-}
-
-void VoteManager::setNumVotesYes(uint32_t count)
-{
-	numVotesYes = count;
-}
-
-void VoteManager::setNumVotesNo(uint32_t count)
-{
-	numVotesNo = count;
-}
-
-void VoteManager::setNumVotesUndecided(uint32_t count)
-{
-	numUndecidedVotes = count;
-}
-
-void VoteManager::getVotesCount(uint32_t& numYes, uint32_t& numNo, uint32_t& numUndecided) const
-{
-	numYes = numVotesYes;
-	numNo = numVotesNo;
-	numUndecided = numUndecidedVotes;
-}
-
-void VoteManager::markDirty()
-{
-	modified = true;
 }

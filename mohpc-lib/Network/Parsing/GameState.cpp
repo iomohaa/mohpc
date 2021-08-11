@@ -23,6 +23,7 @@ gameStateClient_t::gameStateClient_t()
 gameStateResults_t::gameStateResults_t()
 	: serverDeltaTime(0)
 	, serverDeltaTimeSeconds(0.f)
+	, serverType(serverType_e::normal)
 {
 }
 
@@ -37,7 +38,7 @@ public:
 
 	gameState_t create() const
 	{
-		return gameState_t(MAX_CONFIGSTRINGS, 40000, 1024);
+		return gameState_t(2736, 40000, 1024);
 	}
 
 	float getFrameTime(const ReadOnlyInfo& serverInfo) const
@@ -76,7 +77,7 @@ public:
 			{
 			case svc_ops_e::Configstring:
 			{
-				const csNum_t stringNum = msg.ReadUShort();
+				const uint16_t stringNum = msg.ReadUShort();
 
 				if (stringNum > maxConfigstrings) {
 					throw ConfigstringErrors::MaxConfigStringException("gameStateParsing", stringNum);
@@ -118,8 +119,8 @@ public:
 	{
 		ConfigStringManager& csMan = gameState.getConfigstringManager();
 
-		ReadOnlyInfo systemInfo(csMan.getConfigString(CS_SYSTEMINFO));
-		ReadOnlyInfo serverInfo(csMan.getConfigString(CS_SERVERINFO));
+		ReadOnlyInfo systemInfo(csMan.getConfigString(CS::SYSTEMINFO));
+		ReadOnlyInfo serverInfo(csMan.getConfigString(CS::SERVERINFO));
 
 		// the server ID is inside system-info values
 		results.serverId = systemInfo.IntValueForKey("sv_serverid");
@@ -127,6 +128,14 @@ public:
 		// calculate the server frame time
 		results.serverDeltaTimeSeconds = getFrameTime(serverInfo);
 		results.serverDeltaTime = (uint32_t)floorf(results.serverDeltaTimeSeconds * 1000.f);
+
+		size_t versionLen;
+		const char* version = serverInfo.ValueForKey("version", versionLen);
+		if (version)
+		{
+			// parse the server type
+			results.serverType = parseServerType(version, versionLen);
+		}
 	}
 
 	serverType_e parseServerType(const char* version, size_t len) const override
@@ -199,7 +208,7 @@ public:
 	{
 		GameState_ver8::parseGameState(msg, gameState, results);
 
-		const ReadOnlyInfo serverInfo(gameState.getConfigstringManager().getConfigString(CS_SERVERINFO));
+		const ReadOnlyInfo serverInfo(gameState.getConfigstringManager().getConfigString(CS::SERVERINFO));
 
 		// this is the frame time of the server set by **sv_fps**
 		// it is practically useless because the delta frequency can be calculated with 1 / sv_fps
@@ -231,7 +240,7 @@ public:
 	{
 		GameState_ver8::saveGameState(msg, gameState, client);
 
-		ReadOnlyInfo serverInfo(gameState.getConfigstringManager().getConfigString(CS_SERVERINFO));
+		ReadOnlyInfo serverInfo(gameState.getConfigstringManager().getConfigString(CS::SERVERINFO));
 
 		const float serverDeltaTimeSeconds = getFrameTime(serverInfo);
 

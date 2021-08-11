@@ -25,7 +25,6 @@
 
 #include "DownloadManager.h"
 #include "UserInfo.h"
-#include "Imports.h"
 #include "InputModule.h"
 #include "Packet.h"
 #include "GameState.h"
@@ -234,6 +233,8 @@ namespace MOHPC
 			/** Retrieve the current game state. */
 			MOHPC_NET_EXPORTS ServerGameState& getGameState();
 			MOHPC_NET_EXPORTS const ServerGameState& getGameState() const;
+			MOHPC_NET_EXPORTS const ServerGameStatePtr& getGameStatePtr();
+			MOHPC_NET_EXPORTS ConstServerGameStatePtr getGameStatePtr() const;
 
 			/** Retrieve the CGame module. */
 			MOHPC_NET_EXPORTS CGame::ModuleBase* getCGModule();
@@ -320,7 +321,7 @@ namespace MOHPC
 			IChainPtr chain;
 			ClientTime clientTime;
 			TimeoutTimer timeout;
-			ServerGameState clGameState;
+			ServerGameStatePtr clGameState;
 			ServerSnapshotManager clSnapshotManager;
 			clientGameSettings_t settings;
 			DownloadManager downloadState;

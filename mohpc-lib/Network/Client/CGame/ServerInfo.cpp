@@ -4,6 +4,30 @@ using namespace MOHPC;
 using namespace MOHPC::Network;
 using namespace MOHPC::Network::CGame;
 
+unsigned int DF::NO_HEALTH = (1 << 0);
+unsigned int DF::NO_POWERUPS = (1 << 1);
+unsigned int DF::WEAPONS_STAY = (1 << 2);
+unsigned int DF::NO_FALLING = (1 << 3);
+unsigned int DF::INSTANT_ITEMS = (1 << 4);
+unsigned int DF::SAME_LEVEL = (1 << 5);
+unsigned int DF::NO_ARMOR = (1 << 11);
+unsigned int DF::INFINITE_AMMO = (1 << 14);
+unsigned int DF::NO_FOOTSTEPS = (1 << 17);
+
+unsigned int DF::ALLOW_LEAN = (1 << 18);
+unsigned int DF::OLD_SNIPERRIFLE = (1 << 19);
+
+unsigned int DF::GERMAN_SHOTGUN = (1 << 20);
+unsigned int DF::ALLOW_OLDMAP_MINES = (1 << 21);
+
+unsigned int DF::BAN_WEAP_RIFLE = (1 << 22);
+unsigned int DF::BAN_WEAP_SNIPER = (1 << 23);
+unsigned int DF::BAN_WEAP_SMG = (1 << 24);
+unsigned int DF::BAN_WEAP_MG = (1 << 25);
+unsigned int DF::BAN_WEAP_HEAVY = (1 << 26);
+unsigned int DF::BAN_WEAP_SHOTGUN = (1 << 27);
+unsigned int DF::BAN_WEAP_LANDMINE = (1 << 28);
+
 cgsInfo::cgsInfo()
 	: matchStartTime(ticks::milliseconds())
 	, matchEndTme(ticks::milliseconds())
@@ -15,9 +39,12 @@ cgsInfo::cgsInfo()
 	, mapChecksum(0)
 	, fragLimit(0)
 	, timeLimit(0)
-	, serverType(serverType_e::normal)
 	, gameType(gameType_e::FreeForAll)
 	, allowVote(false)
+{
+}
+
+cgsInfo::~cgsInfo()
 {
 }
 
@@ -69,11 +96,6 @@ int32_t cgsInfo::getFragLimit() const
 int32_t cgsInfo::getTimeLimit() const
 {
 	return timeLimit;
-}
-
-serverType_e cgsInfo::getServerType() const
-{
-	return serverType;
 }
 
 bool cgsInfo::isVotingAllowed() const

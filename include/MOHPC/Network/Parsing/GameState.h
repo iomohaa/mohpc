@@ -50,6 +50,7 @@ namespace Network
 			uint32_t serverDeltaTime;
 			float serverDeltaTimeSeconds;
 			uint32_t serverId;
+			serverType_e serverType;
 		};
 
 		class MOHPC_NET_EXPORTS IGameState : public IProtocolSingleton<IGameState>

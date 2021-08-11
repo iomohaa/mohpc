@@ -3,6 +3,8 @@
 using namespace MOHPC;
 using namespace MOHPC::Network;
 
+MOHPC_OBJECT_DEFINITION(environment_t);
+
 environment_t::environment_t()
 	: farplaneDistance(0.f)
 	, skyAlpha(0.f)
@@ -13,6 +15,10 @@ environment_t::environment_t()
 	, farplaneCull(false)
 	, skyPortal(false)
 	, renderTerrain(true)
+{
+}
+
+environment_t::~environment_t()
 {
 }
 

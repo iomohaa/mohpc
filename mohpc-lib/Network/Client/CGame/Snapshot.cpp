@@ -48,16 +48,31 @@ bool EntityInfo::hasTeleported() const
 	return teleported;
 }
 
-SnapshotProcessor::SnapshotProcessor(CommandManager& serverCommandManagerRef)
-	: serverCommandManager(serverCommandManagerRef)
-	, nextSnap(nullptr)
+MOHPC_OBJECT_DEFINITION(SnapshotProcessor);
+
+SnapshotProcessor::SnapshotProcessor()
+	: nextSnap(nullptr)
 	, snap(nullptr)
 	, processedSnapshotNum(0)
 	, latestSnapshotNum(0)
 	, nextFrameTeleport(false)
 	, nextFrameCameraCut(false)
 	, thisFrameTeleport(false)
+	, csModified(*this)
 {
+	serverCommandManager.add("cs", &csModified);
+}
+
+SnapshotProcessor::~SnapshotProcessor()
+{
+	serverCommandManager.remove(&csModified);
+}
+
+void SnapshotProcessor::setPtrs(const ClientTime* clientTimePtr, const ServerSnapshotManager* snapshotManagerPtr, const ICommandSequence* commandSequencePtr)
+{
+	clientTime = clientTimePtr;
+	snapshotManager = snapshotManagerPtr;
+	commandSequence = commandSequencePtr;
 }
 
 void SnapshotProcessor::init(uintptr_t serverMessageSequence, rsequence_t serverCommandSequence)
@@ -439,11 +454,27 @@ void SnapshotProcessor::clearTeleportThisFrame()
 	thisFrameTeleport = false;
 }
 
-void SnapshotProcessor::setPtrs(const ClientTime* clientTimePtr, const ServerSnapshotManager* snapshotManagerPtr, const ICommandSequence* commandSequencePtr)
+void SnapshotProcessor::configStringModified(TokenParser& tokenized)
 {
-	clientTime = clientTimePtr;
-	snapshotManager = snapshotManagerPtr;
-	commandSequence = commandSequencePtr;
+	const uint32_t num = tokenized.GetInteger(true);
+	const char* csString = tokenized.GetString(true, false);
+
+	handlers().configstringModifiedHandler.broadcast(num, csString);
+}
+
+CommandManager& SnapshotProcessor::getCommandManager()
+{
+	return serverCommandManager;
+}
+
+const CommandManager& SnapshotProcessor::getCommandManager() const
+{
+	return serverCommandManager;
+}
+
+const ClientTime& SnapshotProcessor::getClientTime() const
+{
+	return *clientTime;
 }
 
 CGSnapshotError::NextSnapTimeWentBackward::NextSnapTimeWentBackward(netTime_t inPrevTime, netTime_t inTime)

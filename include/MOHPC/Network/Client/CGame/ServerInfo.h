@@ -1,9 +1,11 @@
 #pragma once
 
 #include "../../NetGlobal.h"
+#include "../../NetObject.h"
 #include "../../Types/Protocol.h"
 #include "../../../Common/str.h"
 #include "../../../Utility/TickTypes.h"
+#include "../../../Utility/SharedPtr.h"
 
 #include "GameType.h"
 
@@ -15,29 +17,32 @@ namespace Network
 {
 	namespace CGame
 	{
-		namespace DMFlags
+		/**
+		 * DM Flags.
+		 */
+		namespace DF
 		{
 			/**
 			 * Values for dmflags
 			 */
 			 /** Players don't drop health on death. */
-			static constexpr unsigned int DF_NO_HEALTH = (1 << 0);
+			MOHPC_NET_EXPORTS extern unsigned int NO_HEALTH;
 			/** Players don't drop powerups on death. */
-			static constexpr unsigned int DF_NO_POWERUPS = (1 << 1);
+			MOHPC_NET_EXPORTS extern unsigned int NO_POWERUPS;
 			/** Whether or not weapons in the level stays available on player pick up. */
-			static constexpr unsigned int DF_WEAPONS_STAY = (1 << 2);
+			MOHPC_NET_EXPORTS extern unsigned int WEAPONS_STAY;
 			/** Prevent falling damage. */
-			static constexpr unsigned int DF_NO_FALLING = (1 << 3);
+			MOHPC_NET_EXPORTS extern unsigned int NO_FALLING;
 			/** This flag doesn't seem to be used at all. */
-			static constexpr unsigned int DF_INSTANT_ITEMS = (1 << 4);
+			MOHPC_NET_EXPORTS extern unsigned int INSTANT_ITEMS;
 			/** TriggerChangeLevel won't switch level. */
-			static constexpr unsigned int DF_SAME_LEVEL = (1 << 5);
+			MOHPC_NET_EXPORTS extern unsigned int SAME_LEVEL;
 			/** Prevent players from having an armor. */
-			static constexpr unsigned int DF_NO_ARMOR = (1 << 11);
+			MOHPC_NET_EXPORTS extern unsigned int NO_ARMOR;
 			/** MOH:AA: Infinite clip ammo. MOH:SH/MOH:BT: Infinite magazines. */
-			static constexpr unsigned int DF_INFINITE_AMMO = (1 << 14);
+			MOHPC_NET_EXPORTS extern unsigned int INFINITE_AMMO;
 			/** This should prevent footstep sounds to play. */
-			static constexpr unsigned int DF_NO_FOOTSTEPS = (1 << 17);
+			MOHPC_NET_EXPORTS extern unsigned int NO_FOOTSTEPS;
 
 			/**
 			 * protocol version >= 15
@@ -45,9 +50,9 @@ namespace Network
 			 */
 
 			 /** Allow leaning while in movement. */
-			static constexpr unsigned int DF_ALLOW_LEAN = (1 << 18);
+			MOHPC_NET_EXPORTS extern unsigned int ALLOW_LEAN;
 			/** Specify that G43 is replaced with Kar98. */
-			static constexpr unsigned int DF_OLD_SNIPERRIFLE = (1 << 19);
+			MOHPC_NET_EXPORTS extern unsigned int OLD_SNIPERRIFLE;
 
 			/**
 			 * protocol version >= 17
@@ -55,28 +60,28 @@ namespace Network
 			 */
 
 			 /** Axis use a shotgun rather than kar98 mortar. */
-			static constexpr unsigned int DF_GERMAN_SHOTGUN = (1 << 20);
+			MOHPC_NET_EXPORTS extern unsigned int GERMAN_SHOTGUN;
 			/** Allow landmine to be used on AA maps. */
-			static constexpr unsigned int DF_ALLOW_OLDMAP_MINES = (1 << 21);
+			MOHPC_NET_EXPORTS extern unsigned int ALLOW_OLDMAP_MINES;
 
 			/**
 			 * [BT]
 			 * Weapon type filtering
 			 */
 			 /** Disallow the usage of rifles. */
-			static constexpr unsigned int DF_BAN_WEAP_RIFLE = (1 << 22);
+			MOHPC_NET_EXPORTS extern unsigned int BAN_WEAP_RIFLE;
 			/** Disallow the usage of rifles. */
-			static constexpr unsigned int DF_BAN_WEAP_SNIPER = (1 << 23);
+			MOHPC_NET_EXPORTS extern unsigned int BAN_WEAP_SNIPER;
 			/** Disallow the usage of snipers. */
-			static constexpr unsigned int DF_BAN_WEAP_SMG = (1 << 24);
+			MOHPC_NET_EXPORTS extern unsigned int BAN_WEAP_SMG;
 			/** Disallow the usage of sub-machine guns. */
-			static constexpr unsigned int DF_BAN_WEAP_MG = (1 << 25);
+			MOHPC_NET_EXPORTS extern unsigned int BAN_WEAP_MG;
 			/** Disallow the usage of machine guns. */
-			static constexpr unsigned int DF_BAN_WEAP_HEAVY = (1 << 26);
+			MOHPC_NET_EXPORTS extern unsigned int BAN_WEAP_HEAVY;
 			/** Disallow the usage of shotgun. */
-			static constexpr unsigned int DF_BAN_WEAP_SHOTGUN = (1 << 27);
+			MOHPC_NET_EXPORTS extern unsigned int BAN_WEAP_SHOTGUN;
 			/** Disallow the usage of landmine. */
-			static constexpr unsigned int DF_BAN_WEAP_LANDMINE = (1 << 28);
+			MOHPC_NET_EXPORTS extern unsigned int BAN_WEAP_LANDMINE;
 		}
 
 		static constexpr size_t NUM_TEAM_OBJECTIVES = 5;
@@ -86,8 +91,11 @@ namespace Network
 		 */
 		class cgsInfo
 		{
+			MOHPC_NET_OBJECT_DECLARATION(cgsInfo);
+
 		public:
-			cgsInfo();
+			MOHPC_NET_EXPORTS cgsInfo();
+			MOHPC_NET_EXPORTS ~cgsInfo();
 
 			/** Return the server time at which the match has started. */
 			MOHPC_NET_EXPORTS tickTime_t getMatchStartTime() const;
@@ -157,9 +165,6 @@ namespace Network
 			/** Returns the time limit before the match ends. */
 			MOHPC_NET_EXPORTS int32_t getTimeLimit() const;
 
-			/** Return the server type the client is connected on. */
-			MOHPC_NET_EXPORTS serverType_e getServerType() const;
-
 			/** Return whether or not voting is allowed. */
 			MOHPC_NET_EXPORTS bool isVotingAllowed() const;
 
@@ -203,10 +208,10 @@ namespace Network
 			uint32_t mapChecksum;
 			int32_t fragLimit;
 			int32_t timeLimit;
-			serverType_e serverType;
 			gameType_e gameType;
 			bool allowVote;
 		};
+		using cgsInfoPtr = SharedPtr<cgsInfo>;
 	}
 }
 }

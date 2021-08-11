@@ -3,7 +3,7 @@
 #include "UtilityGlobal.h"
 #include "HandlerList.h"
 
-#include <vector>
+#include <set>
 #include <functional>
 #include <cstdint>
 #include <cstddef>
@@ -78,6 +78,8 @@ namespace MOHPC
 		class CommandData
 		{
 		public:
+			CommandData(const char* name);
+			CommandData(ICommand* commandPtr);
 			CommandData(const char* nameValue, ICommand* commandPtr);
 
 			const char* getName() const;
@@ -88,11 +90,19 @@ namespace MOHPC
 			ICommand* command;
 		};
 
+		class CommandDataLess
+		{
+		public:
+			bool operator()(const CommandData& lhs, const CommandData& rhs) const;
+		};
+
 	public:
 		MOHPC_UTILITY_EXPORTS CommandManager();
 
 		/** Add an handler for the specified command. */
 		MOHPC_UTILITY_EXPORTS void add(const char* name, ICommand* command);
+		MOHPC_UTILITY_EXPORTS void remove(ICommand* command);
+		MOHPC_UTILITY_EXPORTS void remove(const char* name);
 		MOHPC_UTILITY_EXPORTS void reserve(size_t num);
 
 		MOHPC_UTILITY_EXPORTS void process(const char* commandString);

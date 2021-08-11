@@ -47,7 +47,7 @@ public:
 	{
 		// in SH/BT, can't lean by default
 		// unless a dmflag specify it
-		pmove.canLeanWhileMoving = serverInfo.hasAnyDMFlags(DMFlags::DF_ALLOW_LEAN);
+		pmove.canLeanWhileMoving = serverInfo.hasAnyDMFlags(DF::ALLOW_LEAN);
 		pmove.clearLeanOnExit = true;
 	}
 };
@@ -283,7 +283,7 @@ bool Prediction::replayAllCommands(const PredictionParm& pparm)
 		pm.tracemask &= ~ContentFlags::MASK_DYNAMICBODY;
 	}
 
-	pm.noFootsteps = pparm.serverInfo.hasAnyDMFlags(DMFlags::DF_NO_FOOTSTEPS);
+	pm.noFootsteps = pparm.serverInfo.hasAnyDMFlags(DF::NO_FOOTSTEPS);
 	// Set settings depending on the protocol/version
 	pmovePredict->setupPmove(pparm.serverInfo, pmove);
 

@@ -61,7 +61,7 @@ void testConfigstring(gameState_t& gs)
 	assertConfigString(csMan, 4, "");
 	assertConfigString(csMan, 5, "test1");
 
-	for (csNum_t i = 0; i < 6; ++i)
+	for (uint32_t i = 0; i < 6; ++i)
 	{
 		MOHPC_LOG(Info, "cs %d: '%s'", i, csMan.getConfigString(i));
 	}

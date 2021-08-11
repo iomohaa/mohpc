@@ -1,10 +1,12 @@
 #pragma once
 
 #include "../../NetGlobal.h"
+#include "../../NetObject.h"
 #include "../../Configstring.h"
 
 #include "../../../Common/Vector.h"
 #include "../../../Common/str.h"
+#include "../../../Utility/SharedPtr.h"
 
 #include <cstdint>
 
@@ -51,14 +53,24 @@ namespace Network
 
 		class ObjectiveManager
 		{
+			MOHPC_NET_OBJECT_DECLARATION(ObjectiveManager);
+
 		public:
+			MOHPC_NET_EXPORTS ObjectiveManager();
+			MOHPC_NET_EXPORTS ~ObjectiveManager();
+			ObjectiveManager(ObjectiveManager&&) = delete;
+			ObjectiveManager(const ObjectiveManager&) = delete;
+			ObjectiveManager& operator=(ObjectiveManager&&) = delete;
+			ObjectiveManager& operator=(const ObjectiveManager&) = delete;
+
 			/** Get an objective in the interval of [0, MAX_OBJECTIVES]. */
 			MOHPC_NET_EXPORTS const objective_t& get(uint32_t objNum) const;
-			const objective_t& set(const ReadOnlyInfo& info, uint32_t objNum);
+			MOHPC_NET_EXPORTS const objective_t& set(const ReadOnlyInfo& info, uint32_t objNum);
 
 		private:
-			objective_t objectives[MAX_OBJECTIVES];
+			objective_t* objectives;
 		};
+		using ObjectiveManagerPtr = SharedPtr<ObjectiveManager>;
 	}
 }
 }

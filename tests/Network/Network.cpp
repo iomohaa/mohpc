@@ -6,6 +6,7 @@
 #include <MOHPC/Network/Client/ServerQuery.h>
 #include <MOHPC/Network/Client/Protocol.h>
 #include <MOHPC/Network/Client/CGame/Prediction.h>
+#include <MOHPC/Network/Client/CGame/Commands/PrintHandler.h>
 #include <MOHPC/Network/Remote/TCPMessageDispatcher.h>
 #include <MOHPC/Network/Remote/UDPMessageDispatcher.h>
 #include <MOHPC/Network/Remote/SocketUdpDelay.h>
@@ -177,6 +178,7 @@ int main(int argc, const char* argv[])
 	connectSettings->setCDKey("12345");
 	usercmd_t oldcmd;
 	uint8_t lastVMChanged = 0;
+	CGame::PrintCommandHandlerPtr printHandler;
 
 	StufftextHandler stufftextHandler;
 
@@ -197,6 +199,8 @@ int main(int argc, const char* argv[])
 			connection->getRemoteCommandManager().add("stufftext", &stufftextHandler);
 
 			cgame = connection->getCGModule();
+			printHandler = PrintCommandHandler::create(cgame->getSnapshotProcessorPtr());
+
 			prediction = Network::CGame::Prediction::create(cg->getProtocolType());
 
 			connection->getHandlerList().errorHandler.add([](const Network::NetworkException& exception)
@@ -287,13 +291,13 @@ int main(int argc, const char* argv[])
 
 			fnHandle_t cb = cgame->getSnapshotProcessor().handlers().entityAddedHandler.add([&connection](const entityState_t& state)
 				{
-					const char* modelName = connection->getGameState().get().getConfigstringManager().getConfigString(CS_MODELS + state.modelindex);
+					const char* modelName = connection->getGameState().get().getConfigstringManager().getConfigString(CS::MODELS + state.modelindex);
 					MOHPC_LOG(Trace, "new entity %d, model \"%s\"", state.number, modelName);
 				});
 
 			cgame->getSnapshotProcessor().handlers().entityRemovedHandler.add([&connection](const entityState_t& state)
 				{
-					const char* modelName = connection->getGameState().get().getConfigstringManager().getConfigString(CS_MODELS + state.modelindex);
+					const char* modelName = connection->getGameState().get().getConfigstringManager().getConfigString(CS::MODELS + state.modelindex);
 					MOHPC_LOG(Trace, "entity %d deleted (was model \"%s\")", state.number, modelName);
 				});
 
@@ -350,16 +354,17 @@ int main(int argc, const char* argv[])
 					MOHPC_LOG(Debug, "huddraw_shader : %d \"%s\"", index, shaderName);
 				});
 
-			cgame->handlers().printHandler.add([](hudMessage_e hudMessage, const char* text)
+			printHandler->getHandlerList().printHandler.add([](hudMessage_e hudMessage, const char* text)
 				{
 					MOHPC_LOG(Trace, "server print (%d): \"%s\"", hudMessage, text);
 				});
 
-			cgame->handlers().hudPrintHandler.add([](const char* text)
+			printHandler->getHandlerList().hudPrintHandler.add([](const char* text)
 				{
-					MOHPC_LOG(Trace, "server print \"%s\"", text);
+					MOHPC_LOG(Trace, "server print (%d): \"%s\"", text);
 				});
 
+			/*
 			cgame->getVoteManager().handlers().voteModifiedHandler.add([](const VoteManager& voteInfo)
 				{
 					if (voteInfo.getVoteTime())
@@ -380,6 +385,7 @@ int main(int argc, const char* argv[])
 						MOHPC_LOG(Debug, "vote: \"%s\" has ended", voteInfo.getVoteString());
 					}
 				});
+			*/
 
 			connection->getHandlerList().disconnectHandler.add([](const char* reason)
 				{

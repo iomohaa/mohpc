@@ -538,7 +538,7 @@ bool BSPData::Surface::IsPatch() const
 
 void BSPData::Surface::CalculateCentroid()
 {
-	Eigen::Vector3f avgVert = castVector(vec3_zero);
+	Vector3 avgVert = castVector(vec3_zero);
 	const size_t numVerts = vertices.size();
 	const Vertice *verts = vertices.data();
 	for (size_t v = 0; v < numVerts; v++)
@@ -552,7 +552,7 @@ void BSPData::Surface::CalculateCentroid()
 
 void BSPData::Brush::GetOrigin(vec3r_t out) const
 {
-	Eigen::Vector3f vec = (castVector(bounds[0]) + castVector(bounds[1])) * 0.5f;
+	Vector3 vec = (castVector(bounds[0]) + castVector(bounds[1])) * 0.5f;
 	castVector(out) = vec;
 }
 
@@ -1808,8 +1808,8 @@ void BSP::LoadSubmodels(const BSPFile::GameLump* GameLump)
 			// spread the mins / maxs by a pixel
 			EndianHelpers::LittleVector(Endian, in->mins, out->bounds[0]);
 			EndianHelpers::LittleVector(Endian, in->maxs, out->bounds[1]);
-			castVector(out->bounds[0]) -= Eigen::Vector3f(1, 1, 1);
-			castVector(out->bounds[1]) += Eigen::Vector3f(1, 1, 1);
+			castVector(out->bounds[0]) -= Vector3(1, 1, 1);
+			castVector(out->bounds[1]) += Vector3(1, 1, 1);
 
 			out->numSurfaces = numSurfaces;
 			if (out->numSurfaces) {
@@ -2832,7 +2832,7 @@ void BSP::MapBrushes()
 	{
 		SurfacesGroup *sg = surfacesGroups[i];
 
-		Eigen::Vector3f avg(0, 0, 0);
+		Vector3 avg(0, 0, 0);
 		size_t numVertices = 0;
 
 		for (size_t k = 0; k < sg->surfaces.size(); k++)

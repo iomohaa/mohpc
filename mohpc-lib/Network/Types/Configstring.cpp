@@ -238,7 +238,7 @@ void ConfigStringManager::iterator::iter()
 	while (!csMan.stringOffsets[currentNum] && currentNum < csMan.maxConfigStrings)
 	{
 		// loop until there is a non-zero offset
-		currentNum++;
+		++currentNum;
 	}
 }
 
@@ -306,54 +306,3 @@ str ConfigstringErrors::MaxGameStateCharsException::what() const
 {
 	return std::to_string(GetStringLength());
 }
-
-class ConfigStringTranslator_ver8 : public IConfigStringTranslator
-{
-public:
-	void getProtocol(uint32_t& minRange, uint32_t& maxRange) const override
-	{
-		minRange = 5;
-		maxRange = 8;
-	}
-
-	csNum_t translateFromNet(uint32_t num) const override
-	{
-		if (num <= CS_WARMUP || num >= 26) {
-			return num;
-		}
-
-		return num - 2;
-	}
-
-	uint32_t translateToNet(csNum_t num) const override
-	{
-		if (num <= CS_WARMUP || num >= 26) {
-			return num;
-		}
-
-		return num + 2;
-	}
-};
-
-class ConfigStringTranslator_ver17 : public IConfigStringTranslator
-{
-public:
-	void getProtocol(uint32_t& minRange, uint32_t& maxRange) const override
-	{
-		minRange = 15;
-		maxRange = 17;
-	}
-
-	csNum_t translateFromNet(uint32_t num) const override
-	{
-		return num;
-	}
-
-	uint32_t translateToNet(csNum_t num) const override
-	{
-		return num;
-	}
-};
-
-static ConfigStringTranslator_ver8 csTranslatorVersion8;
-static ConfigStringTranslator_ver17 csTranslatorVersion17;

@@ -74,14 +74,14 @@ static void Transpose(int width, int height, BSPData::Vertice ctrl[MAX_GRID_SIZE
 
 static void MakeMeshNormals(int width, int height, BSPData::Vertice ctrl[MAX_GRID_SIZE][MAX_GRID_SIZE]) {
 	int		i, j, k, dist;
-	Eigen::Vector3f normal;
-	Eigen::Vector3f sum;
+	Vector3 normal;
+	Vector3 sum;
 	int		count = 0;
-	Eigen::Vector3f	base;
-	Eigen::Vector3f	delta;
+	Vector3	base;
+	Vector3	delta;
 	int		x, y;
 	BSPData::Vertice *dv;
-	Eigen::Vector3f		around[8], temp;
+	Vector3		around[8], temp;
 	bool	good[8];
 	bool	wrapWidth, wrapHeight;
 	double len;
@@ -287,7 +287,7 @@ static void PutPointsOnCurve(BSPData::Vertice ctrl[MAX_GRID_SIZE][MAX_GRID_SIZE]
 void BSP::CreateSurfaceGridMesh(int32_t width, int32_t height, BSPData::Vertice *ctrl, int32_t numIndexes, int32_t *indexes, BSPData::Surface* grid)
 {
 	BSPData::Vertice *vert;
-	Eigen::Vector3f tmpVec;
+	Vector3 tmpVec;
 
 	grid->indexes.resize(numIndexes);
 	grid->vertices.resize(width * height);
@@ -355,10 +355,10 @@ void BSP::SubdividePatchToGrid(int32_t Width, int32_t Height, const Vertice* Poi
 
 			maxLen = 0;
 			for (i = 0; i < Height; i++) {
-				Eigen::Vector3f midxyz;
-				Eigen::Vector3f midxyz2;
-				Eigen::Vector3f dir;
-				Eigen::Vector3f projected;
+				Vector3 midxyz;
+				Vector3 midxyz2;
+				Vector3 dir;
+				Vector3 projected;
 				float		d;
 
 				// calculate the point on the curve

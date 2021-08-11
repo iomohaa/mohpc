@@ -1,9 +1,9 @@
 #pragma once
 
 #include "../NetGlobal.h"
-#include "../Configstring.h"
 #include "../Exception.h"
 #include "../ProtocolSingleton.h"
+#include "../Configstring.h"
 
 #include <cstdint>
 #include <cstddef>
@@ -108,6 +108,7 @@ namespace Network
 	public:
 		/** Translate a config-string into a version-specific config-string. */
 		virtual csNum_t translateFromNet(uint32_t num) const = 0;
+		/** Translate a config-string into network integer config-string. */
 		virtual uint32_t translateToNet(csNum_t num) const = 0;
 	};
 

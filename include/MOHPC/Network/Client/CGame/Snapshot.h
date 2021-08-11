@@ -1,10 +1,14 @@
 #pragma once
 
+#include "../../NetGlobal.h"
+#include "../../NetObject.h"
 #include "../../../Utility/HandlerList.h"
 #include "../../../Utility/Function.h"
+#include "../../../Utility/CommandManager.h"
 #include "../../Types/Reliable.h"
 #include "../../Types/Snapshot.h"
 #include "../../Exception.h"
+#include "../../Configstring.h"
 
 #include <functional>
 #include <cstdint>
@@ -48,6 +52,14 @@ namespace Network
 			 * @param	entity	The entity that was modified.
 			 */
 			struct EntityModified : public HandlerNotifyBase<void(const entityState_t& prev, const entityState_t& current)> {};
+
+			/**
+			 * Called after the insertion/modification of a new configstring.
+			 *
+			 * @param	csNum			The configstring num.
+			 * @param	configString	The string pointed at by the csNum.
+			 */
+			struct Configstring : public HandlerNotifyBase<void(csNum_t csNum, const char* configString)> {};
 		}
 
 		/**
@@ -85,21 +97,31 @@ namespace Network
 		 */
 		class SnapshotProcessor
 		{
+			MOHPC_NET_OBJECT_DECLARATION(SnapshotProcessor);
+
 		public:
 			struct HandlerList
 			{
 				FunctionList<Handlers::EntityAdded> entityAddedHandler;
 				FunctionList<Handlers::EntityRemoved> entityRemovedHandler;
 				FunctionList<Handlers::EntityModified> entityModifiedHandler;
+				FunctionList<Handlers::Configstring> configstringModifiedHandler;
 			};
 
 		public:
-			SnapshotProcessor(CommandManager& serverCommandManagerRef);
+			SnapshotProcessor();
+			~SnapshotProcessor();
 
 			void init(uintptr_t serverMessageSequence, rsequence_t serverCommandSequence);
 
 			MOHPC_NET_EXPORTS const HandlerList& handlers() const;
 			MOHPC_NET_EXPORTS HandlerList& handlers();
+
+			MOHPC_NET_EXPORTS CommandManager& getCommandManager();
+			MOHPC_NET_EXPORTS const CommandManager& getCommandManager() const;
+
+			/** Return the client time. */
+			MOHPC_NET_EXPORTS const ClientTime& getClientTime() const;
 
 			/** Return the previous snap. */
 			MOHPC_NET_EXPORTS const SnapshotInfo& getOldSnap() const;
@@ -146,9 +168,15 @@ namespace Network
 				const ICommandSequence* commandSequencePtr
 			);
 
+		private:
+			void configStringModified(TokenParser& tokenized);
+
+		public:
+			CommandTemplate<SnapshotProcessor, &SnapshotProcessor::configStringModified> csModified;
+
 		public:
 			HandlerList handlerList;
-			CommandManager& serverCommandManager;
+			CommandManager serverCommandManager;
 			const ClientTime* clientTime;
 			const ServerSnapshotManager* snapshotManager;
 			const ICommandSequence* commandSequence;
@@ -164,6 +192,8 @@ namespace Network
 			bool nextFrameCameraCut : 1;
 			bool thisFrameTeleport : 1;
 		};
+		using ConstSnapshotProcessorPtr = SharedPtr<const SnapshotProcessor>;
+		using SnapshotProcessorPtr = SharedPtr<SnapshotProcessor>;
 
 		namespace CGSnapshotError
 		{

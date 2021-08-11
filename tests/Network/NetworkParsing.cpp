@@ -189,7 +189,7 @@ void gameStateTestInternal(uint32_t version)
 			Info systemInfo;
 			systemInfo.SetValueForKey("sv_serverid", "1234567890");
 
-			csMan.setConfigString(CS_SYSTEMINFO, systemInfo.GetString());
+			csMan.setConfigString(CS::SYSTEMINFO, systemInfo.GetString());
 		}
 
 		{
@@ -205,7 +205,7 @@ void gameStateTestInternal(uint32_t version)
 				serverInfo.SetValueForKey(keyName.c_str(), keyValue.c_str());
 			}
 
-			csMan.setConfigString(CS_SERVERINFO, serverInfo.GetString());
+			csMan.setConfigString(CS::SERVERINFO, serverInfo.GetString());
 		}
 
 		Parsing::gameStateClient_t client;
@@ -235,7 +235,7 @@ void gameStateTestInternal(uint32_t version)
 		assert(results.serverDeltaTime == 50);
 		assert(results.serverDeltaTimeSeconds == 0.05f);
 
-		ReadOnlyInfo serverInfo(gs.getConfigstringManager().getConfigString(CS_SERVERINFO));
+		ReadOnlyInfo serverInfo(gs.getConfigstringManager().getConfigString(CS::SERVERINFO));
 
 		assert(serverInfo.IntValueForKey("sv_misc_var1") == 5555);
 		assert(!strHelpers::cmp(serverInfo.ValueForKey("g_var2").c_str(), "stringValue"));

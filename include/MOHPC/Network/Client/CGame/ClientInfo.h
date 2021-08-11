@@ -42,26 +42,29 @@ namespace Network
 
 		class ClientInfoList
 		{
+			MOHPC_NET_OBJECT_DECLARATION(ClientInfoList);
+
 		public:
-			ClientInfoList();
+			ClientInfoList(const SharedPtr<ServerGameState>& gameStatePtr, const UserInfoPtr& userInfoPtr);
+			~ClientInfoList();
+			ClientInfoList(ClientInfoList&&) = delete;
+			ClientInfoList(const ClientInfoList&) = delete;
+			ClientInfoList& operator=(ClientInfoList&&) = delete;
+			ClientInfoList& operator=(const ClientInfoList&) = delete;
 
 			/** Get a client info in the interval of [0, MAX_CLIENTS]. */
 			MOHPC_NET_EXPORTS const clientInfo_t& get(uint32_t clientNum) const;
-			const clientInfo_t& set(const ReadOnlyInfo& info, uint32_t clientNum);
-
-			void setPtrs(
-				const ServerGameState* gameStatePtr,
-				const UserInfoPtr& userInfoPtr
-			);
+			MOHPC_NET_EXPORTS const clientInfo_t& set(const ReadOnlyInfo& info, uint32_t clientNum);
 
 		private:
 			void reflectLocalClient(const clientInfo_t& client);
 
 		private:
-			const ServerGameState* gameState;
+			SharedPtr<ServerGameState> gameState;
 			UserInfoPtr userInfo;
-			clientInfo_t clientInfo[MAX_CLIENTS];
+			clientInfo_t* clientInfo;
 		};
+		using ClientInfoListPtr = SharedPtr<ClientInfoList>;
 	}
 }
 }

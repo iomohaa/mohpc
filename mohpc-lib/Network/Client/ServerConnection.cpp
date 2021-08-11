@@ -161,7 +161,7 @@ ServerConnection::ServerConnection(const INetchanPtr& inNetchan, const IRemoteId
 	, timeout(std::chrono::milliseconds(60000))
 	, isActive(false)
 	, userInfo(cInfo)
-	, clGameState(protoType, &clientTime)
+	, clGameState(makeShared<ServerGameState>(protoType, &clientTime))
 	, clSnapshotManager(protoType)
 	, disconnectHandler(*this)
 	, serverMessageSequence(0)
@@ -193,7 +193,7 @@ ServerConnection::ServerConnection(const INetchanPtr& inNetchan, const IRemoteId
 	serverCommands = remoteCommandInstancier->createInstance();
 
 	// set default chain as encoding/decoding
-	setChain(ClientEncoding::create(clGameState.get(), reliableCommands, serverCommands, challengeResponse));
+	setChain(ClientEncoding::create(clGameState->get(), reliableCommands, serverCommands, challengeResponse));
 
 	// no input module by default
 	inputModule = nullptr;
@@ -204,9 +204,7 @@ ServerConnection::ServerConnection(const INetchanPtr& inNetchan, const IRemoteId
 	CGame::Imports cgImports{
 		clSnapshotManager,
 		clientTime,
-		*serverCommands,
-		clGameState,
-		userInfo
+		*serverCommands
 	};
 	cgameModule->setImports(cgImports);
 
@@ -214,7 +212,7 @@ ServerConnection::ServerConnection(const INetchanPtr& inNetchan, const IRemoteId
 	downloadState.setReliableSequence(reliableCommands);
 
 	// register remote commands
-	clGameState.registerCommands(remoteCommandManager);
+	clGameState->registerCommands(remoteCommandManager);
 
 	using namespace std::placeholders;
 	remoteCommandManager.add("disconnect", &disconnectHandler);
@@ -401,12 +399,12 @@ void ServerConnection::parseServerMessage(MSG& msg, tickTime_t currentTime, uint
 			parseCommandString(msg);
 			break;
 		case svc_ops_e::Gamestate:
-			clGameState.parseGameState(msg, serverCommands);
+			clGameState->parseGameState(msg, serverCommands);
 			break;
 		case svc_ops_e::Snapshot:
 			clSnapshotManager.parseSnapshot(
 				msg,
-				clGameState,
+				*clGameState,
 				clientTime,
 				serverCommands,
 				currentTime,
@@ -510,7 +508,7 @@ void ServerConnection::writePacket(tickTime_t currentTime, uint32_t sequenceNum)
 	stream.reserve(32);
 
 	// write the packet header
-	packetHeaderStream->writeHeader(msg, clGameState.get().getMapInfo(), *serverCommands, sequenceNum);
+	packetHeaderStream->writeHeader(msg, clGameState->get().getMapInfo(), *serverCommands, sequenceNum);
 	// write commands that the server didn't acknowledge
 	remoteCommandStream->writeCommands(msg, *reliableCommands, *stringParser);
 
@@ -546,10 +544,20 @@ CGame::ModuleBase* ServerConnection::getCGModule()
 
 ServerGameState& ServerConnection::getGameState()
 {
-	return clGameState;
+	return *clGameState;
 }
 
 const ServerGameState& ServerConnection::getGameState() const
+{
+	return *clGameState;
+}
+
+const ServerGameStatePtr& ServerConnection::getGameStatePtr()
+{
+	return clGameState;
+}
+
+ConstServerGameStatePtr ServerConnection::getGameStatePtr() const
 {
 	return clGameState;
 }
@@ -662,7 +670,7 @@ void ServerConnection::serverDisconnected(const char* reason)
 void ServerConnection::terminateConnection(const char* reason)
 {
 	// Clear the server client data
-	clGameState.reset();
+	clGameState->reset();
 
 	if (cgameModule)
 	{
@@ -700,7 +708,7 @@ bool ServerConnection::readyToSendPacket(tickTime_t currentTime) const
 {
 	using namespace std::chrono;
 
-	if (!clGameState.get().getMapInfo().getServerId() || !inputModule)
+	if (!clGameState->get().getMapInfo().getServerId() || !inputModule)
 	{
 		// allow one packet per second when not entered
 		return currentTime >= lastPacketSendTime + milliseconds(1000);
@@ -723,7 +731,7 @@ CommandManager& ServerConnection::getRemoteCommandManager()
 
 uint32_t ServerConnection::getCommandHashKey(uint32_t serverMessageSequence) const
 {
-	uint32_t key = clGameState.get().getMapInfo().getChecksumFeed();
+	uint32_t key = clGameState->get().getMapInfo().getChecksumFeed();
 	// also use the message acknowledge
 	key ^= serverMessageSequence;
 	// also use the last acknowledged server command in the key

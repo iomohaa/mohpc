@@ -11,35 +11,18 @@ static constexpr char MOHPC_LOG_NAMESPACE[] = "cgame_clientinfo";
 
 static constexpr char DEFAULT_CLIENT_NAME[] = "UnnamedSoldier";
 
-clientInfo_t::clientInfo_t()
-	: team(teamType_e::None)
+MOHPC_OBJECT_DEFINITION(ClientInfoList);
+
+ClientInfoList::ClientInfoList(const ServerGameStatePtr& gameStatePtr, const UserInfoPtr& userInfoPtr)
+	: gameState(gameStatePtr)
+	, userInfo(userInfoPtr)
 {
+	clientInfo = new clientInfo_t[CS::MAX_CLIENTS];
 }
 
-const char* clientInfo_t::getName() const
+ClientInfoList::~ClientInfoList()
 {
-	return name.c_str();
-}
-
-teamType_e clientInfo_t::getTeam() const
-{
-	return team;
-}
-
-const PropertyObject& clientInfo_t::getProperties() const
-{
-	return properties;
-}
-
-ClientInfoList::ClientInfoList()
-	: gameState(nullptr)
-{
-}
-
-void ClientInfoList::setPtrs(const ServerGameState* gameStatePtr, const UserInfoPtr& userInfoPtr)
-{
-	gameState = gameStatePtr;
-	userInfo = userInfoPtr;
+	delete[] clientInfo;
 }
 
 const clientInfo_t& ClientInfoList::get(uint32_t clientNum) const
@@ -93,4 +76,24 @@ void ClientInfoList::reflectLocalClient(const clientInfo_t& client)
 
 		// don't resend user info, it would be useless
 	}
+}
+
+clientInfo_t::clientInfo_t()
+	: team(teamType_e::None)
+{
+}
+
+const char* clientInfo_t::getName() const
+{
+	return name.c_str();
+}
+
+teamType_e clientInfo_t::getTeam() const
+{
+	return team;
+}
+
+const PropertyObject& clientInfo_t::getProperties() const
+{
+	return properties;
 }
