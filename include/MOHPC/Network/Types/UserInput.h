@@ -22,13 +22,45 @@ namespace Network
 	public:
 		UserActionInput();
 
-		/** Add a weapon command. */
-		void addWeaponCommand(const WeaponCommand& weaponCommand);
-		/** Remove a weapon command. */
-		void removeWeaponCommand(const WeaponCommand& weaponCommand);
+		/**
+		 * Add a weapon command.
+		 *
+		 * @param weaponCommand.
+		 * @see WeaponCommads.
+		 */
+		void addWeaponCommand(weaponCommand_t weaponCommand);
 
-		/** Check if a button is held. */
-		bool isHeld(const UserButton& button);
+		/**
+		 * Remove a weapon command.
+		 *
+		 * @param weaponCommand.
+		 * @see WeaponCommads.
+		 */
+		void removeWeaponCommand(weaponCommand_t weaponCommand);
+
+		/**
+		 * Add a new input button.
+		 *
+		 * @param newButton.
+		 * @see UserButtons.
+		 */
+		void addButton(userButton_t newButton);
+
+		/**
+		 * Remove an input button.
+		 *
+		 * @param button.
+		 * @see UserButtons.
+		 */
+		void removeButton(userButton_t button);
+
+		/**
+		 * Check if a button is held.
+		 *
+		 * @param button the button to check.
+		 * @see UserButtons.
+		 */
+		bool isHeld(userButton_t button);
 
 		/** Check if any of specified user buttons is present. */
 		template<typename...Args>
@@ -44,13 +76,15 @@ namespace Network
 			return (isHeld(std::forward<Args>(button)) && ...);
 		}
 
-		void addButton(const UserButton& newButton);
-		void removeButton(const UserButton& button);
-
+		/**
+		 * Set the flag for this action.
+		 *
+		 * @param newFlags new flags to set.
+		 * @note it is not recommended to use this function, instead use *Button and *WeaponCommand methods.
+		 */
+		void setFlags(uint16_t newFlags);
 		/** Return this action flags. */
 		uint16_t getFlags() const;
-		/** Set action flags. */
-		void setFlags(uint16_t newFlags);
 
 	private:
 		uint16_t flags;
@@ -64,7 +98,7 @@ namespace Network
 	public:
 		UserMovementInput();
 
-		/** Converts and set angles. */
+		/** Convert and set angles. */
 		void setAngles(float pitch, float yaw, float roll);
 		void setAngles(uint16_t pitch, uint16_t yaw, uint16_t roll);
 		void setAngles(const netAngles_t& newAngles);
@@ -73,20 +107,46 @@ namespace Network
 		void getAngles(netAngles_t& anglesRef);
 		const netAngles_t& getAngles() const;
 
-		/** Move forward by the specified value. Range [-128, 127]. */
+		/**
+		 * Move forward by the specified value.
+		 *
+		 * @param value value in the range [-128, 127].
+		 */
 		void moveForward(int8_t value);
-		/** Move right by the specified value. Range [-128, 127]. */
+
+		/**
+		 * Move right by the specified value. Range [-128, 127].
+		 *
+		 * @param value value in the range [-128, 127].
+		 */
 		void moveRight(int8_t value);
-		/** Move up by the specified value. Range [-128, 127]. */
+
+		/**
+		 * Move up by the specified value. Range [-128, 127].
+		 *
+		 * @param value value in the range [-128, 127].
+		 */
 		void moveUp(int8_t value);
+
 		/** Clear all movement. */
 		void clear();
 
-		/** Get the forward value. Range [-128, 127]. */
+		/**
+		 * Get the forward value. Range [-128, 127].
+		 * @note negative value = backward, positive values = forward.
+		 */
 		int8_t getForwardValue() const;
-		/** Get the right value. Range [-128, 127]. */
+
+		/**
+		 * Get the right value. Range [-128, 127].
+		 * @note negative value = left, positive value = right.
+		 */
 		int8_t getRightValue() const;
-		/** Get the up value. Range [-128, 127]. */
+
+		/**
+		 * Get the up value. Range [-128, 127].
+		 * @note negative value = down, positive value = up.
+		 */
 		int8_t getUpValue() const;
 
 	private:

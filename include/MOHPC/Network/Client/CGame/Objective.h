@@ -64,11 +64,14 @@ namespace Network
 			ObjectiveManager& operator=(const ObjectiveManager&) = delete;
 
 			/** Get an objective in the interval of [0, MAX_OBJECTIVES]. */
+			MOHPC_NET_EXPORTS const objective_t& getCurrent() const;
+			MOHPC_NET_EXPORTS void setCurrent(uint32_t objNum);
 			MOHPC_NET_EXPORTS const objective_t& get(uint32_t objNum) const;
 			MOHPC_NET_EXPORTS const objective_t& set(const ReadOnlyInfo& info, uint32_t objNum);
 
 		private:
 			objective_t* objectives;
+			uint32_t current;
 		};
 		using ObjectiveManagerPtr = SharedPtr<ObjectiveManager>;
 	}

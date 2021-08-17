@@ -38,28 +38,40 @@ namespace MOHPC
 		bool bDoLighting;
 	};
 
-	class DCL : public Asset
+	class DCL : public Asset2
 	{
 		MOHPC_ASSET_OBJECT_DECLARATION(DCL);
 
-	private:
-		DCLMarkDef* dclDecals;
-		size_t numDecals;
-		size_t numFragments;
-
 	public:
-		MOHPC_ASSETS_EXPORTS DCL();
+		MOHPC_ASSETS_EXPORTS DCL(const fs::path& fileName, DCLMarkDef* decalList, size_t numDecalsVal, size_t numFragmentsVal);
 		MOHPC_ASSETS_EXPORTS ~DCL();
-
-		virtual void Load() override;
 
 		/** Get the number of decals. */
 		MOHPC_ASSETS_EXPORTS size_t GetNumDecals() const;
 
 		/** Get a decal definition at the specified index. */
 		MOHPC_ASSETS_EXPORTS const DCLMarkDef* GetDecal(size_t index) const;
+
+	private:
+		DCLMarkDef* dclDecals;
+		size_t numDecals;
+		size_t numFragments;
 	};
 	typedef SharedPtr<DCL> DCLPtr;
+
+	class DCLReader : public AssetReader
+	{
+		MOHPC_ASSET_OBJECT_DECLARATION(DCLReader);
+
+	public:
+		using AssetType = DCL;
+
+	public:
+		MOHPC_ASSETS_EXPORTS DCLReader();
+		MOHPC_ASSETS_EXPORTS ~DCLReader();
+
+		MOHPC_ASSETS_EXPORTS Asset2Ptr read(const IFilePtr& file) override;
+	};
 
 	namespace DCLError
 	{

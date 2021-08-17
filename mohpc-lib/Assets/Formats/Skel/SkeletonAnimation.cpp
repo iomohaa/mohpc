@@ -2,6 +2,7 @@
 #include <MOHPC/Utility/Misc/MSG/MSG.h>
 #include <MOHPC/Utility/Misc/MSG/Stream.h>
 #include <MOHPC/Files/Managers/FileManager.h>
+#include <MOHPC/Files/FileHelpers.h>
 #include <MOHPC/Utility/Misc/Endian.h>
 #include <MOHPC/Utility/Misc/EndianCoordHelpers.h>
 #include "SkelPrivate.h"
@@ -18,12 +19,12 @@ static SkelVec3 LittleSkelVec(const SkelVec3& inVec)
 	return result;
 }
 
-SkeletonAnimation::AnimFrame::AnimFrame()
+AnimFrame::AnimFrame()
 {
 	pChannels = NULL;
 }
 
-SkeletonAnimation::AnimFrame::~AnimFrame()
+AnimFrame::~AnimFrame()
 {
 	if (pChannels)
 	{
@@ -33,81 +34,12 @@ SkeletonAnimation::AnimFrame::~AnimFrame()
 }
 
 MOHPC_OBJECT_DEFINITION(SkeletonAnimation);
-SkeletonAnimation::SkeletonAnimation()
+SkeletonAnimation::SkeletonAnimation(const fs::path& fileName)
+	: Asset2(fileName)
 {
 }
 
-void SkeletonAnimation::Load()
-{
-	const char *Fname = GetFilename().c_str();
-	if (*Fname == '/' || *Fname == '\\') Fname++;
-	const str nwPath = str("/newanim/") + Fname;
-	void* buf;
-	uint64_t length = 0;
-
-	FilePtr file = GetFileManager()->OpenFile(nwPath.c_str());
-	if (file)
-	{
-		length = file->ReadBuffer(&buf);
-		if (length > 0)
-		{
-			// MOH:AA Animation file
-			LoadProcessedAnim(Fname, buf, (size_t)length, Fname);
-		}
-	}
-	else
-	{
-		file = GetFileManager()->OpenFile(Fname);
-		if (!file)
-		{
-			// not a valid file
-			throw AssetError::AssetNotFound(Fname);
-		}
-
-		const File_AnimDataHeader* pHeader;
-		length = file->ReadBuffer((void**)&buf);
-		if (length > 0)
-		{
-			pHeader = (const File_AnimDataHeader*)buf;
-
-			// check for header and version
-			if (memcmp(pHeader->ident, TIKI_SKC_HEADER_IDENT, sizeof(pHeader->ident))) {
-				throw SkelAnimError::BadHeader(pHeader->ident);
-			}
-
-			const uint32_t version = Endian.LittleInteger(pHeader->version);
-			if(version != TIKI_SKC_HEADER_OLD_VERSION && version != TIKI_SKC_HEADER_VERSION) {
-				throw SkelAnimError::WrongVersion(version);
-			}
-
-			if (version == TIKI_SKC_HEADER_OLD_VERSION)
-			{
-				//Com_Printf("WARNING- DOWNGRADING TO OLD ANIMATION FORMAT FOR FILE: %s\n", path);
-				ConvertSkelFileToGame(pHeader, (size_t)length, Fname);
-				/*
-				if (convertAnims && convertAnims->integer)
-				{
-				Skeletor::SaveProcessedAnim(finishedHeader, path, pHeader);
-				}
-				*/
-			}
-			else
-			{
-				// points the buffer to the animation data
-				void* buffer = (char *)pHeader + sizeof(int) + sizeof(int);
-				length -= sizeof(int) + sizeof(int);
-
-				// loads the processed animation
-				// MOH:SH and MOH:BT animations
-				LoadProcessedAnimEx(Fname, buffer, (size_t)length, Fname);
-			}
-		}
-	}
-
-	HashUpdate((uint8_t*)buf, length);
-}
-
-bool Compress( SkeletonAnimation::AnimFrame *current, SkeletonAnimation::AnimFrame *last, size_t channelIndex, const SkeletonChannelList *channelList, const SkeletonChannelNameTable *channelNames )
+bool Compress(AnimFrame *current, AnimFrame *last, size_t channelIndex, const SkeletonChannelList *channelList, const SkeletonChannelNameTable *channelNames)
 {
 	// high-end PCs don't need to compress...
 	return false;
@@ -161,7 +93,7 @@ bool Compress( SkeletonAnimation::AnimFrame *current, SkeletonAnimation::AnimFra
 	*/
 }
 
-void SkeletonAnimation::EncodeFrames(const SkeletonChannelList *channelList, const SkeletonChannelNameTable *channelNames )
+void EncodeFrames(const SkeletonChannelList *channelList, const SkeletonChannelNameTable *channelNames, std::vector<AnimFrame>& m_frame, std::vector<SkanChannelHdr>& ary_channels)
 {
 	int frameCnt;
 	AnimFrame *pCurrFrame;
@@ -224,7 +156,7 @@ void SkeletonAnimation::EncodeFrames(const SkeletonChannelList *channelList, con
 	}
 }
 
-void SkeletonAnimation::ConvertSkelFileToGame(const File_AnimDataHeader *pHeader, size_t iBuffLength, const char *path)
+void SkeletonAnimationReader::ConvertSkelFileToGame(const File_AnimDataHeader *pHeader, size_t iBuffLength, SkeletonAnimation& skelAnim)
 {
 	const uint32_t numFrames = Endian.LittleInteger(pHeader->numFrames);
 	if( numFrames <= 0 )
@@ -233,6 +165,7 @@ void SkeletonAnimation::ConvertSkelFileToGame(const File_AnimDataHeader *pHeader
 		return;
 	}
 
+	std::vector<AnimFrame>& m_frame = skelAnim.getFrames();
 	m_frame.resize(numFrames);
 
 	const uint32_t numChannels = Endian.LittleInteger(pHeader->numChannels);
@@ -261,15 +194,20 @@ void SkeletonAnimation::ConvertSkelFileToGame(const File_AnimDataHeader *pHeader
 		newFrame++;
 	}
 
-	flags = Endian.LittleInteger(pHeader->flags);
-	frameTime = Endian.LittleFloat(pHeader->frameTime);
+	skelAnim.setFlags(Endian.LittleInteger(pHeader->flags));
+	skelAnim.setFrameTime(Endian.LittleFloat(pHeader->frameTime));
+	vec3_t totalDelta;
 	EndianHelpers::LittleVector(Endian, (float*)pHeader->totalDelta, totalDelta);
-	totalAngleDelta = Endian.LittleFloat(pHeader->totalAngleDelta);
+	skelAnim.setTotalDelta(totalDelta);
+	skelAnim.setTotalAngleDelta(Endian.LittleFloat(pHeader->totalAngleDelta));
+
+	std::vector<SkanChannelHdr>& ary_channels = skelAnim.getAryChannels();
 	ary_channels.resize(numChannels);
 
+	SkeletonChannelList& channelList = skelAnim.getChannelList();
 	channelList.ZeroChannels();
 
-	SkeletonChannelNameTable* channelNameTable = GetAssetManager()->GetManager<SkeletorManager>()->GetChannelNamesTable();
+	SkeletonChannelNameTable* channelNameTable = GetAssetManager()->getManager<SkeletorManager>()->GetChannelNamesTable();
 	const skelChannelName_t* pChannelNames = (const skelChannelName_t*)((char*)pHeader + Endian.LittleInteger(pHeader->ofsChannelNames));
 
 	for (uint32_t i = 0; i < numChannels; i++)
@@ -280,27 +218,27 @@ void SkeletonAnimation::ConvertSkelFileToGame(const File_AnimDataHeader *pHeader
 	}
 
 	channelList.PackChannels();
-	EncodeFrames(&channelList, channelNameTable);
+	EncodeFrames(&channelList, channelNameTable, m_frame, ary_channels);
 
 	if (channelList.HasChannel(channelNameTable, "Bip01 pos") &&
 		channelList.HasChannel(channelNameTable, "Bip01 R Foot pos") &&
 		channelList.HasChannel(channelNameTable, "Bip01 L Foot pos"))
 	{
-		bHasDelta = true;
+		skelAnim.setDelta(true);
 	}
 	else
 	{
-		bHasDelta = false;
+		skelAnim.setDelta(false);
 	}
 
 	if (channelList.HasChannel(channelNameTable, "Bip01 Spine rot") &&
 		channelList.HasChannel(channelNameTable, "Bip01 Spine1 rot"))
 	{
-		bHasUpper = true;
+		skelAnim.setUpper(true);
 	}
 	else
 	{
-		bHasUpper = false;
+		skelAnim.setUpper(false);
 	}
 
 	if (channelList.HasChannel(channelNameTable, "VISEME_Bump")
@@ -341,110 +279,15 @@ void SkeletonAnimation::ConvertSkelFileToGame(const File_AnimDataHeader *pHeader
 		|| channelList.HasChannel(channelNameTable, "MOUTH_Snarl_closed")
 		|| channelList.HasChannel(channelNameTable, "MOUTH_Snarl_open"))
 	{
-		bHasMorph = true;
+		skelAnim.setMorph(true);
 	}
 	else
 	{
-		bHasMorph = false;
+		skelAnim.setMorph(false);
 	}
 }
 
-void MOHPC::SkeletonAnimation::WriteEncodedFrames(MSG& msg)
-{
-	const uint32_t numFrames = (uint32_t)m_frame.size();
-	const uint16_t numChannels = (uint16_t)ary_channels.size();
-
-	msg.WriteUInteger(numFrames);
-	msg.WriteUShort(numChannels);
-
-	for (uint16_t i = 0; i < numChannels; i++)
-	{
-		const SkanChannelHdr* const pChannel = &ary_channels[i];
-		const uint16_t nFramesInChannel = (uint16_t)pChannel->ary_frames.size();
-		msg.WriteUShort(nFramesInChannel);
-
-		for (uint16_t j = 0; j < nFramesInChannel; j++)
-		{
-			const SkanGameFrame* const pFrame = &pChannel->ary_frames[i];
-
-			msg.WriteUShort((uint16_t)pFrame->nFrameNum);
-			msg.WriteUShort((uint16_t)pFrame->nPrevFrameIndex);
-			msg.WriteData(pFrame->pChannelData, sizeof(vec4_t));
-		}
-	}
-
-	const uint32_t nBytesUsed = sizeof(int32_t) + sizeof(int32_t)
-		+ sizeof(bool) + sizeof(bool) + sizeof(bool)
-		+ sizeof(SkelVec3)
-		+ sizeof(float) + sizeof(float)
-		+ sizeof(SkeletonChannelList)
-		+ sizeof(SkelVec3) * 2
-		+ sizeof(AnimFrame) * (uint32_t)m_frame.size()
-		+ sizeof(SkanChannelHdr) * (uint32_t)ary_channels.size();
-
-	msg.WriteUInteger(nBytesUsed);
-}
-
-void MOHPC::SkeletonAnimation::WriteEncodedFramesEx(MSG& msg)
-{
-	size_t nTotalChannels = ary_channels.size();
-	const SkeletorManagerPtr skeletorManager = GetManager<SkeletorManager>();
-	for (size_t i = 0; i < nTotalChannels; i++)
-	{
-		const SkanChannelHdr* const pChannel = &ary_channels[i];
-
-		const char* name = channelList.ChannelName(skeletorManager->GetChannelNamesTable(), i);
-		const int32_t type = SkeletonChannelNameTable::GetChannelTypeFromName(name);
-		const uint16_t frameCnt = (uint16_t)pChannel->ary_frames.size();
-		msg.WriteUShort(frameCnt);
-
-		const SkanGameFrame* const ary_frames = pChannel->ary_frames.data();
-
-		if (type)
-		{
-			if (type == 1)
-			{
-				for (uint16_t j = 0; j < frameCnt; j++)
-				{
-					const SkanGameFrame* pFrame = &ary_frames[j];
-					msg.WriteUShort((uint16_t)pFrame->nFrameNum);
-					msg.WriteUShort((uint16_t)pFrame->nPrevFrameIndex);
-
-					msg.WriteFloat(pFrame->pChannelData[0]);
-					msg.WriteFloat(pFrame->pChannelData[1]);
-					msg.WriteFloat(pFrame->pChannelData[2]);
-				}
-			}
-			else if (type == 3)
-			{
-				for (uint16_t j = 0; j < frameCnt; j++)
-				{
-					const SkanGameFrame* pFrame = &ary_frames[j];
-					msg.WriteUShort((uint16_t)pFrame->nFrameNum);
-					msg.WriteUShort((uint16_t)pFrame->nPrevFrameIndex);
-
-					msg.WriteFloat(pFrame->pChannelData[0]);
-				}
-			}
-		}
-		else
-		{
-			for (uint16_t j = 0; j < frameCnt; j++)
-			{
-				const SkanGameFrame* pFrame = &ary_frames[j];
-				msg.WriteUShort((uint16_t)pFrame->nFrameNum);
-				msg.WriteUShort((uint16_t)pFrame->nPrevFrameIndex);
-
-				msg.WriteFloat(pFrame->pChannelData[0]);
-				msg.WriteFloat(pFrame->pChannelData[1]);
-				msg.WriteFloat(pFrame->pChannelData[2]);
-				msg.WriteFloat(pFrame->pChannelData[3]);
-			}
-		}
-	}
-}
-
-void SkeletonAnimation::ReadEncodedFrames(MSG& msg)
+void SkeletonAnimationReader::ReadEncodedFrames(MSG& msg, std::vector<AnimFrame>& m_frame, std::vector<SkanChannelHdr>& ary_channels)
 {
 	const uint32_t numFrames = msg.ReadUInteger();
 	const uint16_t nTotalChannels = msg.ReadUShort();
@@ -474,10 +317,10 @@ void SkeletonAnimation::ReadEncodedFrames(MSG& msg)
 	const uint32_t nBytesUsed = msg.ReadUInteger();
 }
 
-void SkeletonAnimation::ReadEncodedFramesEx(MSG& msg)
+void SkeletonAnimationReader::ReadEncodedFramesEx(MSG& msg, const SkeletonChannelList& channelList, std::vector<AnimFrame>& m_frame, std::vector<SkanChannelHdr>& ary_channels)
 {
 	size_t nTotalChannels = ary_channels.size();
-	SkeletorManagerPtr skeletorManager = GetManager<SkeletorManager>();
+	SkeletorManagerPtr skeletorManager = getManager<SkeletorManager>();
 	for (size_t i = 0; i < nTotalChannels; i++)
 	{
 		SkanChannelHdr *pChannel = &ary_channels[i];
@@ -543,22 +386,7 @@ void SkeletonAnimation::ReadEncodedFramesEx(MSG& msg)
 	}
 }
 
-void SkeletonAnimation::SaveProcessedAnim(const char* path, File_AnimDataHeader* pHeader)
-{
-	/*
-		int i;
-		skelChannelName_t *pChannelNames;
-		msg.t msg;
-		skelAnimGameFrame_t *newFrame;
-		char npath[ 128 ];
-		unsigned char buf[ 2000000 ];
-	*/
-
-	// FIXME:
-	// Write animation
-}
-
-void SkeletonAnimation::LoadProcessedAnim(const char *path, void *buffer, size_t len, const char *name)
+SkeletonAnimationPtr SkeletonAnimationReader::LoadProcessedAnim(const fs::path& path, void *buffer, size_t len)
 {
 	FixedDataMessageStream stream(buffer, len);
 
@@ -568,18 +396,26 @@ void SkeletonAnimation::LoadProcessedAnim(const char *path, void *buffer, size_t
 	// but useless as it will be used later
 	msg.ReadUInteger();
 
-	flags = msg.ReadInteger();
-	frameTime = msg.ReadFloat();
+	SkeletonAnimationPtr skelAnim(new SkeletonAnimation(path));
+
+	skelAnim->setFlags(msg.ReadInteger());
+	skelAnim->setFrameTime(msg.ReadFloat());
+
+	vec3_t totalDelta;
 	totalDelta[0] = msg.ReadFloat();
 	totalDelta[1] = msg.ReadFloat();
 	totalDelta[2] = msg.ReadFloat();
-	totalAngleDelta = msg.ReadFloat();
+	skelAnim->setTotalDelta(totalDelta);
+	skelAnim->setTotalAngleDelta(msg.ReadFloat());
+
 	const uint32_t numFrames = msg.ReadUInteger();
 	const uint16_t nTotalChannels = msg.ReadUShort();
-	bHasDelta = msg.ReadByteBool();
-	bHasUpper = msg.ReadByteBool();
-	bHasMorph = msg.ReadByteBool();
+	skelAnim->setDelta(msg.ReadByteBool());
+	skelAnim->setUpper(msg.ReadByteBool());
+	skelAnim->setMorph(msg.ReadByteBool());
 
+	std::vector<AnimFrame>& m_frame = skelAnim->getFrames();
+	std::vector<SkanChannelHdr>& ary_channels = skelAnim->getAryChannels();
 	m_frame.resize(numFrames);
 	ary_channels.resize(nTotalChannels);
 
@@ -602,18 +438,22 @@ void SkeletonAnimation::LoadProcessedAnim(const char *path, void *buffer, size_t
 		newFrame++;
 	}
 
+	vec3_t bounds[2];
 	bounds[0][0] = msg.ReadFloat();
 	bounds[0][1] = msg.ReadFloat();
 	bounds[0][2] = msg.ReadFloat();
 	bounds[1][0] = msg.ReadFloat();
 	bounds[1][2] = msg.ReadFloat();
 	bounds[1][2] = msg.ReadFloat();
-	ReadEncodedFrames(msg);
+	skelAnim->setBounds(bounds[0], bounds[1]);
+	ReadEncodedFrames(msg, m_frame, ary_channels);
 
 	const uint32_t numChannels = msg.ReadUInteger();
+
+	SkeletonChannelList& channelList = skelAnim->getChannelList();
 	channelList.ZeroChannels();
 
-	SkeletonChannelNameTable* const channelNamesTable = GetAssetManager()->GetManager<SkeletorManager>()->GetChannelNamesTable();
+	SkeletonChannelNameTable* const channelNamesTable = GetAssetManager()->getManager<SkeletorManager>()->GetChannelNamesTable();
 
 	for (uint32_t i = 0; i < numChannels; i++)
 	{
@@ -622,9 +462,11 @@ void SkeletonAnimation::LoadProcessedAnim(const char *path, void *buffer, size_t
 	}
 
 	channelList.PackChannels();
+
+	return skelAnim;
 }
 
-void SkeletonAnimation::LoadProcessedAnimEx(const char *path, void *buffer, size_t len, const char *name)
+SkeletonAnimationPtr SkeletonAnimationReader::LoadProcessedAnimEx(const fs::path& path, void *buffer, size_t len)
 {
 	FixedDataMessageStream stream(buffer, len);
 
@@ -632,20 +474,29 @@ void SkeletonAnimation::LoadProcessedAnimEx(const char *path, void *buffer, size
 
 	const uint16_t numChannels = msg.ReadUShort();
 
+	SkeletonAnimationPtr skelAnim(new SkeletonAnimation(path));
+
+	SkeletonChannelList& channelList = skelAnim->getChannelList();
 	channelList.ZeroChannels();
-	flags = msg.ReadInteger();
-	frameTime = msg.ReadFloat();
+
+	skelAnim->setFlags(msg.ReadInteger());
+	skelAnim->setFrameTime(msg.ReadFloat());
+
+	vec3_t totalDelta;
 	totalDelta[0] = msg.ReadFloat();
 	totalDelta[1] = msg.ReadFloat();
 	totalDelta[2] = msg.ReadFloat();
-	totalAngleDelta = msg.ReadFloat();
+	skelAnim->setTotalDelta(totalDelta);
+	skelAnim->setTotalAngleDelta(msg.ReadFloat());
+
 	const uint32_t numFrames = msg.ReadUInteger();
-	bHasDelta = msg.ReadByteBool();
-	bHasUpper = msg.ReadByteBool();
-	bHasMorph = msg.ReadByteBool();
+	skelAnim->setDelta(msg.ReadByteBool());
+	skelAnim->setUpper(msg.ReadByteBool());
+	skelAnim->setMorph(msg.ReadByteBool());
 
-	SkeletonChannelNameTable* const channelNamesTable = GetAssetManager()->GetManager<SkeletorManager>()->GetChannelNamesTable();
+	SkeletonChannelNameTable* const channelNamesTable = GetAssetManager()->getManager<SkeletorManager>()->GetChannelNamesTable();
 
+	std::vector<SkanChannelHdr>& ary_channels = skelAnim->getAryChannels();
 	ary_channels.resize(numChannels);
 	for (int32_t i = 0; i < numChannels; i++)
 	{
@@ -655,6 +506,7 @@ void SkeletonAnimation::LoadProcessedAnimEx(const char *path, void *buffer, size
 
 	channelList.PackChannels();
 
+	std::vector<AnimFrame>& m_frame = skelAnim->getFrames();
 	m_frame.resize(numFrames);
 	AnimFrame* newFrame = &m_frame[0];
 
@@ -675,13 +527,17 @@ void SkeletonAnimation::LoadProcessedAnimEx(const char *path, void *buffer, size
 		newFrame++;
 	}
 
+	vec3_t bounds[2];
 	bounds[0][0] = msg.ReadFloat();
 	bounds[0][1] = msg.ReadFloat();
 	bounds[0][2] = msg.ReadFloat();
 	bounds[1][0] = msg.ReadFloat();
 	bounds[1][2] = msg.ReadFloat();
 	bounds[1][2] = msg.ReadFloat();
-	ReadEncodedFramesEx(msg);
+	skelAnim->setBounds(bounds[0], bounds[1]);
+	ReadEncodedFramesEx(msg, channelList, m_frame, ary_channels);
+
+	return skelAnim;
 }
 
 
@@ -690,7 +546,7 @@ size_t SkeletonAnimation::GetNumFrames() const
 	return m_frame.size();
 }
 
-const SkeletonAnimation::AnimFrame *SkeletonAnimation::GetFrame(size_t index) const
+const AnimFrame *SkeletonAnimation::GetFrame(size_t index) const
 {
 	if (index >= 0 && index < m_frame.size())
 	{
@@ -707,7 +563,7 @@ size_t SkeletonAnimation::GetNumAryChannels() const
 	return ary_channels.size();
 }
 
-const SkeletonAnimation::SkanChannelHdr *SkeletonAnimation::GetAryChannel(size_t index) const
+const SkanChannelHdr *SkeletonAnimation::GetAryChannel(size_t index) const
 {
 	if (index >= 0 && index < ary_channels.size())
 	{
@@ -717,6 +573,49 @@ const SkeletonAnimation::SkanChannelHdr *SkeletonAnimation::GetAryChannel(size_t
 	{
 		return nullptr;
 	}
+}
+
+void SkeletonAnimation::setFlags(int32_t newFlags)
+{
+	flags = newFlags;
+}
+
+void SkeletonAnimation::setDelta(bool hasDeltaValue)
+{
+	bHasDelta = hasDeltaValue;
+}
+
+void SkeletonAnimation::setMorph(bool hasMorphValue)
+{
+	bHasMorph = hasMorphValue;
+}
+
+void SkeletonAnimation::setUpper(bool hasUpperValue)
+{
+	bHasUpper = hasUpperValue;
+}
+
+void SkeletonAnimation::setTotalDelta(const_vec3r_t newDelta)
+{
+	totalDelta[0] = newDelta[0];
+	totalDelta[1] = newDelta[1];
+	totalDelta[2] = newDelta[2];
+}
+
+void SkeletonAnimation::setTotalAngleDelta(float newAngle)
+{
+	totalAngleDelta = newAngle;
+}
+
+void SkeletonAnimation::setFrameTime(float newFrametime)
+{
+	frameTime = newFrametime;
+}
+
+void SkeletonAnimation::setBounds(const_vec3r_t mins, const_vec3r_t maxs)
+{
+	bounds[0] = mins;
+	bounds[1] = maxs;
 }
 
 float SkeletonAnimation::GetTime() const
@@ -784,17 +683,22 @@ const SkeletonChannelList *SkeletonAnimation::GetChannelList() const
 	return &channelList;
 }
 
+SkeletonChannelList& SkeletonAnimation::getChannelList()
+{
+	return channelList;
+}
+
 bool SkeletonAnimation::IsDynamic() const
 {
 	// Check for any dynamic channels
 	for (size_t i = 0; i < GetNumAryChannels(); ++i)
 	{
-		const SkeletonAnimation::SkanChannelHdr& channel = *GetAryChannel(i);
+		const SkanChannelHdr& channel = *GetAryChannel(i);
 
 		// Check if any frame is dynamic
 		for (size_t j = 1; j < channel.ary_frames.size(); ++j)
 		{
-			const SkeletonAnimation::SkanGameFrame& frame = channel.ary_frames[j];
+			const SkanGameFrame& frame = channel.ary_frames[j];
 			if (!Vec4Compare(channel.ary_frames[0].pChannelData, frame.pChannelData, 0.05f))
 			{
 				return true;
@@ -803,6 +707,228 @@ bool SkeletonAnimation::IsDynamic() const
 	}
 
 	return false;
+}
+
+MOHPC_OBJECT_DEFINITION(SkeletonAnimationReader);
+SkeletonAnimationReader::SkeletonAnimationReader()
+{
+}
+
+SkeletonAnimationReader::~SkeletonAnimationReader()
+{
+}
+
+Asset2Ptr SkeletonAnimationReader::read(const IFilePtr& file)
+{
+	const fs::path& Fname = file->getName();
+	void* buf;
+	uint64_t length = 0;
+
+	// MOH:AA new anim
+	if (!strHelpers::icmp(Fname.generic_string().c_str(), "/newanim/"))
+	{
+		length = file->ReadBuffer(&buf);
+		if (length > 0)
+		{
+			// MOH:AA Animation file
+			return LoadProcessedAnim(Fname, buf, (size_t)length);
+		}
+	}
+	else
+	{
+		const File_AnimDataHeader* pHeader;
+		length = file->ReadBuffer((void**)&buf);
+		if (length > sizeof(File_AnimDataHeader::ident))
+		{
+			pHeader = (const File_AnimDataHeader*)buf;
+
+			// check for header and version
+			if (memcmp(pHeader->ident, TIKI_SKC_HEADER_IDENT, sizeof(pHeader->ident))) {
+				throw SkelAnimError::BadHeader(pHeader->ident);
+			}
+
+			const uint32_t version = Endian.LittleInteger(pHeader->version);
+			if (version != TIKI_SKC_HEADER_OLD_VERSION && version != TIKI_SKC_HEADER_VERSION) {
+				throw SkelAnimError::WrongVersion(version);
+			}
+
+			if (version == TIKI_SKC_HEADER_OLD_VERSION)
+			{
+				SkeletonAnimationPtr skelAnim(new SkeletonAnimation(file->getName()));
+				ConvertSkelFileToGame(pHeader, (size_t)length, *skelAnim);
+
+				return skelAnim;
+			}
+			else
+			{
+				// points the buffer to the animation data
+				void* buffer = (char*)pHeader + sizeof(int) + sizeof(int);
+				length -= sizeof(int) + sizeof(int);
+
+				// loads the processed animation
+				// MOH:SH and MOH:BT animations
+				return LoadProcessedAnimEx(Fname, buffer, (size_t)length);
+			}
+		}
+		else
+		{
+			throw SkelAnimError::BadSize(length);
+		}
+	}
+
+	return nullptr;
+}
+
+Asset2Ptr SkeletonAnimationReader::readNewAnim(const AssetManagerPtr& assetManager, const fs::path& path)
+{
+	Asset2Ptr asset;
+	try
+	{
+		asset = assetManager->readAsset<SkeletonAnimationReader>(path);
+	}
+	catch(std::exception& baseException)
+	{
+		try
+		{
+			fs::path nwPath = fs::path("/newanim/");
+			nwPath.append(FileHelpers::removeRootDir(path.c_str()));
+			asset = assetManager->readAsset<SkeletonAnimationReader>(nwPath);
+		}
+		catch(...)
+		{
+			throw baseException;
+		}
+	}
+
+	return asset;
+}
+
+#if 0
+// FIXME: not implemented
+void MOHPC::SkeletonAnimationWriter::WriteEncodedFrames(MSG& msg)
+{
+	const uint32_t numFrames = (uint32_t)m_frame.size();
+	const uint16_t numChannels = (uint16_t)ary_channels.size();
+
+	msg.WriteUInteger(numFrames);
+	msg.WriteUShort(numChannels);
+
+	for (uint16_t i = 0; i < numChannels; i++)
+	{
+		const SkanChannelHdr* const pChannel = &ary_channels[i];
+		const uint16_t nFramesInChannel = (uint16_t)pChannel->ary_frames.size();
+		msg.WriteUShort(nFramesInChannel);
+
+		for (uint16_t j = 0; j < nFramesInChannel; j++)
+		{
+			const SkanGameFrame* const pFrame = &pChannel->ary_frames[i];
+
+			msg.WriteUShort((uint16_t)pFrame->nFrameNum);
+			msg.WriteUShort((uint16_t)pFrame->nPrevFrameIndex);
+			msg.WriteData(pFrame->pChannelData, sizeof(vec4_t));
+		}
+	}
+
+	const uint32_t nBytesUsed = sizeof(int32_t) + sizeof(int32_t)
+		+ sizeof(bool) + sizeof(bool) + sizeof(bool)
+		+ sizeof(SkelVec3)
+		+ sizeof(float) + sizeof(float)
+		+ sizeof(SkeletonChannelList)
+		+ sizeof(SkelVec3) * 2
+		+ sizeof(AnimFrame) * (uint32_t)m_frame.size()
+		+ sizeof(SkanChannelHdr) * (uint32_t)ary_channels.size();
+
+	msg.WriteUInteger(nBytesUsed);
+}
+
+void MOHPC::SkeletonAnimationWriter::WriteEncodedFramesEx(MSG& msg)
+{
+	size_t nTotalChannels = ary_channels.size();
+	const SkeletorManagerPtr skeletorManager = getManager<SkeletorManager>();
+	for (size_t i = 0; i < nTotalChannels; i++)
+	{
+		const SkanChannelHdr* const pChannel = &ary_channels[i];
+
+		const char* name = channelList.ChannelName(skeletorManager->GetChannelNamesTable(), i);
+		const int32_t type = SkeletonChannelNameTable::GetChannelTypeFromName(name);
+		const uint16_t frameCnt = (uint16_t)pChannel->ary_frames.size();
+		msg.WriteUShort(frameCnt);
+
+		const SkanGameFrame* const ary_frames = pChannel->ary_frames.data();
+
+		if (type)
+		{
+			if (type == 1)
+			{
+				for (uint16_t j = 0; j < frameCnt; j++)
+				{
+					const SkanGameFrame* pFrame = &ary_frames[j];
+					msg.WriteUShort((uint16_t)pFrame->nFrameNum);
+					msg.WriteUShort((uint16_t)pFrame->nPrevFrameIndex);
+
+					msg.WriteFloat(pFrame->pChannelData[0]);
+					msg.WriteFloat(pFrame->pChannelData[1]);
+					msg.WriteFloat(pFrame->pChannelData[2]);
+				}
+			}
+			else if (type == 3)
+			{
+				for (uint16_t j = 0; j < frameCnt; j++)
+				{
+					const SkanGameFrame* pFrame = &ary_frames[j];
+					msg.WriteUShort((uint16_t)pFrame->nFrameNum);
+					msg.WriteUShort((uint16_t)pFrame->nPrevFrameIndex);
+
+					msg.WriteFloat(pFrame->pChannelData[0]);
+				}
+			}
+		}
+		else
+		{
+			for (uint16_t j = 0; j < frameCnt; j++)
+			{
+				const SkanGameFrame* pFrame = &ary_frames[j];
+				msg.WriteUShort((uint16_t)pFrame->nFrameNum);
+				msg.WriteUShort((uint16_t)pFrame->nPrevFrameIndex);
+
+				msg.WriteFloat(pFrame->pChannelData[0]);
+				msg.WriteFloat(pFrame->pChannelData[1]);
+				msg.WriteFloat(pFrame->pChannelData[2]);
+				msg.WriteFloat(pFrame->pChannelData[3]);
+			}
+		}
+	}
+}
+
+void SkeletonAnimationWriter::SaveProcessedAnim(const fs::path& path, File_AnimDataHeader* pHeader)
+{
+	/*
+		int i;
+		skelChannelName_t *pChannelNames;
+		msg.t msg;
+		skelAnimGameFrame_t *newFrame;
+		char npath[ 128 ];
+		unsigned char buf[ 2000000 ];
+	*/
+
+	// FIXME:
+	// Write animation
+}
+#endif
+
+SkelAnimError::BadSize::BadSize(size_t size)
+	: foundSize(size)
+{
+}
+
+size_t SkelAnimError::BadSize::getSize() const
+{
+	return foundSize;
+}
+
+const char* SkelAnimError::BadSize::what() const noexcept
+{
+	return "Skeleton animation size too small";
 }
 
 SkelAnimError::BadHeader::BadHeader(const uint8_t inHeader[4])

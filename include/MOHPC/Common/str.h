@@ -48,6 +48,14 @@ namespace MOHPC
 	namespace strHelpers
 	{
 		template<typename T>
+		static constexpr T emptyChar;
+
+		template<> static constexpr char emptyChar<char> = *"";
+		template<> static constexpr wchar_t emptyChar<wchar_t> = *L"";
+		template<> static constexpr char16_t emptyChar<char16_t> = *u"";
+		template<> static constexpr char32_t emptyChar<char32_t> = *U"";
+
+		template<typename T>
 		size_t len(const T* a)
 		{
 			size_t l = 0;
@@ -86,7 +94,7 @@ namespace MOHPC
 		}
 
 		template<typename T>
-		size_t icmp(const T* s1, const T* s2)
+		int icmp(const T* s1, const T* s2)
 		{
 			while (*s1 || *s2)
 			{
@@ -98,7 +106,7 @@ namespace MOHPC
 		}
 
 		template<typename T>
-		size_t icmpn(const T* s1, const T* s2, size_t n)
+		int icmpn(const T* s1, const T* s2, size_t n)
 		{
 			while (n != 0)
 			{

@@ -70,13 +70,6 @@ namespace MOHPC
 	MOHPC_EXPORTS int DirToByte(const vec3_t dir);
 	MOHPC_EXPORTS void ByteToDir(int b, vec3_t dir);
 	MOHPC_EXPORTS void GetMovedir(vec3r_t out, float angle);
-	MOHPC_EXPORTS float Random(float value);
-	MOHPC_EXPORTS uint8_t AngleToByte(float v);
-	MOHPC_EXPORTS float ByteToAngle(uint8_t v);
-	MOHPC_EXPORTS uint16_t AngleToShort(float v);
-	MOHPC_EXPORTS float ShortToAngle(uint16_t v);
-	MOHPC_EXPORTS int BoundingBoxToInteger(vec3_t mins, vec3_t maxs);
-	MOHPC_EXPORTS void IntegerToBoundingBox(int num, vec3_t mins, vec3_t maxs);
 
 	template <typename INT>
 	constexpr INT rotl(INT val, intptr_t len)

@@ -34,7 +34,7 @@ namespace Network
 		void setProtocol(protocolType_c protocol);
 		void setImports(const Imports& imports);
 
-		void init(uintptr_t serverMessageSequence, rsequence_t serverCommandSequence);
+		void init(const ServerGameStatePtr& gs, uintptr_t serverMessageSequence, rsequence_t serverCommandSequence);
 
 		/** Tick function for CGame module. */
 		void tick(deltaTime_t deltaTime, tickTime_t currentTime, tickTime_t simulatedServerTime);

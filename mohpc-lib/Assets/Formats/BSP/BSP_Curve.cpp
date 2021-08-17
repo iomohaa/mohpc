@@ -284,7 +284,7 @@ static void PutPointsOnCurve(BSPData::Vertice ctrl[MAX_GRID_SIZE][MAX_GRID_SIZE]
 	}
 }
 
-void BSP::CreateSurfaceGridMesh(int32_t width, int32_t height, BSPData::Vertice *ctrl, int32_t numIndexes, int32_t *indexes, BSPData::Surface* grid)
+void BSPReader::CreateSurfaceGridMesh(int32_t width, int32_t height, BSPData::Vertice *ctrl, int32_t numIndexes, int32_t *indexes, BSPData::Surface* grid)
 {
 	BSPData::Vertice *vert;
 	Vector3 tmpVec;
@@ -317,7 +317,7 @@ void BSP::CreateSurfaceGridMesh(int32_t width, int32_t height, BSPData::Vertice 
 	grid->cullInfo.radius = (float)tmpVec.norm();
 }
 
-void BSP::SubdividePatchToGrid(int32_t Width, int32_t Height, const Vertice* Points, Surface* Out)
+void BSPReader::SubdividePatchToGrid(int32_t Width, int32_t Height, const Vertice* Points, Surface* Out)
 {
 	int32_t i, j, k, l;
 	Vertice prev;

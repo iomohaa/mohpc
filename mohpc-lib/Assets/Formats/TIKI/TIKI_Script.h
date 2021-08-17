@@ -31,7 +31,7 @@ namespace MOHPC
 		char mark_token[MAXTOKEN];
 	} tiki_mark_t;
 
-	class TikiScript : public Asset, public EnableSharedFromThis<TikiScript>
+	class TikiScript : public AssetObject, public Asset2, public EnableSharedFromThis<TikiScript>
 	{
 		MOHPC_ASSET_OBJECT_DECLARATION(TikiScript);
 
@@ -77,10 +77,10 @@ namespace MOHPC
 		void SkipExtendedComment();
 
 	public:
-		TikiScript();
+		TikiScript(const SharedPtr<AssetManager>& assetManager, const fs::path& fileNameRef);
 		~TikiScript();
 
-		void Load() override;
+		void Load();
 		void Close();
 		const char *Filename();
 		int GetLineNumber();
@@ -99,7 +99,7 @@ namespace MOHPC
 		void GetVector(bool crossline, float *vec);
 		int LinesInFile();
 		void Parse(char *data, uintmax_t length, const char *name);
-		void LoadFile(const char *name);
+		void LoadFile(const IFilePtr& file);
 		const char *Token();
 		void MarkPos();
 		void ReturnToMark();
@@ -135,5 +135,16 @@ namespace MOHPC
 		void AddOrChangeSwitchKey(const char *, const char *);
 		str& GetSwitchKeyValue(const char *);
 		void PrecompileTikiScript(TikiScript *);
+	};
+
+	class TikiScriptReader : public AssetReader
+	{
+		MOHPC_ASSET_OBJECT_DECLARATION(TikiScriptReader);
+
+	public:
+		using AssetType = TikiScript;
+
+	public:
+		Asset2Ptr read(const IFilePtr& file) override;
 	};
 }

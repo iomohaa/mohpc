@@ -23,6 +23,7 @@
 #include "../../Utility/CommandManager.h"
 #include "../../Utility/Misc/MSG/MSG.h"
 
+#include "ClientReflector.h"
 #include "DownloadManager.h"
 #include "UserInfo.h"
 #include "InputModule.h"
@@ -48,11 +49,7 @@ namespace MOHPC
 			class ModuleBase;
 		}
 
-		class Event;
-		class IClientGameProtocol;
-
 		class INetchan;
-		struct gameState_t;
 
 		using ServerConnectionPtr = SharedPtr<class ServerConnection>;
 
@@ -89,7 +86,12 @@ namespace MOHPC
 			/**
 			 * Called just before writing a packet and sending it.
 			 */
-			struct PreWritePacket : public HandlerNotifyBase<void()> {};
+			struct PreWritePacket : public HandlerNotifyBase<void(const ClientTime& currentTime, uint32_t sequenceNum)> {};
+
+			/**
+			 * Called after writing a packet and sending it.
+			 */
+			struct PostWritePacket : public HandlerNotifyBase<void(const ClientTime& currentTime, uint32_t sequenceNum)> {};
 		}
 
 		class MOHPC_NET_EXPORTS clientGameSettings_t
@@ -163,7 +165,7 @@ namespace MOHPC
 		/**
 		 * Maintains a connection to a server. Keeps track of the game state and commands.
 		 *
-		 * Call markReady() method to allow client to send user input to server, making it enter the game.
+		 * There is no input module by default, it should be created once the game state has been parsed and the map loaded.
 		 */
 		class ServerConnection : public ITickable
 		{
@@ -179,6 +181,7 @@ namespace MOHPC
 				FunctionList<ClientHandlers::CenterPrint> centerPrintHandler;
 				FunctionList<ClientHandlers::LocationPrint> locationPrintHandler;
 				FunctionList<ClientHandlers::PreWritePacket> preWritePacketHandler;
+				FunctionList<ClientHandlers::PostWritePacket> postWritePacketHandler;
 			};
 
 		public:
@@ -239,7 +242,9 @@ namespace MOHPC
 			/** Retrieve the CGame module. */
 			MOHPC_NET_EXPORTS CGame::ModuleBase* getCGModule();
 
-			/** Return the chain for transmission/receive. */
+			/** Return the chain for transmission/receive.
+			 * Handle post-receive and pre-transmission.
+			 */
 			MOHPC_NET_EXPORTS const IChainPtr& getChain();
 			MOHPC_NET_EXPORTS void setChain(const IChainPtr& chain);
 
@@ -256,7 +261,7 @@ namespace MOHPC
 			MOHPC_NET_EXPORTS clientGameSettings_t& getSettings();
 			MOHPC_NET_EXPORTS const clientGameSettings_t& getSettings() const;
 
-			/** Return the current snapshot number. */
+			/** Return the snapshot manager instance. */
 			MOHPC_NET_EXPORTS ServerSnapshotManager& getSnapshotManager();
 			MOHPC_NET_EXPORTS const ServerSnapshotManager& getSnapshotManager() const;
 
@@ -268,11 +273,12 @@ namespace MOHPC
 
 			/**
 			 * Return the current reliable sequence (the latest command number on the client).
-			 * Use this to enqueue a new (reliable) command.
+			 * Can be used to enqueue a new (reliable) command.
 			 */
 			MOHPC_NET_EXPORTS IReliableSequence* getReliableSequence();
 			MOHPC_NET_EXPORTS const IReliableSequence* getReliableSequence() const;
 
+			/** Get/set the input module associated with the server connection. */
 			MOHPC_NET_EXPORTS const IUserInputModulePtr& getInputModule() const;
 			MOHPC_NET_EXPORTS void setInputModule(const IUserInputModulePtr& inputModulePtr);
 
@@ -323,14 +329,13 @@ namespace MOHPC
 			TimeoutTimer timeout;
 			ServerGameStatePtr clGameState;
 			ServerSnapshotManager clSnapshotManager;
+			ClientReflector reflector;
 			clientGameSettings_t settings;
 			DownloadManager downloadState;
 			OutgoingPackets outPackets;
-			usereyes_t oldeyes;
 			tickTime_t lastPacketSendTime;
 			uint32_t serverMessageSequence;
 			protocolType_c protocolType;
-			bool isActive : 1;
 		};
 
 		using ServerConnectionPtr = SharedPtr<ServerConnection>;

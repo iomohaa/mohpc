@@ -24,9 +24,9 @@ SharedPtr<MOHPC::AssetManager> AssetObject::GetAssetManager() const
 	return AM.lock();
 }
 
-class FileManager* AssetObject::GetFileManager() const
+FileManager* AssetObject::GetFileManager() const
 {
-	return !AM.expired() ? AM.lock()->GetFileManager() : nullptr;
+	return !AM.expired() ? AM.lock()->GetFileManager().get() : nullptr;
 }
 
 void AssetObject::InitAssetManager(const AssetManagerPtr& assetManager)

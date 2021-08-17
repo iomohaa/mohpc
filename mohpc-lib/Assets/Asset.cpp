@@ -20,10 +20,9 @@ intptr_t mfuse::Hash<std::type_index>::operator()(const std::type_index& key) co
 }
 */
 
-AssetManager::AssetManager()
+AssetManager::AssetManager(const FileManagerPtr& FMptr)
+	: FM(FMptr)
 {
-	FM = NULL;
-
 	MOHPC_LOG(Debug, "MOHPC %s version %s build %d", VERSION_ARCHITECTURE, VERSION_SHORT_STRING, VERSION_BUILD);
 }
 
@@ -54,45 +53,22 @@ AssetManager::~AssetManager()
 		}
 	}
 	*/
-
-	if (FM)
-	{
-		// Delete the file manager
-		delete FM;
-	}
 }
 
-FileManager* AssetManager::GetFileManager() const
+const FileManagerPtr& AssetManager::GetFileManager() const
 {
-	if (!FM) {
-		FM = new FileManager;
-	}
 	return FM;
 }
 
-void AssetManager::AddManager(const std::type_index& ti, const SharedPtr<Manager>& manager)
+void AssetManager::addManager(const std::type_index& ti, const SharedPtr<Manager>& manager)
 {
-	//m_managers[ti] = manager;
-	//manager->AM = this;
 	manager->InitAssetManager(shared_from_this());
 	m_managers.insert_or_assign(ti, manager);
 	manager->Init();
 }
 
-SharedPtr<Manager> AssetManager::GetManager(const std::type_index& ti) const
+SharedPtr<Manager> AssetManager::getManager(const std::type_index& ti) const
 {
-	/*
-	auto it = m_managers.find(ti);
-	if (it != m_managers.end())
-	{
-		return it->second;
-	}
-	else
-	{
-		return nullptr;
-	}
-	*/
-
 	const auto it = m_managers.find(ti);
 	if (it != m_managers.end()) {
 		return it->second;
@@ -101,12 +77,12 @@ SharedPtr<Manager> AssetManager::GetManager(const std::type_index& ti) const
 	return nullptr;
 }
 
-SharedPtr<Asset> AssetManager::CacheFindAsset(const char *Filename)
+SharedPtr<Asset2> AssetManager::cacheFindAsset(const fs::path& Filename)
 {
 	auto it = m_assetCache.find(Filename);
 	if (it != m_assetCache.end())
 	{
-		WeakPtr<Asset>& asset = it->second;
+		WeakPtr<Asset2>& asset = it->second;
 
 		if(!asset.expired())
 		{
@@ -122,47 +98,33 @@ SharedPtr<Asset> AssetManager::CacheFindAsset(const char *Filename)
 	return nullptr;
 }
 
-bool AssetManager::CacheLoadAsset(const char *Filename, const SharedPtr<Asset>& A)
+SharedPtr<Asset2> AssetManager::readAsset(const fs::path& fileName, const SharedPtr<AssetReader>& A)
+{
+	IFilePtr file = GetFileManager()->OpenFile(fileName);
+	if (file)
+	{
+		const SharedPtr<Asset2> assetPtr = readAsset(file, A);
+		if(assetPtr)
+		{
+			m_assetCache.insert_or_assign(fileName, assetPtr);
+			return assetPtr;
+		}
+	}
+	else
+	{
+		// not found
+		throw AssetError::AssetNotFound(fileName);
+	}
+
+	return nullptr;
+}
+
+SharedPtr<MOHPC::Asset2> AssetManager::readAsset(const IFilePtr& file, const SharedPtr<AssetReader>& A)
 {
 	A->InitAssetManager(shared_from_this());
-	A->Init(Filename);
-	A->Load();
-
-	A->HashFinalize();
-
-	//m_assetCache[Filename] = A;
-	//m_assetCache.addKeyValue(Filename) = A;
-	m_assetCache.insert_or_assign(Filename, A);
-
-	MOHPC_LOG(Info, "Asset '%s' loaded", Filename);
-	return true;
+	// read and return the resulting asset
+	return A->read(file);
 }
-
-#if 0
-void Class::operator delete(void* ptr)
-{
-	Asset* A = (Asset*)ptr;
-	A->GetAssetManager()->DeleteObject((Class*)ptr);
-}
-
-void Class::operator delete[](void* ptr)
-{
-	Asset* A = (Asset*)ptr;
-	A->GetAssetManager()->DeleteObjects((Class*)ptr);
-}
-#endif
-
-/*
-void* Class::operator new(size_t size)
-{
-	return ::operator new(size);
-}
-
-void Class::operator delete(void* ptr)
-{
-	::operator delete(ptr);
-}
-*/
 
 Asset::Asset()
 {
@@ -177,12 +139,12 @@ Asset::~Asset()
 	}
 }
 
-void Asset::Init(const char *F)
+void Asset::Init(const fs::path& F)
 {
 	Filename = F;
 }
 
-const str& Asset::GetFilename() const
+const fs::path& Asset::GetFilename() const
 {
 	return Filename;
 }
@@ -241,14 +203,14 @@ void Asset::HashFinalize()
 	}
 }
 
-AssetError::AssetNotFound::AssetNotFound(const str& inFileName)
+AssetError::AssetNotFound::AssetNotFound(const fs::path& inFileName)
 	: fileName(inFileName)
 {
 }
 
-const char* AssetError::AssetNotFound::getFileName() const
+const fs::path& AssetError::AssetNotFound::getFileName() const
 {
-	return fileName.c_str();
+	return fileName;
 }
 
 const char* AssetError::AssetNotFound::what() const noexcept
@@ -276,4 +238,20 @@ const uint8_t* AssetError::BadHeader4::getExpectedHeader() const
 const char* AssetError::BadHeader4::what() const noexcept
 {
 	return "Bad asset header";
+}
+
+Asset2::Asset2(const fs::path& fileNameRef)
+	: fileName(fileNameRef)
+{
+
+}
+
+Asset2::~Asset2()
+{
+
+}
+
+const fs::path& Asset2::getFilename() const
+{
+	return fileName;
 }

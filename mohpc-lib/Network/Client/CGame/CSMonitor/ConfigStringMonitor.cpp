@@ -14,3 +14,17 @@ ConfigstringMonitor::ConfigstringMonitor(const SnapshotProcessorPtr& snapshotPro
 ConfigstringMonitor::~ConfigstringMonitor()
 {
 }
+
+FunctionList<Handlers::ConfigstringHandled>& ConfigstringMonitor::getHandler()
+{
+	return handler;
+}
+
+void ConfigstringMonitor::configStringModifiedInternal(csNum_t num, const char* cs)
+{
+	if (configStringModified(num, cs))
+	{
+		// notify about the modification
+		getHandler().broadcast();
+	}
+}

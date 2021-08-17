@@ -8,7 +8,7 @@ skelBone_World::skelBone_World()
 	m_isDirty = false;
 }
 
-void Skeleton::LoadBoneFromBuffer(const SkeletonChannelList *boneList, const Skeleton::BoneData *boneData, skelBone_Base **bone) const
+void MOHPC::LoadBoneFromBuffer(const SkeletorManagerPtr& skeletorManager, const SkeletonChannelList *boneList, const BoneData *boneData, skelBone_Base **bone)
 {
 	const char *boneName;
 	skelBone_Base *parentBone;
@@ -17,7 +17,6 @@ void Skeleton::LoadBoneFromBuffer(const SkeletonChannelList *boneList, const Ske
 
 	if (!bone[newBoneIndex])
 	{
-		const SkeletorManagerPtr skeletorManager = GetManager<SkeletorManager>();
 		const SkeletonChannelNameTable* const nameTable = skeletorManager->GetBoneNamesTable();
 		boneName = nameTable->FindName(boneData->channel);
 
@@ -33,20 +32,20 @@ void Skeleton::LoadBoneFromBuffer(const SkeletonChannelList *boneList, const Ske
 
 		switch (boneData->boneType)
 		{
-		case Skeleton::SKELBONE_ZERO:
+		case BoneType::SKELBONE_ZERO:
 		{
 			skelBone_Zero *newBone = new skelBone_Zero;
 			bone[newBoneIndex] = newBone;
 			break;
 		}
-		case Skeleton::SKELBONE_ROTATION:
+		case BoneType::SKELBONE_ROTATION:
 		{
 			skelBone_Rotation *newBone = new skelBone_Rotation;
 			bone[newBoneIndex] = newBone;
 			newBone->SetChannels(boneData->channelIndex[0]);
 			break;
 		}
-		case Skeleton::SKELBONE_POSROT:
+		case BoneType::SKELBONE_POSROT:
 		{
 			skelBone_PosRot *newBone;
 
@@ -64,20 +63,20 @@ void Skeleton::LoadBoneFromBuffer(const SkeletonChannelList *boneList, const Ske
 			newBone->SetChannels(boneData->channelIndex[0], boneData->channelIndex[1]);
 			break;
 		}
-		case Skeleton::SKELBONE_IKSHOULDER:
+		case BoneType::SKELBONE_IKSHOULDER:
 		{
 			skelBone_IKshoulder *newBone = new skelBone_IKshoulder;
 			bone[newBoneIndex] = newBone;
 			break;
 		}
-		case Skeleton::SKELBONE_IKELBOW:
+		case BoneType::SKELBONE_IKELBOW:
 		{
 			skelBone_IKelbow *newBone = new skelBone_IKelbow;
 			bone[newBoneIndex] = newBone;
 			newBone->SetBoneRefs((skelBone_IKshoulder *)bone[boneList->GetLocalFromGlobal(boneData->refIndex[0])]);
 			break;
 		}
-		case Skeleton::SKELBONE_IKWRIST:
+		case BoneType::SKELBONE_IKWRIST:
 		{
 			skelBone_IKwrist *newBone = new skelBone_IKwrist;
 			skelBone_IKshoulder *shoulder;
@@ -88,7 +87,7 @@ void Skeleton::LoadBoneFromBuffer(const SkeletonChannelList *boneList, const Ske
 			shoulder->SetWristBone(newBone);
 			break;
 		}
-		case Skeleton::SKELBONE_AVROT:
+		case BoneType::SKELBONE_AVROT:
 		{
 			skelBone_AvRot *newBone = new skelBone_AvRot;
 			skelBone_AvRot *ref1, *ref2;
@@ -98,21 +97,21 @@ void Skeleton::LoadBoneFromBuffer(const SkeletonChannelList *boneList, const Ske
 			newBone->SetBoneRefs(ref1, ref2);
 			break;
 		}
-		case Skeleton::SKELBONE_HOSEROT:
+		case BoneType::SKELBONE_HOSEROT:
 		{
 			skelBone_HoseRot *newBone = new skelBone_HoseRot;
 			bone[newBoneIndex] = newBone;
 			newBone->SetBoneRefs(bone[boneList->GetLocalFromGlobal(boneData->refIndex[0])]);
 			break;
 		}
-		case Skeleton::SKELBONE_HOSEROTBOTH:
+		case BoneType::SKELBONE_HOSEROTBOTH:
 		{
 			skelBone_HoseRotBoth *newBone = new skelBone_HoseRotBoth;
 			bone[newBoneIndex] = newBone;
 			newBone->SetBoneRefs(bone[boneList->GetLocalFromGlobal(boneData->refIndex[0])]);
 			break;
 		}
-		case Skeleton::SKELBONE_HOSEROTPARENT:
+		case BoneType::SKELBONE_HOSEROTPARENT:
 		{
 			skelBone_HoseRotParent *newBone = new skelBone_HoseRotParent;
 			bone[newBoneIndex] = newBone;
@@ -138,18 +137,18 @@ void Skeleton::LoadBoneFromBuffer(const SkeletonChannelList *boneList, const Ske
 	}
 }
 
-void Skeleton::LoadBonesFromBuffer(const SkeletonChannelList *boneList, skelBone_Base **bone) const
+void MOHPC::LoadBonesFromBuffer(const SkeletorManagerPtr& skeletorManager, const SkeletonChannelList *boneList, skelBone_Base **bone, const std::vector<BoneData>& bones)
 {
-	const size_t numBones = Bones.size();
+	const size_t numBones = bones.size();
 	for(size_t boneNum = 0; boneNum < numBones; boneNum++)
 	{
-		LoadBoneFromBuffer(boneList, &Bones[boneNum], bone);
+		LoadBoneFromBuffer(skeletorManager, boneList, &bones[boneNum], bone);
 	}
 }
 
-const float *DecodeRLEValue( const SkeletonAnimation::SkanChannelHdr *channelFrames, size_t desiredFrameNum )
+const float *DecodeRLEValue( const SkanChannelHdr *channelFrames, size_t desiredFrameNum )
 {
-	const SkeletonAnimation::SkanGameFrame *foundFrame = &channelFrames->ary_frames[0];
+	const SkanGameFrame *foundFrame = &channelFrames->ary_frames[0];
 
 	size_t nFramesInChannel = channelFrames->ary_frames.size();
 	for(size_t i = 0; i < nFramesInChannel; i++)
@@ -427,31 +426,31 @@ skelBone_Base::skelBone_Base()
 	m_controller = NULL;
 }
 
-int skelBone_Base::GetNumChannels(Skeleton::BoneType boneType)
+int skelBone_Base::GetNumChannels(BoneType boneType)
 {
 	switch( boneType )
 	{
-	case Skeleton::SKELBONE_ROTATION:
+	case BoneType::SKELBONE_ROTATION:
 		return 1;
-	case Skeleton::SKELBONE_POSROT:
-	case Skeleton::SKELBONE_IKWRIST:
+	case BoneType::SKELBONE_POSROT:
+	case BoneType::SKELBONE_IKWRIST:
 		return 2;
 	default:
 		return 0;
 	}
 }
 
-int skelBone_Base::GetNumBoneRefs( Skeleton::BoneType boneType )
+int skelBone_Base::GetNumBoneRefs(BoneType boneType )
 {
 	switch( boneType )
 	{
-	case Skeleton::SKELBONE_AVROT:
+	case BoneType::SKELBONE_AVROT:
 		return 2;
-	case Skeleton::SKELBONE_IKELBOW:
-	case Skeleton::SKELBONE_IKWRIST:
-	case Skeleton::SKELBONE_HOSEROT:
-	case Skeleton::SKELBONE_HOSEROTBOTH:
-	case Skeleton::SKELBONE_HOSEROTPARENT:
+	case BoneType::SKELBONE_IKELBOW:
+	case BoneType::SKELBONE_IKWRIST:
+	case BoneType::SKELBONE_HOSEROT:
+	case BoneType::SKELBONE_HOSEROTBOTH:
+	case BoneType::SKELBONE_HOSEROTPARENT:
 		return 1;
 	default:
 		return 0;
@@ -480,7 +479,7 @@ void skelBone_Base::SetParent( skelBone_Base *parent )
 	m_parent = parent;
 }
 
-void skelBone_Base::SetBaseValue( const Skeleton::BoneData *boneData )
+void skelBone_Base::SetBaseValue( const BoneData *boneData )
 {
 }
 
@@ -510,7 +509,7 @@ SkelMat4 skelBone_Zero::GetDirtyTransform( const skelAnimStoreFrameList_c *frame
 	return m_cachedValue;
 }
 
-void skelBone_Zero::SetBaseValue( const Skeleton::BoneData *boneData )
+void skelBone_Zero::SetBaseValue( const BoneData *boneData )
 {
 }
 
@@ -563,7 +562,7 @@ void skelBone_Rotation::SetChannels( size_t num )
 	m_quatChannel = num;
 }
 
-void skelBone_Rotation::SetBaseValue(const Skeleton::BoneData *data)
+void skelBone_Rotation::SetBaseValue(const BoneData *data)
 {
 	m_baseValue = data->offset;
 }
@@ -619,7 +618,7 @@ void skelBone_PosRot::SetChannels(size_t quatChannel, size_t offsetChannel)
 	m_offsetChannel = offsetChannel;
 }
 
-void skelBone_PosRot::SetBaseValue( const Skeleton::BoneData *boneData )
+void skelBone_PosRot::SetBaseValue( const BoneData *boneData )
 {
 }
 
@@ -791,7 +790,7 @@ SkelMat4 skelBone_IKshoulder::GetDirtyTransform( const skelAnimStoreFrameList_c 
 	return m_cachedValue;
 }
 
-void skelBone_IKshoulder::SetBaseValue( const Skeleton::BoneData *boneData )
+void skelBone_IKshoulder::SetBaseValue( const BoneData *boneData )
 {
 	m_baseValue = boneData->offset;
 }
@@ -856,7 +855,7 @@ void skelBone_IKwrist::SetBoneRefs( skelBone_IKshoulder *shoulder )
 	m_shoulder = shoulder;
 }
 
-void skelBone_IKwrist::SetBaseValue( const Skeleton::BoneData *boneData )
+void skelBone_IKwrist::SetBaseValue( const BoneData *boneData )
 {
 	m_shoulder->SetWristValue( boneData->length );
 }
@@ -909,7 +908,7 @@ void skelBone_IKelbow::SetBoneRefs( skelBone_IKshoulder *shoulder )
 	m_shoulder = shoulder;
 }
 
-void skelBone_IKelbow::SetBaseValue( const Skeleton::BoneData *boneData )
+void skelBone_IKelbow::SetBaseValue( const BoneData *boneData )
 {
 	m_shoulder->SetElbowValue( boneData->length );
 }
@@ -962,7 +961,7 @@ void skelBone_AvRot::SetBoneRefs( skelBone_Base *ref1, skelBone_Base *ref2 )
 	m_reference2 = ref2;
 }
 
-void skelBone_AvRot::SetBaseValue( const Skeleton::BoneData *boneData )
+void skelBone_AvRot::SetBaseValue( const BoneData *boneData )
 {
 	m_basePos = boneData->offset;
 	m_bone2weight = boneData->weight;
@@ -1097,7 +1096,7 @@ void skelBone_HoseRot::SetBoneRefs( skelBone_Base *ref )
 	m_target = ref;
 }
 
-void skelBone_HoseRot::SetBaseValue( const Skeleton::BoneData *boneData )
+void skelBone_HoseRot::SetBaseValue( const BoneData *boneData )
 {
 	m_bendRatio = boneData->bendRatio;
 	m_bendMax = boneData->bendMax;
@@ -1134,7 +1133,7 @@ SkelMat4 skelBone_HoseRotBoth::GetDirtyTransform( const skelAnimStoreFrameList_c
 	return skelBone_HoseRot::GetDirtyTransform( myParentTM, targetTM );
 }
 
-void skelBone_HoseRotBoth::SetBaseValue( const Skeleton::BoneData *boneData )
+void skelBone_HoseRotBoth::SetBaseValue( const BoneData *boneData )
 {
 	skelBone_HoseRot::SetBaseValue( boneData );
 	m_basePos.x = -m_basePos.x;
@@ -1158,7 +1157,7 @@ SkelMat4 skelBone_HoseRotParent::GetDirtyTransform( const skelAnimStoreFrameList
 	return skelBone_HoseRot::GetDirtyTransform( myParentTM, targetTM );
 }
 
-void skelBone_HoseRotParent::SetBaseValue( const Skeleton::BoneData *boneData )
+void skelBone_HoseRotParent::SetBaseValue( const BoneData *boneData )
 {
 	skelBone_HoseRot::SetBaseValue( boneData );
 	m_basePos.x = -m_basePos.x;
@@ -1172,7 +1171,7 @@ SkelMat4 skelBone_World::GetDirtyTransform( const skelAnimStoreFrameList_c *fram
 	return m_cachedValue;
 }
 
-void skelBone_World::SetBaseValue( const Skeleton::BoneData *boneData )
+void skelBone_World::SetBaseValue( const BoneData *boneData )
 {
 }
 

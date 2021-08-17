@@ -12,10 +12,10 @@ namespace MOHPC
 	namespace Network
 	{
 		/**
-		 * Handle client specific settings.
+		 * Keep track of user-info locally and remotely.
 		 *
-		 * It reflects userinfo from server.
-		 * This class is movable and non-copyable.
+		 * It reflects user information from server.
+		 * Movable and non-copyable.
 		 */
 		class UserInfo
 		{
@@ -46,16 +46,6 @@ namespace MOHPC
 			/** Get the client name. */
 			MOHPC_NET_EXPORTS const char* getName() const;
 
-			/** Set the client deathmatch allied model. */
-			MOHPC_NET_EXPORTS void setPlayerAlliedModel(const char* newModel);
-			/** Get the client deathmatch allied model. */
-			MOHPC_NET_EXPORTS const char* getPlayerAlliedModel() const;
-
-			/** Set the client deathmatch german model. */
-			MOHPC_NET_EXPORTS void setPlayerGermanModel(const char* newModel);
-			/** Get the client deathmatch german model. */
-			MOHPC_NET_EXPORTS const char* getPlayerGermanModel() const;
-
 			/** Set an user value. */
 			MOHPC_NET_EXPORTS void setUserKeyValue(const char* key, const char* value);
 			/** Get an user value. */
@@ -82,10 +72,9 @@ namespace MOHPC
 		using UserInfoPtr = SharedPtr<UserInfo>;
 		using ConstUserInfoPtr = SharedPtr<const UserInfo>;
 
-		class ClientInfoHelper
+		namespace UserInfoHelpers
 		{
-		public:
-			static void fillInfoString(const UserInfo& userInfo, Info& info);
+			MOHPC_NET_EXPORTS void fillInfoString(const UserInfo& userInfo, Info& info);
 		};
 	}
 }

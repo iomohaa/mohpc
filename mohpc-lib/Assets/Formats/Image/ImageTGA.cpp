@@ -16,7 +16,7 @@ typedef struct _TargaHeader {
 	unsigned char	pixel_size, attributes;
 } TargaHeader;
 
-void Image::LoadTGA(const char *name, void *buf, uint64_t len)
+ImagePtr ImageReader::LoadTGA(const fs::path& name, void *buf, uint64_t len)
 {
 	int32_t columns, rows, numPixels;
 	uint8_t *pixbuf;
@@ -288,11 +288,7 @@ void Image::LoadTGA(const char *name, void *buf, uint64_t len)
 	}
 #endif
 
-	data = targa_rgba;
-	dataSize = numPixels;
-	width = columns;
-	height = rows;
-	pixelFormat = PixelFormat::RGBA;
+	return ImagePtr(new Image(name, targa_rgba, numPixels, columns, rows, PixelFormat::RGBA));
 }
 
 ImageError::TGA::UnsupportedType::UnsupportedType(uint8_t inType)

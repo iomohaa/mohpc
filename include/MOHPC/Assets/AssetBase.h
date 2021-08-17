@@ -6,6 +6,7 @@
 namespace MOHPC
 {
 #define MOHPC_ASSET_OBJECT_DECLARATION(c) MOHPC_OBJECT_DECLARATION_BASE(c, MOHPC_ASSETS_EXPORTS)
+	class FileManager;
 
 	class AssetObject
 	{
@@ -33,9 +34,9 @@ namespace MOHPC
 
 		/** Wrapper to AssetManager::GetManager */
 		template<class T>
-		SharedPtr<T> GetManager() const;
+		SharedPtr<T> getManager() const;
 
 		MOHPC_ASSETS_EXPORTS SharedPtr<AssetManager> GetAssetManager() const;
-		MOHPC_ASSETS_EXPORTS class FileManager* GetFileManager() const;
+		MOHPC_ASSETS_EXPORTS FileManager* GetFileManager() const;
 	};
 }

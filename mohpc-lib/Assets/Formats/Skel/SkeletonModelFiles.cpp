@@ -7,7 +7,7 @@
 
 using namespace MOHPC;
 
-void Skeleton::BoneFileData::getBaseData(float* outData, size_t num, uintptr_t start) const
+void BoneFileData::getBaseData(float* outData, size_t num, uintptr_t start) const
 {
 	const float* baseData = (const float*)((const char*)this + Endian.LittleInteger(ofsBaseData));
 	for (uintptr_t i = 0; i < num; ++i)
@@ -37,17 +37,17 @@ void ConvertToFKPositionName(const char* boneName, str& posChannelName)
 	posChannelName = str(boneName) + " posFK";
 }
 
-uint32_t Skeleton::CreateRotationBoneFileData(const char* newBoneName, const char* newBoneParentName, SkelVec3 basePos, Skeleton::BoneFileData* fileData)
+uint32_t SkeletonReader::CreateRotationBoneFileData(const char* newBoneName, const char* newBoneParentName, SkelVec3 basePos, BoneFileData* fileData)
 {
 	char* saveChannelName;
 	str rotChannelName;
-	Skeleton::BoneData* boneData;
+	BoneData* boneData;
 
 	strncpy(fileData->name, newBoneName, sizeof(fileData->name));
 	strncpy(fileData->parent, newBoneParentName, sizeof(fileData->parent));
-	fileData->boneType = Skeleton::SKELBONE_ROTATION;
-	fileData->ofsBaseData = sizeof(Skeleton::BoneFileData);
-	boneData = (Skeleton::BoneData*)((char*)fileData + fileData->ofsBaseData);
+	fileData->boneType = BoneType::SKELBONE_ROTATION;
+	fileData->ofsBaseData = sizeof(BoneFileData);
+	boneData = (BoneData*)((char*)fileData + fileData->ofsBaseData);
 	boneData->offset[0] = basePos[0];
 	boneData->offset[1] = basePos[1];
 	boneData->offset[2] = basePos[2];
@@ -64,19 +64,19 @@ uint32_t Skeleton::CreateRotationBoneFileData(const char* newBoneName, const cha
 	return fileData->ofsEnd;
 }
 
-uint32_t Skeleton::CreatePosRotBoneFileData(char* newBoneName, char* newBoneParentName, Skeleton::BoneFileData* fileData)
+uint32_t SkeletonReader::CreatePosRotBoneFileData(char* newBoneName, char* newBoneParentName, BoneFileData* fileData)
 {
 	int channelNamesLength;
 	char* saveChannelName;
 	str rotChannelName;
 	str posChannelName;
-	Skeleton::BoneData* boneData;
+	BoneData* boneData;
 
 	strncpy(fileData->name, newBoneName, sizeof(fileData->name));
 	strncpy(fileData->parent, newBoneParentName, sizeof(fileData->parent));
-	fileData->boneType = Skeleton::SKELBONE_POSROT;
-	fileData->ofsBaseData = sizeof(Skeleton::BoneFileData);
-	boneData = (Skeleton::BoneData*)((char*)fileData + fileData->ofsBaseData);
+	fileData->boneType = BoneType::SKELBONE_POSROT;
+	fileData->ofsBaseData = sizeof(BoneFileData);
+	boneData = (BoneData*)((char*)fileData + fileData->ofsBaseData);
 	boneData->offset[0] = 1.0f;
 	boneData->offset[1] = 1.0f;
 	boneData->offset[2] = 1.0f;
@@ -98,13 +98,13 @@ uint32_t Skeleton::CreatePosRotBoneFileData(char* newBoneName, char* newBonePare
 	return fileData->ofsEnd;
 }
 
-void Skeleton::CreatePosRotBoneData(const char* newBoneName, const char* newBoneParentName, Skeleton::BoneData* boneData)
+void SkeletonReader::CreatePosRotBoneData(const char* newBoneName, const char* newBoneParentName, BoneData* boneData)
 {
 	str rotChannelName;
 	str posChannelName;
 
-	SkeletonChannelNameTable* const boneNamesTable = GetAssetManager()->GetManager<SkeletorManager>()->GetBoneNamesTable();
-	SkeletonChannelNameTable* const channelNamesTable = GetAssetManager()->GetManager<SkeletorManager>()->GetChannelNamesTable();
+	SkeletonChannelNameTable* const boneNamesTable = GetAssetManager()->getManager<SkeletorManager>()->GetBoneNamesTable();
+	SkeletonChannelNameTable* const channelNamesTable = GetAssetManager()->getManager<SkeletorManager>()->GetChannelNamesTable();
 
 	boneData->channel = boneNamesTable->RegisterChannel(newBoneName);
 
@@ -118,14 +118,14 @@ void Skeleton::CreatePosRotBoneData(const char* newBoneName, const char* newBone
 		assert(boneData->parent >= 0);
 	}
 
-	boneData->boneType = Skeleton::SKELBONE_POSROT;
+	boneData->boneType = BoneType::SKELBONE_POSROT;
 
 	ConvertToRotationName(newBoneName, rotChannelName);
 	boneData->channelIndex[0] = channelNamesTable->RegisterChannel(rotChannelName.c_str());
 	if (boneData->channelIndex[0] < 0)
 	{
 		//SKEL_Warning( "Channel named %s not added. (Bone will not work without it)\n", rotChannelName );
-		boneData->boneType = Skeleton::SKELBONE_ZERO;
+		boneData->boneType = BoneType::SKELBONE_ZERO;
 	}
 
 	ConvertToPositionName(newBoneName, posChannelName);
@@ -133,40 +133,40 @@ void Skeleton::CreatePosRotBoneData(const char* newBoneName, const char* newBone
 	if (boneData->channelIndex[1] < 0)
 	{
 		//SKEL_Warning( "Channel named %s not added. (Bone will not work without it)\n", posChannelName );
-		boneData->boneType = Skeleton::SKELBONE_ZERO;
+		boneData->boneType = BoneType::SKELBONE_ZERO;
 	}
 
 	boneData->numChannels = 2;
 	boneData->numRefs = 0;
 }
 
-uint32_t Skeleton::CreateIKShoulderBoneFileData(const char* newBoneName, const char* newBoneParentName, SkelQuat baseOrient, SkelVec3 basePos, Skeleton::BoneData* boneData)
+uint32_t SkeletonReader::CreateIKShoulderBoneFileData(const char* newBoneName, const char* newBoneParentName, SkelQuat baseOrient, SkelVec3 basePos, BoneData* boneData)
 {
 	// FIXME: stub
 	return 0;
 }
 
-uint32_t Skeleton::CreateIKElbowBoneFileData(const char* newBoneName, const char* newBoneParentName, SkelVec3 basePos, Skeleton::BoneData* boneData)
+uint32_t SkeletonReader::CreateIKElbowBoneFileData(const char* newBoneName, const char* newBoneParentName, SkelVec3 basePos, BoneData* boneData)
 {
 	// FIXME: stub
 	return 0;
 }
 
-uint32_t Skeleton::CreateIKWristBoneFileData(const char* newBoneName, const char* newBoneParentName, const char* shoulderBoneName, SkelVec3 basePos, Skeleton::BoneFileData* fileData)
+uint32_t SkeletonReader::CreateIKWristBoneFileData(const char* newBoneName, const char* newBoneParentName, const char* shoulderBoneName, SkelVec3 basePos, BoneFileData* fileData)
 {
 	// FIXME: stub
 	return 0;
 }
 
-uint32_t Skeleton::CreateHoseRotBoneFileData(char* newBoneName, char* newBoneParentName, char* targetBoneName, float bendRatio, float bendMax, float spinRatio,
-	Skeleton::HoseRotType hoseRotType, SkelVec3 basePos, Skeleton::BoneFileData* fileData)
+uint32_t SkeletonReader::CreateHoseRotBoneFileData(char* newBoneName, char* newBoneParentName, char* targetBoneName, float bendRatio, float bendMax, float spinRatio,
+	HoseRotType hoseRotType, SkelVec3 basePos, BoneFileData* fileData)
 {
 	// FIXME: stub
 	return 0;
 }
 
-uint32_t Skeleton::CreateAvRotBoneFileData(char* newBoneName, char* newBoneParentName, char* baseBoneName, char* targetBoneName, float rotRatio,
-	SkelVec3 basePos, Skeleton::BoneFileData* fileData)
+uint32_t SkeletonReader::CreateAvRotBoneFileData(char* newBoneName, char* newBoneParentName, char* baseBoneName, char* targetBoneName, float rotRatio,
+	SkelVec3 basePos, BoneFileData* fileData)
 {
 	// FIXME: stub
 	return 0;
@@ -180,7 +180,7 @@ void Skeletor::LoadMorphTargetNames(Skeleton* skelmodel)
 	{
 		const char* newTargetName = skelmodel->GetMorphTarget(i);
 
-		size_t newChannel = GetAssetManager()->GetManager<SkeletorManager>()->GetChannelNamesTable()->RegisterChannel(newTargetName);
+		size_t newChannel = GetAssetManager()->getManager<SkeletorManager>()->GetChannelNamesTable()->RegisterChannel(newTargetName);
 		size_t morphTargetIndex = m_morphTargetList.AddChannel(newChannel);
 
 		if (!strncmp(newTargetName, "EYES_left", 9))

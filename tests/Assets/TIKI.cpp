@@ -6,14 +6,16 @@
 
 int main(int argc, const char* argv[])
 {
+	InitCommon();
+
 	const MOHPC::AssetManagerPtr AM = AssetLoad(GetGamePathFromCommandLine(argc, argv));
 
-	std::vector<str> ExtensionsStd;
+	ExtensionList ExtensionsStd;
 	ExtensionsStd.push_back("wav");
 
 	MOHPC::FileEntryList FilesStd = AM->GetFileManager()->ListFilteredFiles("/", ExtensionsStd, true, false);
 
-	MOHPC::TIKIPtr Tiki = AM->LoadAsset<MOHPC::TIKI>("/models/static/toilet.tik");
+	MOHPC::TIKIPtr Tiki = AM->readAsset<MOHPC::TIKIReader>("/models/static/toilet.tik");
 	if (Tiki)
 	{
 		MOHPC::ModelRendererPtr ModelRenderer = MOHPC::ModelRenderer::create(AM);
@@ -22,14 +24,14 @@ int main(int argc, const char* argv[])
 		ModelRenderer->BuildRenderData();
 	}
 
-	Tiki = AM->LoadAsset<MOHPC::TIKI>("/models/items/item_50_healthbox.tik");
+	Tiki = AM->readAsset<MOHPC::TIKIReader>("/models/items/item_50_healthbox.tik");
 
-	MOHPC::SkeletonAnimationPtr AnimPtr = AM->LoadAsset<MOHPC::SkeletonAnimation>("/models/human/animation/viewmodel/walk_player_rifle.skc");
+	MOHPC::SkeletonAnimationPtr AnimPtr = AM->readAsset<MOHPC::SkeletonAnimationReader>("/models/human/animation/viewmodel/walk_player_rifle.skc");
 
-	//auto Asset = AM->LoadAsset<MOHPC::TIKI>("/models/weapons/m1_garand.tik");
-	//Asset = AM->LoadAsset<MOHPC::TIKI>("/models/static/bush_full.tik");
-	//Asset = AM->LoadAsset<MOHPC::TIKI>("/models/human/allied_airborne_soldier.tik");
-	auto Asset = AM->LoadAsset<MOHPC::TIKI>("/models/player/american_Army.tik");
+	MOHPC::TIKIPtr Asset = AM->readAsset<MOHPC::TIKIReader>("/models/weapons/m1_garand.tik");
+	Asset = AM->readAsset<MOHPC::TIKIReader>("/models/static/bush_full.tik");
+	Asset = AM->readAsset<MOHPC::TIKIReader>("/models/human/allied_airborne_soldier.tik");
+	Asset = AM->readAsset<MOHPC::TIKIReader>("/models/player/american_Army.tik");
 	if (Asset)
 	{
 		MOHPC::ModelRendererPtr ModelRenderer = MOHPC::ModelRenderer::create(AM);

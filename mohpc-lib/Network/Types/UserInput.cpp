@@ -5,11 +5,9 @@
 using namespace MOHPC;
 using namespace MOHPC::Network;
 
-static const unsigned int WEAPONCOMMAND_MASK = WeaponCommand::getCount();
-
 uint32_t GetWeaponCommandMask()
 {
-	return WeaponCommand::getCount() - 1;
+	return WeaponCommands::MAX - 1;
 }
 
 usercmd_t::usercmd_t()
@@ -72,24 +70,9 @@ UserActionInput::UserActionInput()
 {
 }
 
-bool UserActionInput::isHeld(const UserButton& button)
+bool UserActionInput::isHeld(userButton_t button)
 {
-	return flags & button.getIndex();
-}
-
-uint16_t UserActionInput::getFlags() const
-{
-	return flags;
-}
-
-void UserActionInput::addWeaponCommand(const WeaponCommand& weaponCommand)
-{
-	flags |= (weaponCommand.getIndex() & GetWeaponCommandMask()) << 7;
-}
-
-void UserActionInput::removeWeaponCommand(const WeaponCommand& weaponCommand)
-{
-	flags &= ~((weaponCommand.getIndex() & GetWeaponCommandMask()) << 7);
+	return flags & button;
 }
 
 void UserActionInput::setFlags(uint16_t newFlags)
@@ -97,14 +80,29 @@ void UserActionInput::setFlags(uint16_t newFlags)
 	flags = newFlags;
 }
 
-void UserActionInput::addButton(const UserButton& newButton)
+uint16_t UserActionInput::getFlags() const
 {
-	flags |= newButton.getIndex();
+	return flags;
 }
 
-void UserActionInput::removeButton(const UserButton& button)
+void UserActionInput::addWeaponCommand(weaponCommand_t weaponCommand)
 {
-	flags &= ~button.getIndex();
+	flags |= (weaponCommand & GetWeaponCommandMask()) << 7;
+}
+
+void UserActionInput::removeWeaponCommand(weaponCommand_t weaponCommand)
+{
+	flags &= ~((weaponCommand & GetWeaponCommandMask()) << 7);
+}
+
+void UserActionInput::addButton(userButton_t newButton)
+{
+	flags |= newButton;
+}
+
+void UserActionInput::removeButton(userButton_t button)
+{
+	flags &= ~button;
 }
 
 UserMovementInput::UserMovementInput()

@@ -2,17 +2,21 @@
 #include <MOHPC/Assets/Formats/Image.h>
 #include <MOHPC/Assets/Managers/AssetManager.h>
 #include <MOHPC/Files/Managers/FileManager.h>
+#include <MOHPC/Files/FileHelpers.h>
 #include <string>
 
 using namespace MOHPC;
 
 MOHPC_OBJECT_DEFINITION(Image);
-Image::Image()
+
+Image::Image(const fs::path& fileNameRef, uint8_t* dataBuf, uint32_t size, uint32_t widthVal, uint32_t heightVal, PixelFormat format)
+	: Asset2(fileNameRef)
+	, data(dataBuf)
+	, dataSize(size)
+	, width(widthVal)
+	, height(heightVal)
+	, pixelFormat(format)
 {
-	data = nullptr;
-	dataSize = 0;
-	width = height = 0;
-	pixelFormat = PixelFormat::Unknown;
 }
 
 Image::~Image()
@@ -23,32 +27,34 @@ Image::~Image()
 	}
 }
 
-void Image::Load()
+MOHPC_OBJECT_DEFINITION(ImageReader);
+
+Asset2Ptr ImageReader::read(const IFilePtr& file)
 {
 	struct ExtensionWrapper
 	{
-		const char *Extension;
+		const fs::path Extension;
 
-		typedef void (Image::*_ExtensionFunction)(const char *, void *, uint64_t);
+		typedef ImagePtr (ImageReader::*_ExtensionFunction)(const fs::path&, void *, uint64_t);
 		_ExtensionFunction ExtensionFunction;
 	};
 
 	static ExtensionWrapper ExtensionWrappers[] =
 	{
-		{ "jpg", &Image::LoadJPEG },
-		{ "jpeg", &Image::LoadJPEG },
-		{ "tga", &Image::LoadTGA },
-		{ "dds", &Image::LoadDDS }
+		{ "jpg", &ImageReader::LoadJPEG },
+		{ "jpeg", &ImageReader::LoadJPEG },
+		{ "tga", &ImageReader::LoadTGA },
+		{ "dds", &ImageReader::LoadDDS }
 	};
 
-	const char* ext = strHelpers::getExtension(GetFilename().c_str());
+	const fchar_t* ext = FileHelpers::getExtension(file->getName().c_str());
 
 	ExtensionWrapper::_ExtensionFunction ExtensionFunction = nullptr;
 
 	const size_t numExtensions = sizeof(ExtensionWrappers) / sizeof(ExtensionWrappers[0]);
 	for (intptr_t i = 0; i < numExtensions; i++)
 	{
-		if (!strHelpers::icmp(ext, ExtensionWrappers[i].Extension))
+		if (!strHelpers::icmp(ext, ExtensionWrappers[i].Extension.c_str()))
 		{
 			ExtensionFunction = ExtensionWrappers[i].ExtensionFunction;
 			break;
@@ -59,19 +65,18 @@ void Image::Load()
 		throw ImageError::BadExtension(ext);
 	}
 
-	const char *Fname = GetFilename().c_str();
-
-	FilePtr file = GetFileManager()->OpenFile(Fname);
-	if (!file) {
-		throw AssetError::AssetNotFound(GetFilename());
-	}
-
 	void *buf;
 	uint64_t len = file->ReadBuffer(&buf);
 
-	(this->*ExtensionFunction)(Fname, buf, len);
+	return (this->*ExtensionFunction)(file->getName(), buf, len);
+}
 
-	HashUpdate((uint8_t*)buf, (size_t)len);
+ImageReader::ImageReader()
+{
+}
+
+ImageReader::~ImageReader()
+{
 }
 
 uint8_t *Image::GetData() const
@@ -99,14 +104,14 @@ uint32_t Image::GetHeight() const
 	return height;
 }
 
-ImageError::BadExtension::BadExtension(const str& inExtension)
+ImageError::BadExtension::BadExtension(const fs::path& inExtension)
 	: extension(inExtension)
 {
 }
 
-const char* ImageError::BadExtension::getExtension() const
+const fs::path& ImageError::BadExtension::getExtension() const
 {
-	return extension.c_str();
+	return extension;
 }
 
 const char* ImageError::BadExtension::what() const noexcept

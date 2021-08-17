@@ -1,5 +1,6 @@
 #include <Shared.h>
 #include <MOHPC/Assets/Formats/BSP.h>
+#include <MOHPC/Assets/Formats/BSP_Collision.h>
 #include <MOHPC/Assets/Script.h>
 #include <MOHPC/Common/Vector.h>
 #include <MOHPC/Utility/LevelEntity.h>
@@ -95,7 +96,11 @@ static constexpr unsigned int LUMP_STATICMODELDEF		= 25;
 static constexpr unsigned int LUMP_STATICMODELINDEXES	= 26;
 static constexpr unsigned int LUMP_DUMMY10				= 27;
 
-static constexpr unsigned int HEADER_LUMPS				= 28;
+static constexpr unsigned int HEADER_LUMPS = 28;
+
+static constexpr unsigned int VIS_HEADER = 8;
+static constexpr unsigned int LIGHTMAP_SIZE = 128;
+static constexpr float TERRAIN_LIGHTMAP_LENGTH = (16.f / LIGHTMAP_SIZE);
 
 namespace BSPFile
 {
@@ -292,14 +297,11 @@ namespace BSPFile
 			, surface(inSurface)
 			, surfaceGroup(nullptr)
 		{
-			//const size_t numVertices = surface->GetNumVertices();
-			//for (size_t k = 0; k < numVertices; k++)
-			//{
-			//	AddPointToBounds(surface->GetVertice(k)->xyz, bounds[0], bounds[1]);
-			//}
-
-			VectorCopy(surface->GetPatchCollide()->bounds[0], bounds[0]);
-			VectorCopy(surface->GetPatchCollide()->bounds[1], bounds[1]);
+			const size_t numVerts = surface->GetNumVertices();
+			for (size_t i = 0; i < numVerts; ++i)
+			{
+				AddPointToBounds(surface->GetVertice(i)->xyz, bounds[0], bounds[1]);
+			}
 		}
 
 		Patch* GetRoot() const
@@ -405,7 +407,7 @@ size_t BSPData::Brush::GetNumSides() const
 	return numsides;
 }
 
-BSPData::BrushSide* BSPData::Brush::GetSide(size_t Index) const
+const BSPData::BrushSide* BSPData::Brush::GetSide(size_t Index) const
 {
 	return Index < numsides ? &sides[Index] : nullptr;
 }
@@ -489,6 +491,16 @@ size_t BSPData::Surface::GetNumIndexes() const
 uint32_t BSPData::Surface::GetIndice(size_t index) const
 {
 	return indexes[index];
+}
+
+uint32_t Surface::getWidth() const
+{
+	return width;
+}
+
+uint32_t Surface::getHeight() const
+{
+	return height;
 }
 
 int32_t BSPData::Surface::GetLightmapNum() const
@@ -638,22 +650,15 @@ static bool BrushIsTouching(BSPData::Brush* b1, BSPData::Brush* b2)
 
 MOHPC_OBJECT_DEFINITION(BSP);
 
-BSP::BSP()
+BSP::BSP(const fs::path& path)
+	: Asset2(path)
 {
 	numClusters = 0;
 	numAreas = 0;
-	entityString = NULL;
-	entityStringLength = 0;
 }
 
 BSP::~BSP()
 {
-	if (entityString)
-	{
-		delete[] entityString;
-		entityStringLength = 0;
-	}
-
 	for (size_t i = 0; i < entities.size(); i++)
 	{
 		delete entities[i];
@@ -663,235 +668,6 @@ BSP::~BSP()
 	{
 		delete surfacesGroups[i];
 	}
-}
-
-void BSP::Load()
-{
-	const FilePtr file = GetFileManager()->OpenFile(GetFilename().c_str());
-	if (!file) {
-		throw AssetError::AssetNotFound(GetFilename());
-	}
-
-	std::istream* stream = file->GetStream();
-
-	BSPFile::fheader_t Header;
-	stream->read((char*)&Header, sizeof(Header));
-
-	if (memcmp(Header.ident, BSP_IDENT, sizeof(Header.ident)) && memcmp(Header.ident, BSP_EXPANSIONS_IDENT, sizeof(Header.ident)))
-	{
-		MOHPC_LOG(Error, "'%s' has wrong header", GetFilename().c_str());
-		throw BSPError::BadHeader((uint8_t*)Header.ident);
-	}
-
-	const uint32_t version = Endian.LittleLong(Header.version);
-	if (version < BSP_BETA_VERSION || version > BSP_MAX_VERSION)
-	{
-		MOHPC_LOG(Error, "'%s' has wrong version number (%i should be between %i and %i)", version, BSP_BETA_VERSION, BSP_MAX_VERSION);
-		throw BSPError::WrongVersion(version);
-	}
-
-	HashUpdate((uint8_t*)&Header, sizeof(Header));
-
-	ProfilableCode("shaders",
-	[&]()
-	{
-		BSPFile::GameLump GameLump;
-
-		LoadLump(file, &Header.lumps[LUMP_SHADERS], &GameLump, sizeof(BSPFile::fshader_t));
-		LoadShaders(&GameLump);
-	});
-
-	ProfilableCode("planes",
-	[&]()
-	{
-		BSPFile::GameLump GameLump;
-
-		LoadLump(file, &Header.lumps[LUMP_PLANES], &GameLump, sizeof(BSPFile::fplane_t));
-		LoadPlanes(&GameLump);
-	});
-
-	ProfilableCode("lightmaps",
-	[&]()
-	{
-		BSPFile::GameLump GameLump;
-
-		LoadLump(file, &Header.lumps[LUMP_LIGHTMAPS], &GameLump, sizeof(uint8_t));
-		LoadLightmaps(&GameLump);
-	});
-
-	ProfilableCode("surfaces",
-	[&]()
-	{
-		BSPFile::GameLump SurfacesLump;
-		BSPFile::GameLump VerticesLump;
-		BSPFile::GameLump IndexesLump;
-
-		LoadLump(file, &Header.lumps[LUMP_SURFACES], &SurfacesLump, sizeof(BSPFile::fshader_t));
-		LoadLump(file, &Header.lumps[LUMP_DRAWVERTS], &VerticesLump, sizeof(BSPFile::fvertice_t));
-		LoadLump(file, &Header.lumps[LUMP_DRAWINDEXES], &IndexesLump, sizeof(int32_t));
-		LoadSurfaces(&SurfacesLump, &VerticesLump, &IndexesLump);
-	});
-
-	ProfilableCode("side equations",
-	[&]()
-	{
-		BSPFile::GameLump GameLump;
-
-		LoadLump(file, &Header.lumps[LUMP_SIDEEQUATIONS], &GameLump, 0);
-		LoadSideEquations(&GameLump);
-	});
-
-	ProfilableCode("brush sides",
-	[&]()
-	{
-		BSPFile::GameLump GameLump;
-
-		LoadLump(file, &Header.lumps[LUMP_BRUSHSIDES], &GameLump, 0);
-		LoadBrushSides(&GameLump);
-	});
-
-	ProfilableCode("brushes",
-	[&]()
-	{
-		BSPFile::GameLump GameLump;
-
-		LoadLump(file, &Header.lumps[LUMP_BRUSHES], &GameLump, 0);
-		LoadBrushes(&GameLump);
-	});
-
-	ProfilableCode("leaf brushes",
-	[&]()
-	{
-		BSPFile::GameLump GameLump;
-
-		LoadLump(file, &Header.lumps[LUMP_LEAFBRUSHES], &GameLump, 0);
-		LoadLeafsBrushes(&GameLump);
-	});
-
-	ProfilableCode("leaf surfaces",
-	[&]()
-	{
-		BSPFile::GameLump GameLump;
-
-		LoadLump(file, &Header.lumps[LUMP_LEAFSURFACES], &GameLump, 0);
-		LoadLeafSurfaces(&GameLump);
-	});
-
-	ProfilableCode("leafs",
-	[&]()
-	{
-		BSPFile::GameLump GameLump;
-
-		LoadLump(file, &Header.lumps[LUMP_LEAFS], &GameLump, 0);
-		if (version > BSP_BETA_VERSION) {
-			LoadLeafs(&GameLump);
-		}
-		else {
-			LoadLeafsOld(&GameLump);
-		}
-	});
-
-	ProfilableCode("nodes",
-	[&]()
-	{
-		BSPFile::GameLump GameLump;
-
-		LoadLump(file, &Header.lumps[LUMP_NODES], &GameLump, 0);
-		LoadNodes(&GameLump);
-	});
-
-	ProfilableCode("visibility",
-	[&]()
-	{
-		BSPFile::GameLump GameLump;
-
-		LoadLump(file, &Header.lumps[LUMP_VISIBILITY], &GameLump, 0);
-		LoadVisibility(&GameLump);
-	});
-
-	ProfilableCode("models",
-	[&]()
-	{
-		BSPFile::GameLump GameLump;
-
-		LoadLump(file, &Header.lumps[LUMP_MODELS], &GameLump, 0);
-		LoadSubmodels(&GameLump);
-	});
-
-	ProfilableCode("entities",
-	[&]()
-	{
-		BSPFile::GameLump GameLump;
-
-		LoadLump(file, &Header.lumps[LUMP_ENTITIES], &GameLump, 0);
-		LoadEntityString(&GameLump);
-	});
-
-	ProfilableCode("sphere lights",
-	[&]()
-	{
-		BSPFile::GameLump GameLump;
-
-		LoadLump(file, &Header.lumps[LUMP_SPHERELIGHTS], &GameLump, 0);
-		LoadSphereLights(&GameLump);
-	});
-
-	ProfilableCode("terrains",
-	[&]()
-	{
-		BSPFile::GameLump GameLump;
-
-		LoadLump(file, &Header.lumps[LUMP_TERRAIN], &GameLump, 0);
-		LoadTerrain(&GameLump);
-	});
-
-	ProfilableCode("terrain indexes",
-	[&]()
-	{
-		BSPFile::GameLump GameLump;
-
-		LoadLump(file, &Header.lumps[LUMP_TERRAININDEXES], &GameLump, 0);
-		LoadTerrainIndexes(&GameLump);
-	});
-
-	if (Header.version > BSP_BETA_VERSION)
-	{
-		ProfilableCode("static models",
-		[&]()
-		{
-			BSPFile::GameLump GameLump;
-
-			LoadLump(file, &Header.lumps[LUMP_STATICMODELDEF], &GameLump, 0);
-			LoadStaticModelDefs(&GameLump);
-		});
-	}
-
-	ProfilableCode("generation of terrain surfaces",
-	[&]()
-	{
-		CreateTerrainSurfaces();
-	});
-
-	ProfilableCode("generation of terrain collision",
-	[&]()
-	{
-		TR_PrepareGerrainCollide();
-	});
-	
-	ProfilableCode("brush mapping",
-	[&]()
-	{
-		MapBrushes();
-	});
-
-	// FIXME: Should use an external class for creating entities
-	ProfilableCode("creation of entities",
-	[&]()
-	{
-		CreateEntities();
-	});
-
-	MOHPC_LOG(Info, "Loaded map '%s', version %d", GetFilename().c_str(), version);
 }
 
 /*
@@ -915,7 +691,7 @@ void BSP::PreAllocateLevelData(const File_Header *Header)
 }
 */
 
-BSPData::Plane::PlaneType BSP::PlaneTypeForNormal(const vec3r_t normal)
+BSPData::Plane::PlaneType MOHPC::PlaneTypeForNormal(const_vec3r_t normal)
 {
 	if (normal[0] == 1.0)
 	{
@@ -1055,6 +831,16 @@ size_t BSP::GetNumSubmodels() const
 	return brushModels.size();
 }
 
+const BSPData::TerrainPatch* BSP::GetLeafTerrain(size_t leafTerrainNum) const
+{
+	return leafTerrains[leafTerrainNum];
+}
+
+size_t BSP::GetNumLeafTerrains() const
+{
+	return leafTerrains.size();
+}
+
 const BSPData::Model *BSP::GetSubmodel(size_t submodelNum) const
 {
 	return &brushModels.at(submodelNum);
@@ -1171,13 +957,13 @@ const BSPData::SurfacesGroup *BSP::GetSurfacesGroup(size_t surfsGroupNum) const
 	return surfacesGroups.at(surfsGroupNum);
 }
 
-void BSP::LoadShaders(const BSPFile::GameLump* GameLump)
+void BSPReader::LoadShaders(const BSPFile::GameLump* GameLump, std::vector<BSPData::Shader>& shaders)
 {
 	if (GameLump->length % sizeof(BSPFile::fshader_t)) {
 		throw BSPError::FunnyLumpSize("shaders");
 	}
 
-	const ShaderManagerPtr shaderManager = GetAssetManager()->GetManager<ShaderManager>();
+	const ShaderManagerPtr shaderManager = GetAssetManager()->getManager<ShaderManager>();
 
 	const size_t count = GameLump->length / sizeof(BSPFile::fshader_t);
 	if (count)
@@ -1198,7 +984,7 @@ void BSP::LoadShaders(const BSPFile::GameLump* GameLump)
 	}
 }
 
-void BSP::LoadLightmaps(const BSPFile::GameLump* GameLump)
+void BSPReader::LoadLightmaps(const BSPFile::GameLump* GameLump, std::vector<BSPData::Lightmap>& lightmaps)
 {
 	if (!GameLump->length) {
 		throw BSPError::FunnyLumpSize("lightmaps");
@@ -1224,9 +1010,9 @@ void BSP::LoadLightmaps(const BSPFile::GameLump* GameLump)
 	}
 }
 
-void BSP::ParseMesh(const BSPFile::fsurface_t* InSurface, const BSPFile::fvertice_t* InVertices, Surface* out)
+void BSPReader::ParseMesh(const BSPFile::fsurface_t* InSurface, const BSPFile::fvertice_t* InVertices, const std::vector<BSPData::Shader>& shaders, Surface* out)
 {
-	out->shader = GetShader(Endian.LittleLong(InSurface->shaderNum));
+	out->shader = &shaders[Endian.LittleLong(InSurface->shaderNum)];
 
 	int32_t Width = Endian.LittleLong(InSurface->patchWidth);
 	int32_t Height = Endian.LittleLong(InSurface->patchHeight);
@@ -1271,17 +1057,18 @@ void BSP::ParseMesh(const BSPFile::fsurface_t* InSurface, const BSPFile::fvertic
 		subdivisions = MIN_MAP_SUBDIVISIONS;
 	}
 
+	// FIXME
 	out->pc = GeneratePatchCollide(Width, Height, Points, (float)subdivisions);
 }
 
-void BSP::ParseFace(const BSPFile::fsurface_t* InSurface, const BSPFile::fvertice_t* InVertices, const int32_t* InIndices, Surface* out)
+void BSPReader::ParseFace(const BSPFile::fsurface_t* InSurface, const BSPFile::fvertice_t* InVertices, const int32_t* InIndices, const std::vector<BSPData::Shader>& shaders, Surface* out)
 {
 	uint32_t i, j;
 
 	const size_t numVerts = Endian.LittleLong(InSurface->numVerts);
 	const size_t numIndexes = Endian.LittleLong(InSurface->numIndexes);
 
-	out->shader = GetShader(Endian.LittleLong(InSurface->shaderNum));
+	out->shader = &shaders[Endian.LittleLong(InSurface->shaderNum)];
 
 	out->indexes.resize(numIndexes);
 	out->vertices.resize(numVerts);
@@ -1354,13 +1141,13 @@ void BSP::ParseFace(const BSPFile::fsurface_t* InSurface, const BSPFile::fvertic
 	out->cullInfo.plane.type = PlaneTypeForNormal(out->cullInfo.plane.normal);
 }
 
-void BSP::ParseTriSurf(const BSPFile::fsurface_t* InSurface, const BSPFile::fvertice_t* InVertices, const int32_t* InIndices, Surface* out)
+void BSPReader::ParseTriSurf(const BSPFile::fsurface_t* InSurface, const BSPFile::fvertice_t* InVertices, const int32_t* InIndices, const std::vector<BSPData::Shader>& shaders, Surface* out)
 {
 	uint32_t i, j;
 	const size_t numVerts = Endian.LittleLong(InSurface->numVerts);
 	const size_t numIndexes = Endian.LittleLong(InSurface->numIndexes);
 
-	out->shader = GetShader(Endian.LittleLong(InSurface->shaderNum));
+	out->shader = &shaders[Endian.LittleLong(InSurface->shaderNum)];
 
 	out->indexes.resize(numIndexes);
 	out->vertices.resize(numVerts);
@@ -1426,7 +1213,13 @@ void BSP::ParseTriSurf(const BSPFile::fsurface_t* InSurface, const BSPFile::fver
 	}
 }
 
-void BSP::LoadSurfaces(const BSPFile::GameLump* surfaces, const BSPFile::GameLump* vertices, const BSPFile::GameLump* Indices)
+void BSPReader::LoadSurfaces(
+	const BSPFile::GameLump* SurfacesLump,
+	const BSPFile::GameLump* Vertices,
+	BSPFile::GameLump* Indices,
+	const std::vector<BSPData::Shader>& shaders,
+	std::vector<BSPData::Surface>& surfaces
+)
 {
 	enum SurfaceType
 	{
@@ -1437,11 +1230,11 @@ void BSP::LoadSurfaces(const BSPFile::GameLump* surfaces, const BSPFile::GameLum
 		MST_FLARE
 	};
 
-	if (surfaces->length % sizeof(BSPFile::fsurface_t)) {
+	if (SurfacesLump->length % sizeof(BSPFile::fsurface_t)) {
 		throw BSPError::FunnyLumpSize("surfaces");
 	}
 
-	if (vertices->length % sizeof(BSPFile::fvertice_t)) {
+	if (Vertices->length % sizeof(BSPFile::fvertice_t)) {
 		throw BSPError::FunnyLumpSize("vertices");
 	}
 
@@ -1449,15 +1242,15 @@ void BSP::LoadSurfaces(const BSPFile::GameLump* surfaces, const BSPFile::GameLum
 		throw BSPError::FunnyLumpSize("indices");
 	}
 
-	const size_t count = surfaces->length / sizeof(BSPFile::fsurface_t);
+	const size_t count = SurfacesLump->length / sizeof(BSPFile::fsurface_t);
 	if (count)
 	{
-		this->surfaces.resize(count);
+		surfaces.resize(count);
 
-		const BSPFile::fsurface_t* in = (BSPFile::fsurface_t*)surfaces->buffer;
-		Surface* out = this->surfaces.data();
+		const BSPFile::fsurface_t* in = (BSPFile::fsurface_t*)SurfacesLump->buffer;
+		Surface* out = surfaces.data();
 
-		const BSPFile::fvertice_t* InVerts = (BSPFile::fvertice_t*)vertices->buffer;
+		const BSPFile::fvertice_t* InVerts = (BSPFile::fvertice_t*)Vertices->buffer;
 		int32_t* InIndexes = (int32_t*)Indices->buffer;
 
 		for (size_t i = 0; i < count; i++, in++, out++)
@@ -1475,13 +1268,13 @@ void BSP::LoadSurfaces(const BSPFile::GameLump* surfaces, const BSPFile::GameLum
 			switch (Endian.LittleLong(in->surfaceType))
 			{
 			case MST_PATCH:
-				ParseMesh(in, InVerts, out);
+				ParseMesh(in, InVerts, shaders, out);
 				break;
 			case MST_TRIANGLE_SOUP:
-				ParseTriSurf(in, InVerts, InIndexes, out);
+				ParseTriSurf(in, InVerts, InIndexes, shaders, out);
 				break;
 			case MST_PLANAR:
-				ParseFace(in, InVerts, InIndexes, out);
+				ParseFace(in, InVerts, InIndexes, shaders, out);
 				break;
 			}
 
@@ -1490,7 +1283,7 @@ void BSP::LoadSurfaces(const BSPFile::GameLump* surfaces, const BSPFile::GameLum
 	}
 }
 
-void BSP::LoadPlanes(const BSPFile::GameLump* GameLump)
+void BSPReader::LoadPlanes(const BSPFile::GameLump* GameLump, std::vector<BSPData::Plane>& planes)
 {
 	if (GameLump->length % sizeof(BSPFile::fplane_t)) {
 		throw BSPError::FunnyLumpSize("planes");
@@ -1523,7 +1316,7 @@ void BSP::LoadPlanes(const BSPFile::GameLump* GameLump)
 	}
 }
 
-void BSP::LoadSideEquations(const BSPFile::GameLump* GameLump)
+void BSPReader::LoadSideEquations(const BSPFile::GameLump* GameLump, std::vector<BSPData::SideEquation>& sideEquations)
 {
 	if (GameLump->length % sizeof(BSPFile::fsideequation_t)) {
 		throw BSPError::FunnyLumpSize("sideEquations");
@@ -1548,7 +1341,13 @@ void BSP::LoadSideEquations(const BSPFile::GameLump* GameLump)
 	}
 }
 
-void BSP::LoadBrushSides(const BSPFile::GameLump* GameLump)
+void BSPReader::LoadBrushSides(
+	const BSPFile::GameLump* GameLump,
+	const std::vector<BSPData::Shader>& shaders,
+	const std::vector<BSPData::Plane>& planes,
+	const std::vector<BSPData::SideEquation>& sideEquations,
+	std::vector<BSPData::BrushSide>& brushSides
+)
 {
 	if (GameLump->length % sizeof(BSPFile::fbrushSide_t)) {
 		throw BSPError::FunnyLumpSize("brushSides");
@@ -1566,7 +1365,7 @@ void BSP::LoadBrushSides(const BSPFile::GameLump* GameLump)
 		{
 			const uint32_t num = Endian.LittleLong(in->planeNum);
 			out->plane = &planes[num];
-			out->shader = GetShader(Endian.LittleLong(in->shaderNum));
+			out->shader = &shaders[Endian.LittleLong(in->shaderNum)];
 			out->surfaceFlags = out->shader->surfaceFlags;
 
 			const uint32_t eqNum = Endian.LittleLong(in->equationNum);
@@ -1582,7 +1381,12 @@ void BSP::LoadBrushSides(const BSPFile::GameLump* GameLump)
 	}
 }
 
-void BSP::LoadBrushes(const BSPFile::GameLump* GameLump)
+void BSPReader::LoadBrushes(
+	const BSPFile::GameLump* GameLump,
+	const std::vector<BSPData::Shader>& shaders,
+	const std::vector<BSPData::BrushSide>& brushSides,
+	std::vector<BSPData::Brush>& brushes
+)
 {
 	if (GameLump->length % sizeof(BSPFile::fbrush_t)) {
 		throw BSPError::FunnyLumpSize("brushes");
@@ -1601,7 +1405,7 @@ void BSP::LoadBrushes(const BSPFile::GameLump* GameLump)
 			out->sides = &brushSides[Endian.LittleLong(in->firstSide)];
 			out->numsides = Endian.LittleLong(in->numSides);
 
-			out->shader = GetShader(Endian.LittleLong(in->shaderNum));
+			out->shader = &shaders[Endian.LittleLong(in->shaderNum)];
 
 			out->contents = out->shader->contentFlags;
 			out->parent = NULL;
@@ -1611,7 +1415,14 @@ void BSP::LoadBrushes(const BSPFile::GameLump* GameLump)
 	}
 }
 
-void BSP::LoadLeafs(const BSPFile::GameLump* GameLump)
+void BSPReader::LoadLeafs(
+	const BSPFile::GameLump* GameLump,
+	std::vector<BSPData::Leaf>& leafs,
+	std::vector<BSPData::Area>& areas,
+	std::vector<uintptr_t>& areaPortals,
+	uint32_t& numClusters,
+	uint32_t& numAreas
+)
 {
 	numClusters = 0;
 	numAreas = 0;
@@ -1648,7 +1459,14 @@ void BSP::LoadLeafs(const BSPFile::GameLump* GameLump)
 	areaPortals.resize(numAreas * numAreas);
 }
 
-void BSP::LoadLeafsOld(const BSPFile::GameLump* GameLump)
+void BSPReader::LoadLeafsOld(
+	const BSPFile::GameLump* GameLump,
+	std::vector<BSPData::Leaf>& leafs,
+	std::vector<BSPData::Area>& areas,
+	std::vector<uintptr_t>& areaPortals,
+	uint32_t& numClusters,
+	uint32_t& numAreas
+)
 {
 	numClusters = 0;
 	numAreas = 0;
@@ -1683,7 +1501,7 @@ void BSP::LoadLeafsOld(const BSPFile::GameLump* GameLump)
 	areaPortals.resize(numAreas * numAreas);
 }
 
-void BSP::LoadLeafsBrushes(const BSPFile::GameLump* GameLump)
+void BSPReader::LoadLeafsBrushes(const BSPFile::GameLump* GameLump, std::vector<uintptr_t>& leafBrushes)
 {
 	if (GameLump->length % sizeof(uint32_t)) {
 		throw BSPError::FunnyLumpSize("leafBrushes");
@@ -1702,7 +1520,7 @@ void BSP::LoadLeafsBrushes(const BSPFile::GameLump* GameLump)
 	}
 }
 
-void BSP::LoadLeafSurfaces(const BSPFile::GameLump* GameLump)
+void BSPReader::LoadLeafSurfaces(const BSPFile::GameLump* GameLump, std::vector<uintptr_t>& leafSurfaces)
 {
 	if (GameLump->length % sizeof(uint32_t)) {
 		throw BSPError::FunnyLumpSize("leafSurfaces");
@@ -1721,7 +1539,11 @@ void BSP::LoadLeafSurfaces(const BSPFile::GameLump* GameLump)
 	}
 }
 
-void BSP::LoadNodes(const BSPFile::GameLump* GameLump)
+void BSPReader::LoadNodes(
+	const BSPFile::GameLump* GameLump,
+	const std::vector<BSPData::Plane>& planes,
+	std::vector<BSPData::Node>& nodes
+)
 {
 	if (GameLump->length % sizeof(BSPFile::fnode_t)) {
 		throw BSPError::FunnyLumpSize("nodes");
@@ -1746,16 +1568,12 @@ void BSP::LoadNodes(const BSPFile::GameLump* GameLump)
 	}
 }
 
-#define	VIS_HEADER	8
-
-void BSP::LoadVisibility(const BSPFile::GameLump* GameLump)
+void BSPReader::LoadVisibility(const BSPFile::GameLump* GameLump, std::vector<uint8_t>& visibility, uint32_t& numClusters, uint32_t& clusterBytes)
 {
 	const size_t count = GameLump->length;
 	if (!count)
 	{
-		clusterBytes = (numClusters + 31) & ~31;
 		visibility.resize(clusterBytes);
-		memset(visibility.data(), 255, clusterBytes);
 		return;
 	}
 
@@ -1765,7 +1583,13 @@ void BSP::LoadVisibility(const BSPFile::GameLump* GameLump)
 	memcpy(visibility.data(), (uint8_t*)GameLump->buffer + VIS_HEADER, count - VIS_HEADER);
 }
 
-void BSP::LoadSubmodels(const BSPFile::GameLump* GameLump)
+void BSPReader::LoadSubmodels(
+	const BSPFile::GameLump* GameLump,
+	const std::vector<BSPData::Surface>& surfaces,
+	std::vector<uintptr_t>& leafBrushes,
+	std::vector<uintptr_t>& leafSurfaces,
+	std::vector<BSPData::Model>& brushModels
+)
 {
 	if (GameLump->length % sizeof(BSPFile::fbmodel_t)) {
 		throw BSPError::FunnyLumpSize("submodels");
@@ -1851,7 +1675,7 @@ void BSP::LoadSubmodels(const BSPFile::GameLump* GameLump)
 	}
 }
 
-void BSP::LoadEntityString(const BSPFile::GameLump* GameLump)
+void BSPReader::LoadEntityString(const BSPFile::GameLump* GameLump, char*& entityString, size_t& entityStringLength)
 {
 	if(GameLump->length)
 	{
@@ -1861,7 +1685,7 @@ void BSP::LoadEntityString(const BSPFile::GameLump* GameLump)
 	}
 }
 
-void BSP::LoadSphereLights(const BSPFile::GameLump* GameLump)
+void BSPReader::LoadSphereLights(const BSPFile::GameLump* GameLump, std::vector<BSPData::SphereLight>& lights)
 {
 	if (GameLump->length % sizeof(BSPFile::fsphereLight_t)) {
 		throw BSPError::FunnyLumpSize("sphereLights");
@@ -1889,7 +1713,7 @@ void BSP::LoadSphereLights(const BSPFile::GameLump* GameLump)
 	}
 }
 
-void BSP::LoadStaticModelDefs(const BSPFile::GameLump* GameLump)
+void BSPReader::LoadStaticModelDefs(const BSPFile::GameLump* GameLump, std::vector<BSPData::StaticModel>& staticModels)
 {
 	if (GameLump->length % sizeof(BSPFile::fstaticModel_t)) {
 		throw BSPError::FunnyLumpSize("planes");
@@ -1916,10 +1740,7 @@ void BSP::LoadStaticModelDefs(const BSPFile::GameLump* GameLump)
 	}
 }
 
-#define LIGHTMAP_SIZE 128
-#define TERRAIN_LIGHTMAP_LENGTH (16.f / LIGHTMAP_SIZE)
-
-void BSP::UnpackTerraPatch(const BSPFile::fterrainPatch_t* Packed, TerrainPatch* Unpacked) const
+void BSPReader::UnpackTerraPatch(const BSPFile::fterrainPatch_t* Packed, TerrainPatch* Unpacked, const std::vector<BSPData::Shader>& shaders) const
 {
 	int i;
 	union {
@@ -1956,7 +1777,7 @@ void BSP::UnpackTerraPatch(const BSPFile::fterrainPatch_t* Packed, TerrainPatch*
 	Unpacked->x0 = (float)((int32_t)Packed->x << 6);
 	Unpacked->y0 = (float)((int32_t)Packed->y << 6);
 	Unpacked->z0 = Endian.LittleShort(Packed->iBaseHeight);
-	Unpacked->shader = GetShader(Endian.LittleShort(Packed->iShader));
+	Unpacked->shader = &shaders[Endian.LittleShort(Packed->iShader)];
 	Unpacked->north = Endian.LittleShort(Packed->iNorth);
 	Unpacked->east = Endian.LittleShort(Packed->iEast);
 	Unpacked->south = Endian.LittleShort(Packed->iSouth);
@@ -1991,7 +1812,7 @@ void BSP::UnpackTerraPatch(const BSPFile::fterrainPatch_t* Packed, TerrainPatch*
 	Unpacked->zmax += Unpacked->zmax;
 }
 
-void BSP::LoadTerrain(const BSPFile::GameLump* GameLump)
+void BSPReader::LoadTerrain(const BSPFile::GameLump* GameLump, const std::vector<BSPData::Shader>& shaders, std::vector<BSPData::TerrainPatch>& terrainPatches)
 {
 	if (GameLump->length % sizeof(BSPFile::fterrainPatch_t)) {
 		throw BSPError::FunnyLumpSize("terrain");
@@ -2006,12 +1827,16 @@ void BSP::LoadTerrain(const BSPFile::GameLump* GameLump)
 		TerrainPatch* out = terrainPatches.data();
 
 		for (size_t i = 0; i < count; in++, out++, i++) {
-			UnpackTerraPatch(in, out);
+			UnpackTerraPatch(in, out, shaders);
 		}
 	}
 }
 
-void BSP::LoadTerrainIndexes(const BSPFile::GameLump* GameLump)
+void BSPReader::LoadTerrainIndexes(
+	const BSPFile::GameLump* GameLump,
+	const std::vector<BSPData::TerrainPatch>& terrainPatches,
+	std::vector<const BSPData::TerrainPatch*>& leafTerrains
+)
 {
 	if (GameLump->length % sizeof(uint16_t)) {
 		throw BSPError::FunnyLumpSize("terrainIndexes");
@@ -2030,234 +1855,7 @@ void BSP::LoadTerrainIndexes(const BSPFile::GameLump* GameLump)
 	}
 }
 
-void BSP::FillCollisionWorld(CollisionWorld& cm)
-{
-	// Pre-allocate data
-	cm.reserve(
-		0,
-		shaders.size(),
-		sideEquations.size(),
-		brushSides.size(),
-		planes.size(),
-		nodes.size(),
-		leafs.size(),
-		leafBrushes.size(),
-		leafSurfaces.size(),
-		leafTerrains.size(),
-		brushModels.size(),
-		brushes.size(),
-		surfaces.size(),
-		terrainPatches.size(),
-		surfaces.size()
-	);
-
-	// Put shaders
-	for (size_t i = 0; i < shaders.size(); ++i)
-	{
-		const BSPData::Shader& shader = shaders[i];
-
-		collisionShader_t* colShader = cm.createShader();
-		colShader->shader = shader.shaderName;
-		colShader->contentFlags = shader.contentFlags;
-		colShader->surfaceFlags = shader.surfaceFlags;
-	}
-
-	// Put side equations
-	for (size_t i = 0; i < sideEquations.size(); ++i)
-	{
-		const SideEquation& sideEq = sideEquations[i];
-
-		collisionSideEq_t* colSideEq = cm.createSideEquation();
-		memcpy(colSideEq->fSeq, sideEq.sEq, sizeof(colSideEq->fSeq));
-		memcpy(colSideEq->fTeq, sideEq.tEq, sizeof(colSideEq->fTeq));
-	}
-
-	// Put planes
-	for (size_t i = 0; i < planes.size(); ++i)
-	{
-		const Plane& plane = planes[i];
-
-		collisionPlane_t* colPlane = cm.createPlane();
-		VecCopy(plane.normal, colPlane->normal);
-		colPlane->dist = plane.distance;
-		colPlane->signbits = plane.signBits;
-		colPlane->type = plane.type;
-	}
-
-	// Put brushsides
-	for (size_t i = 0; i < brushSides.size(); ++i)
-	{
-		const BrushSide& bside = brushSides[i];
-
-		collisionBrushSide_t* colBside = cm.createBrushSide();
-		colBside->pEq = bside.Eq ? cm.getSideEquation(bside.Eq - sideEquations.data()) : nullptr;
-		colBside->plane = cm.getPlane(bside.plane - planes.data());
-		colBside->shaderNum = bside.shader - shaders.data();
-		colBside->surfaceFlags = bside.surfaceFlags;
-	}
-
-	// Put nodes
-	for (size_t i = 0; i < nodes.size(); ++i)
-	{
-		const Node& node = nodes[i];
-
-		collisionNode_t* colNode = cm.createNode();
-		colNode->plane = cm.getPlane(node.plane - planes.data());
-		colNode->children[0] = node.children[0];
-		colNode->children[1] = node.children[1];
-	}
-
-	// Put brushes
-	for (size_t i = 0; i < brushes.size(); ++i)
-	{
-		const Brush& brush = brushes[i];
-
-		collisionBrush_t* colBrush = cm.createBrush();
-		colBrush->shaderNum = brush.shader - shaders.data();
-		colBrush->numsides = brush.numsides;
-		colBrush->sides = cm.getBrushSide(brush.sides - brushSides.data());
-		VectorCopy(brush.bounds[0], colBrush->bounds[0]);
-		VectorCopy(brush.bounds[1], colBrush->bounds[1]);
-		colBrush->contents = brush.contents;
-	}
-
-	// Put patches
-	for (size_t i = 0; i < surfaces.size(); ++i)
-	{
-		const Surface& patch = surfaces[i];
-
-		if(patch.IsPatch())
-		{
-			const BSPData::Shader* shader = patch.GetShader();
-
-			collisionPatch_t* colPatch = cm.createPatch();
-			colPatch->shaderNum = shader - shaders.data();
-			colPatch->surfaceFlags = shader->surfaceFlags;
-			colPatch->contents = shader->contentFlags;
-			colPatch->subdivisions = shader->subdivisions;
-
-			const PatchCollide* pc = patch.GetPatchCollide();
-
-			VectorCopy(pc->bounds[0], colPatch->pc.bounds[0]);
-			VectorCopy(pc->bounds[1], colPatch->pc.bounds[1]);
-			colPatch->pc.numFacets = pc->numFacets;
-			colPatch->pc.facets = new facet_t[pc->numFacets];
-			colPatch->pc.numPlanes = pc->numPlanes;
-			colPatch->pc.planes = new patchPlane_t[pc->numPlanes];
-
-			// Fill facets
-			for (size_t j = 0; j < colPatch->pc.numFacets; ++j)
-			{
-				const Facet& facet = pc->facets[j];
-				facet_t& colFacet = colPatch->pc.facets[j];
-
-				const size_t maxBorders = sizeof(colFacet.borderInward) / sizeof(colFacet.borderInward[0]);
-				for (size_t k = 0; k < maxBorders; k++)
-				{
-					colFacet.borderInward[k] = facet.borderInward[k];
-					colFacet.borderNoAdjust[k] = facet.borderNoAdjust[k];
-					colFacet.borderPlanes[k] = facet.borderPlanes[k];
-				}
-
-				colFacet.surfacePlane = facet.surfacePlane;
-				colFacet.numBorders = facet.numBorders;
-			}
-
-			// Fill planes
-			for (size_t j = 0; j < colPatch->pc.numPlanes; ++j)
-			{
-				const PatchPlane& plane = pc->planes[j];
-				patchPlane_t& colPlane = colPatch->pc.planes[j];
-
-				for(size_t k = 0; k < 4; ++k) colPlane.plane[k] = plane.plane[k];
-				colPlane.signbits = plane.signbits;
-			}
-
-			cm.createSurface(colPatch);
-		}
-		else {
-			cm.createSurface(nullptr);
-		}
-	}
-
-	// Put terrains
-	for (size_t i = 0; i < terrainPatches.size(); ++i)
-	{
-		const TerrainPatch& terrain = terrainPatches[i];
-		const BSPData::Shader* shader = terrain.shader;
-
-		TerrainCollide collision;
-		GenerateTerrainCollide(&terrain, collision);
-
-		collisionTerrain_t* colTerrain = cm.createTerrain();
-		VectorCopy(collision.vBounds[0], colTerrain->tc.vBounds[0]);
-		VectorCopy(collision.vBounds[1], colTerrain->tc.vBounds[1]);
-		memcpy(colTerrain->tc.squares, collision.squares, sizeof(colTerrain->tc.squares));
-		colTerrain->contents = shader->contentFlags;
-		colTerrain->shaderNum = shader - shaders.data();
-		colTerrain->surfaceFlags = shader->surfaceFlags;
-	}
-
-	// Put leafs
-	for (size_t i = 0; i < leafs.size(); ++i)
-	{
-		const Leaf& leaf = leafs[i];
-
-		collisionLeaf_t* colLeaf = cm.createLeaf();
-		colLeaf->area = leaf.area;
-		colLeaf->cluster = leaf.cluster;
-		colLeaf->firstLeafBrush = (uint32_t)leaf.firstLeafBrush;
-		colLeaf->firstLeafSurface = (uint32_t)leaf.firstLeafSurface;
-		colLeaf->firstLeafTerrain = (uint32_t)leaf.firstLeafTerrain;
-		colLeaf->numLeafBrushes = (uint32_t)leaf.numLeafBrushes;
-		colLeaf->numLeafSurfaces = (uint32_t)leaf.numLeafSurfaces;
-		colLeaf->numLeafTerrains = (uint32_t)leaf.numLeafTerrains;
-	}
-
-	// Put leaf brushes
-	for (size_t i = 0; i < leafBrushes.size(); ++i)
-	{
-		const uintptr_t leafNum = leafBrushes[i];
-
-		cm.createLeafBrush(leafNum);
-	}
-
-	// Put leaf surfaces
-	for (size_t i = 0; i < leafSurfaces.size(); ++i)
-	{
-		const uintptr_t leafNum = leafSurfaces[i];
-
-		cm.createLeafSurface(leafNum);
-	}
-
-	// Put leaf terrains
-	for (size_t i = 0; i < leafTerrains.size(); ++i)
-	{
-		const TerrainPatch* leafTerrain = leafTerrains[i];
-
-		cm.createLeafTerrain(cm.getTerrain(leafTerrain - terrainPatches.data()));
-	}
-
-	// Put brushmodels
-	for (size_t i = 0; i < brushModels.size(); ++i)
-	{
-		const Model& bmodel = brushModels[i];
-
-		collisionModel_t* colModel = cm.createModel();
-		VectorCopy(bmodel.bounds[0], colModel->mins);
-		VectorCopy(bmodel.bounds[1], colModel->maxs);
-		colModel->leaf.area = bmodel.leaf.area;
-		colModel->leaf.cluster = bmodel.leaf.cluster;
-		colModel->leaf.firstLeafBrush = (uint32_t)bmodel.leaf.firstLeafBrush;
-		colModel->leaf.firstLeafSurface = (uint32_t)bmodel.leaf.firstLeafSurface;
-		colModel->leaf.firstLeafTerrain = (uint32_t)bmodel.leaf.firstLeafTerrain;
-		colModel->leaf.numLeafBrushes = (uint32_t)bmodel.leaf.numLeafBrushes;
-		colModel->leaf.numLeafSurfaces = (uint32_t)bmodel.leaf.numLeafSurfaces;
-		colModel->leaf.numLeafTerrains = (uint32_t)bmodel.leaf.numLeafTerrains;
-	}
-}
-
-void BSP::FloodArea(uint32_t areaNum, uint32_t floodNum, uint32_t& floodValid)
+void BSPReader::FloodArea(std::vector<BSPData::Area>& areas, const std::vector<uintptr_t>& areaPortals, uint32_t numAreas, uint32_t areaNum, uint32_t floodNum, uint32_t& floodValid)
 {
 	Area* area = &areas[areaNum];
 
@@ -2272,16 +1870,16 @@ void BSP::FloodArea(uint32_t areaNum, uint32_t floodNum, uint32_t& floodValid)
 
 	area->floodNum = floodNum;
 	area->floodValid = floodValid;
-	uintptr_t* con = &areaPortals[areaNum * numAreas];
+	const uintptr_t* con = &areaPortals[areaNum * numAreas];
 	for (uint32_t i = 0; i < numAreas; ++i)
 	{
 		if (con[i] > 0) {
-			FloodArea(i, floodNum, floodValid);
+			FloodArea(areas, areaPortals, numAreas, i, floodNum, floodValid);
 		}
 	}
 }
 
-void BSP::FloodAreaConnections()
+void BSPReader::FloodAreaConnections(std::vector<BSPData::Area>& areas, const std::vector<uintptr_t>& areaPortals, uint32_t numAreas)
 {
 	uint32_t floodValid = 1;
 	uint32_t floodNum = 0;
@@ -2294,11 +1892,11 @@ void BSP::FloodAreaConnections()
 		}
 
 		++floodNum;
-		FloodArea(i, floodNum, floodValid);
+		FloodArea(areas, areaPortals, numAreas, i, floodNum, floodValid);
 	}
 }
 
-void BSP::BoundBrush(Brush* Brush)
+void BSPReader::BoundBrush(Brush* Brush)
 {
 	Brush->bounds[0][0] = -Brush->sides[0].plane->distance;
 	Brush->bounds[1][0] = Brush->sides[1].plane->distance;
@@ -2310,7 +1908,7 @@ void BSP::BoundBrush(Brush* Brush)
 	Brush->bounds[1][2] = Brush->sides[5].plane->distance;
 }
 
-void BSP::ColorShiftLightingFloats(float in[4], float out[4], float scale)
+void BSPReader::ColorShiftLightingFloats(float in[4], float out[4], float scale)
 {
 	float	r, g, b;
 
@@ -2335,7 +1933,7 @@ void BSP::ColorShiftLightingFloats(float in[4], float out[4], float scale)
 	out[3] = in[3];
 }
 
-void BSP::ColorShiftLightingFloats3(vec3_t in, vec3_t out, float scale)
+void BSPReader::ColorShiftLightingFloats3(vec3_t in, vec3_t out, float scale)
 {
 	float	r, g, b;
 
@@ -2359,7 +1957,7 @@ void BSP::ColorShiftLightingFloats3(vec3_t in, vec3_t out, float scale)
 	out[2] = b;
 }
 
-uint32_t BSP::LoadLump(const FilePtr& file, BSPFile::flump_t* lump, BSPFile::GameLump* gameLump, size_t size)
+uint32_t BSPReader::LoadLump(const IFilePtr& file, BSPFile::flump_t* lump, BSPFile::GameLump* gameLump, size_t size)
 {
 	const uint32_t fileLength = Endian.LittleLong(lump->fileLength);
 	gameLump->length = fileLength;
@@ -2374,10 +1972,7 @@ uint32_t BSP::LoadLump(const FilePtr& file, BSPFile::flump_t* lump, BSPFile::Gam
 		stream->seekg(fileOffset, stream->beg);
 		stream->read((char*)gameLump->buffer, fileLength);
 
-		HashUpdate((uint8_t*)gameLump->buffer, fileLength);
-
-		if (size)
-		{
+		if (size) {
 			return (uint32_t)(fileLength / size);
 		}
 	}
@@ -2388,11 +1983,16 @@ uint32_t BSP::LoadLump(const FilePtr& file, BSPFile::flump_t* lump, BSPFile::Gam
 	return 0;
 }
 
-void BSP::CreateEntities()
+void BSPReader::CreateEntities(
+	const char* entityString,
+	size_t length,
+	std::vector<class LevelEntity*>& entities,
+	std::unordered_map<str, std::vector<class LevelEntity*>>& targetList
+)
 {
 	Script script;
 
-	script.Parse(entityString, entityStringLength);
+	script.Parse(entityString, length);
 
 	while (script.TokenAvailable(true))
 	{
@@ -2532,17 +2132,16 @@ void BSP::CreateEntities()
 		}
 	}
 
-	if (entityString)
-	{
-		delete[] entityString;
-		entityString = nullptr;
-		entityStringLength = 0;
-	}
-
 	MOHPC_LOG(Info, "created %d entities", entities.size());
 }
 
-void BSP::MapBrushes()
+void BSPReader::MapBrushes(
+	std::vector<BSPData::Brush>& brushes,
+	const std::vector<BSPData::Surface>& surfaces,
+	const std::vector<BSPData::Model>& brushModels,
+	const std::vector<BSPData::Surface>& terrainSurfaces,
+	std::vector<BSPData::SurfacesGroup*>& surfacesGroups
+)
 {
 	size_t numParentedBrushes = 0;
 	const size_t numBrushes = brushes.size();
@@ -2589,7 +2188,7 @@ void BSP::MapBrushes()
 				// Finds at least one valid brush side that matches the parent's brush sides
 				for (size_t bs = 0; bs < brush->numsides; bs++)
 				{
-					BrushSide* brushside = &brush->sides[bs];
+					const BrushSide* brushside = &brush->sides[bs];
 					if (brushside->surfaceFlags & SURF_NODRAW)
 					{
 						continue;
@@ -2597,7 +2196,7 @@ void BSP::MapBrushes()
 
 					for (size_t bs2 = 0; bs2 < brush2->numsides; bs2++)
 					{
-						BrushSide* brushside2 = &brush2->sides[bs2];
+						const BrushSide* brushside2 = &brush2->sides[bs2];
 						if (brushside2->surfaceFlags & SURF_NODRAW)
 						{
 							continue;
@@ -2627,7 +2226,7 @@ void BSP::MapBrushes()
 	}
 
 	assert(brushModels.size());
-	Model* worldModel = &brushModels[0];
+	const Model* worldModel = &brushModels[0];
 
 	// Map brushes
 	size_t numMappedSurfaces = 0;
@@ -2905,6 +2504,375 @@ PatchPlane::PatchPlane()
 	: plane{ 0 }
 	, signbits{ 0 }
 {
+}
+
+MOHPC_OBJECT_DEFINITION(BSPReader);
+BSPReader::BSPReader()
+{
+}
+
+BSPReader::~BSPReader()
+{
+}
+
+Asset2Ptr BSPReader::read(const IFilePtr& file)
+{
+	std::istream* stream = file->GetStream();
+
+	BSPFile::fheader_t Header;
+	stream->read((char*)&Header, sizeof(Header));
+
+	if (memcmp(Header.ident, BSP_IDENT, sizeof(Header.ident)) && memcmp(Header.ident, BSP_EXPANSIONS_IDENT, sizeof(Header.ident)))
+	{
+		MOHPC_LOG(Error, "'%s' has wrong header", file->getName().generic_string().c_str());
+		throw BSPError::BadHeader((uint8_t*)Header.ident);
+	}
+
+	const uint32_t version = Endian.LittleLong(Header.version);
+	if (version < BSP_BETA_VERSION || version > BSP_MAX_VERSION)
+	{
+		MOHPC_LOG(Error, "'%s' has wrong version number (%i should be between %i and %i)", version, BSP_BETA_VERSION, BSP_MAX_VERSION);
+		throw BSPError::WrongVersion(version);
+	}
+
+	char* entityString = nullptr;
+	size_t entityStringLength = 0;
+
+	const BSPPtr bsp = BSPPtr(new BSP(file->getName()));
+
+	ProfilableCode("shaders",
+		[&]()
+		{
+			BSPFile::GameLump GameLump;
+
+			LoadLump(file, &Header.lumps[LUMP_SHADERS], &GameLump, sizeof(BSPFile::fshader_t));
+			LoadShaders(&GameLump, bsp->getShaders());
+		});
+
+	ProfilableCode("planes",
+		[&]()
+		{
+			BSPFile::GameLump GameLump;
+
+			LoadLump(file, &Header.lumps[LUMP_PLANES], &GameLump, sizeof(BSPFile::fplane_t));
+			LoadPlanes(&GameLump, bsp->getPlanes());
+		});
+
+	ProfilableCode("lightmaps",
+		[&]()
+		{
+			BSPFile::GameLump GameLump;
+
+			LoadLump(file, &Header.lumps[LUMP_LIGHTMAPS], &GameLump, sizeof(uint8_t));
+			LoadLightmaps(&GameLump, bsp->getLightmaps());
+		});
+
+	ProfilableCode("surfaces",
+		[&]()
+		{
+			BSPFile::GameLump SurfacesLump;
+			BSPFile::GameLump VerticesLump;
+			BSPFile::GameLump IndexesLump;
+
+			LoadLump(file, &Header.lumps[LUMP_SURFACES], &SurfacesLump, sizeof(BSPFile::fshader_t));
+			LoadLump(file, &Header.lumps[LUMP_DRAWVERTS], &VerticesLump, sizeof(BSPFile::fvertice_t));
+			LoadLump(file, &Header.lumps[LUMP_DRAWINDEXES], &IndexesLump, sizeof(int32_t));
+			LoadSurfaces(&SurfacesLump, &VerticesLump, &IndexesLump, bsp->getShaders(), bsp->getSurfaces());
+		});
+
+	ProfilableCode("side equations",
+		[&]()
+		{
+			BSPFile::GameLump GameLump;
+
+			LoadLump(file, &Header.lumps[LUMP_SIDEEQUATIONS], &GameLump, 0);
+			LoadSideEquations(&GameLump, bsp->getSideEquations());
+		});
+
+	ProfilableCode("brush sides",
+		[&]()
+		{
+			BSPFile::GameLump GameLump;
+
+			LoadLump(file, &Header.lumps[LUMP_BRUSHSIDES], &GameLump, 0);
+			LoadBrushSides(&GameLump, bsp->getShaders(), bsp->getPlanes(), bsp->getSideEquations(), bsp->getBrushSides());
+		});
+
+	ProfilableCode("brushes",
+		[&]()
+		{
+			BSPFile::GameLump GameLump;
+
+			LoadLump(file, &Header.lumps[LUMP_BRUSHES], &GameLump, 0);
+			LoadBrushes(&GameLump, bsp->getShaders(), bsp->getBrushSides(), bsp->getBrushes());
+		});
+
+	ProfilableCode("leaf brushes",
+		[&]()
+		{
+			BSPFile::GameLump GameLump;
+
+			LoadLump(file, &Header.lumps[LUMP_LEAFBRUSHES], &GameLump, 0);
+			LoadLeafsBrushes(&GameLump, bsp->getLeafBrushes());
+		});
+
+	ProfilableCode("leaf surfaces",
+		[&]()
+		{
+			BSPFile::GameLump GameLump;
+
+			LoadLump(file, &Header.lumps[LUMP_LEAFSURFACES], &GameLump, 0);
+			LoadLeafSurfaces(&GameLump, bsp->getLeafSurfaces());
+		});
+
+	ProfilableCode("leafs",
+		[&]()
+		{
+			BSPFile::GameLump GameLump;
+
+			LoadLump(file, &Header.lumps[LUMP_LEAFS], &GameLump, 0);
+			uint32_t numClusters = 0;
+			uint32_t numAreas = 0;
+			if (version > BSP_BETA_VERSION) {
+				LoadLeafs(&GameLump, bsp->getLeafs(), bsp->getAreas(), bsp->getAreaPortals(), numClusters, numAreas);
+			}
+			else {
+				LoadLeafsOld(&GameLump, bsp->getLeafs(), bsp->getAreas(), bsp->getAreaPortals(), numClusters, numAreas);
+			}
+
+			bsp->setNumClusters(numClusters);
+			bsp->setNumAreas(numAreas);
+		});
+
+	ProfilableCode("nodes",
+		[&]()
+		{
+			BSPFile::GameLump GameLump;
+
+			LoadLump(file, &Header.lumps[LUMP_NODES], &GameLump, 0);
+			LoadNodes(&GameLump, bsp->getPlanes(), bsp->getNodes());
+		});
+
+	ProfilableCode("visibility",
+		[&]()
+		{
+			BSPFile::GameLump GameLump;
+
+			LoadLump(file, &Header.lumps[LUMP_VISIBILITY], &GameLump, 0);
+
+
+			uint32_t numClusters = 0;
+			uint32_t clusterBytes = 0;
+			LoadVisibility(&GameLump, bsp->getVisibility(), numClusters, clusterBytes);
+
+			if (numClusters) bsp->setNumClusters(numClusters);
+		});
+
+	ProfilableCode("models",
+		[&]()
+		{
+			BSPFile::GameLump GameLump;
+
+			LoadLump(file, &Header.lumps[LUMP_MODELS], &GameLump, 0);
+			LoadSubmodels(&GameLump, bsp->getSurfaces(), bsp->getLeafBrushes(), bsp->getLeafSurfaces(), bsp->getBrushModels());
+		});
+
+	ProfilableCode("entities",
+		[&]()
+		{
+			BSPFile::GameLump GameLump;
+
+			LoadLump(file, &Header.lumps[LUMP_ENTITIES], &GameLump, 0);
+			LoadEntityString(&GameLump, entityString, entityStringLength);
+		});
+
+	ProfilableCode("sphere lights",
+		[&]()
+		{
+			BSPFile::GameLump GameLump;
+
+			LoadLump(file, &Header.lumps[LUMP_SPHERELIGHTS], &GameLump, 0);
+			LoadSphereLights(&GameLump, bsp->getSphereLights());
+		});
+
+	ProfilableCode("terrains",
+		[&]()
+		{
+			BSPFile::GameLump GameLump;
+
+			LoadLump(file, &Header.lumps[LUMP_TERRAIN], &GameLump, 0);
+			LoadTerrain(&GameLump, bsp->getShaders(), bsp->getTerrainPatches());
+		});
+
+	ProfilableCode("terrain indexes",
+		[&]()
+		{
+			BSPFile::GameLump GameLump;
+
+			LoadLump(file, &Header.lumps[LUMP_TERRAININDEXES], &GameLump, 0);
+			LoadTerrainIndexes(&GameLump, bsp->getTerrainPatches(), bsp->getLeafTerrains());
+		});
+
+	if (Header.version > BSP_BETA_VERSION)
+	{
+		ProfilableCode("static models",
+			[&]()
+			{
+				BSPFile::GameLump GameLump;
+
+				LoadLump(file, &Header.lumps[LUMP_STATICMODELDEF], &GameLump, 0);
+				LoadStaticModelDefs(&GameLump, bsp->getStaticModels());
+			});
+	}
+
+	ProfilableCode("generation of terrain surfaces",
+		[&]()
+		{
+			CreateTerrainSurfaces(bsp->getTerrainPatches(), bsp->getTerrainSurfaces());
+		});
+
+	ProfilableCode("brush mapping",
+		[&]()
+		{
+			MapBrushes(bsp->getBrushes(), bsp->getSurfaces(), bsp->getBrushModels(), bsp->getTerrainSurfaces(), bsp->getSurfacesGroups());
+		});
+
+	// FIXME: Should use an external class for creating entities
+	ProfilableCode("creation of entities",
+		[&]()
+		{
+			CreateEntities(entityString, entityStringLength, bsp->getEntities(), bsp->getTargetList());
+		});
+
+	MOHPC_LOG(Info, "Loaded map '%s', version %d", file->getName().generic_string().c_str(), version);
+
+	return bsp;
+}
+
+
+std::vector<MOHPC::BSPData::Shader>& BSP::getShaders()
+{
+	return shaders;
+}
+
+std::vector<MOHPC::BSPData::Lightmap>& BSP::getLightmaps()
+{
+	return lightmaps;
+}
+
+std::vector<MOHPC::BSPData::Surface>& BSP::getSurfaces()
+{
+	return surfaces;
+}
+
+std::vector<MOHPC::BSPData::Plane>& BSP::getPlanes()
+{
+	return planes;
+}
+
+std::vector<MOHPC::BSPData::SideEquation>& BSP::getSideEquations()
+{
+	return sideEquations;
+}
+
+std::vector<MOHPC::BSPData::BrushSide>& BSP::getBrushSides()
+{
+	return brushSides;
+}
+
+std::vector<MOHPC::BSPData::Brush>& BSP::getBrushes()
+{
+	return brushes;
+}
+
+std::vector<MOHPC::BSPData::Node>& BSP::getNodes()
+{
+	return nodes;
+}
+
+std::vector<MOHPC::BSPData::Leaf>& BSP::getLeafs()
+{
+	return leafs;
+}
+
+std::vector<uintptr_t>& BSP::getLeafBrushes()
+{
+	return leafBrushes;
+}
+
+std::vector<uintptr_t>& BSP::getLeafSurfaces()
+{
+	return leafSurfaces;
+}
+
+std::vector<const BSPData::TerrainPatch*>& BSP::getLeafTerrains()
+{
+	return leafTerrains;
+}
+
+std::vector<MOHPC::BSPData::Area>& BSP::getAreas()
+{
+	return areas;
+}
+
+std::vector<uintptr_t>& BSP::getAreaPortals()
+{
+	return areaPortals;
+}
+
+std::vector<MOHPC::BSPData::Model>& BSP::getBrushModels()
+{
+	return brushModels;
+}
+
+std::vector<MOHPC::BSPData::SphereLight>& BSP::getSphereLights()
+{
+	return lights;
+}
+
+std::vector<MOHPC::BSPData::StaticModel>& BSP::getStaticModels()
+{
+	return staticModels;
+}
+
+std::vector<MOHPC::BSPData::TerrainPatch>& BSP::getTerrainPatches()
+{
+	return terrainPatches;
+}
+
+std::vector<MOHPC::BSPData::Surface>& BSP::getTerrainSurfaces()
+{
+	return terrainSurfaces;
+}
+
+std::vector<class LevelEntity*>& BSP::getEntities()
+{
+	return entities;
+}
+
+std::unordered_map<MOHPC::str, std::vector<class LevelEntity*>>& BSP::getTargetList()
+{
+	return targetList;
+}
+
+std::vector<MOHPC::BSPData::SurfacesGroup*>& BSP::getSurfacesGroups()
+{
+	return surfacesGroups;
+}
+
+std::vector<uint8_t>& BSP::getVisibility()
+{
+	return visibility;
+}
+
+void BSP::setNumClusters(uint32_t numClustersValue)
+{
+	numClusters = numClustersValue;
+}
+
+void BSP::setNumAreas(uint32_t numAreasValue)
+{
+	numAreas = numAreasValue;
 }
 
 BSPError::BadHeader::BadHeader(const uint8_t inHeader[4])

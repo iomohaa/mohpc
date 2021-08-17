@@ -321,7 +321,7 @@ SoundResults SoundManager::ParseUbersound(const char* filename, const char* cate
 	Script script;
 	script.InitAssetManager(GetAssetManager());
 
-	FilePtr File = GetFileManager()->OpenFile(filename, categoryName);
+	IFilePtr File = GetFileManager()->OpenFile(filename, categoryName);
 	if (!File)
 	{
 		if (firstSoundNode) {

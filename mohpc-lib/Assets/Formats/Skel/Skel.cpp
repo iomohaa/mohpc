@@ -2,6 +2,7 @@
 #include <MOHPC/Assets/Formats/Skel.h>
 #include <MOHPC/Utility/SharedPtr.h>
 #include <MOHPC/Files/Managers/FileManager.h>
+#include <MOHPC/Files/FileHelpers.h>
 #include <MOHPC/Common/Log.h>
 #include <MOHPC/Utility/Misc/Endian.h>
 #include <MOHPC/Utility/Misc/EndianCoordHelpers.h>
@@ -30,33 +31,130 @@ void MOHPC::AddToBounds(SkelVec3 *bounds, const SkelVec3 *newBounds)
 
 MOHPC_OBJECT_DEFINITION(Skeleton);
 
-Skeleton::Skeleton()
+Skeleton::Skeleton(
+	const fs::path& fileName,
+	std::vector<BoneData>&& bonesData,
+	std::vector<Surface>&& surfacesData,
+	uint32_t* lodIndexPtr,
+	std::vector<int32_t>&& boxesData,
+	std::vector<str>&& morphsData
+)
+	: Asset2(fileName)
+	, bones(bonesData)
+	, surfaces(surfacesData)
+	, boxes(boxesData)
+	, morphTargets(morphsData)
+{
+	memcpy(lodIndex, lodIndexPtr, sizeof(lodIndex));
+}
+
+size_t Skeleton::GetNumSurfaces() const
+{
+	return surfaces.size();
+}
+
+const Surface *Skeleton::GetSurface(size_t index) const
+{
+	if (index >= 0 || index < surfaces.size())
+	{
+		return &surfaces[index];
+	}
+	else
+	{
+		return nullptr;
+	}
+}
+
+size_t Skeleton::GetNumBones() const
+{
+	return bones.size();
+}
+
+const BoneData *Skeleton::GetBone(size_t index) const
+{
+	return &bones[index];
+}
+
+const std::vector<BoneData>& Skeleton::getBones() const
+{
+	return bones;
+}
+
+size_t Skeleton::GetNumMorphTargets() const
+{
+	return morphTargets.size();
+}
+
+const char* Skeleton::GetMorphTarget(size_t index) const
+{
+	return morphTargets.at(index).c_str();
+}
+
+std::vector<MOHPC::AnimFrame>& SkeletonAnimation::getFrames()
+{
+	return m_frame;
+}
+
+std::vector<MOHPC::SkanChannelHdr>& SkeletonAnimation::getAryChannels()
+{
+	return ary_channels;
+}
+
+MOHPC_OBJECT_DEFINITION(SkeletonReader);
+SkeletonReader::SkeletonReader()
 {
 }
 
-void Skeleton::LoadBoneFromBuffer2(const BoneFileData *fileData, BoneData *boneData) const
+SkeletonReader::~SkeletonReader()
 {
-	SkeletonChannelNameTable* const boneNamesTable = GetAssetManager()->GetManager<SkeletorManager>()->GetBoneNamesTable();
-	SkeletonChannelNameTable* const channelNamesTable = GetAssetManager()->GetManager<SkeletorManager>()->GetChannelNamesTable();
+}
+
+Asset2Ptr SkeletonReader::read(const IFilePtr& file)
+{
+	const fs::path& Fname = file->getName();
+
+	const std::string ext = FileHelpers::getExtension(Fname).generic_string();
+	if (ext.length())
+	{
+		if (!strHelpers::icmp(ext.c_str(), "skb") || !strHelpers::icmp(ext.c_str(), "skd")) {
+			return LoadModel(file);
+		}
+		else
+		{
+			MOHPC_LOG(Error, "Invalid extension '%s'", ext);
+			throw SkelError::BadExtension(ext);
+		}
+	}
+	else {
+		throw SkelError::NoExtension();
+	}
+
+	return nullptr;
+}
+
+void MOHPC::LoadBoneFromBuffer2(const SkeletorManagerPtr& skeletorManager, const BoneFileData* fileData, BoneData* boneData)
+{
+	SkeletonChannelNameTable* const boneNamesTable = skeletorManager->GetBoneNamesTable();
+	SkeletonChannelNameTable* const channelNamesTable = skeletorManager->GetChannelNamesTable();
 
 	boneData->channel = boneNamesTable->RegisterChannel(fileData->name);
 	boneData->boneType = (BoneType)fileData->boneType;
 
-	if (boneData->boneType == Skeleton::SKELBONE_HOSEROT)
+	if (boneData->boneType == BoneType::SKELBONE_HOSEROT)
 	{
 		uint32_t parentId = Endian.LittleInteger(*(const unsigned int*)&fileData->parent[Endian.LittleInteger(fileData->ofsBaseData) + 4]);
 
 		if (parentId == 1)
 		{
-			boneData->boneType = Skeleton::SKELBONE_HOSEROTPARENT;
+			boneData->boneType = BoneType::SKELBONE_HOSEROTPARENT;
 		}
 		else if (parentId == 2)
 		{
-			boneData->boneType = Skeleton::SKELBONE_HOSEROTBOTH;
+			boneData->boneType = BoneType::SKELBONE_HOSEROTBOTH;
 		}
 	}
 
-	const char* newChannelName = (const char *)fileData + Endian.LittleInteger(fileData->ofsChannelNames);
+	const char* newChannelName = (const char*)fileData + Endian.LittleInteger(fileData->ofsChannelNames);
 	boneData->numChannels = skelBone_Base::GetNumChannels(boneData->boneType);
 
 	for (uint16_t i = 0; i < boneData->numChannels; i++)
@@ -65,13 +163,13 @@ void Skeleton::LoadBoneFromBuffer2(const BoneFileData *fileData, BoneData *boneD
 		if (boneData->channelIndex[i] < 0)
 		{
 			MOHPC_LOG(Warn, "Channel named %s not added. (Bone will not work without it)", newChannelName);
-			boneData->boneType = Skeleton::SKELBONE_ZERO;
+			boneData->boneType = BoneType::SKELBONE_ZERO;
 		}
 
 		newChannelName += strlen(newChannelName) + 1;
 	}
 
-	const char* newBoneRefName = (const char *)fileData + Endian.LittleInteger(fileData->ofsBoneNames);
+	const char* newBoneRefName = (const char*)fileData + Endian.LittleInteger(fileData->ofsBoneNames);
 	boneData->numRefs = skelBone_Base::GetNumBoneRefs(boneData->boneType);
 
 	for (uint16_t i = 0; i < boneData->numRefs; i++)
@@ -94,7 +192,7 @@ void Skeleton::LoadBoneFromBuffer2(const BoneFileData *fileData, BoneData *boneD
 
 	switch (boneData->boneType)
 	{
-	case Skeleton::SKELBONE_ROTATION:
+	case BoneType::SKELBONE_ROTATION:
 	{
 		fileData->getBaseData(baseData, 3);
 		boneData->offset[0] = baseData[0];
@@ -102,7 +200,7 @@ void Skeleton::LoadBoneFromBuffer2(const BoneFileData *fileData, BoneData *boneD
 		boneData->offset[2] = baseData[2];
 		break;
 	}
-	case Skeleton::SKELBONE_IKSHOULDER:
+	case BoneType::SKELBONE_IKSHOULDER:
 	{
 		fileData->getBaseData(baseData, 3, 4);
 		boneData->offset[0] = baseData[0];
@@ -110,14 +208,14 @@ void Skeleton::LoadBoneFromBuffer2(const BoneFileData *fileData, BoneData *boneD
 		boneData->offset[2] = baseData[2];
 		break;
 	}
-	case Skeleton::SKELBONE_IKELBOW:
-	case Skeleton::SKELBONE_IKWRIST:
+	case BoneType::SKELBONE_IKELBOW:
+	case BoneType::SKELBONE_IKWRIST:
 	{
 		fileData->getBaseData(baseData, 3);
 		boneData->length = VectorLength(baseData);
 		break;
 	}
-	case Skeleton::SKELBONE_AVROT:
+	case BoneType::SKELBONE_AVROT:
 	{
 		fileData->getBaseData(baseData, 4);
 		boneData->length = baseData[0];
@@ -126,9 +224,9 @@ void Skeleton::LoadBoneFromBuffer2(const BoneFileData *fileData, BoneData *boneD
 		boneData->offset[2] = baseData[3];
 		break;
 	}
-	case Skeleton::SKELBONE_HOSEROT:
-	case Skeleton::SKELBONE_HOSEROTBOTH:
-	case Skeleton::SKELBONE_HOSEROTPARENT:
+	case BoneType::SKELBONE_HOSEROT:
+	case BoneType::SKELBONE_HOSEROTBOTH:
+	case BoneType::SKELBONE_HOSEROTPARENT:
 	{
 		fileData->getBaseData(baseData, 6);
 		boneData->offset[0] = baseData[3];
@@ -144,16 +242,8 @@ void Skeleton::LoadBoneFromBuffer2(const BoneFileData *fileData, BoneData *boneD
 	}
 }
 
-bool Skeleton::LoadModel(const char *path)
+SkeletonPtr SkeletonReader::LoadModel(const IFilePtr& file)
 {
-	// Load file
-	FilePtr file = GetFileManager()->OpenFile(path);
-	if (!file)
-	{
-		MOHPC_LOG(Error, "Couldn't load '%s'", path);
-		return false;
-	}
-
 	const File_SkelHeader* pHeader;
 	// Read the header
 	uint64_t length = file->ReadBuffer((void**)&pHeader);
@@ -161,20 +251,19 @@ bool Skeleton::LoadModel(const char *path)
 	// Check if the header matches
 	if (memcmp(pHeader->ident, TIKI_SKB_HEADER_IDENT, sizeof(pHeader->ident)) && memcmp(pHeader->ident, TIKI_SKD_HEADER_IDENT, sizeof(pHeader->ident)))
 	{
-		MOHPC_LOG(Error, "Tried to load '%s' as a skeletal base frame (File has invalid header)", path);
-		return false;
+		MOHPC_LOG(Error, "Tried to load '%s' as a skeletal base frame (File has invalid header)", file->getName().generic_string().c_str());
+		return nullptr;
 	}
 
 	// Check if the version matches
 	const uint32_t version = Endian.LittleInteger(pHeader->version);
 	if (version < TIKI_SKB_HEADER_VER_3 || version > TIKI_SKD_HEADER_VERSION)
 	{
-		MOHPC_LOG(Error, "%s has wrong version (%i should be %i or %i)\n", path, version, TIKI_SKB_HEADER_VER_3, TIKI_SKB_HEADER_VERSION);
-		return false;
+		MOHPC_LOG(Error, "%s has wrong version (%i should be %i or %i)\n", file->getName().generic_string().c_str(), version, TIKI_SKB_HEADER_VER_3, TIKI_SKB_HEADER_VERSION);
+		return nullptr;
 	}
 
-	name = pHeader->name;
-	pLOD = nullptr;
+	uint32_t lodIndex[10];
 
 	// Import LODs
 	constexpr size_t numLodIndexes = sizeof(pHeader->lodIndex) / sizeof(pHeader->lodIndex[0]);
@@ -183,118 +272,63 @@ bool Skeleton::LoadModel(const char *path)
 	}
 
 	// Import surfaces
+	std::vector<Surface> surfaces;
 	if (version <= TIKI_SKB_HEADER_VERSION) {
-		LoadSKBSurfaces(pHeader, length);
+		LoadSKBSurfaces(pHeader, length, surfaces);
 	}
 	else {
-		LoadSKDSurfaces(pHeader, length);
+		LoadSKDSurfaces(pHeader, length, surfaces);
 	}
 
 	// Import collapses
 	if (version > TIKI_SKB_HEADER_VER_3) {
-		LoadCollapses(pHeader, length);
+		LoadCollapses(pHeader, length, surfaces);
 	}
 
 	// Create bones
+	std::vector<BoneData> bones;
 	if (version > TIKI_SKB_HEADER_VERSION) {
-		LoadSKDBones(pHeader, length);
+		LoadSKDBones(pHeader, length, bones);
 	}
 	else {
-		LoadSKBBones(pHeader, length);
+		LoadSKBBones(pHeader, length, bones);
 	}
 
+	std::vector<int32_t> boxes;
+	std::vector<str> morphs;
 	if (version > TIKI_SKB_HEADER_VER_3)
 	{
 		// Import box data for SKB version 4
-		LoadBoxes(pHeader, length);
+		LoadBoxes(file, pHeader, length, boxes);
 
 		if (version > TIKI_SKB_HEADER_VERSION)
 		{
 			// Import morph data for SKD
-			LoadMorphs(pHeader, length);
+			LoadMorphs(file, pHeader, length, morphs);
 		}
 	}
 
-	HashUpdate((const uint8_t*)pHeader, (size_t)length);
-
-	return true;
+	return SkeletonPtr(new Skeleton(
+		file->getName(),
+		std::move(bones),
+		std::move(surfaces),
+		lodIndex,
+		std::move(boxes),
+		std::move(morphs)
+	));
 }
 
-void Skeleton::Load()
-{
-	const char *Fname = GetFilename().c_str();
-	size_t length = GetFilename().length();
-
-	const char* ext = length > 4 ? &Fname[length - 4] : nullptr;
-	if (ext)
-	{
-		if (!strHelpers::icmp(ext, ".skb") || !strHelpers::icmp(ext, ".skd")) {
-			LoadModel(Fname);
-		}
-		else
-		{
-			MOHPC_LOG(Error, "Invalid extension '%s'", ext);
-			throw SkelError::BadExtension(ext);
-		}
-	}
-	else {
-		throw SkelError::NoExtension();
-	}
-}
-
-size_t Skeleton::GetNumSurfaces() const
-{
-	return Surfaces.size();
-}
-
-const Skeleton::Surface *Skeleton::GetSurface(size_t index) const
-{
-	if (index >= 0 || index < Surfaces.size())
-	{
-		return &Surfaces[index];
-	}
-	else
-	{
-		return nullptr;
-	}
-}
-
-size_t Skeleton::GetNumBones() const
-{
-	return Bones.size();
-}
-
-const Skeleton::BoneData *Skeleton::GetBone(size_t index) const
-{
-	return &Bones[index];
-}
-
-size_t Skeleton::GetNumMorphTargets() const
-{
-	return MorphTargets.size();
-}
-
-const char* Skeleton::GetMorphTarget(size_t index) const
-{
-	return MorphTargets.at(index).c_str();
-}
-
-const char* MOHPC::Skeleton::GetName() const
-{
-	return name.c_str();
-}
-
-void MOHPC::Skeleton::LoadSKBSurfaces(const File_SkelHeader* pHeader, size_t length)
+void SkeletonReader::LoadSKBSurfaces(const File_SkelHeader* pHeader, size_t length, std::vector<Surface>& surfaces)
 {
 	const uint32_t numSurfaces = Endian.LittleInteger(pHeader->numSurfaces);
 	const File_Surface* oldSurf = (const File_Surface*)((const uint8_t*)pHeader + Endian.LittleInteger(pHeader->ofsSurfaces));
 
 	// Setup surfaces
-	Surfaces.reserve(numSurfaces);
+	surfaces.reserve(numSurfaces);
 
 	for (uint32_t i = 0; i < numSurfaces; i++)
 	{
-		Surface& surf = Surfaces.emplace_back();
+		Surface& surf = surfaces.emplace_back();
 		const uint32_t numTriangles = Endian.LittleInteger(oldSurf->numTriangles);
 		const uint32_t numVerts = Endian.LittleInteger(oldSurf->numVerts);
 
@@ -337,17 +371,17 @@ void MOHPC::Skeleton::LoadSKBSurfaces(const File_SkelHeader* pHeader, size_t len
 	}
 }
 
-void MOHPC::Skeleton::LoadSKDSurfaces(const File_SkelHeader* pHeader, size_t length)
+void SkeletonReader::LoadSKDSurfaces(const File_SkelHeader* pHeader, size_t length, std::vector<Surface>& surfaces)
 {
 	const uint32_t numSurfaces = Endian.LittleInteger(pHeader->numSurfaces);
 	const File_Surface* oldSurf = (const File_Surface*)((const uint8_t*)pHeader + Endian.LittleInteger(pHeader->ofsSurfaces));
 
 	// Setup surfaces
-	Surfaces.reserve(numSurfaces);
+	surfaces.reserve(numSurfaces);
 
 	for (uint32_t i = 0; i < numSurfaces; i++)
 	{
-		Surface& surf = Surfaces.emplace_back();
+		Surface& surf = surfaces.emplace_back();
 		const uint32_t numTriangles = Endian.LittleInteger(oldSurf->numTriangles);
 		const uint32_t numVerts = Endian.LittleInteger(oldSurf->numVerts);
 
@@ -405,14 +439,14 @@ void MOHPC::Skeleton::LoadSKDSurfaces(const File_SkelHeader* pHeader, size_t len
 	}
 }
 
-void MOHPC::Skeleton::LoadCollapses(const File_SkelHeader* pHeader, size_t length)
+void SkeletonReader::LoadCollapses(const File_SkelHeader* pHeader, size_t length, std::vector<Surface>& surfaces)
 {
 	const uint32_t numSurfaces = Endian.LittleInteger(pHeader->numSurfaces);
 	const File_Surface* oldSurf = (const File_Surface*)((const uint8_t*)pHeader + Endian.LittleInteger(pHeader->ofsSurfaces));
 
 	for (uint32_t i = 0; i < numSurfaces; i++)
 	{
-		Surface& surf = Surfaces[i];
+		Surface& surf = surfaces[i];
 		const uint32_t numVerts = Endian.LittleInteger(oldSurf->numVerts);
 
 		surf.Collapse.resize(numVerts);
@@ -436,10 +470,10 @@ void MOHPC::Skeleton::LoadCollapses(const File_SkelHeader* pHeader, size_t lengt
 	}
 }
 
-void MOHPC::Skeleton::LoadSKBBones(const File_SkelHeader* pHeader, size_t length)
+void SkeletonReader::LoadSKBBones(const File_SkelHeader* pHeader, size_t length, std::vector<BoneData>& bones)
 {
 	const uint32_t numBones = Endian.LittleInteger(pHeader->numBones);
-	Bones.resize(numBones);
+	bones.resize(numBones);
 
 	MOHPC_LOG(Debug, "Old skeleton (SKB), creating bone data");
 
@@ -456,25 +490,25 @@ void MOHPC::Skeleton::LoadSKBBones(const File_SkelHeader* pHeader, size_t length
 			boneName = TIKI_bones[parent].name;
 		}
 
-		CreatePosRotBoneData(TIKI_bones->name, boneName, &Bones[i]);
+		CreatePosRotBoneData(TIKI_bones->name, boneName, &bones[i]);
 		TIKI_bones++;
 	}
 }
 
-void MOHPC::Skeleton::LoadSKDBones(const File_SkelHeader* pHeader, size_t length)
+void SkeletonReader::LoadSKDBones(const File_SkelHeader* pHeader, size_t length, std::vector<BoneData>& bones)
 {
 	const uint32_t numBones = Endian.LittleInteger(pHeader->numBones);
-	Bones.resize(numBones);
+	bones.resize(numBones);
 
 	const BoneFileData* boneBuffer = (const BoneFileData*)((const uint8_t*)pHeader + Endian.LittleInteger(pHeader->ofsBones));
 	for (uint32_t i = 0; i < numBones; i++)
 	{
-		LoadBoneFromBuffer2(boneBuffer, &Bones[i]);
+		LoadBoneFromBuffer2(GetAssetManager()->getManager<SkeletorManager>(), boneBuffer, &bones[i]);
 		boneBuffer = (const BoneFileData*)((const uint8_t*)boneBuffer + Endian.LittleInteger(boneBuffer->ofsEnd));
 	}
 }
 
-void MOHPC::Skeleton::LoadBoxes(const File_SkelHeader* pHeader, size_t length)
+void SkeletonReader::LoadBoxes(const IFilePtr& file, const File_SkelHeader* pHeader, size_t length, std::vector<int32_t>& boxes)
 {
 	const uint32_t numBoxes = Endian.LittleInteger(pHeader->numBoxes);
 	if (numBoxes)
@@ -482,21 +516,21 @@ void MOHPC::Skeleton::LoadBoxes(const File_SkelHeader* pHeader, size_t length)
 		const uint32_t ofsBoxes = Endian.LittleInteger(pHeader->ofsBoxes);
 		if (ofsBoxes >= 0 && (uint32_t)(ofsBoxes + numBoxes * sizeof(uint32_t)) < length)
 		{
-			Boxes.resize(numBoxes);
+			boxes.resize(numBoxes);
 
 			const int32_t* pBoxes = (const int32_t*)((const uint8_t*)pHeader + ofsBoxes);
 			for (uint32_t i = 0; i < numBoxes; i++)
 			{
-				Boxes[i] = Endian.LittleInteger(pBoxes[i]);
+				boxes[i] = Endian.LittleInteger(pBoxes[i]);
 			}
 		}
 		else {
-			MOHPC_LOG(Warn, "Box data is corrupted for '%s'", GetFilename().c_str());
+			MOHPC_LOG(Warn, "Box data is corrupted for '%s'", file->getName().generic_string().c_str());
 		}
 	}
 }
 
-void MOHPC::Skeleton::LoadMorphs(const File_SkelHeader* pHeader, size_t length)
+void SkeletonReader::LoadMorphs(const IFilePtr& file, const File_SkelHeader* pHeader, size_t length, std::vector<str>& morphs)
 {
 	const uint32_t numMorphTargets = Endian.LittleInteger(pHeader->numMorphTargets);
 	if (numMorphTargets)
@@ -510,7 +544,7 @@ void MOHPC::Skeleton::LoadMorphs(const File_SkelHeader* pHeader, size_t length)
 
 			for (uint32_t i = 0; i < numMorphTargets; i++)
 			{
-				size_t nLen = strlen(pMorphTargets) + 1;
+				size_t nLen = strHelpers::len(pMorphTargets) + 1;
 				nMorphBytes += nLen;
 				pMorphTargets += nLen;
 			}
@@ -522,39 +556,39 @@ void MOHPC::Skeleton::LoadMorphs(const File_SkelHeader* pHeader, size_t length)
 
 		if (ofsMorphTargets >= 0 && (uint32_t)(ofsMorphTargets + nMorphBytes) <= length)
 		{
-			MorphTargets.resize(numMorphTargets);
+			morphs.resize(numMorphTargets);
 
 			const char* pMorphTargets = (const char*)pHeader + ofsMorphTargets;
 
 			for (uint32_t i = 0; i < numMorphTargets; i++)
 			{
-				size_t nLen = strlen(pMorphTargets) + 1;
-				MorphTargets[i] = pMorphTargets;
+				size_t nLen = strHelpers::len(pMorphTargets) + 1;
+				morphs[i] = pMorphTargets;
 				pMorphTargets += nLen;
 			}
 		}
 		else {
-			MOHPC_LOG(Warn, "Morph targets data is corrupted for '%s'", GetFilename().c_str());
+			MOHPC_LOG(Warn, "Morph targets data is corrupted for '%s'", file->getName().generic_string().c_str());
 		}
 	}
 }
 
-MOHPC::SkelError::BadExtension::BadExtension(const str& inExtension)
+SkelError::BadExtension::BadExtension(const fs::path& inExtension)
 	: extension(inExtension)
 {
 }
 
-const char* MOHPC::SkelError::BadExtension::getExtension() const
+const fs::path& SkelError::BadExtension::getExtension() const
 {
-	return extension.c_str();
+	return extension;
 }
 
-const char* MOHPC::SkelError::BadExtension::what() const noexcept
+const char* SkelError::BadExtension::what() const noexcept
 {
 	return "Bad or unsupported skeleton extension";
 }
 
-const char* MOHPC::SkelError::NoExtension::what() const noexcept
+const char* SkelError::NoExtension::what() const noexcept
 {
 	return "No extension was specified for loading the skeleton file";
 }

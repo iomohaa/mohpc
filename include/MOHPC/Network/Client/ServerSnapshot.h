@@ -98,6 +98,17 @@ namespace Network
 		 */
 		MOHPC_NET_EXPORTS bool getSnapshot(uintptr_t snapshotNum, SnapshotInfo& outSnapshot) const;
 
+		/**
+		 * Return snapshot data.
+		 *
+		 * @param	outSnapshot		Output data.
+		 * @return	true if the snap is valid.
+		 */
+		MOHPC_NET_EXPORTS bool getSnapshot(SnapshotInfo& outSnapshot) const;
+
+		/** Return the (raw) snapshot data. */
+		MOHPC_NET_EXPORTS const rawSnapshot_t& getCurrentSnap() const;
+
 		/** Return the current snapshot number. */
 		MOHPC_NET_EXPORTS uint32_t getCurrentSnapNumber() const;
 		MOHPC_NET_EXPORTS netTime_t getServerTime() const;

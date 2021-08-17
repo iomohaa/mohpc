@@ -36,8 +36,14 @@ namespace Network
 		/** Return the current remote time (non-simulated). */
 		MOHPC_NET_EXPORTS netTime_t getRemoteTime() const;
 
-		/** Return the current server time. */
+		/** Return the previous remote time (non-simulated). */
+		MOHPC_NET_EXPORTS netTime_t getOldRemoteTime() const;
+
+		/** Return the current simulated server time. */
 		MOHPC_NET_EXPORTS tickTime_t getSimulatedRemoteTime() const;
+
+		/** Return the previous simulated server time. */
+		MOHPC_NET_EXPORTS tickTime_t getOldSimulatedRemoteTime() const;
 
 		/** Return the frequency (milliseconds) at which the game server is running (1 / sv_fps). */
 		MOHPC_NET_EXPORTS deltaTime_t getDeltaTime() const;
@@ -72,6 +78,7 @@ namespace Network
 		deltaTime_t serverDeltaTime;
 		deltaTimeFloat_t serverDeltaTimeSeconds;
 		netTime_t serverStartTime;
+		netTime_t frameServerTime;
 		netTime_t oldFrameServerTime;
 		int32_t timeNudge;
 		extrapolation_e extrapolation;

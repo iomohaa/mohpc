@@ -17,6 +17,8 @@ namespace Network
 {
 	namespace CGame
 	{
+		using dmFlag_t = uint32_t;
+
 		/**
 		 * DM Flags.
 		 */
@@ -26,23 +28,23 @@ namespace Network
 			 * Values for dmflags
 			 */
 			 /** Players don't drop health on death. */
-			MOHPC_NET_EXPORTS extern unsigned int NO_HEALTH;
+			MOHPC_NET_EXPORTS extern dmFlag_t NO_HEALTH;
 			/** Players don't drop powerups on death. */
-			MOHPC_NET_EXPORTS extern unsigned int NO_POWERUPS;
+			MOHPC_NET_EXPORTS extern dmFlag_t NO_POWERUPS;
 			/** Whether or not weapons in the level stays available on player pick up. */
-			MOHPC_NET_EXPORTS extern unsigned int WEAPONS_STAY;
+			MOHPC_NET_EXPORTS extern dmFlag_t WEAPONS_STAY;
 			/** Prevent falling damage. */
-			MOHPC_NET_EXPORTS extern unsigned int NO_FALLING;
+			MOHPC_NET_EXPORTS extern dmFlag_t NO_FALLING;
 			/** This flag doesn't seem to be used at all. */
-			MOHPC_NET_EXPORTS extern unsigned int INSTANT_ITEMS;
+			MOHPC_NET_EXPORTS extern dmFlag_t INSTANT_ITEMS;
 			/** TriggerChangeLevel won't switch level. */
-			MOHPC_NET_EXPORTS extern unsigned int SAME_LEVEL;
+			MOHPC_NET_EXPORTS extern dmFlag_t SAME_LEVEL;
 			/** Prevent players from having an armor. */
-			MOHPC_NET_EXPORTS extern unsigned int NO_ARMOR;
+			MOHPC_NET_EXPORTS extern dmFlag_t NO_ARMOR;
 			/** MOH:AA: Infinite clip ammo. MOH:SH/MOH:BT: Infinite magazines. */
-			MOHPC_NET_EXPORTS extern unsigned int INFINITE_AMMO;
+			MOHPC_NET_EXPORTS extern dmFlag_t INFINITE_AMMO;
 			/** This should prevent footstep sounds to play. */
-			MOHPC_NET_EXPORTS extern unsigned int NO_FOOTSTEPS;
+			MOHPC_NET_EXPORTS extern dmFlag_t NO_FOOTSTEPS;
 
 			/**
 			 * protocol version >= 15
@@ -50,9 +52,9 @@ namespace Network
 			 */
 
 			 /** Allow leaning while in movement. */
-			MOHPC_NET_EXPORTS extern unsigned int ALLOW_LEAN;
+			MOHPC_NET_EXPORTS extern dmFlag_t ALLOW_LEAN;
 			/** Specify that G43 is replaced with Kar98. */
-			MOHPC_NET_EXPORTS extern unsigned int OLD_SNIPERRIFLE;
+			MOHPC_NET_EXPORTS extern dmFlag_t OLD_SNIPERRIFLE;
 
 			/**
 			 * protocol version >= 17
@@ -60,28 +62,28 @@ namespace Network
 			 */
 
 			 /** Axis use a shotgun rather than kar98 mortar. */
-			MOHPC_NET_EXPORTS extern unsigned int GERMAN_SHOTGUN;
+			MOHPC_NET_EXPORTS extern dmFlag_t GERMAN_SHOTGUN;
 			/** Allow landmine to be used on AA maps. */
-			MOHPC_NET_EXPORTS extern unsigned int ALLOW_OLDMAP_MINES;
+			MOHPC_NET_EXPORTS extern dmFlag_t ALLOW_OLDMAP_MINES;
 
 			/**
 			 * [BT]
 			 * Weapon type filtering
 			 */
 			 /** Disallow the usage of rifles. */
-			MOHPC_NET_EXPORTS extern unsigned int BAN_WEAP_RIFLE;
+			MOHPC_NET_EXPORTS extern dmFlag_t BAN_WEAP_RIFLE;
 			/** Disallow the usage of rifles. */
-			MOHPC_NET_EXPORTS extern unsigned int BAN_WEAP_SNIPER;
+			MOHPC_NET_EXPORTS extern dmFlag_t BAN_WEAP_SNIPER;
 			/** Disallow the usage of snipers. */
-			MOHPC_NET_EXPORTS extern unsigned int BAN_WEAP_SMG;
+			MOHPC_NET_EXPORTS extern dmFlag_t BAN_WEAP_SMG;
 			/** Disallow the usage of sub-machine guns. */
-			MOHPC_NET_EXPORTS extern unsigned int BAN_WEAP_MG;
+			MOHPC_NET_EXPORTS extern dmFlag_t BAN_WEAP_MG;
 			/** Disallow the usage of machine guns. */
-			MOHPC_NET_EXPORTS extern unsigned int BAN_WEAP_HEAVY;
+			MOHPC_NET_EXPORTS extern dmFlag_t BAN_WEAP_HEAVY;
 			/** Disallow the usage of shotgun. */
-			MOHPC_NET_EXPORTS extern unsigned int BAN_WEAP_SHOTGUN;
+			MOHPC_NET_EXPORTS extern dmFlag_t BAN_WEAP_SHOTGUN;
 			/** Disallow the usage of landmine. */
-			MOHPC_NET_EXPORTS extern unsigned int BAN_WEAP_LANDMINE;
+			MOHPC_NET_EXPORTS extern dmFlag_t BAN_WEAP_LANDMINE;
 		}
 
 		static constexpr size_t NUM_TEAM_OBJECTIVES = 5;
@@ -113,7 +115,7 @@ namespace Network
 			MOHPC_NET_EXPORTS gameType_e getGameType() const;
 
 			/** Return current DF_ flags. */
-			MOHPC_NET_EXPORTS uint32_t getDeathmatchFlags() const;
+			MOHPC_NET_EXPORTS dmFlag_t getDeathmatchFlags() const;
 
 			/**
 			 * Return true if dmflags contain one or more of the specified flags.
@@ -121,7 +123,7 @@ namespace Network
 			 * @param	flags	Flags to look for.
 			 * @return	true	if one of the following flags are valid.
 			 */
-			MOHPC_NET_EXPORTS bool hasAnyDMFlags(uint32_t flags) const;
+			MOHPC_NET_EXPORTS bool hasAnyDMFlags(dmFlag_t flags) const;
 
 			/**
 			 * Return true if dmflags contain the specified flags.
@@ -129,7 +131,7 @@ namespace Network
 			 * @param	flags	Flags to look for.
 			 * @return	true	if all of the flags are valid.
 			 */
-			MOHPC_NET_EXPORTS bool hasAllDMFlags(uint32_t flags) const;
+			MOHPC_NET_EXPORTS bool hasAllDMFlags(dmFlag_t flags) const;
 
 			/**
 			 * User version of hasAnyDMFlags that split each flags by arguments.
@@ -191,6 +193,24 @@ namespace Network
 			/** Return the scoreboard pic shader when game is over. */
 			MOHPC_NET_EXPORTS const char* getScoreboardPicOver() const;
 
+			/** Return the game version that the server is running. */
+			MOHPC_NET_EXPORTS const char* getGameVersion() const;
+
+			/** Return the world message for the server. */
+			MOHPC_NET_EXPORTS const char* getMessage() const;
+
+			/** Return the file name of the game save. */
+			MOHPC_NET_EXPORTS const char* getSaveName() const;
+
+			/** Return the server's message of the day. */
+			MOHPC_NET_EXPORTS const char* getMotd() const;
+
+			/** Return the currently playing music. */
+			MOHPC_NET_EXPORTS const char* getMusic() const;
+
+			/** Return the current server soundtrack. */
+			MOHPC_NET_EXPORTS const char* getSoundTrack() const;
+
 		public:
 			tickTime_t matchStartTime;
 			tickTime_t matchEndTme;
@@ -202,6 +222,12 @@ namespace Network
 			str axisText[NUM_TEAM_OBJECTIVES];
 			str scoreboardPic;
 			str scoreboardPicOver;
+			str gameVersion;
+			str soundTrack;
+			str message;
+			str motd;
+			str music;
+			str saveName;
 			uint32_t dmFlags;
 			uint32_t teamFlags;
 			uint32_t maxClients;

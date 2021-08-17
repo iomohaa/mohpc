@@ -4,6 +4,7 @@
 #include <MOHPC/Assets/Formats/Image.h>
 #include <MOHPC/Assets/Script.h>
 #include <MOHPC/Files/Managers/FileManager.h>
+#include <MOHPC/Files/FileHelpers.h>
 #include <MOHPC/Utility/SharedPtr.h>
 #include <MOHPC/Common/Log.h>
 
@@ -166,9 +167,9 @@ ImageCache::ImageCache(ShaderManager *s, const str& i)
 	imageName = i;
 }
 
-const char *ImageCache::GetImageName() const
+const fs::path& ImageCache::GetImageName() const
 {
-	return imageName.c_str();
+	return imageName;
 }
 
 Image* ImageCache::GetImage() const
@@ -180,14 +181,14 @@ void ImageCache::CacheImage()
 {
 	if (!bCached)
 	{
-		imageName = shaderManager->GetFileManager()->GetDefaultFileExtension(imageName.c_str(), "tga");
+		imageName = FileHelpers::GetDefaultFileExtension(imageName, "tga");
 
-		if (!shaderManager->GetFileManager()->FileExists(imageName.c_str()))
+		if (!shaderManager->GetFileManager()->FileExists(imageName))
 		{
-			imageName = shaderManager->GetFileManager()->SetFileExtension(imageName.c_str(), "jpg");
+			imageName = FileHelpers::SetFileExtension(imageName, "jpg");
 		}
 
-		cachedImage = shaderManager->GetAssetManager()->LoadAsset<Image>(imageName.c_str());
+		cachedImage = shaderManager->GetAssetManager()->readAsset<ImageReader>(imageName);
 		bCached = true;
 	}
 }
@@ -321,9 +322,9 @@ Shader::~Shader()
 {
 }
 
-const char* Shader::GetFilename() const
+const fs::path& Shader::GetFilename() const
 {
-	return shaderContainer->GetFilename().c_str();
+	return shaderContainer->GetFilename();
 }
 
 const char* Shader::GetName() const
@@ -2006,7 +2007,7 @@ const ShaderContainer* Shader::GetShaderContainer() const
 	return shaderContainer;
 }
 
-ShaderContainer::ShaderContainer(ShaderManager* shaderManager, const str& filename)
+ShaderContainer::ShaderContainer(ShaderManager* shaderManager, const fs::path& filename)
 	: m_filename(filename)
 	, m_shaderManager(shaderManager)
 {
@@ -2053,7 +2054,7 @@ ShaderManager *ShaderContainer::GetShaderManager() const
 	return m_shaderManager;
 }
 
-const str& ShaderContainer::GetFilename() const
+const fs::path& ShaderContainer::GetFilename() const
 {
 	return m_filename;
 }
@@ -2124,9 +2125,9 @@ void ShaderManager::ParseShaders(const FileEntryList& files)
 	for (size_t i = 0; i < numFiles; i++)
 	{
 		//FS_ReadFile(string("scripts/") + files[i], (void **)&buffer);
-		const str& filename = files.GetFileEntry(i)->GetStr();
+		const fs::path& filename = files.GetFileEntry(i)->GetStr();
 
-		FilePtr file = GetFileManager()->OpenFile(filename.c_str());
+		IFilePtr file = GetFileManager()->OpenFile(filename);
 		if (!file) {
 			continue;
 		}
@@ -2134,7 +2135,7 @@ void ShaderManager::ParseShaders(const FileEntryList& files)
 		const uint64_t length = file->ReadBuffer((void**)&buffer);
 
 		// Parse the shader
-		const ShaderContainerPtr shaderContainer = ParseShaderContainer(filename, buffer, length);
+		const ShaderContainerPtr shaderContainer = ParseShaderContainer(filename.c_str(), buffer, length);
 		if(shaderContainer)
 		{
 			m_ShaderContainers.push_back(shaderContainer);
@@ -2143,16 +2144,14 @@ void ShaderManager::ParseShaders(const FileEntryList& files)
 	}
 }
 
-ShaderContainerPtr ShaderManager::ParseShaderContainer(const str& fileName, const char *buffer, uint64_t length)
+ShaderContainerPtr ShaderManager::ParseShaderContainer(const fs::path& fileName, const char *buffer, uint64_t length)
 {
-	if (!length) length = strlen(buffer) + 1;
-
 	Script script;
 	script.Parse(buffer, length, "");
 
 	if(!length || !script.TokenAvailable(true))
 	{
-		MOHPC_LOG(Info, "Nothing to parse in %s.", fileName.c_str());
+		MOHPC_LOG(Info, "Nothing to parse in %s.", fileName.generic_string().c_str());
 		return nullptr;
 	}
 
@@ -2307,7 +2306,7 @@ const ShaderContainer* ShaderManager::GetShaderContainer(size_t num) const
 	return m_ShaderContainers.at(num).get();
 }
 
-const ShaderContainer* ShaderManager::GetShaderContainer(const char* Filename) const
+const ShaderContainer* ShaderManager::GetShaderContainer(const fs::path& Filename) const
 {
 	const auto it = m_fileShaderMap.find(Filename);
 	if (it != m_fileShaderMap.end()) {

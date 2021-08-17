@@ -178,10 +178,10 @@ namespace MOHPC
 		void ClearBonesCache();
 		void LoadMorphTargetNames(const Skeleton* skelmodel);
 
-		void SkelVertGetNormal(const Skeleton::SkeletorVertex *vert, const ModelBoneTransform *bone, vec3r_t out);
-		void SkelWeightGetXyz(const Skeleton::SkeletorWeight *weight, const ModelBoneTransform *bone, vec3r_t out);
-		void SkelWeightMorphGetXyz(const Skeleton::SkeletorWeight *weight, const ModelBoneTransform *bone, const vec3r_t totalmorph, vec3r_t out);
-		void SkelMorphGetXyz(const Skeleton::SkeletorMorph *morph, int *morphcache, vec3r_t out);
+		void SkelVertGetNormal(const SkeletorVertex *vert, const ModelBoneTransform *bone, vec3r_t out);
+		void SkelWeightGetXyz(const SkeletorWeight *weight, const ModelBoneTransform *bone, vec3r_t out);
+		void SkelWeightMorphGetXyz(const SkeletorWeight *weight, const ModelBoneTransform *bone, const vec3r_t totalmorph, vec3r_t out);
+		void SkelMorphGetXyz(const SkeletorMorph *morph, int *morphcache, vec3r_t out);
 		const ModelSurfaceMaterial* FindMaterialByName(const str& name);
 	};
 	using ModelRendererPtr = SharedPtr<ModelRenderer>;

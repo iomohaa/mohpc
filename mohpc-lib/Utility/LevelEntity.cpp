@@ -1,6 +1,7 @@
 #include <Shared.h>
 #include <MOHPC/Utility/LevelEntity.h>
 #include <MOHPC/Files/Managers/FileManager.h>
+#include <MOHPC/Files/FileHelpers.h>
 
 #include <cstring>
 
@@ -10,13 +11,13 @@ str MOHPC::CanonicalModelName(const char* ModelName)
 {
 	if (*ModelName != '*')
 	{
-		if (!strnicmp(ModelName, "models/", 7))
+		if (!strHelpers::icmpn(ModelName, "models/", 7))
 		{
-			return FileManager::CanonicalFilename(ModelName);
+			return FileHelpers::CanonicalFilename(ModelName);
 		}
 		else
 		{
-			return "models/" + FileManager::CanonicalFilename(ModelName);
+			return "models/" + FileHelpers::CanonicalFilename(ModelName);
 		}
 	}
 	else
@@ -165,19 +166,19 @@ void LevelEntity::GetPropertyVectorValue(const char* Key, vec3r_t out, const vec
 
 bool MOHPC::LevelEntity::TrySetMemberValue(const char* Key, const char* Value)
 {
-	if (!stricmp(Key, "model"))
+	if (!strHelpers::icmp(Key, "model"))
 	{
 		model = CanonicalModelName(Value);
 	}
-	else if (!stricmp(Key, "origin"))
+	else if (!strHelpers::icmp(Key, "origin"))
 	{
 		VectorFromString(Value, origin);
 	}
-	else if (!stricmp(Key, "angles"))
+	else if (!strHelpers::icmp(Key, "angles"))
 	{
 		VectorFromString(Value, angles);
 	}
-	else if (!stricmp(Key, "angle"))
+	else if (!strHelpers::icmp(Key, "angle"))
 	{
 		try
 		{
@@ -190,7 +191,7 @@ bool MOHPC::LevelEntity::TrySetMemberValue(const char* Key, const char* Value)
 			VectorClear(angles);
 		}
 	}
-	else if (!stricmp(Key, "classname"))
+	else if (!strHelpers::icmp(Key, "classname"))
 	{
 		if (classname.empty())
 		{
@@ -198,15 +199,15 @@ bool MOHPC::LevelEntity::TrySetMemberValue(const char* Key, const char* Value)
 			classname = Value;
 		}
 	}
-	else if (!stricmp(Key, "spawnflags"))
+	else if (!strHelpers::icmp(Key, "spawnflags"))
 	{
 		spawnflags = atoi(Value);
 	}
-	else if (!stricmp(Key, "targetname"))
+	else if (!strHelpers::icmp(Key, "targetname"))
 	{
 		targetname = Value;
 	}
-	else if (!stricmp(Key, "target"))
+	else if (!strHelpers::icmp(Key, "target"))
 	{
 		target = Value;
 	}

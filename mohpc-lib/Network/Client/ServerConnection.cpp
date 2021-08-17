@@ -159,9 +159,9 @@ MOHPC_OBJECT_DEFINITION(ServerConnection);
 ServerConnection::ServerConnection(const INetchanPtr& inNetchan, const IRemoteIdentifierPtr& inAdr, uint32_t challengeResponse, const protocolType_c& protoType, const UserInfoPtr& cInfo)
 	: serverChannel(inNetchan, inAdr)
 	, timeout(std::chrono::milliseconds(60000))
-	, isActive(false)
 	, userInfo(cInfo)
 	, clGameState(makeShared<ServerGameState>(protoType, &clientTime))
+	, reflector(clGameState, userInfo)
 	, clSnapshotManager(protoType)
 	, disconnectHandler(*this)
 	, serverMessageSequence(0)
@@ -499,7 +499,7 @@ bool ServerConnection::sendCmd(uint64_t currentTime)
 
 void ServerConnection::writePacket(tickTime_t currentTime, uint32_t sequenceNum)
 {
-	handlerList.preWritePacketHandler.broadcast();
+	handlerList.preWritePacketHandler.broadcast(clientTime, sequenceNum);
 
 	DynamicDataMessageStream stream;
 	MSG msg(stream, msgMode_e::Writing);
@@ -535,6 +535,8 @@ void ServerConnection::writePacket(tickTime_t currentTime, uint32_t sequenceNum)
 	getServerChannel().transmit(stream);
 
 	lastPacketSendTime = currentTime;
+
+	handlerList.postWritePacketHandler.broadcast(clientTime, sequenceNum);
 }
 
 CGame::ModuleBase* ServerConnection::getCGModule()
@@ -575,7 +577,7 @@ const UserInfoPtr& ServerConnection::getUserInfo()
 void ServerConnection::updateUserInfo()
 {
 	Info info;
-	ClientInfoHelper::fillInfoString(*userInfo, info);
+	UserInfoHelpers::fillInfoString(*userInfo, info);
 	// send the new user info to the server
 	reliableCommands->addCommand((str("userinfo ") + '"' + str(info.GetString()) + '"').c_str());
 }
@@ -695,10 +697,7 @@ void ServerConnection::setCGameTime(tickTime_t currentTime, uint32_t sequenceNum
 
 void ServerConnection::initSnapshot(uint32_t sequenceNum)
 {
-	// make the game active
-	isActive = true;
-
-	cgameModule->init(sequenceNum, serverCommands->getCommandSequence());
+	cgameModule->init(clGameState, sequenceNum, serverCommands->getCommandSequence());
 
 	// update the userinfo to not let the server hold garbage fields like the challenge
 	updateUserInfo();

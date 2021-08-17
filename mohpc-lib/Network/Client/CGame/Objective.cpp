@@ -28,6 +28,7 @@ const objective_t& ObjectiveManager::set(const ReadOnlyInfo& info, uint32_t objN
 }
 
 ObjectiveManager::ObjectiveManager()
+	: current(0)
 {
 	objectives = new objective_t[CS::MAX_OBJECTIVES];
 }
@@ -35,6 +36,18 @@ ObjectiveManager::ObjectiveManager()
 ObjectiveManager::~ObjectiveManager()
 {
 	delete[] objectives;
+}
+
+const objective_t& ObjectiveManager::getCurrent() const
+{
+	return objectives[current];
+}
+
+void ObjectiveManager::setCurrent(uint32_t objNum)
+{
+	if (objNum < CS::MAX_OBJECTIVES) {
+		current = objNum;
+	}
 }
 
 objective_t::objective_t()

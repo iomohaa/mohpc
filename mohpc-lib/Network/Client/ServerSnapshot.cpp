@@ -230,6 +230,16 @@ bool ServerSnapshotManager::getSnapshot(uintptr_t snapshotNum, SnapshotInfo& out
 	return true;
 }
 
+bool ServerSnapshotManager::getSnapshot(SnapshotInfo& outSnapshot) const
+{
+	return getSnapshot(getCurrentSnapNumber(), outSnapshot);
+}
+
+const rawSnapshot_t& ServerSnapshotManager::getCurrentSnap() const
+{
+	return currentSnap;
+}
+
 bool ServerSnapshotManager::isSnapshotValid() const
 {
 	return currentSnap.valid;

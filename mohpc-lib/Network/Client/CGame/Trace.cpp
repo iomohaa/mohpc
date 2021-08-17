@@ -1,6 +1,7 @@
 #include <MOHPC/Network/Client/CGame/Trace.h>
 #include <MOHPC/Network/Client/CGame/Snapshot.h>
 #include <MOHPC/Assets/Managers/ShaderManager.h>
+#include <MOHPC/Common/Maths/BBox.h>
 
 using namespace MOHPC;
 using namespace MOHPC::Network;

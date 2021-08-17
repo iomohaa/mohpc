@@ -5,7 +5,8 @@
 using namespace MOHPC;
 
 MOHPC_OBJECT_DEFINITION(TIKI);
-TIKI::TIKI()
+TIKI::TIKI(const fs::path& path)
+	: Asset2(path)
 {
 	tikianim = NULL;
 	loadScale = 0.f;
@@ -23,7 +24,6 @@ TIKI::~TIKI()
 		delete tikianim;
 	}
 }
-
 
 size_t TIKI::GetNumServerInitCommands() const
 {
@@ -94,12 +94,17 @@ SkeletonPtr TIKI::GetMesh(size_t index) const
 	return meshes[index];
 }
 
+std::vector<SharedPtr<MOHPC::Skeleton>>& MOHPC::TIKI::getMeshes()
+{
+	return meshes;
+}
+
 size_t TIKI::GetNumSurfaces() const
 {
 	return surfaces.size();
 }
 
-const TIKI::TIKISurface *TIKI::GetSurface(size_t index) const
+const TIKISurface *TIKI::GetSurface(size_t index) const
 {
 	assert(index >= 0 && index < surfaces.size());
 	if (index < 0 || index >= surfaces.size())
@@ -110,7 +115,27 @@ const TIKI::TIKISurface *TIKI::GetSurface(size_t index) const
 	return &surfaces[index];
 }
 
-void TIKI::SetupIndividualSurface(const char *filename, TIKISurface* surf, const char *name, const dloadsurface_t *loadsurf)
+std::vector<MOHPC::TIKISurface>& TIKI::getSurfaces()
+{
+	return surfaces;
+}
+
+float TIKI::GetScale() const
+{
+	return loadScale;
+}
+
+const QuakedSection& TIKI::GetQuakedSection() const
+{
+	return quakedSection;
+}
+
+QuakedSection& MOHPC::TIKI::GetQuakedSection()
+{
+	return quakedSection;
+}
+
+void TIKIReader::SetupIndividualSurface(const fs::path& filename, TIKISurface* surf, const char* name, const dloadsurface_t* loadsurf)
 {
 	const size_t shaderCount = loadsurf->shader.size();
 	for (size_t i = 0; i < shaderCount; i++)
@@ -123,12 +148,47 @@ void TIKI::SetupIndividualSurface(const char *filename, TIKISurface* surf, const
 	surf->damageMultiplier = loadsurf->damage_multiplier;
 }
 
-float TIKI::GetScale() const
+TIKIAnim* MOHPC::TIKI::getTikiAnim() const
 {
-	return loadScale;
+	return tikianim;
 }
 
-const QuakedSection& TIKI::GetQuakedSection() const
+void MOHPC::TIKI::setTikiAnim(TIKIAnim* anim)
 {
-	return quakedSection;
+	tikianim = anim;
+}
+
+void MOHPC::TIKI::setLoadScale(float loadScaleValue)
+{
+	loadScale = loadScaleValue;
+}
+
+void MOHPC::TIKI::setLodScale(float lodScaleValue)
+{
+	lodScale = lodScaleValue;
+}
+
+void MOHPC::TIKI::setLodBias(float lodBiasValue)
+{
+	lodBias = lodBiasValue;
+}
+
+void MOHPC::TIKI::setLightOffset(const_vec3r_t lightOffsetValue)
+{
+	lightOffset[0] = lightOffsetValue[0];
+	lightOffset[1] = lightOffsetValue[1];
+	lightOffset[2] = lightOffsetValue[2];
+}
+
+void MOHPC::TIKI::setLoadOrigin(const_vec3r_t loadOriginValue)
+{
+	loadOrigin[0] = loadOriginValue[0];
+	loadOrigin[1] = loadOriginValue[1];
+	loadOrigin[2] = loadOriginValue[2];
+
+}
+
+void MOHPC::TIKI::setRadius(float radiusValue)
+{
+	radius = radiusValue;
 }

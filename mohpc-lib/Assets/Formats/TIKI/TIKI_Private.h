@@ -32,25 +32,25 @@ static constexpr unsigned int TIKI_MAX_COMMANDS		= 128;
 
 namespace MOHPC
 {
-	struct TIKI::dtikicmd_t
+	struct dtikicmd_t
 	{
 		frameInt_t frame_num;
 		std::vector<str> args;
 	};
 
-	struct TIKI::dloadframecmd_t 
+	struct dloadframecmd_t 
 	{
 		frameInt_t frame_num;
 		std::vector<str> args;
 		str location;
 	};
 
-	struct TIKI::dloadinitcmd_t
+	struct dloadinitcmd_t
 	{
 		std::vector<str> args;
 	};
 
-	struct TIKI::dloadsurface_t
+	struct dloadsurface_t
 	{
 		str name;
 		std::vector<str> shader;
@@ -58,7 +58,7 @@ namespace MOHPC
 		float damage_multiplier;
 	};
 
-	struct TIKI::dloadanim_t
+	struct dloadanim_t
 	{
 		str alias;
 		str name;
@@ -70,9 +70,9 @@ namespace MOHPC
 		std::vector<dloadframecmd_t> loadclientcmds;
 	};
 
-	struct TIKI::dloaddef_t
+	struct dloaddef_t
 	{
-		str path;
+		fs::path path;
 		SharedPtr<TikiScript> tikiFile;
 
 		std::unordered_map<str, str> keyvalues;

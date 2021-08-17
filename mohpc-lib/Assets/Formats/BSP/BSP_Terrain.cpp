@@ -5,34 +5,10 @@
 #include <MOHPC/Common/Math.h>
 #include "../../../Common/VectorPrivate.h"
 
-namespace MOHPC
-{
-	struct worknode_t {
-		int32_t i0;
-		int32_t j0;
-		int32_t i1;
-		int32_t j1;
-		int32_t i2;
-		int32_t j2;
-	};
-}
-
 using namespace MOHPC;
 using namespace BSPData;
 
 #define MAX_TERRAIN_LOD 6
-
-static int modeTable[] =
-{
-	2,
-	2,
-	5,
-	6,
-	4,
-	3,
-	0,
-	0
-};
 
 BSPData::TerrainVert::TerrainVert()
 {
@@ -72,7 +48,7 @@ BSPData::TerrainTri::TerrainTri()
 	iNext = 0;
 }
 
-void BSP::GenerateTerrainPatch(const TerrainPatch* Patch, Surface* Out)
+void BSPReader::GenerateTerrainPatch(const TerrainPatch* Patch, Surface* Out)
 {
 	int32_t x, y;
 	size_t ndx;
@@ -171,11 +147,11 @@ void BSP::GenerateTerrainPatch(const TerrainPatch* Patch, Surface* Out)
 	Out->CalculateCentroid();
 }
 
-void BSP::GenerateTerrainPatch2(const TerrainPatch* Patch, Surface* Out)
+void BSPReader::GenerateTerrainPatch2(const TerrainPatch* Patch, Surface* Out)
 {
 	Out->shader = Patch->shader;
 
-	MOHPC::ShaderManagerPtr ShaderManager = GetAssetManager()->GetManager<MOHPC::ShaderManager>();
+	MOHPC::ShaderManagerPtr ShaderManager = GetAssetManager()->getManager<MOHPC::ShaderManager>();
 	ShaderPtr Shader = ShaderManager->GetShader(Out->shader->shaderName.c_str());
 
 	if (!Patch->drawInfo.vertHead || !Patch->drawInfo.triHead)
@@ -251,17 +227,16 @@ void BSP::GenerateTerrainPatch2(const TerrainPatch* Patch, Surface* Out)
 	Out->CalculateCentroid();
 }
 
-void BSP::CreateTerrainSurfaces()
+void BSPReader::CreateTerrainSurfaces(std::vector<BSPData::TerrainPatch>& terrainPatches, std::vector<BSPData::Surface>& terrainSurfaces)
 {
-
 	size_t numTerrainPatches = terrainPatches.size();
 	if (numTerrainPatches)
 	{
 		// Allocate and prepare vertices & indexes
-		TR_PreTessellateTerrain();
+		TR_PreTessellateTerrain(terrainPatches);
 
 		// Split vertices
-		TR_DoTriSplitting();
+		TR_DoTriSplitting(terrainPatches);
 
 		// Morph geometry according to the view
 		// It is useless anyway so don't call it
@@ -276,7 +251,7 @@ void BSP::CreateTerrainSurfaces()
 		terrainSurfaces.resize(numTerrainPatches);
 		for (size_t i = 0; i < numTerrainPatches; i++)
 		{
-			TerrainPatch *terrain = &terrainPatches[i];
+			const TerrainPatch *terrain = &terrainPatches[i];
 			Surface *tsurf = &terrainSurfaces[i];
 
 			GenerateTerrainPatch2(terrain, tsurf);
@@ -293,7 +268,7 @@ void BSP::CreateTerrainSurfaces()
 ///////////   Disassembly   /////////////
 /////////////////////////////////////////
 
-terraInt BSP::TR_AllocateVert(TerrainPatch *patch)
+terraInt BSPReader::TR_AllocateVert(TerrainPatch *patch)
 {
 	terraInt iVert = trpiVert.iFreeHead;
 
@@ -314,7 +289,7 @@ terraInt BSP::TR_AllocateVert(TerrainPatch *patch)
 	return iVert;
 }
 
-void BSP::TR_InterpolateVert(TerrainTri *pTri, TerrainVert *pVert)
+void BSPReader::TR_InterpolateVert(TerrainTri *pTri, TerrainVert *pVert)
 {
 	TerrainVert *pVert0 = &trVerts[pTri->iPt[0]];
 	TerrainVert *pVert1 = &trVerts[pTri->iPt[1]];
@@ -335,7 +310,7 @@ void BSP::TR_InterpolateVert(TerrainTri *pTri, TerrainVert *pVert)
 	pVert->xyz[2] = pVert->fHgtAvg;
 }
 
-void BSP::TR_ReleaseVert(TerrainPatch *patch, terraInt iVert)
+void BSPReader::TR_ReleaseVert(TerrainPatch *patch, terraInt iVert)
 {
 	TerrainVert *pVert = &trVerts[iVert];
 
@@ -359,7 +334,7 @@ void BSP::TR_ReleaseVert(TerrainPatch *patch, terraInt iVert)
 	trpiVert.nFree++;
 }
 
-terraInt BSP::TR_AllocateTri(TerrainPatch *patch, uint8_t byConstChecks)
+terraInt BSPReader::TR_AllocateTri(TerrainPatch *patch, uint8_t byConstChecks)
 {
 	terraInt iTri = trpiTri.iFreeHead;
 
@@ -386,7 +361,7 @@ terraInt BSP::TR_AllocateTri(TerrainPatch *patch, uint8_t byConstChecks)
 	return iTri;
 }
 
-void BSP::TR_FixTriHeight(TerrainTri* pTri)
+void BSPReader::TR_FixTriHeight(TerrainTri* pTri)
 {
 	for (terraInt i = 0; i < 3; i++)
 	{
@@ -398,7 +373,7 @@ void BSP::TR_FixTriHeight(TerrainTri* pTri)
 	}
 }
 
-void BSP::TR_SetTriConstChecks(TerrainTri* pTri)
+void BSPReader::TR_SetTriConstChecks(TerrainTri* pTri)
 {
 	Varnode vn = *pTri->varnode;
 	vn.s.flags &= 0xF0u;
@@ -423,7 +398,7 @@ void BSP::TR_SetTriConstChecks(TerrainTri* pTri)
 	}
 }
 
-void BSP::TR_ReleaseTri(TerrainPatch *patch, terraInt iTri)
+void BSPReader::TR_ReleaseTri(TerrainPatch *patch, terraInt iTri)
 {
 	TerrainTri *pTri = &trTris[iTri];
 
@@ -470,7 +445,7 @@ void BSP::TR_ReleaseTri(TerrainPatch *patch, terraInt iTri)
 	}
 }
 
-void BSP::TR_DemoteInAncestry(TerrainPatch *patch, terraInt iTri)
+void BSPReader::TR_DemoteInAncestry(TerrainPatch *patch, terraInt iTri)
 {
 	terraInt iPrev = trTris[iTri].iPrev;
 	terraInt iNext = trTris[iTri].iNext;
@@ -502,7 +477,7 @@ void BSP::TR_DemoteInAncestry(TerrainPatch *patch, terraInt iTri)
 	patch->drawInfo.mergeHead = iTri;
 }
 
-void BSP::TR_TerrainHeapInit()
+void BSPReader::TR_TerrainHeapInit()
 {
 	trpiTri.iFreeHead = 1;
 	trpiTri.nFree = trTris.size() - 1;
@@ -528,7 +503,7 @@ void BSP::TR_TerrainHeapInit()
 	trVerts[trVerts.size() - 1].iNext = 0;
 }
 
-void BSP::TR_SplitTri(terraInt iSplit, terraInt iNewPt, terraInt iLeft, terraInt iRight, terraInt iRightOfLeft, terraInt iLeftOfRight)
+void BSPReader::TR_SplitTri(terraInt iSplit, terraInt iNewPt, terraInt iLeft, terraInt iRight, terraInt iRightOfLeft, terraInt iLeftOfRight)
 {
 	TerrainTri *pSplit = &trTris[iSplit];
 
@@ -650,7 +625,7 @@ void BSP::TR_SplitTri(terraInt iSplit, terraInt iNewPt, terraInt iLeft, terraInt
 	TR_DemoteInAncestry(pSplit->patch, iSplit);
 }
 
-void BSP::TR_ForceSplit(terraInt iTri)
+void BSPReader::TR_ForceSplit(terraInt iTri)
 {
 	TerrainTri *pTri = &trTris[iTri];
 
@@ -716,7 +691,7 @@ void BSP::TR_ForceSplit(terraInt iTri)
 	TR_SplitTri(iTri, iNewPt, iTriLeft, iTriRight, iBaseRight, iBaseLeft);
 }
 
-void BSP::TR_ForceMerge(terraInt iTri)
+void BSPReader::TR_ForceMerge(terraInt iTri)
 {
 	TerrainTri *pTri = &trTris[iTri];
 	TerrainPatch *patch = pTri->patch;
@@ -796,7 +771,7 @@ void BSP::TR_ForceMerge(terraInt iTri)
 	}
 }
 
-int BSP::TR_TerraTriNeighbor(TerrainPatch *terraPatches, int iPatch, int dir)
+int BSPReader::TR_TerraTriNeighbor(TerrainPatch *terraPatches, int iPatch, int dir)
 {
 	if (iPatch >= 0)
 	{
@@ -840,7 +815,7 @@ int BSP::TR_TerraTriNeighbor(TerrainPatch *terraPatches, int iPatch, int dir)
 	return 0;
 }
 
-void BSP::TR_PreTessellateTerrain()
+void BSPReader::TR_PreTessellateTerrain(std::vector<BSPData::TerrainPatch>& terrainPatches)
 {
 	const size_t numTerrainPatches = terrainPatches.size();
 	if (!numTerrainPatches)
@@ -1112,7 +1087,7 @@ void BSP::TR_PreTessellateTerrain()
 	}
 }
 
-bool BSP::TR_NeedSplitTri(TerrainTri *pTri)
+bool BSPReader::TR_NeedSplitTri(TerrainTri *pTri)
 {
 	uint8_t byConstChecks = pTri->byConstChecks;
 	if (byConstChecks & 2)
@@ -1142,7 +1117,7 @@ bool BSP::TR_NeedSplitTri(TerrainTri *pTri)
 	return true;
 }
 
-void BSP::TR_DoTriSplitting()
+void BSPReader::TR_DoTriSplitting(std::vector<BSPData::TerrainPatch>& terrainPatches)
 {
 	for (size_t i = 0; i < terrainPatches.size(); i++)
 	{
@@ -1182,12 +1157,12 @@ void BSP::TR_DoTriSplitting()
 	}
 }
 
-void BSP::TR_DoGeomorphs()
+void BSPReader::TR_DoGeomorphs()
 {
-	// FIXME : TODO
-	// Too lazy to do it, because it is a conversion library and it doesn't need to morph according to view & distance
-	// ...
+	// Geomorph not needed
 
+#if 0
+	std::vector<BSPData::TerrainPatch>& terrainPatches = bsp->getTerrainPatches();
 	for (size_t n = 0; n < terrainPatches.size(); n++)
 	{
 		TerrainPatch* patch = &terrainPatches[n];
@@ -1204,9 +1179,10 @@ void BSP::TR_DoGeomorphs()
 			}
 		}
 	}
+#endif
 }
 
-bool BSP::TR_MergeInternalAggressive()
+bool BSPReader::TR_MergeInternalAggressive()
 {
 	TerrainTri *pTri = &trTris[trpiTri.iCur];
 	if (!pTri->nSplit
@@ -1229,7 +1205,7 @@ bool BSP::TR_MergeInternalAggressive()
 	return false;
 }
 
-bool BSP::TR_MergeInternalCautious()
+bool BSPReader::TR_MergeInternalCautious()
 {
 	TerrainTri *pTri = pTri = &trTris[trpiTri.iCur];
 	if (!pTri->nSplit
@@ -1254,11 +1230,11 @@ bool BSP::TR_MergeInternalCautious()
 	return false;
 }
 
-void BSP::TR_DoTriMerging()
+void BSPReader::TR_DoTriMerging(const std::vector<BSPData::TerrainPatch>& terrainPatches)
 {
 	for (size_t n = 0; n < terrainPatches.size(); n++)
 	{
-		BSPData::TerrainPatch *patch = &terrainPatches[n];
+		const BSPData::TerrainPatch *patch = &terrainPatches[n];
 
 		trpiTri.iCur = patch->drawInfo.mergeHead;
 		while (trpiTri.iCur)
@@ -1294,7 +1270,7 @@ void BSP::TR_DoTriMerging()
 	}
 }
 
-void BSP::TR_ShrinkData()
+void BSPReader::TR_ShrinkData()
 {
 	for (auto pTri = trTris.begin(); pTri != trTris.end(); ++pTri)
 	{
@@ -1310,257 +1286,5 @@ void BSP::TR_ShrinkData()
 		{
 			pVert = trVerts.erase(pVert);
 		}
-	}
-}
-
-void BSP::TR_CalculateTerrainIndices(struct worknode_t* worknode, int iDiagonal, int iTree)
-{
-	int i;
-	int i2;
-	int j2;
-	varnodeIndex* vni;
-
-	for (i = 0; i <= 30; i++)
-	{
-		i2 = worknode[i + 1].i0 + worknode[i + 1].i1;
-		j2 = worknode[i + 1].j0 + worknode[i + 1].j1;
-		worknode[i * 2 + 2].i0 = worknode[i + 1].i1;
-		worknode[i * 2 + 2].j0 = worknode[i + 1].j1;
-		worknode[i * 2 + 2].i1 = worknode[i + 1].i2;
-		worknode[i * 2 + 2].j1 = worknode[i + 1].j2;
-		worknode[i * 2 + 2].i2 = i2 >> 1;
-		worknode[i * 2 + 2].j2 = j2 >> 1;
-		worknode[i * 2 + 2 + 1].i0 = worknode[i + 1].i2;
-		worknode[i * 2 + 2 + 1].j0 = worknode[i + 1].j2;
-		worknode[i * 2 + 2 + 1].i1 = worknode[i + 1].i0;
-		worknode[i * 2 + 2 + 1].j1 = worknode[i + 1].j0;
-		worknode[i * 2 + 2 + 1].i2 = i2 >> 1;
-		worknode[i * 2 + 2 + 1].j2 = j2 >> 1;
-	}
-
-	for (i = 32; i < 64; i++)
-	{
-		i2 = (worknode[i].i0 + worknode[i].i1) >> 1;
-		j2 = (worknode[i].j0 + worknode[i].j1) >> 1;
-
-		if (worknode[i].i0 == worknode[i].i1)
-		{
-			if (worknode[i].j0 <= worknode[i].j1)
-			{
-				vni = &varnodeIndexes[iDiagonal][i2][j2][1];
-				vni->iNode = i - 1;
-				vni->iTreeAndMask = iTree | 0x2000;
-
-				vni = &varnodeIndexes[iDiagonal][i2][j2 - 1][0];
-				vni->iNode = i - 1;
-				vni->iTreeAndMask = iTree | 0x1000;
-			}
-			else
-			{
-				vni = &varnodeIndexes[iDiagonal][i2 - 1][j2][1];
-				vni->iNode = i - 1;
-				vni->iTreeAndMask = iTree | 0x1000;
-
-				vni = &varnodeIndexes[iDiagonal][i2 - 1][j2 - 1][0];
-				vni->iNode = i - 1;
-				vni->iTreeAndMask = iTree | 0x2000;
-			}
-		}
-		else
-		{
-			if (worknode[i].i0 <= worknode[i].i1)
-			{
-				vni = &varnodeIndexes[iDiagonal][i2][j2 - 1][0];
-				vni->iNode = i - 1;
-				vni->iTreeAndMask = iTree | 0x2000;
-
-				vni = &varnodeIndexes[iDiagonal][i2 - 1][j2 - 1][0];
-				vni->iNode = i - 1;
-				vni->iTreeAndMask = iTree | 0x1000;
-			}
-			else
-			{
-				vni = &varnodeIndexes[iDiagonal][i2][j2][1];
-				vni->iNode = i - 1;
-				vni->iTreeAndMask = iTree | 0x1000;
-
-				vni = &varnodeIndexes[iDiagonal][i2 - 1][j2][1];
-				vni->iNode = i - 1;
-				vni->iTreeAndMask = iTree | 0x2000;
-			}
-		}
-
-	}
-}
-
-void BSP::TR_PrepareGerrainCollide()
-{
-	worknode_t worknode[64];
-
-	memset(&varnodeIndexes, 0, sizeof(varnodeIndexes));
-
-	worknode[1].i0 = 8;
-	worknode[1].j0 = 8;
-	worknode[1].i1 = 0;
-	worknode[1].j1 = 0;
-	worknode[1].i2 = 0;
-	worknode[1].j2 = 8;
-
-	TR_CalculateTerrainIndices(worknode, 0, 0);
-
-	worknode[1].i0 = 0;
-	worknode[1].j0 = 0;
-	worknode[1].i1 = 8;
-	worknode[1].j1 = 8;
-	worknode[1].i2 = 8;
-	worknode[1].j2 = 0;
-
-	TR_CalculateTerrainIndices(worknode, 0, 1);
-
-	worknode[1].i0 = 8;
-	worknode[1].j0 = 0;
-	worknode[1].i1 = 0;
-	worknode[1].j1 = 8;
-	worknode[1].i2 = 8;
-	worknode[1].j2 = 8;
-
-	TR_CalculateTerrainIndices(worknode, 1, 0);
-
-	worknode[1].i0 = 0;
-	worknode[1].j0 = 8;
-	worknode[1].i1 = 8;
-	worknode[1].j1 = 0;
-	worknode[1].i2 = 0;
-	worknode[1].j2 = 0;
-
-	TR_CalculateTerrainIndices(worknode, 1, 1);
-}
-
-void BSP::GenerateTerrainCollide(const TerrainPatch* patch, TerrainCollide& collision)
-{
-	int i;
-	int j;
-	int x0, y0, z0;
-	float fMaxHeight;
-	float heightmap[9][9];
-	TerrainCollideSquare* square;
-	vec3_t v1;
-	vec3_t v2;
-	vec3_t v3;
-	vec3_t v4;
-
-	TerrainCollide* tc = &collision;
-	x0 = (int)patch->x0;
-	y0 = (int)patch->y0;
-	z0 = (int)patch->z0;
-
-	fMaxHeight = (float)z0;
-
-	for (j = 0; j < 9; j++)
-	{
-		for (i = 0; i < 9; i++)
-		{
-			heightmap[i][j] = (float)(z0 + 2 * patch->heightmap[j * 9 + i]);
-		}
-	}
-
-	for (j = 0; j < 8; j++)
-	{
-		for (i = 0; i < 8; i++)
-		{
-			v1[0] = (float)((i << 6) + x0);
-			v1[1] = (float)((j << 6) + y0);
-			v1[2] = (float)heightmap[i][j];
-
-			v2[0] = (float)((i << 6) + x0) + 64;
-			v2[1] = (float)((j << 6) + y0);
-			v2[2] = (float)heightmap[i + 1][j];
-
-			v3[0] = (float)((i << 6) + x0) + 64;
-			v3[1] = (float)((j << 6) + y0) + 64;
-			v3[2] = (float)heightmap[i + 1][j + 1];
-
-			v4[0] = (float)((i << 6) + x0);
-			v4[1] = (float)((j << 6) + y0) + 64;
-			v4[2] = (float)heightmap[i][j + 1];
-
-			if (fMaxHeight < v1[2]) {
-				fMaxHeight = v1[2];
-			}
-
-			if (fMaxHeight < v2[2]) {
-				fMaxHeight = v2[2];
-			}
-
-			if (fMaxHeight < v3[2]) {
-				fMaxHeight = v3[2];
-			}
-
-			if (fMaxHeight < v4[2]) {
-				fMaxHeight = v4[2];
-			}
-
-			square = &tc->squares[i][j];
-
-			if ((i + j) & 1)
-			{
-				if (patch->flags & 0x40)
-				{
-					PlaneFromPoints(square->plane[0], v4, v2, v3);
-					PlaneFromPoints(square->plane[1], v2, v4, v1);
-				}
-				else
-				{
-					PlaneFromPoints(square->plane[0], v2, v4, v3);
-					PlaneFromPoints(square->plane[1], v4, v2, v1);
-				}
-				TR_PickTerrainSquareMode(square, v1, i, j, patch);
-			}
-			else
-			{
-				if (patch->flags & 0x40)
-				{
-					PlaneFromPoints(square->plane[0], v1, v3, v4);
-					PlaneFromPoints(square->plane[1], v3, v1, v2);
-				}
-				else
-				{
-					PlaneFromPoints(square->plane[0], v3, v1, v4);
-					PlaneFromPoints(square->plane[1], v1, v3, v2);
-				}
-				TR_PickTerrainSquareMode(square, v2, i, j, patch);
-			}
-		}
-	}
-
-	tc->vBounds[0][0] = (float)x0;
-	tc->vBounds[0][1] = (float)y0;
-	tc->vBounds[0][2] = (float)z0;
-	tc->vBounds[1][0] = (float)(x0 + 512);
-	tc->vBounds[1][1] = (float)(y0 + 512);
-	tc->vBounds[1][2] = fMaxHeight;
-}
-
-void BSP::TR_PickTerrainSquareMode(TerrainCollideSquare* square, const vec3r_t vTest, terraInt i, terraInt j, const TerrainPatch* patch)
-{
-	int flags0, flags1;
-	varnodeIndex* vni;
-
-	vni = &varnodeIndexes[(patch->flags & 0x80) ? 1 : 0][i][j][0];
-
-	flags0 = ((unsigned short)(patch->varTree[vni->iTreeAndMask & 1][vni->iNode].s.flags & 0xFFFE & vni->iTreeAndMask) != 0);
-	flags1 = ((unsigned short)(patch->varTree[vni[1].iTreeAndMask & 1][vni[1].iNode].s.flags & 0xFFFE & vni[1].iTreeAndMask) != 0);
-
-	square->eMode = modeTable[((j + i) & 1) | (2 * flags0) | (4 * flags1)];
-
-	if (square->eMode == 2)
-	{
-		if(castVector(vTest).dot(castVector(square->plane[0])) < square->plane[0][3]) {
-			square->eMode = 1;
-		}
-	}
-	else if (square->eMode == 5 || square->eMode == 6)
-	{
-		Vec4Copy(square->plane[1], square->plane[0]);
 	}
 }

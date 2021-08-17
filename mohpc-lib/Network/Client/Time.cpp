@@ -51,12 +51,22 @@ netTime_t ClientTime::getRemoteStartTime() const
 
 netTime_t ClientTime::getRemoteTime() const
 {
+	return frameServerTime;
+}
+
+netTime_t ClientTime::getOldRemoteTime() const
+{
 	return oldFrameServerTime;
 }
 
 tickTime_t ClientTime::getSimulatedRemoteTime() const
 {
 	return simulatedServerTime;
+}
+
+tickTime_t ClientTime::getOldSimulatedRemoteTime() const
+{
+	return oldSimulated;
 }
 
 deltaTime_t ClientTime::getDeltaTime() const
@@ -82,13 +92,14 @@ void ClientTime::setTime(tickTime_t newTime, netTime_t remoteTime, bool adjust)
 	using namespace ticks;
 
 	// NOTE: don't think it's an issue
-	if (remoteTime < oldFrameServerTime)
+	if (remoteTime < frameServerTime)
 	{
 		// received remote time < previous remote time
-		throw ClientTimeErrors::ServerTimeWentBackward(oldFrameServerTime, remoteTime);
+		throw ClientTimeErrors::ServerTimeWentBackward(frameServerTime, remoteTime);
 	}
 
-	oldFrameServerTime = remoteTime;
+	oldFrameServerTime = frameServerTime;
+	frameServerTime = remoteTime;
 
 	const tickTime_t simulated = time_cast<tickTime_t>(serverStartTime) + (newTime - realTimeStart);
 	simulatedServerTime = simulated - milliseconds(timeNudge);

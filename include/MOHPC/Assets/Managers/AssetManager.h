@@ -3,9 +3,12 @@
 #include "Manager.h"
 #include "../Asset.h"
 #include "../../Common/Object.h"
+#include "../../Files/FileDefs.h"
+#include "../../Files/FileMap.h"
 #include "../../Utility/SharedPtr.h"
 #include "../../Utility/WeakPtr.h"
 
+#include <utility>
 #include <unordered_map>
 #include <typeinfo>
 #include <typeindex>
@@ -13,6 +16,8 @@
 
 namespace MOHPC
 {
+	class FileManager;
+
 	class AssetManager : public std::enable_shared_from_this<AssetManager>
 	{
 		friend class Class;
@@ -20,58 +25,82 @@ namespace MOHPC
 		MOHPC_ASSET_OBJECT_DECLARATION(AssetManager);
 
 	private:
-		MOHPC_ASSETS_EXPORTS AssetManager();
+		MOHPC_ASSETS_EXPORTS AssetManager(const SharedPtr<FileManager>& FMptr);
 		~AssetManager();
 
 	public:
 		/** Get the virtual file manager associated with the asset manager. */
-		MOHPC_ASSETS_EXPORTS FileManager* GetFileManager() const;
+		MOHPC_ASSETS_EXPORTS const SharedPtr<FileManager>& GetFileManager() const;
 
-		/** Return a manager class check the *Managers* folder. */
+		/**
+		 * Return a class used to share data globally across assets.
+		 *
+		 * @tparam Type of the manager.
+		 */
 		template<class T>
-		SharedPtr<T> GetManager()
+		SharedPtr<T> getManager()
 		{
 			static_assert(std::is_base_of<Manager, T>::value, "T must be a subclass of Manager");
 
 			const std::type_index ti = typeid(T);
-			SharedPtr<T> manager = staticPointerCast<T>(GetManager(ti));
+			SharedPtr<T> manager = staticPointerCast<T>(getManager(ti));
 			if (manager == nullptr)
 			{
 				manager = T::create();
-				AddManager(ti, manager);
+				addManager(ti, manager);
 			}
 			return manager;
 		}
 
-		/** 
+		/**
 		 * Load an asset from disk or pak files.
 		 *
-		 * @param	Filename	Virtual path to file.
-		 * @return	Shared pointer to asset if found, NULL otherwise.
-		 * @note	If the asset is already loaded, it is returned from cache.
+		 * @tparam T asset reader to use.
+		 * @param fileName virtual path to file.
+		 * @param args... arguments to pass to the reader constructor.
+		 * @return Shared pointer to asset if found, NULL otherwise.
+		 * @note If the asset is already loaded, it is returned from cache.
 		 */
-		template<class T>
-		SharedPtr<T> LoadAsset(const char *Filename)
+		template<typename T, typename...Args>
+		SharedPtr<typename T::AssetType> readAsset(const fs::path& fileName, Args&&...args)
 		{
-			SharedPtr<T> A = staticPointerCast<T>(CacheFindAsset(Filename));
+			using AssetType = typename T::AssetType;
+			SharedPtr<AssetType> A = staticPointerCast<AssetType>(cacheFindAsset(fileName));
 			if (!A)
 			{
-				A = T::create();
-				if (!CacheLoadAsset(Filename, A)) {
-					return nullptr;
-				}
+				SharedPtr<T> reader = T::create(std::forward<Args>(args)...);
+				A = staticPointerCast<AssetType>(readAsset(fileName, reader));
 			}
+
 			return A;
 		}
 
-	private:
-		MOHPC_ASSETS_EXPORTS void AddManager(const std::type_index& ti, const SharedPtr<Manager>& manager);
-		MOHPC_ASSETS_EXPORTS SharedPtr<Manager> GetManager(const std::type_index& ti) const;
-		MOHPC_ASSETS_EXPORTS SharedPtr<Asset> CacheFindAsset(const char *Filename);
-		MOHPC_ASSETS_EXPORTS bool CacheLoadAsset(const char *Filename, const SharedPtr<Asset>& A);
+		/**
+		 * Load an asset from disk or pak files.
+		 *
+		 * @tparam T asset reader to use.
+		 * @param file pointer to a file interface.
+		 * @param args... arguments to pass to the reader constructor.
+		 * @return Shared pointer to asset if found, NULL otherwise.
+		 * @note If the asset is already loaded, it is returned from cache.
+		 */
+		template<class T, typename...Args>
+		SharedPtr<typename T::AssetType> readAsset(const IFilePtr& file, Args&&...args)
+		{
+			using AssetType = typename T::AssetType;
+			SharedPtr<T> reader = T::create(std::forward<Args>(args)...);
+			return staticPointerCast<AssetType>(readAsset(file, reader));
+		}
 
 	private:
-		mutable FileManager* FM;
+		MOHPC_ASSETS_EXPORTS void addManager(const std::type_index& ti, const SharedPtr<Manager>& manager);
+		MOHPC_ASSETS_EXPORTS SharedPtr<Manager> getManager(const std::type_index& ti) const;
+		MOHPC_ASSETS_EXPORTS SharedPtr<Asset2> cacheFindAsset(const fs::path& Filename);
+		MOHPC_ASSETS_EXPORTS SharedPtr<Asset2> readAsset(const fs::path& fileName, const SharedPtr<AssetReader>& A);
+		MOHPC_ASSETS_EXPORTS SharedPtr<Asset2> readAsset(const IFilePtr& file, const SharedPtr<AssetReader>& A);
+
+	private:
+		SharedPtr<FileManager> FM;
 
 		/**
 		 * Shared pointer, because each manager is a storage, part of the asset manager
@@ -83,18 +112,19 @@ namespace MOHPC
 		 * Weak pointer, because it's just a cache of loaded assets.
 		 * They can be destroyed anytime.
 		 */
-		std::unordered_map<str, WeakPtr<Asset>> m_assetCache;
+		std::unordered_map<fs::path, WeakPtr<Asset2>, FileNameHash, FileNameMapCompare> m_assetCache;
 	};
+
 	using AssetManagerPtr = SharedPtr<AssetManager>;
 
 	template<class T>
-	SharedPtr<T> AssetObject::GetManager() const
+	SharedPtr<T> AssetObject::getManager() const
 	{
 		const SharedPtr<AssetManager> manPtr = GetAssetManager();
 		if (manPtr)
 		{
 			// return the owning asset manager
-			return manPtr->GetManager<T>();
+			return manPtr->getManager<T>();
 		}
 
 		return nullptr;
@@ -107,15 +137,15 @@ namespace MOHPC
 		class AssetNotFound : public Base
 		{
 		public:
-			AssetNotFound(const str& inFileName);
+			AssetNotFound(const fs::path& inFileName);
 
-			MOHPC_ASSETS_EXPORTS const char* getFileName() const;
+			MOHPC_ASSETS_EXPORTS const fs::path& getFileName() const;
 
 		public:
 			const char* what() const noexcept override;
 
 		private:
-			str fileName;
+			fs::path fileName;
 		};
 
 		/**

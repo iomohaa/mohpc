@@ -63,26 +63,6 @@ const char* UserInfo::getName() const
 	return name.c_str();
 }
 
-void UserInfo::setPlayerAlliedModel(const char* newModel)
-{
-	properties.SetPropertyValue("dm_playermodel", newModel);
-}
-
-const char* UserInfo::getPlayerAlliedModel() const
-{
-	return properties.GetPropertyRawValue("dm_playermodel");
-}
-
-void UserInfo::setPlayerGermanModel(const char* newModel)
-{
-	properties.SetPropertyValue("dm_playergermanmodel", newModel);
-}
-
-const char* UserInfo::getPlayerGermanModel() const
-{
-	return properties.GetPropertyRawValue("dm_playergermanmodel");
-}
-
 void UserInfo::setUserKeyValue(const char* key, const char* value)
 {
 	properties.SetPropertyValue(key, value);
@@ -98,7 +78,7 @@ const PropertyObject& UserInfo::getPropertyObject() const
 	return properties;
 }
 
-void ClientInfoHelper::fillInfoString(const UserInfo& userInfo, Info& info)
+void UserInfoHelpers::fillInfoString(const UserInfo& userInfo, Info& info)
 {
 	// Build mandatory variables
 	info.SetValueForKey("rate", std::to_string(userInfo.getRate()).c_str());

@@ -2,6 +2,7 @@
 #include <MOHPC/Assets/Formats/Sound.h>
 #include <MOHPC/Assets/Managers/AssetManager.h>
 #include <MOHPC/Files/Managers/FileManager.h>
+#include <MOHPC/Files/FileHelpers.h>
 #include <MOHPC/Utility/Misc/Endian.h>
 
 //#include <lame/lame.h>
@@ -212,10 +213,11 @@ int decode(unsigned char const *start, unsigned long length)
 }
 
 MOHPC_OBJECT_DEFINITION(Sound);
-Sound::Sound()
+Sound::Sound(const fs::path& fileName, uint8_t* dataPtr, size_t size)
+	: Asset2(fileName)
+	, data(dataPtr)
+	, dataLen(size)
 {
-	data = nullptr;
-	dataLen = 0;
 }
 
 Sound::~Sound()
@@ -226,40 +228,39 @@ Sound::~Sound()
 	}
 }
 
-void Sound::Load()
+MOHPC_OBJECT_DEFINITION(SoundReader);
+Asset2Ptr SoundReader::read(const IFilePtr& file)
 {
-	FileManager* fileMan = GetFileManager();
-	const char* fname = GetFilename().c_str();
-
-	FilePtr File = fileMan->OpenFile(fname);
-	if (!File) {
-		throw AssetError::AssetNotFound(GetFilename());
-	}
-
 	void *buf = nullptr;
-	dataLen = (size_t)File->ReadBuffer(&buf);
+	const size_t dataLen = (size_t)file->ReadBuffer(&buf);
 	if (dataLen <= 0)
 	{
-		// empty sound, considered as valid
-		return;
+		// empty sound
+		return nullptr;
 	}
 
-	const char* ext = fileMan->GetFileExtension(fname);
-	if (!strHelpers::icmp(ext, "mp3"))
+	const fs::path& fname = file->getName();
+	const str ext = FileHelpers::getExtension<str>(fname.c_str());
+	if (!strHelpers::icmp(ext.c_str(), "mp3"))
 	{
-		DecodeLAME(buf, dataLen);
+		DecodeLAME(fname, buf, dataLen);
 	}
-	else if (!strHelpers::icmp(ext, "wav"))
+	else if (!strHelpers::icmp(ext.c_str(), "wav"))
 	{
-		data = new uint8_t[dataLen];
+		// raw
+		uint8_t* data = new uint8_t[dataLen];
 		memcpy(data, buf, dataLen);
+		
+		return Asset2Ptr(new Sound(fname, data, dataLen));
 	}
 	else {
 		throw SoundError::BadOrUnsupportedSound(ext);
 	}
+
+	return nullptr;
 }
 
-void Sound::DecodeLAME(void *buf, uint64_t len)
+Asset2Ptr SoundReader::DecodeLAME(const fs::path& fileName, void *buf, uint64_t len)
 {
 #if 0
 	lame_t lame = lame_init();
@@ -415,12 +416,16 @@ void Sound::DecodeLAME(void *buf, uint64_t len)
 
 		if (buffer.stream.good())
 		{
-			dataLen = (size_t)buffer.stream.tellp();
-			data = new uint8_t[dataLen];
+			const size_t dataLen = (size_t)buffer.stream.tellp();
+			uint8_t* data = new uint8_t[dataLen];
 			buffer.stream.read((char*)data, dataLen);
+
+			return Asset2Ptr(new Sound(fileName, data, dataLen));
 		}
 	}
 #endif
+
+	return nullptr;
 }
 
 uint8_t * Sound::GetData() const

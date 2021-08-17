@@ -157,6 +157,7 @@ void SkeletonAnimation::GetDeltaOverTime(float time1, float time2, vec3r_t delta
 	}
 }
 
+#if 0
 Skeletor::Skeletor(TIKI *tiki)
 	: Skeletor()
 {
@@ -194,7 +195,7 @@ Skeletor::Skeletor(Skeleton* skelmodel)
 
 	m_morphTargetList.PackChannels();
 
-	intptr_t iGlobalChannel = GetAssetManager()->GetManager<SkeletorManager>()->GetBoneNamesTable()->FindNameLookup("Bip01 Head");
+	intptr_t iGlobalChannel = GetAssetManager()->getManager<SkeletorManager>()->GetBoneNamesTable()->FindNameLookup("Bip01 Head");
 	if (iGlobalChannel < 0)
 	{
 		m_headBoneIndex = -1;
@@ -238,6 +239,7 @@ Skeletor::~Skeletor()
 	delete[] m_bone;
 	m_bone = NULL;
 }
+#endif
 
 void ConvertToRotationName(const char *boneName, char *rotChannelName)
 {
@@ -462,6 +464,7 @@ SkelMat4 GlobalToLocal(skelBone_Base *bone, SkelMat4 pGlobalPosition)
 	return lLocalPosition;
 }
 
+#if 0
 void BoneGetFrames(Skeleton *skelmodel, SkeletonAnimation *animData, SkeletonChannelList *boneList, int boneNum, std::vector<SkanAnimFrame>& outFrames)
 {
 	skelBone_Base **bone;
@@ -519,7 +522,6 @@ void BoneGetFrames(Skeleton *skelmodel, SkeletonAnimation *animData, SkeletonCha
 	}
 }
 
-#if 0
 void SkeletorGetAnimFrame2(skelHeaderGame_t *skelmodel, skelChannelList_c *boneList, skelBoneCache_t *bones, skelAnimStoreFrameList_c *frameList, float *radius, vec3_t *mins, vec3_t *maxes)
 {
 	int numBones;
@@ -958,8 +960,6 @@ void TIKI_GetSkelAnimFrame(TIKI *tiki, skelBoneCache_t *bones, float *radius, ve
 	TIKI_GetSkelAnimFrame2(tiki, bones, 0, 0, radius, mins, maxes);
 }
 
-#endif
-
 void Skeletor::GetFrame(skelAnimFrame *newFrame)
 {
 	for (size_t boneNum = 0; boneNum < m_numBones; boneNum++)
@@ -1210,21 +1210,26 @@ size_t Skeletor::GetBoneParent(size_t boneIndex)
 	return -1;
 	//return m_bone[ boneIndex ] - m_bone[ boneIndex ]->Parent();
 }
+#endif
 
 const SkeletonChannelList *TIKI::GetBoneList() const
 {
 	return &boneList;
 }
 
-const char *TIKI::GetBoneNameFromNum(int num) const
+SkeletonChannelList& MOHPC::TIKI::getBoneList()
 {
-	return boneList.ChannelName(GetAssetManager()->GetManager<SkeletorManager>()->GetBoneNamesTable(), num);
+	return boneList;
 }
 
+const char *TIKI::GetBoneNameFromNum(int num) const
+{
+	return boneList.ChannelName(skeletorManager->GetBoneNamesTable(), num);
+}
 
 intptr_t TIKI::GetBoneNumFromName(const char *name) const
 {
-	intptr_t iGlobalChannel = GetAssetManager()->GetManager<SkeletorManager>()->GetBoneNamesTable()->FindNameLookup(name);
+	intptr_t iGlobalChannel = skeletorManager->GetBoneNamesTable()->FindNameLookup(name);
 
 	if (iGlobalChannel < 0)
 	{

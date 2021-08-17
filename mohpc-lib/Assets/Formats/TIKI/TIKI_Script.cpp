@@ -1,11 +1,14 @@
 #include <Shared.h>
 #include "TIKI_Script.h"
 #include <MOHPC/Files/Managers/FileManager.h>
+#include <MOHPC/Common/Log.h>
 
 #include <cstring>
 
+constexpr char MOHPC_LOG_NAMESPACE[] = "tikiscript";
+
 #define TIKI_DPrintf(x, ...)
-#define TIKI_Error(x, ...)
+#define TIKI_Error(x, ...) MOHPC_LOG(Error, x, __VA_ARGS__)
 
 using namespace MOHPC;
 
@@ -15,7 +18,9 @@ TikiScript::~TikiScript()
 }
 
 MOHPC_OBJECT_DEFINITION(TikiScript);
-TikiScript::TikiScript()
+TikiScript::TikiScript(const SharedPtr<AssetManager>& assetManager, const fs::path& fileNameRef)
+	: AssetObject(assetManager)
+	, Asset2(fileNameRef)
 {
 	error = false;
 	buffer = NULL;
@@ -61,11 +66,6 @@ void TikiScript::Close(void)
 	nummacros = 0;
 	memset(token, 0, sizeof(token));
 	mark_pos = 0;
-}
-
-void TikiScript::Load()
-{
-	LoadFile(GetFilename().c_str());
 }
 
 /*
@@ -449,7 +449,7 @@ bool TikiScript::ProcessCommand(bool crossline)
 		SkipWhiteSpace(crossline);
 		try
 		{
-			include = GetAssetManager()->LoadAsset<TikiScript>(argument1);
+			include = GetAssetManager()->readAsset<TikiScriptReader>(argument1);
 			include->SkipNonToken(crossline);
 			for (i = 0; i < nummacros; i++)
 			{
@@ -1268,31 +1268,22 @@ void TikiScript::Parse(char *data, uintmax_t length, const char *name)
 =
 ==============
 */
-void TikiScript::LoadFile(const char *name)
+void TikiScript::LoadFile(const IFilePtr& file)
 {
 	uint64_t length;
 	char *buf;
 
 	Close();
 
-	FilePtr file = GetFileManager()->OpenFile(name);
-	if (!file) {
-		throw AssetError::AssetNotFound(name);
-	}
-
 	length = file->ReadBuffer((void**)&buf);
-
-	HashUpdate((uint8_t*)buf, length);
 
 	// create our own space
 	buffer = new char[(size_t)length + 1];
 	// copy the file over to our space
 	memcpy(buffer, buf, (size_t)length);
 	buffer[length] = 0;
-	// free the file
-	file.reset();
 
-	Parse(buffer, (size_t)length, name);
+	Parse(buffer, (size_t)length, file->getName().generic_string().c_str());
 	releaseBuffer = true;
 }
 
@@ -1412,4 +1403,13 @@ const char *TikiScript::GetParentToken(void)
 void TikiScript::SetAllowExtendedComment(bool bAllow)
 {
 	allow_extended_comment = bAllow;
+}
+
+MOHPC_OBJECT_DEFINITION(TikiScriptReader);
+Asset2Ptr TikiScriptReader::read(const IFilePtr& file)
+{
+	SharedPtr<TikiScript> tikiScript(new TikiScript(GetAssetManager(), file->getName()));
+	tikiScript->LoadFile(file);
+
+	return Asset2Ptr(tikiScript);
 }

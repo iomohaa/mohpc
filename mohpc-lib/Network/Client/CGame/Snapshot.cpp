@@ -51,14 +51,15 @@ bool EntityInfo::hasTeleported() const
 MOHPC_OBJECT_DEFINITION(SnapshotProcessor);
 
 SnapshotProcessor::SnapshotProcessor()
-	: nextSnap(nullptr)
+	: csModified(*this)
+	, nextSnap(nullptr)
 	, snap(nullptr)
 	, processedSnapshotNum(0)
 	, latestSnapshotNum(0)
+	, newConfigstrings(false)
 	, nextFrameTeleport(false)
 	, nextFrameCameraCut(false)
 	, thisFrameTeleport(false)
-	, csModified(*this)
 {
 	serverCommandManager.add("cs", &csModified);
 }
@@ -75,11 +76,25 @@ void SnapshotProcessor::setPtrs(const ClientTime* clientTimePtr, const ServerSna
 	commandSequence = commandSequencePtr;
 }
 
-void SnapshotProcessor::init(uintptr_t serverMessageSequence, rsequence_t serverCommandSequence)
+void SnapshotProcessor::init(const ServerGameStatePtr& gs, uintptr_t serverMessageSequence, rsequence_t serverCommandSequence)
 {
 	processedSnapshotNum = serverMessageSequence;
 	latestSnapshotNum = processedSnapshotNum;
 	latestCommandSequence = serverCommandSequence;
+
+	const ConfigStringManager& csm = gs->get().getConfigstringManager();
+	const size_t num = csm.getMaxConfigStrings();
+	for (size_t i = 0; i < num; ++i)
+	{
+		const char* value = csm.getConfigString((csNum_t)i);
+		if (*value)
+		{
+			// notify only for non-empty configstrings
+			handlers().configstringModifiedHandler.broadcast((csNum_t)i, value);
+		}
+	}
+
+	handlers().processedConfigStringsHandler.broadcast();
 }
 
 const SnapshotInfo& SnapshotProcessor::getOldSnap() const
@@ -417,6 +432,13 @@ void SnapshotProcessor::executeNewServerCommands(uintptr_t serverCommandSequence
 			serverCommandManager.process(commandString);
 		}
 	}
+
+	if (newConfigstrings)
+	{
+		newConfigstrings = false;
+		// notify about the configstring change
+		handlers().processedConfigStringsHandler.broadcast();
+	}
 }
 
 const SnapshotProcessor::HandlerList& SnapshotProcessor::handlers() const
@@ -460,6 +482,8 @@ void SnapshotProcessor::configStringModified(TokenParser& tokenized)
 	const char* csString = tokenized.GetString(true, false);
 
 	handlers().configstringModifiedHandler.broadcast(num, csString);
+
+	newConfigstrings = true;
 }
 
 CommandManager& SnapshotProcessor::getCommandManager()

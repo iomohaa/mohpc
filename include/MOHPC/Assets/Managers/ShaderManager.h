@@ -5,6 +5,7 @@
 #include "../../Common/str.h"
 #include "../../Common/Vector.h"
 #include "../../Utility/SharedPtr.h"
+#include "../../Files/File.h"
 
 #include <vector>
 #include <unordered_map>
@@ -298,7 +299,7 @@ namespace MOHPC
 	class ImageCache
 	{
 	private:
-		str imageName;
+		fs::path imageName;
 		SharedPtr<Image> cachedImage;
 		bool bCached;
 		ShaderManager* shaderManager;
@@ -310,7 +311,7 @@ namespace MOHPC
 		ImageCache();
 
 	public:
-		MOHPC_ASSETS_EXPORTS const char* GetImageName() const;
+		MOHPC_ASSETS_EXPORTS const fs::path& GetImageName() const;
 		MOHPC_ASSETS_EXPORTS Image* GetImage() const;
 
 		MOHPC_ASSETS_EXPORTS void CacheImage();
@@ -459,7 +460,7 @@ namespace MOHPC
 		MOHPC_ASSETS_EXPORTS ShaderManager* GetShaderManager() const;
 		MOHPC_ASSETS_EXPORTS ShaderContainer* GetShaderContainer();
 		MOHPC_ASSETS_EXPORTS const ShaderContainer* GetShaderContainer() const;
-		MOHPC_ASSETS_EXPORTS const char* GetFilename() const;
+		MOHPC_ASSETS_EXPORTS const fs::path& GetFilename() const;
 		MOHPC_ASSETS_EXPORTS const char* GetName() const;
 		MOHPC_ASSETS_EXPORTS int32_t GetContents() const;
 		MOHPC_ASSETS_EXPORTS int32_t GetSurfaceFlags() const;
@@ -552,11 +553,11 @@ namespace MOHPC
 	{
 	private:
 		ShaderManager *m_shaderManager;
-		str m_filename;
+		fs::path m_filename;
 		std::vector<ShaderPtr> m_shaderList;
 
 	public:
-		ShaderContainer(ShaderManager* shaderManager, const str& filename);
+		ShaderContainer(ShaderManager* shaderManager, const fs::path& filename);
 
 		void AddShader(const ShaderPtr& Shader);
 		void RemoveShader(const ShaderPtr& Shader);
@@ -565,7 +566,7 @@ namespace MOHPC
 		MOHPC_ASSETS_EXPORTS const Shader* GetShader(size_t num) const;
 
 		MOHPC_ASSETS_EXPORTS ShaderManager *GetShaderManager() const;
-		MOHPC_ASSETS_EXPORTS const str& GetFilename() const;
+		MOHPC_ASSETS_EXPORTS const fs::path& GetFilename() const;
 	};
 
 	using ShaderContainerPtr = SharedPtr<ShaderContainer>;
@@ -577,7 +578,7 @@ namespace MOHPC
 	private:
 		std::unordered_map<str, ShaderPtr> m_nametoshader;
 		std::unordered_map<str, ImageCachePtr> m_nametoimage;
-		std::unordered_map<str, ShaderContainerPtr> m_fileShaderMap;
+		std::unordered_map<fs::path::string_type, ShaderContainerPtr> m_fileShaderMap;
 		std::vector<ImageCachePtr> m_images;
 		std::vector<ShaderContainerPtr> m_ShaderContainers;
 		ShaderContainer m_defaultShaderContainer;
@@ -596,11 +597,11 @@ namespace MOHPC
 		MOHPC_ASSETS_EXPORTS ImageCache* FindImage(const char *name);
 		MOHPC_ASSETS_EXPORTS size_t GetNumShaderContainers() const;
 		MOHPC_ASSETS_EXPORTS const ShaderContainer* GetShaderContainer(size_t num) const;
-		MOHPC_ASSETS_EXPORTS const ShaderContainer* GetShaderContainer(const char* Filename) const;
+		MOHPC_ASSETS_EXPORTS const ShaderContainer* GetShaderContainer(const fs::path& Filename) const;
 
 	private:
 		void ParseShaders(const class FileEntryList& files);
-		ShaderContainerPtr ParseShaderContainer(const str& fileName, const char *buffer, uint64_t length = 0);
+		ShaderContainerPtr ParseShaderContainer(const fs::path& fileName, const char *buffer, uint64_t length = 0);
 		//string ParseTextureExtension(const string& name);
 	};
 	using ShaderManagerPtr = SharedPtr<ShaderManager>;

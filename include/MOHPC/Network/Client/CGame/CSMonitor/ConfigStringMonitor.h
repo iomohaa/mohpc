@@ -2,6 +2,7 @@
 
 #include "../Snapshot.h"
 #include "../../../Configstring.h"
+#include "../../../../Utility/HandlerList.h"
 
 #include <map>
 
@@ -11,11 +12,21 @@ namespace Network
 {
 	namespace CGame
 	{
+		namespace Handlers
+		{
+			/**
+			 * Called when all configstrings has been modified and handled.
+			 */
+			struct ConfigstringHandled : public HandlerNotifyBase<void()> {};
+		}
+
 		class ConfigstringMonitor
 		{
 		public:
 			ConfigstringMonitor(const SnapshotProcessorPtr& snapshotProcessor);
 			virtual ~ConfigstringMonitor();
+
+			FunctionList<Handlers::ConfigstringHandled>& getHandler();
 
 		protected:
 			/**
@@ -24,11 +35,15 @@ namespace Network
 			 * @param num Configstring number.
 			 * @param cs Configstring value.
 			 */
-			virtual void configStringModified(csNum_t num, const char* cs) = 0;
+			virtual bool configStringModified(csNum_t num, const char* cs) = 0;
+
+		private:
+			void configStringModifiedInternal(csNum_t num, const char* cs);
 
 		private:
 			SnapshotProcessorPtr snapshotProcessor;
 			fnHandle_t csHandle;
+			FunctionList<Handlers::ConfigstringHandled> handler;
 		};
 
 		template<typename T>
@@ -39,7 +54,7 @@ namespace Network
 				: ConfigstringMonitor(snapshotProcessorPtr)
 			{}
 
-			void configStringModified(csNum_t num, const char* cs) override final
+			bool configStringModified(csNum_t num, const char* cs) override final
 			{
 				const auto callback = T::callbackMap.find(num);
 				if (callback != T::callbackMap.end())
@@ -47,7 +62,12 @@ namespace Network
 					// can call it
 					Callback c = callback->second;
 					(static_cast<T*>(this)->*c)(cs);
+
+					// notify about the configstring change
+					return true;
 				}
+
+				return false;
 			}
 
 		private:

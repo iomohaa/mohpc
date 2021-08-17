@@ -7,6 +7,7 @@
 #include <MOHPC/Network/Types/PlayerState.h>
 #include <MOHPC/Network/Serializable/Entity.h>
 #include <MOHPC/Network/Serializable/PlayerState.h>
+#include <MOHPC/Network/Serializable/Angles.h>
 #include "Common/Common.h"
 
 #include <vector>

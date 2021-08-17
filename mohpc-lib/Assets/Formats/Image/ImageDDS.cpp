@@ -226,7 +226,7 @@ typedef enum DXGI_FORMAT {
 static constexpr char DDS_HEADER[] = "DDS ";
 static constexpr char DDS_HEADER_DX10[] = "DX10";
 
-void Image::LoadDDS(const char *name, void *buf, uint64_t len)
+ImagePtr ImageReader::LoadDDS(const fs::path& name, void *buf, uint64_t len)
 {
 	//
 	// reject files that are too small to hold even a header
@@ -275,8 +275,8 @@ void Image::LoadDDS(const char *name, void *buf, uint64_t len)
 		len -= 4 + sizeof(*ddsHeader);
 	}
 
-	width = Endian.LittleInteger(ddsHeader->width);
-	height = Endian.LittleInteger(ddsHeader->height);
+	const uint32_t width = Endian.LittleInteger(ddsHeader->width);
+	const uint32_t height = Endian.LittleInteger(ddsHeader->height);
 
 	uint32_t picFormat = 0;
 
@@ -416,9 +416,9 @@ void Image::LoadDDS(const char *name, void *buf, uint64_t len)
 		}
 	}
 
-	data = new uint8_t[(size_t)len];
+	uint8_t* data = new uint8_t[(size_t)len];
 	memcpy(data, ddsData, (size_t)len);
-	pixelFormat = PixelFormat::RGBA;
+	return ImagePtr(new Image(name, data, len, width, height, PixelFormat::RGBA));
 }
 
 ImageError::DDS::BadHeader::BadHeader(const uint8_t inFoundHeader[4])

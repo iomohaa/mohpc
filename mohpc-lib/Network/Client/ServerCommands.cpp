@@ -226,7 +226,7 @@ str EngineServer::ConnectRequest::generateRequest()
 	info.SetValueForKey("qport", std::to_string(qport).c_str());
 
 	// fill user settings into an info instance
-	ClientInfoHelper::fillInfoString(*data.info, info);
+	UserInfoHelpers::fillInfoString(*data.info, info);
 
 	// send user info string
 	str connectArgs;

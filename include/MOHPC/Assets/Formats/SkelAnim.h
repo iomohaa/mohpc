@@ -24,57 +24,39 @@ namespace MOHPC
 		vec3_t rot;
 	};
 
-	class SkeletonAnimation : public Asset
+	struct File_AnimFrame;
+	struct File_AnimDataHeader;
+
+	struct AnimFrame
+	{
+		SkelVec3 bounds[2];
+		float radius;
+		SkelVec3 delta;
+		float angleDelta;
+		vec4_t* pChannels;
+
+		AnimFrame();
+		~AnimFrame();
+	};
+
+	struct SkanGameFrame
+	{
+		size_t nFrameNum;
+		size_t nPrevFrameIndex;
+		float pChannelData[4];
+	};
+
+	struct SkanChannelHdr
+	{
+		std::vector<SkanGameFrame> ary_frames;
+	};
+
+	class SkeletonAnimation : public Asset2
 	{
 		MOHPC_ASSET_OBJECT_DECLARATION(SkeletonAnimation);
 
 	public:
-		struct File_AnimFrame;
-		struct File_AnimDataHeader;
-
-		struct AnimFrame
-		{
-			SkelVec3 bounds[2];
-			float radius;
-			SkelVec3 delta;
-			float angleDelta;
-			vec4_t* pChannels;
-
-			AnimFrame();
-			~AnimFrame();
-		};
-
-		struct SkanGameFrame
-		{
-			size_t nFrameNum;
-			size_t nPrevFrameIndex;
-			float pChannelData[4];
-		};
-
-		struct SkanChannelHdr
-		{
-			std::vector<SkanGameFrame> ary_frames;
-		};
-
-	private:
-		int32_t flags;
-		int32_t nBytesUsed;
-		bool bHasDelta;
-		bool bHasMorph;
-		bool bHasUpper;
-		vec3_t totalDelta;
-		float totalAngleDelta;
-		float frameTime;
-		SkeletonChannelList channelList;
-		SkelVec3 bounds[2];
-		std::vector<AnimFrame> m_frame;
-		std::vector<SkanChannelHdr> ary_channels;
-
-	public:
-		void Load() override;
-
-	public:
-		MOHPC_ASSETS_EXPORTS SkeletonAnimation();
+		MOHPC_ASSETS_EXPORTS SkeletonAnimation(const fs::path& fileName);
 
 		/** Returns the number of frames to use with the given time. */
 		MOHPC_ASSETS_EXPORTS size_t GetFrameNums(float timeSeconds, float timeTolerance, size_t *beforeFrame, size_t *afterFrame, float *beforeWeight, float *afterWeight) const;
@@ -118,25 +100,88 @@ namespace MOHPC
 
 		/** Returns the channel list of the animation. */
 		MOHPC_ASSETS_EXPORTS const SkeletonChannelList *GetChannelList() const;
+		SkeletonChannelList& getChannelList();
 
 		/** Returns whether or not transforms change over time. */
 		MOHPC_ASSETS_EXPORTS bool IsDynamic() const;
 
+		std::vector<AnimFrame>& getFrames();
+		std::vector<SkanChannelHdr>& getAryChannels();
+		void setFlags(int32_t newFlags);
+		void setDelta(bool hasDeltaValue);
+		void setMorph(bool hasMorphValue);
+		void setUpper(bool hasUpperValue);
+		void setTotalDelta(const_vec3r_t newDelta);
+		void setTotalAngleDelta(float newAngle);
+		void setFrameTime(float newFrametime);
+		void setBounds(const_vec3r_t mins, const_vec3r_t maxs);
+
 	private:
-		void EncodeFrames(const SkeletonChannelList *channelList, const SkeletonChannelNameTable *channelNames);
-		void ConvertSkelFileToGame(const File_AnimDataHeader *pHeader, size_t iBuffLength, const char *path);
+		int32_t flags;
+		bool bHasDelta;
+		bool bHasMorph;
+		bool bHasUpper;
+		vec3_t totalDelta;
+		float totalAngleDelta;
+		float frameTime;
+		SkeletonChannelList channelList;
+		SkelVec3 bounds[2];
+		std::vector<AnimFrame> m_frame;
+		std::vector<SkanChannelHdr> ary_channels;
+	};
+
+	class SkeletonAnimationReader : public AssetReader
+	{
+		MOHPC_ASSET_OBJECT_DECLARATION(SkeletonAnimationReader);
+
+	public:
+		using AssetType = SkeletonAnimation;
+
+	public:
+		MOHPC_ASSETS_EXPORTS SkeletonAnimationReader();
+		MOHPC_ASSETS_EXPORTS ~SkeletonAnimationReader();
+
+		MOHPC_ASSETS_EXPORTS Asset2Ptr read(const IFilePtr& file) override;
+		MOHPC_ASSETS_EXPORTS static Asset2Ptr readNewAnim(const AssetManagerPtr& assetManager, const fs::path& path);
+
+	private:
+		void ConvertSkelFileToGame(const File_AnimDataHeader* pHeader, size_t iBuffLength, SkeletonAnimation& skelAnim);
+		void ReadEncodedFrames(MSG& msg, std::vector<AnimFrame>& m_frame, std::vector<SkanChannelHdr>& ary_channels);
+		void ReadEncodedFramesEx(MSG& msg, const SkeletonChannelList& channelList, std::vector<AnimFrame>& m_frame, std::vector<SkanChannelHdr>& ary_channels);
+		SkeletonAnimationPtr LoadProcessedAnim(const fs::path& path, void* buffer, size_t len);
+		SkeletonAnimationPtr LoadProcessedAnimEx(const fs::path& path, void* buffer, size_t len);
+	};
+
+	class SkeletonAnimationWriter : public AssetWriter
+	{
+		MOHPC_ASSET_OBJECT_DECLARATION(SkeletonAnimationWriter);
+
+	private:
 		void WriteEncodedFrames(MSG& msg);
 		void WriteEncodedFramesEx(MSG& msg);
-		void SaveProcessedAnim(const char *path, File_AnimDataHeader *pHeader);
-		void ReadEncodedFrames(MSG& msg);
-		void ReadEncodedFramesEx(MSG& msg);
-		void LoadProcessedAnim(const char *path, void *buffer, size_t len, const char *name);
-		void LoadProcessedAnimEx(const char *path, void *buffer, size_t len, const char *name);
+		void SaveProcessedAnim(const fs::path& path, File_AnimDataHeader* pHeader);
 	};
 
 	namespace SkelAnimError
 	{
 		class Base : public std::exception {};
+
+		/**
+		 * The skeleton animation is too small.
+		 */
+		class BadSize : public Base
+		{
+		public:
+			BadSize(size_t size);
+
+			MOHPC_ASSETS_EXPORTS size_t getSize() const;
+
+		public:
+			const char* what() const noexcept override;
+
+		private:
+			size_t foundSize;
+		};
 
 		/**
 		 * The skeleton animation has wrong header.

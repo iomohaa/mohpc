@@ -89,7 +89,7 @@ namespace MOHPC
 		MOHPC_ASSETS_EXPORTS void GetVector(bool crossline, vec3r_t out);
 		MOHPC_ASSETS_EXPORTS int LinesInFile(void);
 		MOHPC_ASSETS_EXPORTS void Parse(const char* data, uintmax_t length, const char* name = "");
-		MOHPC_ASSETS_EXPORTS void LoadFile(const char* name);
+		MOHPC_ASSETS_EXPORTS void LoadFile(const fs::path& name);
 		MOHPC_ASSETS_EXPORTS void LoadFile(const char* name, int length, const char* buf);
 		MOHPC_ASSETS_EXPORTS const char* Token(void);
 		MOHPC_ASSETS_EXPORTS void AddMacroDefinition(bool crossline);

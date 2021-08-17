@@ -26,7 +26,7 @@ namespace MOHPC
 	{
 		float weight;
 		ConstSkeletonAnimationPtr pAnimationData;
-		SkeletonAnimation::AnimFrame *frame;
+		AnimFrame *frame;
 	};
 
 	struct SkanBlendInfo
@@ -109,4 +109,4 @@ namespace MOHPC
 	};
 };
 
-const vec4_t* DecodeFrameValue(const SkeletonAnimation::SkanChannelHdr* channelFrames, size_t desiredFrameNum);
+const vec4_t* DecodeFrameValue(const SkanChannelHdr* channelFrames, size_t desiredFrameNum);

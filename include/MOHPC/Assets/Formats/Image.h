@@ -2,6 +2,7 @@
 
 #include "../Asset.h"
 #include "../../Utility/SharedPtr.h"
+#include "../../Files/File.h"
 
 namespace MOHPC
 {
@@ -12,29 +13,20 @@ namespace MOHPC
 		RGBA
 	};
 
-	class Image : public Asset
+	class Image : public Asset2
 	{
 		MOHPC_ASSET_OBJECT_DECLARATION(Image);
 
 	public:
+		MOHPC_ASSETS_EXPORTS Image(const fs::path& fileNameRef, uint8_t* dataBuf, uint32_t size, uint32_t widthVal, uint32_t heightVal, PixelFormat format);
+		MOHPC_ASSETS_EXPORTS ~Image();
+
 		MOHPC_ASSETS_EXPORTS uint8_t* GetData() const;
 		MOHPC_ASSETS_EXPORTS uint32_t GetDataSize() const;
 		MOHPC_ASSETS_EXPORTS PixelFormat GetPixelFormat() const;
 
 		MOHPC_ASSETS_EXPORTS uint32_t GetWidth() const;
 		MOHPC_ASSETS_EXPORTS uint32_t GetHeight() const;
-
-	public:
-		MOHPC_ASSETS_EXPORTS Image();
-		MOHPC_ASSETS_EXPORTS ~Image();
-
-	protected:
-		void Load() override;
-
-	private:
-		void LoadJPEG(const char *name, void *buf, uint64_t len);
-		void LoadTGA(const char *name, void *buf, uint64_t len);
-		void LoadDDS(const char *name, void *buf, uint64_t len);
 
 	private:
 		uint8_t *data;
@@ -44,6 +36,25 @@ namespace MOHPC
 		PixelFormat pixelFormat;
 	};
 	using ImagePtr = SharedPtr<Image>;
+
+	class ImageReader : public AssetReader
+	{
+		MOHPC_ASSET_OBJECT_DECLARATION(ImageReader);
+
+	public:
+		using AssetType = Image;
+
+	public:
+		MOHPC_ASSETS_EXPORTS ImageReader();
+		MOHPC_ASSETS_EXPORTS ~ImageReader();
+
+		MOHPC_ASSETS_EXPORTS Asset2Ptr read(const IFilePtr& file);
+
+	private:
+		ImagePtr LoadJPEG(const fs::path& name, void* buf, uint64_t len);
+		ImagePtr LoadTGA(const fs::path& name, void* buf, uint64_t len);
+		ImagePtr LoadDDS(const fs::path& name, void* buf, uint64_t len);
+	};
 
 	namespace ImageError
 	{
@@ -55,15 +66,15 @@ namespace MOHPC
 		class BadExtension : public Base
 		{
 		public:
-			BadExtension(const str& extension);
+			BadExtension(const fs::path& extension);
 
-			MOHPC_ASSETS_EXPORTS const char* getExtension() const;
+			MOHPC_ASSETS_EXPORTS const fs::path& getExtension() const;
 
 		public:
 			const char* what() const noexcept override;
 
 		private:
-			str extension;
+			fs::path extension;
 		};
 
 		/**

@@ -3,6 +3,7 @@
 #include <MOHPC/Assets/Managers/AssetManager.h>
 #include <MOHPC/Utility/Managers/EmitterManager.h>
 #include <MOHPC/Files/Managers/FileManager.h>
+#include <MOHPC/Files/FileHelpers.h>
 #include <morfuse/Script/EventSystem.h>
 #include <MOHPC/Assets/Managers/ShaderManager.h>
 #include <MOHPC/Assets/Formats/TIKI.h>
@@ -1414,13 +1415,13 @@ void EmitterListener::SetModel(mfuse::Event* ev)
 	str resourceName = ev->GetString(1);
 	if (resourceName.length() > 0)
 	{
-		const char* extension = strHelpers::getExtension(resourceName.c_str());
+		const char* extension = FileHelpers::getExtension(resourceName.c_str());
 		
 		if (!strHelpers::icmp(extension, "spr"))
 		{
 			resourceName = str(resourceName, extension - resourceName.c_str());
 			emitter->sprite.spriteType = Sprite::ST_Shader;
-			const ShaderManagerPtr shaderManager = assetManager->GetManager<ShaderManager>();
+			const ShaderManagerPtr shaderManager = assetManager->getManager<ShaderManager>();
 			if(shaderManager)
 			{
 				ShaderPtr shader = shaderManager->GetShader(resourceName.c_str());
@@ -1433,7 +1434,7 @@ void EmitterListener::SetModel(mfuse::Event* ev)
 		else if (!strHelpers::icmp(extension, "tik"))
 		{
 			emitter->sprite.spriteType = Sprite::ST_Tiki;
-			auto Tiki = assetManager->LoadAsset<TIKI>(resourceName.c_str());
+			auto Tiki = assetManager->readAsset<TIKIReader>(resourceName.c_str());
 			if (Tiki)
 			{
 				emitter->sprite.Tiki = new SharedPtr<TIKI>(std::move(Tiki));

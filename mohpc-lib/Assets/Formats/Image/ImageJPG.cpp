@@ -4,7 +4,7 @@
 
 using namespace MOHPC;
 
-void Image::LoadJPEG(const char *name, void *buf, uint64_t len)
+ImagePtr ImageReader::LoadJPEG(const fs::path& name, void *buf, uint64_t len)
 {
 	/* This struct contains the JPEG decompression parameters and pointers to
 	* working space (which is allocated as needed by the JPEG library).
@@ -64,16 +64,13 @@ void Image::LoadJPEG(const char *name, void *buf, uint64_t len)
 
 		jpeg_start_decompress(&cinfo);
 
-		width = cinfo.output_width;
-		height = cinfo.output_height;
-
-		const int32_t pixelcount = width * height;
+		const int32_t pixelcount = cinfo.output_width * cinfo.output_height;
 
 		const uint32_t memcount = pixelcount * 4;
 		const uint32_t row_stride = cinfo.output_width * cinfo.output_components;
 
-		data = new uint8_t[memcount];
-		dataSize = memcount;
+		uint8_t* data = new uint8_t[memcount];
+		const uint32_t dataSize = memcount;
 
 		uint8_t* rbuf;
 
@@ -113,17 +110,17 @@ void Image::LoadJPEG(const char *name, void *buf, uint64_t len)
 		/* We can ignore the return value since suspension is not possible
 		 * with the stdio data source.
 		 */
+
+		 /* Step 8: Release JPEG decompression object */
+
+		 /* This is an important step since it will release a good deal of memory. */
+		jpeg_destroy_decompress(&cinfo);
+
+		return ImagePtr(new Image(name, data, dataSize, cinfo.output_width, cinfo.output_height, PixelFormat::RGBA));
 	}
 	catch (...)
 	{
 		jpeg_destroy_decompress(&cinfo);
 		throw;
 	}
-
-	/* Step 8: Release JPEG decompression object */
-
-	/* This is an important step since it will release a good deal of memory. */
-	jpeg_destroy_decompress(&cinfo);
-
-	pixelFormat = PixelFormat::RGB;
 }

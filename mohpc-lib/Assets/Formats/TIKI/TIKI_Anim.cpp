@@ -16,11 +16,11 @@ static int AnimCompareFunc(void *context, const void *a, const void *b)
 static int AnimCompareFunc(const void *a, const void *b, void *context)
 #endif
 {
-	TIKI::dloaddef_t *ld = (TIKI::dloaddef_t*)context;
+	dloaddef_t *ld = (dloaddef_t*)context;
 	return stricmp(ld->loadanims[*(int *)a].alias.c_str(), ld->loadanims[*(int *)b].alias.c_str());
 }
 
-void TIKI::GetAnimOrder(const dloaddef_t *ld, std::vector<size_t>& order) const
+void TIKIReader::GetAnimOrder(const dloaddef_t *ld, std::vector<size_t>& order) const
 {
 	for (size_t i = 0; i < ld->loadanims.size(); i++)
 	{

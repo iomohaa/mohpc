@@ -8,9 +8,9 @@ int main(int argc, const char* argv[])
 {
 	const MOHPC::AssetManagerPtr AM = AssetLoad(GetGamePathFromCommandLine(argc, argv));
 
-	MOHPC::SkeletonAnimationPtr Animation = AM->LoadAsset<MOHPC::SkeletonAnimation>("/models/human/animation/deaths/death_chest.skc");
-	MOHPC::TIKIPtr Tiki = AM->LoadAsset<MOHPC::TIKI>("/models/player/american_army.tik");
-	MOHPC::SkeletonPtr TikiArms = AM->LoadAsset<MOHPC::Skeleton>("/models/player/us_army/USarmyplyr.skd");
+	MOHPC::SkeletonAnimationPtr Animation = AM->readAsset<MOHPC::SkeletonAnimationReader>("/models/human/animation/deaths/death_chest.skc");
+	MOHPC::TIKIPtr Tiki = AM->readAsset<MOHPC::TIKIReader>("/models/player/american_army.tik");
+	MOHPC::SkeletonPtr TikiArms = AM->readAsset<MOHPC::SkeletonReader>("/models/player/us_army/USarmyplyr.skd");
 
 	if (Tiki)
 	{

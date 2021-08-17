@@ -4,19 +4,32 @@
 #include <MOHPC/Common/Log.h>
 #include "Common/Common.h"
 
+#include <cassert>
+
 #define MOHPC_LOG_NAMESPACE "test_shader"
+
+using namespace MOHPC;
 
 int main(int argc, const char* argv[])
 {
-	const MOHPC::AssetManagerPtr AM = AssetLoad(GetGamePathFromCommandLine(argc, argv));
+	InitCommon();
+
+	const AssetManagerPtr AM = AssetLoad(GetGamePathFromCommandLine(argc, argv));
 
 	MOHPC_LOG(Info, "Loading shaders...");
 
-	MOHPC::ShaderManagerPtr SM = AM->GetManager<MOHPC::ShaderManager>();
+	ShaderManagerPtr SM = AM->getManager<ShaderManager>();
 
 	auto Shader = SM->GetShader("textures/common/caulk");
-	if (Shader && Shader->GetNumStages())
-	{
-		const MOHPC::Image* img = Shader->GetStage(0)->bundle[0].image[0]->GetImage();
-	}
+	assert(Shader);
+	assert(!Shader->GetNumStages());
+
+	Shader = SM->GetShader("textures/common/black");
+	assert(Shader);
+	assert(Shader->GetNumStages());
+	ImageCache* cache = Shader->GetStage(0)->bundle[0].image[0];
+	assert(cache);
+	cache->CacheImage();
+	const MOHPC::Image* img = cache->GetImage();
+	assert(img);
 }

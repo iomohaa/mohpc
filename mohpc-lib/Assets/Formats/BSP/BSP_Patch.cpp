@@ -1,5 +1,6 @@
 #include <Shared.h>
 #include <MOHPC/Assets/Formats/BSP.h>
+#include <MOHPC/Assets/Formats/BSP_Collision.h>
 #include "Polylib.h"
 #include "BSP_Curve.h"
 
@@ -132,7 +133,7 @@ int PlaneEqual(BSPData::PatchPlane *p, float plane[4], int *flipped) {
 	return false;
 }
 
-bool BSP::PlaneFromPoints(vec4_t plane, vec3_t a, vec3_t b, vec3_t c)
+bool MOHPC::PlaneFromPoints(vec4_t plane, vec3_t a, vec3_t b, vec3_t c)
 {
 	Vector3 d1, d2;
 
@@ -173,7 +174,7 @@ static int FindPlane(patchWork_t& pw, float *p1, float *p2, float *p3) {
 	float	plane[4];
 	float	d;
 
-	if (!BSP::PlaneFromPoints(plane, p1, p2, p3)) {
+	if (!PlaneFromPoints(plane, p1, p2, p3)) {
 		return -1;
 	}
 
@@ -926,7 +927,7 @@ static void PatchCollideFromGrid(patchWork_t& pw, cGrid_t *grid, BSPData::PatchC
 	memcpy(pf->planes, pw.planes, pw.numPlanes * sizeof(*pf->planes));
 }
 
-BSPData::PatchCollide* BSP::GeneratePatchCollide(int32_t width, int32_t height, const Vertice *points, float subdivisions)
+BSPData::PatchCollide* BSPReader::GeneratePatchCollide(int32_t width, int32_t height, const Vertice *points, float subdivisions)
 {
 	PatchCollide	*pf;
 	cGrid_t			grid;

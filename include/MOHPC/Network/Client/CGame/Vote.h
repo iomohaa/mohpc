@@ -66,34 +66,6 @@ namespace Network
 		// Vote classes
 		//=============================
 
-		struct voteInfo_t
-		{
-		public:
-			voteInfo_t();
-
-			/** Return the last time vote has started. */
-			MOHPC_NET_EXPORTS uint64_t getVoteTime() const;
-
-			/** Return the number of players that voted yes. */
-			MOHPC_NET_EXPORTS uint32_t getNumVotesYes() const;
-
-			/** Return the number of players that voted no. */
-			MOHPC_NET_EXPORTS uint32_t getNumVotesNo() const;
-
-			/** Return the number of players that didn't vote. */
-			MOHPC_NET_EXPORTS uint32_t getNumVotesUndecided() const;
-
-			/** Return the vote name/text. */
-			MOHPC_NET_EXPORTS const char* getVoteString() const;
-
-		public:
-			uint64_t voteTime;
-			uint32_t numVotesYes;
-			uint32_t numVotesNo;
-			uint32_t numUndecidedVotes;
-			str voteString;
-		};
-
 		/**
 		 * Vote option that specify a command when calling a vote.
 		 */
@@ -220,23 +192,8 @@ namespace Network
 			MOHPC_NET_OBJECT_DECLARATION(VoteManager);
 
 		public:
-			class HandlerList
-			{
-			public:
-				FunctionList<VoteHandlers::ReceivedVoteOptions> receivedVoteOptionsHandler;
-			};
-
-		public:
 			MOHPC_NET_EXPORTS VoteManager();
 			MOHPC_NET_EXPORTS ~VoteManager();
-
-			MOHPC_NET_EXPORTS HandlerList& handlers();
-			MOHPC_NET_EXPORTS const HandlerList& handlers() const;
-
-			void registerCommands(CommandManager& commandManager);
-			void commandStartReadFromServer(TokenParser& args);
-			void commandContinueReadFromServer(TokenParser& args);
-			void commandFinishReadFromServer(TokenParser& args);
 
 			void setVoteTime(uint64_t time);
 			MOHPC_NET_EXPORTS uint64_t getVoteTime() const;
@@ -249,20 +206,12 @@ namespace Network
 			void setNumVotesUndecided(uint32_t count);
 			MOHPC_NET_EXPORTS void getVotesCount(uint32_t& numYes, uint32_t& numNo, uint32_t& numUndecided) const;
 
-		public:
-			CommandTemplate<VoteManager, &VoteManager::commandStartReadFromServer> startReadFromServerHandler;
-			CommandTemplate<VoteManager, &VoteManager::commandContinueReadFromServer> continueReadFromServerHandler;
-			CommandTemplate<VoteManager, &VoteManager::commandFinishReadFromServer> finishReadFromServerHandler;
-
-			VoteOptions voteOptions;
-			VoteOptionsParser voteOptionsParser;
-			HandlerList handlerList;
+		private:
 			uint64_t voteTime;
 			uint32_t numVotesYes;
 			uint32_t numVotesNo;
 			uint32_t numUndecidedVotes;
 			str voteString;
-			bool modified : 1;
 		};
 		using VoteManagerPtr = SharedPtr<VoteManager>;
 

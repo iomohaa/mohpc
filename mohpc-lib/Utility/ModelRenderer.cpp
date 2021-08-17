@@ -30,6 +30,7 @@ void ModelRenderer::CacheBones()
 {
 	if (!skelBones)
 	{
+		const SkeletorManagerPtr skeletorManager = GetAssetManager()->getManager<SkeletorManager>();
 		const size_t numBones = boneList.NumChannels();
 
 		skelBones = new skelBone_Base*[numBones]();
@@ -40,7 +41,7 @@ void ModelRenderer::CacheBones()
 		{
 			const SkeletonPtr Skel = meshes[i].lock();
 			if(Skel) {
-				Skel->LoadBonesFromBuffer(&boneList, skelBones);
+				LoadBonesFromBuffer(skeletorManager, &boneList, skelBones, Skel->getBones());
 			}
 		}
 
@@ -70,7 +71,7 @@ void ModelRenderer::CacheBones()
 			}
 
 			ModelBone bone;
-			bone.boneName = boneList.ChannelName(GetManager<SkeletorManager>()->GetBoneNamesTable(), i);
+			bone.boneName = boneList.ChannelName(getManager<SkeletorManager>()->GetBoneNamesTable(), i);
 			bone.parentIndex = parentIndex;
 			bones.push_back(bone);
 		}
@@ -127,7 +128,7 @@ void ModelRenderer::AddModel(const TIKI* Tiki)
 
 		boneList.PackChannels();
 
-		ShaderManagerPtr shaderMan = GetAssetManager()->GetManager<ShaderManager>();
+		ShaderManagerPtr shaderMan = GetAssetManager()->getManager<ShaderManager>();
 
 		meshes.reserve(meshes.size() + numMeshes);
 		materials.reserve(materials.size() + numMeshes);
@@ -142,7 +143,7 @@ void ModelRenderer::AddModel(const TIKI* Tiki)
 		const size_t numSurfaces = Tiki->GetNumSurfaces();
 		for (size_t i = 0; i < numSurfaces; i++)
 		{
-			const TIKI::TIKISurface* Surface = Tiki->GetSurface(i);
+			const TIKISurface* Surface = Tiki->GetSurface(i);
 
 			if (!FindMaterialByName(Surface->name))
 			{
@@ -380,7 +381,7 @@ void ModelRenderer::BuildRenderData()
 		const size_t numMeshSurfaces = Skel->GetNumSurfaces();
 		for (size_t surfIdx = 0; surfIdx < numMeshSurfaces; surfIdx++)
 		{
-			const Skeleton::Surface* skelSurface = Skel->GetSurface(surfIdx);
+			const Surface* skelSurface = Skel->GetSurface(surfIdx);
 
 			const size_t numVertices = skelSurface->Vertices.size();
 			const size_t numIndexes = skelSurface->Triangles.size();
@@ -392,8 +393,8 @@ void ModelRenderer::BuildRenderData()
 
 			for (size_t vertIdx = 0; vertIdx < numVertices; vertIdx++)
 			{
-				const Skeleton::SkeletorVertex* skelVertex = &skelSurface->Vertices[vertIdx];
-				const Skeleton::SkeletorWeight* skelWeight = skelVertex->Weights.data();
+				const SkeletorVertex* skelVertex = &skelSurface->Vertices[vertIdx];
+				const SkeletorWeight* skelWeight = skelVertex->Weights.data();
 				const size_t numWeights = skelVertex->Weights.size();
 				const size_t numMorphs = skelVertex->Morphs.size();
 				intptr_t boneNum;
@@ -415,7 +416,7 @@ void ModelRenderer::BuildRenderData()
 				if (numMorphs > 0)
 				{
 					vec3_t totalMorph;
-					const Skeleton::SkeletorMorph* skelMorph = skelVertex->Morphs.data();
+					const SkeletorMorph* skelMorph = skelVertex->Morphs.data();
 
 					/*
 					for (size_t morphNum = 0; morphNum < numMorphs; morphNum++)
@@ -576,7 +577,7 @@ void ModelRenderer::LoadMorphTargetNames(const Skeleton* skelmodel)
 	{
 		const char* newTargetName = skelmodel->GetMorphTarget(i);
 
-		size_t newChannel = GetAssetManager()->GetManager<SkeletorManager>()->GetChannelNamesTable()->RegisterChannel(newTargetName);
+		size_t newChannel = GetAssetManager()->getManager<SkeletorManager>()->GetChannelNamesTable()->RegisterChannel(newTargetName);
 		size_t morphTargetIndex = m_morphTargetList.AddChannel(newChannel);
 
 		/*
@@ -604,7 +605,7 @@ void ModelRenderer::LoadMorphTargetNames(const Skeleton* skelmodel)
 	}
 }
 
-void ModelRenderer::SkelVertGetNormal(const Skeleton::SkeletorVertex *vert, const ModelBoneTransform *bone, vec3r_t out)
+void ModelRenderer::SkelVertGetNormal(const SkeletorVertex *vert, const ModelBoneTransform *bone, vec3r_t out)
 {
 	out[0] = vert->normal[0] * bone->matrix[0][0] +
 		vert->normal[1] * bone->matrix[1][0] +
@@ -619,7 +620,7 @@ void ModelRenderer::SkelVertGetNormal(const Skeleton::SkeletorVertex *vert, cons
 		vert->normal[2] * bone->matrix[2][2];
 }
 
-void ModelRenderer::SkelWeightGetXyz(const Skeleton::SkeletorWeight *weight, const ModelBoneTransform *bone, vec3r_t out)
+void ModelRenderer::SkelWeightGetXyz(const SkeletorWeight *weight, const ModelBoneTransform *bone, vec3r_t out)
 {
 	out[0] += ((weight->offset[0] * bone->matrix[0][0] +
 		weight->offset[1] * bone->matrix[1][0] +
@@ -637,7 +638,7 @@ void ModelRenderer::SkelWeightGetXyz(const Skeleton::SkeletorWeight *weight, con
 		bone->offset[2]) * weight->boneWeight;
 }
 
-void ModelRenderer::SkelWeightMorphGetXyz(const Skeleton::SkeletorWeight *weight, const ModelBoneTransform *bone, const vec3r_t totalmorph, vec3r_t out)
+void ModelRenderer::SkelWeightMorphGetXyz(const SkeletorWeight *weight, const ModelBoneTransform *bone, const vec3r_t totalmorph, vec3r_t out)
 {
 	const Vector3 point = castVector(totalmorph) + castVector(weight->offset);
 
@@ -657,7 +658,7 @@ void ModelRenderer::SkelWeightMorphGetXyz(const Skeleton::SkeletorWeight *weight
 		bone->offset[2]) * weight->boneWeight;
 }
 
-void ModelRenderer::SkelMorphGetXyz(const Skeleton::SkeletorMorph *morph, int *morphcache, vec3r_t out)
+void ModelRenderer::SkelMorphGetXyz(const SkeletorMorph *morph, int *morphcache, vec3r_t out)
 {
 	out[0] += morph->offset[0] * *morphcache +
 		morph->offset[1] * *morphcache +
@@ -685,7 +686,7 @@ bool ModelRenderer::SetPose(uintptr_t poseIndex, skelAnimStoreFrameList_c& frame
 	{
 		for (size_t j = 0; j <= pose->frameNum; j++)
 		{
-			const SkeletonAnimation::AnimFrame* animFrame = pose->animation->GetFrame(j);
+			const AnimFrame* animFrame = pose->animation->GetFrame(j);
 			castVector(delta) += castVector((float*)animFrame->delta);
 		}
 

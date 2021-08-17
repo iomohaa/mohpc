@@ -13,9 +13,7 @@ static constexpr char DEFAULT_CLIENT_NAME[] = "UnnamedSoldier";
 
 MOHPC_OBJECT_DEFINITION(ClientInfoList);
 
-ClientInfoList::ClientInfoList(const ServerGameStatePtr& gameStatePtr, const UserInfoPtr& userInfoPtr)
-	: gameState(gameStatePtr)
-	, userInfo(userInfoPtr)
+ClientInfoList::ClientInfoList()
 {
 	clientInfo = new clientInfo_t[CS::MAX_CLIENTS];
 }
@@ -53,29 +51,7 @@ const clientInfo_t& ClientInfoList::set(const ReadOnlyInfo& info, uint32_t clien
 		}
 	}
 
-	if (clientNum == gameState->getClientNum())
-	{
-		// something has changed locally so try to reflect the change
-		// to the local client
-		reflectLocalClient(client);
-	}
-
 	return client;
-}
-
-void ClientInfoList::reflectLocalClient(const clientInfo_t& client)
-{
-	const char* currentName = userInfo->getName();
-	// check if the name is different
-	if (strHelpers::cmp(client.name.c_str(), currentName))
-	{
-		MOHPC_LOG(Info, "Name changed from \"%s\" to \"%s\"", currentName, client.name.c_str());
-		// the name has changed (can be because it was sanitized)
-		// as a consequence, the change must be reflected on the client
-		userInfo->setName(client.name.c_str());
-
-		// don't resend user info, it would be useless
-	}
 }
 
 clientInfo_t::clientInfo_t()

@@ -2,6 +2,7 @@
 
 #include "UtilityGlobal.h"
 #include "../Common/Vector.h"
+#include "../Files/FileDefs.h"
 #include "PropertyMap.h"
 
 #include <MOHPC/Common/str.h>

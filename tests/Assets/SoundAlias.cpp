@@ -8,7 +8,7 @@ int main(int argc, const char* argv[])
 {
 	const MOHPC::AssetManagerPtr AM = AssetLoad(GetGamePathFromCommandLine(argc, argv));
 
-	MOHPC::SoundManagerPtr SoundManager = AM->GetManager<MOHPC::SoundManager>();
+	MOHPC::SoundManagerPtr SoundManager = AM->getManager<MOHPC::SoundManager>();
 
 	const MOHPC::SoundNode* Alias = SoundManager->FindAlias("30cal_leftwing");
 	assert(Alias);

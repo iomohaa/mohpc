@@ -20,8 +20,6 @@ namespace CGame
 		MOHPC_NET_EXPORTS RainMonitor(const SnapshotProcessorPtr& snapshotProcessor, const RainPtr& rain);
 		MOHPC_NET_EXPORTS ~RainMonitor();
 
-		//void configStringModified(csNum_t num, const char* cs) override;
-
 	private:
 		void setRainDensity(const char* cs);
 		void setRainSpeed(const char* cs);

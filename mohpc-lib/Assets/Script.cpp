@@ -43,7 +43,7 @@ Script::Script()
 
 void Script::Load()
 {
-	LoadFile(GetFilename().c_str());
+	LoadFile(GetFilename());
 }
 
 void Script::Close( void )
@@ -1069,7 +1069,7 @@ void Script::Parse( const char *data, uintmax_t length, const char *name )
 ==============
 */
 
-void Script::LoadFile( const char *name )
+void Script::LoadFile( const fs::path& name )
 {
 	char *buffer;
 	char *tempbuf;
@@ -1077,7 +1077,7 @@ void Script::LoadFile( const char *name )
 	
 	Close();
 
-	FilePtr file = GetFileManager()->OpenFile(name);
+	IFilePtr file = GetFileManager()->OpenFile(name);
 	if (!file) {
 		throw AssetError::AssetNotFound(name);
 	}
@@ -1099,7 +1099,7 @@ void Script::LoadFile( const char *name )
 	
 	const_buffer = ( char * )buffer;
 	
-	Parse( const_buffer, length, name );
+	Parse( const_buffer, length, name.generic_string().c_str() );
 	releaseBuffer = true;
 }
 

@@ -8,10 +8,16 @@ using namespace MOHPC::Network::CGame;
 
 std::map<csNum_t, ConfigstringMonitorTemplate<GameMonitor>::Callback> ConfigstringMonitorTemplate<GameMonitor>::callbackMap
 {
-	{ CS::SERVERINFO, &GameMonitor::parseServerInfo },
-	{ CS::WARMUP, &GameMonitor::setWarmup },
-	{ CS::LEVEL_START_TIME, &GameMonitor::setLevelStartTime },
-	{ CS::MATCHEND, &GameMonitor::setMatchEnd }
+	{ CS::SERVERINFO,		&GameMonitor::parseServerInfo },
+	{ CS::MESSAGE,			&GameMonitor::setMessage },
+	{ CS::SAVENAME,			&GameMonitor::setSaveName },
+	{ CS::MOTD,				&GameMonitor::setMotd },
+	{ CS::WARMUP,			&GameMonitor::setWarmup },
+	{ CS::MUSIC,			&GameMonitor::setMusic },
+	{ CS::GAME_VERSION,		&GameMonitor::setGameVersion },
+	{ CS::LEVEL_START_TIME,	&GameMonitor::setLevelStartTime },
+	{ CS::MATCHEND,			&GameMonitor::setMatchEnd },
+	{ CS::SOUNDTRACK,		&GameMonitor::setSoundtrack }
 };
 
 MOHPC_OBJECT_DEFINITION(GameMonitor);
@@ -24,6 +30,19 @@ GameMonitor::GameMonitor(const SnapshotProcessorPtr& snapshotProcessor, const cg
 
 GameMonitor::~GameMonitor()
 {
+}
+
+GameMonitor::HandlerList& GameMonitor::getHandlerList()
+{
+	return handlerList;
+}
+
+void GameMonitor::fillObjectives(const ReadOnlyInfo& info, str* objectives, const char* varName, size_t count)
+{
+	for (size_t i = 0; i < count; ++i)
+	{
+		objectives[i] = info.ValueForKey((varName + std::to_string(i)).c_str());
+	}
 }
 
 void GameMonitor::parseServerInfo(const char* cs)
@@ -58,16 +77,8 @@ void GameMonitor::parseServerInfo(const char* cs)
 	}
 
 	// Parse scoreboard info
-	cgs->alliedText[0] = info.ValueForKey("g_obj_alliedtext1");
-	cgs->alliedText[1] = info.ValueForKey("g_obj_alliedtext2");
-	cgs->alliedText[2] = info.ValueForKey("g_obj_alliedtext3");
-	cgs->alliedText[3] = info.ValueForKey("g_obj_alliedtext4");
-	cgs->alliedText[4] = info.ValueForKey("g_obj_alliedtext5");
-	cgs->axisText[0] = info.ValueForKey("g_obj_axistext1");
-	cgs->axisText[1] = info.ValueForKey("g_obj_axistext2");
-	cgs->axisText[2] = info.ValueForKey("g_obj_axistext3");
-	cgs->axisText[3] = info.ValueForKey("g_obj_axistext4");
-	cgs->axisText[4] = info.ValueForKey("g_obj_axistext5");
+	fillObjectives(info, cgs->alliedText, "g_obj_alliedtext", NUM_TEAM_OBJECTIVES);
+	fillObjectives(info, cgs->axisText, "g_obj_axistext", NUM_TEAM_OBJECTIVES);
 	cgs->scoreboardPic = info.ValueForKey("g_scoreboardpic");
 	cgs->scoreboardPicOver = info.ValueForKey("g_scoreboardpicover");
 }
@@ -88,4 +99,36 @@ void GameMonitor::setMatchEnd(const char* cs)
 {
 	using namespace ticks;
 	cgs->matchEndTme = tickTime_t(milliseconds(atoll(cs)));
+}
+
+void GameMonitor::setSoundtrack(const char* cs)
+{
+	cgs->soundTrack = cs;
+	getHandlerList().soundTrackHandler.broadcast(cs);
+}
+
+void GameMonitor::setGameVersion(const char* cs)
+{
+	cgs->gameVersion = cs;
+}
+
+void GameMonitor::setMessage(const char* cs)
+{
+	cgs->message = cs;
+}
+
+void GameMonitor::setSaveName(const char* cs)
+{
+	cgs->saveName = cs;
+}
+
+void GameMonitor::setMotd(const char* cs)
+{
+	cgs->motd = cs;
+}
+
+void GameMonitor::setMusic(const char* cs)
+{
+	cgs->music = cs;
+	getHandlerList().musicHandler.broadcast(cs);
 }

@@ -5,8 +5,11 @@
 #include <MOHPC/Network/Client/RemoteConsole.h>
 #include <MOHPC/Network/Client/ServerQuery.h>
 #include <MOHPC/Network/Client/Protocol.h>
+#include <MOHPC/Network/Client/PingCalculator.h>
 #include <MOHPC/Network/Client/CGame/Prediction.h>
 #include <MOHPC/Network/Client/CGame/Commands/PrintHandler.h>
+#include <MOHPC/Network/Client/CGame/CSMonitor/AssetsMonitor.h>
+#include <MOHPC/Network/Client/CGame/CSMonitor/PlayerMonitor.h>
 #include <MOHPC/Network/Remote/TCPMessageDispatcher.h>
 #include <MOHPC/Network/Remote/UDPMessageDispatcher.h>
 #include <MOHPC/Network/Remote/SocketUdpDelay.h>
@@ -155,7 +158,7 @@ int main(int argc, const char* argv[])
 	float angleYaw = 0.f;
 	float anglePitch = 0.f;
 	struct {
-		const WeaponCommand* weaponCommand;
+		weaponCommand_t weaponCommand;
 		bool shouldJump;
 		bool attackPrimary;
 		bool attackSecondary;
@@ -179,6 +182,10 @@ int main(int argc, const char* argv[])
 	usercmd_t oldcmd;
 	uint8_t lastVMChanged = 0;
 	CGame::PrintCommandHandlerPtr printHandler;
+	CGame::AssetsMonitorPtr assetsMonitor;
+	CGame::PlayerMonitorPtr playerMonitor;
+	PingCalculatorPtr pingCalc;
+	deltaTime_t lastLatency;
 
 	StufftextHandler stufftextHandler;
 
@@ -194,12 +201,16 @@ int main(int argc, const char* argv[])
 			}
 
 			connection = cg;
+			pingCalc = PingCalculator::create(connection);
+
 			tickableObjects->addTickable(connection.get());
 
 			connection->getRemoteCommandManager().add("stufftext", &stufftextHandler);
 
 			cgame = connection->getCGModule();
 			printHandler = PrintCommandHandler::create(cgame->getSnapshotProcessorPtr());
+			assetsMonitor = AssetsMonitor::create(cgame->getSnapshotProcessorPtr());
+			playerMonitor = PlayerMonitor::create(cgame->getSnapshotProcessorPtr(), ClientInfoList::create());
 
 			prediction = Network::CGame::Prediction::create(cg->getProtocolType());
 
@@ -268,7 +279,7 @@ int main(int argc, const char* argv[])
 							if (buttons.attackPrimary) ucmd.getAction().addButton(UserButtons::AttackPrimary);
 							if (buttons.attackSecondary) ucmd.getAction().addButton(UserButtons::AttackSecondary);
 							if (buttons.use) ucmd.getAction().addButton(UserButtons::Use);
-							if (buttons.weaponCommand != nullptr) ucmd.getAction().addWeaponCommand(*buttons.weaponCommand);
+							if (buttons.weaponCommand) ucmd.getAction().addWeaponCommand(buttons.weaponCommand);
 
 							if (oldcmd.getAction().isHeld(UserButtons::AttackPrimary) != ucmd.getAction().isHeld(UserButtons::AttackPrimary))
 							{
@@ -398,13 +409,13 @@ int main(int argc, const char* argv[])
 					MOHPC_LOG(Trace, "Server connection timed out");
 				});
 
-			connection->getHandlerList().preWritePacketHandler.add([&buttons]()
+			connection->getHandlerList().preWritePacketHandler.add([&buttons](const ClientTime& time, uint32_t sequenceNum)
 				{
 					buttons.shouldJump = false;
 					buttons.attackPrimary = false;
 					buttons.attackSecondary = false;
 					buttons.use = false;
-					buttons.weaponCommand = nullptr;
+					buttons.weaponCommand = 0;
 				});
 		},
 		[]()
@@ -499,47 +510,47 @@ int main(int argc, const char* argv[])
 			{
 				const char* wpClass = parser.GetToken(false);
 				if (!strcmp(wpClass, "pistol")) {
-					buttons.weaponCommand = &WeaponCommands::UsePistol;
+					buttons.weaponCommand = WeaponCommands::UsePistol;
 				}
 				else if (!strcmp(wpClass, "rifle")) {
-					buttons.weaponCommand = &WeaponCommands::UseRifle;
+					buttons.weaponCommand = WeaponCommands::UseRifle;
 				}
 				else if (!strcmp(wpClass, "smg")) {
-					buttons.weaponCommand = &WeaponCommands::UseSmg;
+					buttons.weaponCommand = WeaponCommands::UseSmg;
 				}
 				else if (!strcmp(wpClass, "mg")) {
-					buttons.weaponCommand = &WeaponCommands::UseMg;
+					buttons.weaponCommand = WeaponCommands::UseMg;
 				}
 				else if (!strcmp(wpClass, "grenade")) {
-					buttons.weaponCommand = &WeaponCommands::UseGrenade;
+					buttons.weaponCommand = WeaponCommands::UseGrenade;
 				}
 				else if (!strcmp(wpClass, "heavy")) {
-					buttons.weaponCommand = &WeaponCommands::UseHeavy;
+					buttons.weaponCommand = WeaponCommands::UseHeavy;
 				}
 				else if (!strcmp(wpClass, "item")) {
-					buttons.weaponCommand = &WeaponCommands::UseItem1;
+					buttons.weaponCommand = WeaponCommands::UseItem1;
 				}
 				else if (!strcmp(wpClass, "item2")) {
-					buttons.weaponCommand = &WeaponCommands::UseItem2;
+					buttons.weaponCommand = WeaponCommands::UseItem2;
 				}
 				else if (!strcmp(wpClass, "item3")) {
-					buttons.weaponCommand = &WeaponCommands::UseItem3;
+					buttons.weaponCommand = WeaponCommands::UseItem3;
 				}
 				else if (!strcmp(wpClass, "item4")) {
-					buttons.weaponCommand = &WeaponCommands::UseItem4;
+					buttons.weaponCommand = WeaponCommands::UseItem4;
 				}
 			}
 			else if (!strcmp(cmd, "weapnext")) {
-				buttons.weaponCommand = &WeaponCommands::NextWeapon;
+				buttons.weaponCommand = WeaponCommands::NextWeapon;
 			}
 			else if (!strcmp(cmd, "weapprev")) {
-				buttons.weaponCommand = &WeaponCommands::PreviousWeapon;
+				buttons.weaponCommand = WeaponCommands::PreviousWeapon;
 			}
 			else if (!strcmp(cmd, "useLast")) {
-				buttons.weaponCommand = &WeaponCommands::UseLast;
+				buttons.weaponCommand = WeaponCommands::UseLast;
 			}
 			else if (!strcmp(cmd, "holster")) {
-				buttons.weaponCommand = &WeaponCommands::Holster;
+				buttons.weaponCommand = WeaponCommands::Holster;
 			}
 			else if (!strcmp(cmd, "set"))
 			{
@@ -635,6 +646,12 @@ int main(int argc, const char* argv[])
 
 		tickableObjects->processTicks();
 
+		if (duration_cast<milliseconds>(pingCalc->getLatency()) != duration_cast<milliseconds>(lastLatency))
+		{
+			lastLatency = pingCalc->getLatency();
+			MOHPC_LOG(Info, "ping: %d", duration_cast<milliseconds>(lastLatency).count());
+		}
+
 		/*
 		using namespace MOHPC::ticks;
 
@@ -685,7 +702,6 @@ int main(int argc, const char* argv[])
 	return 0;
 }
 
-/*
 void waitFor(time_point<steady_clock> startTime, nanoseconds maxDelay)
 {
 	const nanoseconds deltaTime = steady_clock::now() - startTime;
@@ -697,8 +713,8 @@ void waitFor(time_point<steady_clock> startTime, nanoseconds maxDelay)
 		restoreTimerSolution(1);
 	}
 }
-*/
 
+/*
 void waitFor(time_point<steady_clock> startTime, nanoseconds maxDelay)
 {
 	for (;;)
@@ -710,6 +726,7 @@ void waitFor(time_point<steady_clock> startTime, nanoseconds maxDelay)
 		}
 	}
 }
+*/
 
 void readCommandThread()
 {

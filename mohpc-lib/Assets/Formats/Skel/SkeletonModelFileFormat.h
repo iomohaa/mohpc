@@ -7,7 +7,7 @@ namespace MOHPC
 	static constexpr char SKEL_BONENAME_WORLD[] = "worldbone";
 	static constexpr size_t MAX_NAME_LENGTH = 64;
 
-	struct Skeleton::BoneFileData
+	struct BoneFileData
 	{
 		char name[MAX_CHANNEL_NAME];
 		char parent[MAX_CHANNEL_NAME];
@@ -21,7 +21,7 @@ namespace MOHPC
 		void getBaseData(float* outData, size_t num, uintptr_t start = 0) const;
 	};
 
-	struct Skeleton::File_SkelHeader
+	struct File_SkelHeader
 	{
 		char ident[4];
 		uint32_t version;
@@ -38,7 +38,7 @@ namespace MOHPC
 		uint32_t ofsMorphTargets;
 	};
 
-	struct Skeleton::File_SkelBoneName
+	struct File_SkelBoneName
 	{
 		uint16_t parent;
 		uint16_t boxIndex;
@@ -46,29 +46,29 @@ namespace MOHPC
 		char name[MAX_NAME_LENGTH];
 	};
 
-	struct Skeleton::File_Weight
+	struct File_Weight
 	{
 		uint32_t boneIndex;
 		float boneWeight;
 		vec3_t offset;
 	};
 
-	struct Skeleton::File_Morph
+	struct File_Morph
 	{
 		uint32_t morphIndex;
 		vec3_t offset;
 	};
 
-	struct Skeleton::File_SKB_Vertex
+	struct File_SKB_Vertex
 	{
 		vec3_t normal;
 		vec2_t texCoords;
 		uint32_t numWeights;
-		Skeleton::File_Weight weights[1];
+		File_Weight weights[1];
 	};
 
 
-	struct Skeleton::File_SKD_Vertex
+	struct File_SKD_Vertex
 	{
 		vec3_t normal;
 		vec2_t texCoords;
@@ -76,7 +76,7 @@ namespace MOHPC
 		uint32_t numMorphs;
 	};
 
-	struct Skeleton::File_Surface
+	struct File_Surface
 	{
 		int32_t ident;
 		char name[MAX_NAME_LENGTH];
@@ -89,5 +89,4 @@ namespace MOHPC
 		uint32_t ofsEnd;
 		uint32_t ofsCollapseIndex;
 	};
-
 }

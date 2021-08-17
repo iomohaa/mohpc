@@ -73,7 +73,7 @@ gameType_e cgsInfo::getGameType() const
 	return gameType;
 }
 
-uint32_t cgsInfo::getDeathmatchFlags() const
+dmFlag_t cgsInfo::getDeathmatchFlags() const
 {
 	return dmFlags;
 }
@@ -148,13 +148,42 @@ const str& cgsInfo::getMapFilenameStr() const
 	return mapFilename;
 }
 
-bool cgsInfo::hasAnyDMFlags(uint32_t flags) const
+const char* cgsInfo::getGameVersion() const
+{
+	return gameVersion.c_str();
+}
+
+const char* cgsInfo::getSoundTrack() const
+{
+	return soundTrack.c_str();
+}
+
+const char* cgsInfo::getMessage() const
+{
+	return message.c_str();
+}
+
+const char* cgsInfo::getMotd() const
+{
+	return motd.c_str();
+}
+
+const char* cgsInfo::getMusic() const
+{
+	return music.c_str();
+}
+
+const char* cgsInfo::getSaveName() const
+{
+	return saveName.c_str();
+}
+
+bool cgsInfo::hasAnyDMFlags(dmFlag_t flags) const
 {
 	return (dmFlags & flags) != 0;
 }
 
-bool cgsInfo::hasAllDMFlags(uint32_t flags) const
+bool cgsInfo::hasAllDMFlags(dmFlag_t flags) const
 {
 	return (dmFlags & flags) == flags;
 }
-

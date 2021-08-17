@@ -78,9 +78,9 @@ const char* GetGamePathFromCommandLine(int argc, const char* argv[])
 
 MOHPC::AssetManagerPtr AssetLoad(const char* path)
 {
-	MOHPC::AssetManagerPtr AM = MOHPC::AssetManager::create();
-	MOHPC::FileManager* FM = AM->GetFileManager();
+	FileManagerPtr FM = FileManager::create();
+	AssetManagerPtr AM = AssetManager::create(FM);
 
-	MOHPC::FileHelpers::FillGameDirectory(*FM, path);
+	FileHelpers::FillGameDirectory(*FM, path);
 	return AM;
 }

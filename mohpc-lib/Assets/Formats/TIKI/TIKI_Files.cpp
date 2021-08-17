@@ -11,49 +11,60 @@ static constexpr char MOHPC_LOG_NAMESPACE[] = "tikifiles";
 
 using namespace MOHPC;
 
-void TIKI::Load()
+MOHPC_OBJECT_DEFINITION(TIKIReader);
+TIKIReader::TIKIReader()
 {
-	if (tikianim)
-	{
-		delete tikianim;
-		tikianim = nullptr;
-	}
+}
 
-	const char *Fname = GetFilename().c_str();
+TIKIReader::~TIKIReader()
+{
+
+}
+
+Asset2Ptr TIKIReader::read(const IFilePtr& file)
+{
+	const fs::path& Fname = file->getName();
 
 	dloaddef_t loaddef;
 	if (LoadTIKIAnim(Fname, &loaddef)) {
 		LoadTIKIModel(Fname, &loaddef);
 	}
 
-	if (loaddef.tikiFile)
-	{
-		HashCopy(loaddef.tikiFile.get());
+	if (loaddef.tikiFile) {
 		loaddef.tikiFile->SetCurrentScript(nullptr);
 	}
 
 	FreeStorage(&loaddef);
+
+	return tiki;
 }
 
-bool TIKI::IsValidFrame(size_t maxFrames, frameInt_t frameNum) const
+bool TIKIReader::IsPredefinedFrame(frameInt_t frameNum) const
 {
-	switch(frameNum)
+	switch (frameNum)
 	{
-		case TIKI_FRAME_LAST:
-		case TIKI_FRAME_END:
-		case TIKI_FRAME_ENTRY:
-		case TIKI_FRAME_EXIT:
-		case TIKI_FRAME_EVERY:
-		case TIKI_FRAME_FIRST:
-			return true;
-		default:
-			return frameNum < maxFrames;
+	case TIKI_FRAME_LAST:
+	case TIKI_FRAME_END:
+	case TIKI_FRAME_ENTRY:
+	case TIKI_FRAME_EXIT:
+	case TIKI_FRAME_EVERY:
+	case TIKI_FRAME_FIRST:
+		return true;
 	}
 
 	return false;
 }
 
-void TIKI::FixFrameNum(const TIKIAnim *ptiki, const SkeletonAnimation *animData, TIKIAnim::Command *cmd, const char *alias)
+bool TIKIReader::IsValidFrame(size_t maxFrames, frameInt_t frameNum) const
+{
+	if (IsPredefinedFrame(frameNum)) {
+		return true;
+	}
+
+	return frameNum < maxFrames;
+}
+
+void TIKIReader::FixFrameNum(const TIKIAnim *ptiki, const SkeletonAnimation *animData, TIKIAnim::Command *cmd, const char *alias)
 {
 	if (IsValidFrame(animData->GetNumFrames(), cmd->frame_num))
 	{
@@ -70,7 +81,7 @@ void TIKI::FixFrameNum(const TIKIAnim *ptiki, const SkeletonAnimation *animData,
 	}
 }
 
-void TIKI::LoadAnim(const TIKIAnim* ptikianim)
+void TIKIReader::LoadAnim(const TIKIAnim* ptikianim)
 {
 	for (uintptr_t i = 0; i < ptikianim->animdefs.size(); i++)
 	{
@@ -91,11 +102,11 @@ void TIKI::LoadAnim(const TIKIAnim* ptikianim)
 	}
 }
 
-bool MOHPC::TIKI::LoadTIKIAnim(const char* Filename, dloaddef_t* ld)
+bool TIKIReader::LoadTIKIAnim(const fs::path& Filename, dloaddef_t* ld)
 {
 	InitSetup(ld);
 
-	ld->tikiFile = GetAssetManager()->LoadAsset<TikiScript>(Filename);
+	ld->tikiFile = GetAssetManager()->readAsset<TikiScriptReader>(Filename);
 	if (!ld->tikiFile) {
 		throw AssetError::AssetNotFound(Filename);
 	}
@@ -110,6 +121,8 @@ bool MOHPC::TIKI::LoadTIKIAnim(const char* Filename, dloaddef_t* ld)
 		const uint8_t header[] = { uint8_t(token[0]),  uint8_t(token[1]),  uint8_t(token[2]),  uint8_t(token[3]) };
 		throw AssetError::BadHeader4(header, (const uint8_t*)TIKI_HEADER);
 	}
+
+	tiki = TIKIPtr(new TIKI(Filename));
 
 	ld->bInIncludesSection = false;
 	ld->tikiFile->SetAllowExtendedComment(true);
@@ -189,7 +202,7 @@ bool MOHPC::TIKI::LoadTIKIAnim(const char* Filename, dloaddef_t* ld)
 				castVector(TikiAnim->maxs) = Vector3(4.f, 4.f, 4.f);
 			}
 
-			tikianim = TikiAnim;
+			tiki->setTikiAnim(TikiAnim);
 		}
 		else
 		{
@@ -206,18 +219,19 @@ bool MOHPC::TIKI::LoadTIKIAnim(const char* Filename, dloaddef_t* ld)
 	return true;
 }
 
-bool TIKI::LoadTIKIModel(const char* Filename, const dloaddef_t* ld)
+bool TIKIReader::LoadTIKIModel(const fs::path& Filename, const dloaddef_t* ld)
 {
 	std::vector<dloadsurface_t> loadsurfaces;
 	LoadSetup(Filename, ld, loadsurfaces);
 
+	std::vector<SkeletonPtr>& meshes = tiki->getMeshes();
 	if (!meshes.size())
 	{
 		// meshes are not required, avoid throwing
 		return false;
 	}
 
-	name = Filename;
+	SkeletonChannelList& boneList = tiki->getBoneList();
 	boneList.InitChannels();
 	boneList.ZeroChannels();
 
@@ -225,9 +239,9 @@ bool TIKI::LoadTIKIModel(const char* Filename, const dloaddef_t* ld)
 	{
 		Skeleton *mesh = meshes[i].get();
 
-		for (size_t j = 0; j < mesh->Bones.size(); j++)
+		for (size_t j = 0; j < mesh->GetNumBones(); j++)
 		{
-			boneList.AddChannel(mesh->Bones[j].channel);
+			boneList.AddChannel(mesh->GetBone(j)->channel);
 		}
 	}
 
@@ -242,6 +256,8 @@ bool TIKI::LoadTIKIModel(const char* Filename, const dloaddef_t* ld)
 
 		size_t surfOffset = 0;
 
+		std::vector<TIKISurface>& surfaces = tiki->getSurfaces();
+
 		if (strptr || !strHelpers::icmp(loadsurf->name.c_str(), "all"))
 		{
 			for (size_t j = 0; j < meshes.size(); j++)
@@ -250,23 +266,23 @@ bool TIKI::LoadTIKIModel(const char* Filename, const dloaddef_t* ld)
 
 				TIKISurface* tikiSurf = &surfaces[surfOffset];
 
-				for (size_t k = 0; k < mesh->Surfaces.size(); k++)
+				for (size_t k = 0; k < mesh->GetNumSurfaces(); k++)
 				{
-					Skeleton::Surface* surf = &mesh->Surfaces[k];
+					const Surface* surf = mesh->GetSurface(k);
 
 					if ((strptr
 						&& strptr != loadsurf->name.c_str()
 						&& !strHelpers::icmpn(loadsurf->name.c_str(), surf->name.c_str(), strptr - loadsurf->name.c_str()))
 						|| !strHelpers::icmp(loadsurf->name.c_str(), "all"))
 					{
-						SetupIndividualSurface(tikianim->name.c_str(), tikiSurf, surf->name.c_str(), loadsurf);
+						SetupIndividualSurface(tiki->getTikiAnim()->name.c_str(), tikiSurf, surf->name.c_str(), loadsurf);
 						bFound = true;
 					}
 
 					tikiSurf++;
 				}
 
-				surfOffset += mesh->Surfaces.size();
+				surfOffset += mesh->GetNumSurfaces();
 			}
 		}
 		else
@@ -277,16 +293,16 @@ bool TIKI::LoadTIKIModel(const char* Filename, const dloaddef_t* ld)
 
 				TIKISurface* tikiSurf = &surfaces[surfOffset];
 
-				for (size_t k = 0; k < mesh->Surfaces.size(); k++)
+				for (size_t k = 0; k < mesh->GetNumSurfaces(); k++)
 				{
-					Skeleton::Surface* surf = &mesh->Surfaces[k];
+					const Surface* surf = mesh->GetSurface(k);
 
 					if (!strHelpers::icmp(loadsurf->name.c_str(), surf->name.c_str()))
 					{
-						SetupIndividualSurface(tikianim->name.c_str(), tikiSurf, surf->name.c_str(), loadsurf);
+						SetupIndividualSurface(tiki->getTikiAnim()->name.c_str(), tikiSurf, surf->name.c_str(), loadsurf);
 						if (!tikiSurf->name[0])
 						{
-							MOHPC_LOG(Warn, "TIKI_InitTiki: Surface %i in %s (referenced in %s) has no name!  Please investigate and fix", k, mesh->GetName(), name.c_str());
+							MOHPC_LOG(Warn, "TIKI_InitTiki: Surface %i in %s (referenced in %s) has no name!  Please investigate and fix", k, mesh->getFilename().generic_string().c_str(), Filename.generic_string().c_str());
 						}
 						bFound = true;
 					}
@@ -294,20 +310,20 @@ bool TIKI::LoadTIKIModel(const char* Filename, const dloaddef_t* ld)
 					tikiSurf++;
 				}
 
-				surfOffset += mesh->Surfaces.size();
+				surfOffset += mesh->GetNumSurfaces();
 			}
 		}
 
 		if (!bFound)
 		{
-			MOHPC_LOG(Warn, "TIKI_InitTiki: could not find surface '%s' in '%s' (check referenced skb/skd files).", loadsurf, tikianim->name.c_str());
+			MOHPC_LOG(Warn, "TIKI_InitTiki: could not find surface '%s' in '%s' (check referenced skb/skd files).", loadsurf, tiki->getTikiAnim()->name.c_str());
 		}
 	}
 
 	return true;
 }
 
-void TIKI::FreeStorage(dloaddef_t* ld)
+void TIKIReader::FreeStorage(dloaddef_t* ld)
 {
 	if (ld->tikiFile)
 	{
@@ -316,7 +332,7 @@ void TIKI::FreeStorage(dloaddef_t* ld)
 	}
 }
 
-TIKIAnim *TIKI::InitTiki(dloaddef_t *ld)
+TIKIAnim * TIKIReader::InitTiki(dloaddef_t *ld)
 {
 	TIKIAnim* const panim = new TIKIAnim;
 	ClearBounds(panim->mins, panim->maxs);
@@ -363,7 +379,7 @@ TIKIAnim *TIKI::InitTiki(dloaddef_t *ld)
 		SkeletonAnimationPtr data;
 		try
 		{
-			data = GetAssetManager()->LoadAsset<SkeletonAnimation>(anim->name.c_str());
+			data = GetAssetManager()->readAsset<SkeletonAnimationReader>(anim->name.c_str());
 		}
 		catch (const std::exception& exc)
 		{
@@ -387,7 +403,6 @@ TIKIAnim *TIKI::InitTiki(dloaddef_t *ld)
 			data->GetBounds(panim->mins, panim->maxs);
 			bModelBoundsSet = true;
 		}
-
 
 		if (anim->flags & TAF_RANDOM)
 		{
@@ -442,9 +457,8 @@ TIKIAnim *TIKI::InitTiki(dloaddef_t *ld)
 
 	if (numAnims)
 	{
-		if (!bModelBoundsSet)
-		{
-			MOHPC_LOG(Warn, "TIKI_InitTiki: no 'idle' animation found, model bounds not set for %s", ld->path.c_str());
+		if (!bModelBoundsSet) {
+			MOHPC_LOG(Warn, "TIKI_InitTiki: no 'idle' animation found, model bounds not set for %s", ld->path.generic_string().c_str());
 		}
 
 		panim->headmodels = ld->headmodels;
@@ -454,7 +468,7 @@ TIKIAnim *TIKI::InitTiki(dloaddef_t *ld)
 	}
 	else
 	{
-		MOHPC_LOG(Error, "TIKI_InitTiki: No valid animations found in %s.", ld->path.c_str());
+		MOHPC_LOG(Error, "TIKI_InitTiki: No valid animations found in %s.", ld->path.generic_string().c_str());
 		delete panim;
 		return nullptr;
 	}
@@ -462,7 +476,7 @@ TIKIAnim *TIKI::InitTiki(dloaddef_t *ld)
 	return panim;
 }
 
-const char* MOHPC::TIKIError::BadSetup::what() const noexcept
+const char* TIKIError::BadSetup::what() const noexcept
 {
 	return "Invalid setup section";
 }

@@ -14,53 +14,15 @@ static constexpr char MOHPC_LOG_NAMESPACE[] = "cg_vote";
 MOHPC_OBJECT_DEFINITION(VoteManager)
 
 VoteManager::VoteManager()
-	: startReadFromServerHandler(*this)
-	, continueReadFromServerHandler(*this)
-	, finishReadFromServerHandler(*this)
-	, voteTime(0)
+	: voteTime(0)
 	, numVotesYes(0)
 	, numVotesNo(0)
 	, numUndecidedVotes(0)
-	, modified(false)
 {
 }
 
 VoteManager::~VoteManager()
 {
-}
-
-VoteManager::HandlerList& VoteManager::handlers()
-{
-	return handlerList;
-}
-
-const VoteManager::HandlerList& VoteManager::handlers() const
-{
-	return handlerList;
-}
-
-void VoteManager::registerCommands(CommandManager& commandManager)
-{
-	commandManager.add("vo0", &startReadFromServerHandler);
-	commandManager.add("vo1", &continueReadFromServerHandler);
-	commandManager.add("vo2", &finishReadFromServerHandler);
-}
-
-void VoteManager::commandStartReadFromServer(TokenParser& args)
-{
-	voteOptionsParser.begin(args.GetString(true, false));
-}
-
-void VoteManager::commandContinueReadFromServer(TokenParser& args)
-{
-	voteOptionsParser.append(args.GetString(true, false));
-}
-
-void VoteManager::commandFinishReadFromServer(TokenParser& args)
-{
-	voteOptionsParser.end(args.GetString(true, false), voteOptions);
-
-	handlers().receivedVoteOptionsHandler.broadcast(voteOptions);
 }
 
 void VoteManager::setVoteTime(uint64_t time)
@@ -103,40 +65,6 @@ void VoteManager::getVotesCount(uint32_t& numYes, uint32_t& numNo, uint32_t& num
 	numYes = numVotesYes;
 	numNo = numVotesNo;
 	numUndecided = numUndecidedVotes;
-}
-
-voteInfo_t::voteInfo_t()
-	: voteTime(0)
-	, numVotesYes(0)
-	, numVotesNo(0)
-	, numUndecidedVotes(0)
-{
-
-}
-
-uint64_t voteInfo_t::getVoteTime() const
-{
-	return voteTime;
-}
-
-uint32_t voteInfo_t::getNumVotesYes() const
-{
-	return numVotesYes;
-}
-
-uint32_t voteInfo_t::getNumVotesNo() const
-{
-	return numVotesNo;
-}
-
-uint32_t voteInfo_t::getNumVotesUndecided() const
-{
-	return numUndecidedVotes;
-}
-
-const char* voteInfo_t::getVoteString() const
-{
-	return voteString.c_str();
 }
 
 VoteListChoice::VoteListChoice(const str& inChoiceName, const str& inVoteString)

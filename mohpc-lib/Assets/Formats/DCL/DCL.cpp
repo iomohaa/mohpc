@@ -50,14 +50,15 @@ static constexpr char DCL_SIGNATURE[] = { 'D', 'C', 'L', ' ' };
 		int32_t iIndex;
 		int32_t iNumVerts;
 	} dclSavedMarkPoly_t;
-
 }
 
 MOHPC_OBJECT_DEFINITION(DCL);
-DCL::DCL()
+DCL::DCL(const fs::path& fileName, DCLMarkDef* decalList, size_t numDecalsVal, size_t numFragmentsVal)
+	: Asset2(fileName)
+	, dclDecals(decalList)
+	, numDecals(numDecalsVal)
+	, numFragments(numFragmentsVal)
 {
-	dclDecals = nullptr;
-	numDecals = 0;
 }
 
 DCL::~DCL()
@@ -68,15 +69,37 @@ DCL::~DCL()
 	}
 }
 
-void DCL::Load()
+size_t DCL::GetNumDecals() const
 {
-	FilePtr File = GetFileManager()->OpenFile(GetFilename().c_str());
-	if (!File) {
-		throw AssetError::AssetNotFound(GetFilename());
-	}
+	return numDecals;
+}
 
+const DCLMarkDef* DCL::GetDecal(size_t index) const
+{
+	if (index < numDecals)
+	{
+		return &dclDecals[index];
+	}
+	else
+	{
+		return nullptr;
+	}
+}
+
+MOHPC_OBJECT_DEFINITION(DCLReader);
+
+DCLReader::DCLReader()
+{
+}
+
+DCLReader::~DCLReader()
+{
+}
+
+Asset2Ptr DCLReader::read(const IFilePtr& file)
+{
 	dclHeader_t dclHeader;
-	File->GetStream()->read((char*)&dclHeader, sizeof(dclHeader_t));
+	file->GetStream()->read((char*)&dclHeader, sizeof(dclHeader_t));
 
 	if (memcmp(dclHeader.ident, DCL_SIGNATURE, sizeof(dclHeader.ident))) {
 		throw DCLError::BadHeader((const uint8_t*)dclHeader.ident);
@@ -96,25 +119,25 @@ void DCL::Load()
 	}
 	else
 	{
-		File->GetStream()->read(mapTime, sizeof(mapTime) - 1);
+		file->GetStream()->read(mapTime, sizeof(mapTime) - 1);
 		mapTime[32] = '\0';
 	}
 
 	char lastShaderName[64] = { 0 };
 
-	numDecals = Endian.LittleInteger(dclHeader.iNumDecals);
-	numFragments = Endian.LittleInteger(dclHeader.iNumFragments);
+	const size_t numDecals = Endian.LittleInteger(dclHeader.iNumDecals);
+	const size_t numFragments = Endian.LittleInteger(dclHeader.iNumFragments);
 
-	dclDecals = new DCLMarkDef[numDecals];
+	DCLMarkDef* dclDecals = new DCLMarkDef[numDecals];
 
-	const ShaderManagerPtr shaderManager = GetManager<ShaderManager>();
+	const ShaderManagerPtr shaderManager = getManager<ShaderManager>();
 
 	for (size_t i = 0; i < numDecals; i++)
 	{
-		dclSavedMarkDef_t saveMark{0};
+		dclSavedMarkDef_t saveMark{ 0 };
 
 		// read each decals one by one
-		File->GetStream()->read((char*)&saveMark, sizeof(dclSavedMarkDef_t));
+		file->GetStream()->read((char*)&saveMark, sizeof(dclSavedMarkDef_t));
 
 		DCLMarkDef* const pPoly = &dclDecals[i];
 		pPoly->shader = shaderManager->GetShader(saveMark.shader);
@@ -131,26 +154,9 @@ void DCL::Load()
 		pPoly->bDoLighting = saveMark.bDoLighting;
 	}
 
-	MOHPC_LOG(Info, "%d decals loaded for '%s'.", numDecals, GetFilename().c_str());
+	MOHPC_LOG(Info, "%d decals loaded for '%s'.", numDecals, file->getName().c_str());
 
-	// FIXME: Should it process numFragments?
-}
-
-size_t DCL::GetNumDecals() const
-{
-	return numDecals;
-}
-
-const DCLMarkDef* DCL::GetDecal(size_t index) const
-{
-	if (index < numDecals)
-	{
-		return &dclDecals[index];
-	}
-	else
-	{
-		return nullptr;
-	}
+	return Asset2Ptr(new DCL(file->getName(), dclDecals, numDecals, numFragments));
 }
 
 DCLError::BadHeader::BadHeader(const uint8_t inHeader[4])

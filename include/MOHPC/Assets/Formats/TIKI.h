@@ -74,6 +74,8 @@ static constexpr char TIKI_HEADER[] = "TIKI";
 
 namespace MOHPC
 {
+	class SkeletorManager;
+
 	class TIKIAnim
 	{
 	public:
@@ -95,7 +97,7 @@ namespace MOHPC
 		};
 
 	public:
-		str name;
+		fs::path name;
 		std::vector<Command> client_initcmds;
 		std::vector<Command> server_initcmds;
 		vec3_t mins;
@@ -117,46 +119,29 @@ namespace MOHPC
 		std::vector<str> spawnFlags;
 	};
 
-	class TIKI : public Asset
+	struct dtikicmd_t;
+	struct dloadframecmd_t;
+	struct dloadinitcmd_t;
+	struct dloadsurface_t;
+	struct dloadanim_t;
+	struct dloaddef_t;
+	class TIKIAnim;
+
+	struct TIKISurface
+	{
+		str name;
+		std::vector<str> shaders;
+		uint32_t flags;
+		float damageMultiplier;
+	};
+
+	class TIKI : public Asset2
 	{
 		MOHPC_ASSET_OBJECT_DECLARATION(TIKI);
 
 	public:
-		struct TIKISurface
-		{
-			str name;
-			std::vector<str> shaders;
-			uint32_t flags;
-			float damageMultiplier;
-		};
-
-	private:
-		str name;
-		class TIKIAnim* tikianim;
-		std::vector<TIKISurface> surfaces;
-		float loadScale;
-		float lodScale;
-		float lodBias;
-		vec3_t lightOffset;
-		vec3_t loadOrigin;
-		float radius;
-		SkeletonChannelList boneList;
-		std::vector<SharedPtr<Skeleton>> meshes;
-		QuakedSection quakedSection;
-
-	public:
-		struct dtikicmd_t;
-		struct dloadframecmd_t;
-		struct dloadinitcmd_t;
-		struct dloadsurface_t;
-		struct dloadanim_t;
-		struct dloaddef_t;
-
-	public:
-		MOHPC_ASSETS_EXPORTS TIKI();
+		MOHPC_ASSETS_EXPORTS TIKI(const fs::path& path);
 		~TIKI();
-
-		void Load() override;
 
 		// animations
 		MOHPC_ASSETS_EXPORTS size_t GetNumAnimations() const;
@@ -177,21 +162,62 @@ namespace MOHPC
 		// meshes
 		MOHPC_ASSETS_EXPORTS size_t GetNumMeshes() const;
 		MOHPC_ASSETS_EXPORTS SkeletonPtr GetMesh(size_t index) const;
+		std::vector<SharedPtr<Skeleton>>& getMeshes();
 
 		// surfaces
 		MOHPC_ASSETS_EXPORTS size_t GetNumSurfaces() const;
 		MOHPC_ASSETS_EXPORTS const TIKISurface *GetSurface(size_t index) const;
+		std::vector<TIKISurface>& getSurfaces();
 
 		// misc
 		MOHPC_ASSETS_EXPORTS const SkeletonChannelList *GetBoneList() const;
+		SkeletonChannelList& getBoneList();
 		MOHPC_ASSETS_EXPORTS const char *GetBoneNameFromNum(int num) const;
 		MOHPC_ASSETS_EXPORTS intptr_t GetBoneNumFromName(const char *name) const;
 		MOHPC_ASSETS_EXPORTS float GetScale() const;
 		MOHPC_ASSETS_EXPORTS const QuakedSection& GetQuakedSection() const;
+		QuakedSection& GetQuakedSection();
+
+		TIKIAnim* getTikiAnim() const;
+		void setTikiAnim(TIKIAnim* anim);
+		void setLoadScale(float loadScaleValue);
+		void setLodScale(float lodScaleValue);
+		void setLodBias(float lodBiasValue);
+		void setLightOffset(const_vec3r_t lightOffsetValue);
+		void setLoadOrigin(const_vec3r_t loadOriginValue);
+		void setRadius(float radiusValue);
 
 	private:
-		bool LoadTIKIAnim(const char* Filename, dloaddef_t* ld);
-		bool LoadTIKIModel(const char* Filename, const dloaddef_t* ld);
+		fs::path name;
+		TIKIAnim* tikianim;
+		std::vector<TIKISurface> surfaces;
+		float loadScale;
+		float lodScale;
+		float lodBias;
+		vec3_t lightOffset;
+		vec3_t loadOrigin;
+		float radius;
+		SkeletonChannelList boneList;
+		std::vector<SharedPtr<Skeleton>> meshes;
+		QuakedSection quakedSection;
+		SharedPtr<SkeletorManager> skeletorManager;
+	};
+
+	class TIKIReader : public AssetReader
+	{
+		MOHPC_ASSET_OBJECT_DECLARATION(TIKIReader);
+
+	public:
+		using AssetType = TIKI;
+
+	public:
+		MOHPC_ASSETS_EXPORTS TIKIReader();
+		MOHPC_ASSETS_EXPORTS ~TIKIReader();
+		MOHPC_ASSETS_EXPORTS Asset2Ptr read(const IFilePtr& file) override;
+
+	private:
+		bool LoadTIKIAnim(const fs::path& Filename, dloaddef_t* ld);
+		bool LoadTIKIModel(const fs::path& Filename, const dloaddef_t* ld);
 		void FreeStorage(dloaddef_t* ld);
 
 		bool ParseSetup(dloaddef_t* ld);
@@ -207,19 +233,23 @@ namespace MOHPC
 		void ParseQuaked(dloaddef_t* ld);
 		int32_t ParseSurfaceFlag(const char* token);
 		void InitSetup(dloaddef_t* ld);
-		bool LoadSetupCase(const char *filename, const dloaddef_t* ld, std::vector<dloadsurface_t>& loadsurfaces);
-		bool LoadSetup(const char *filename, const dloaddef_t* ld, std::vector<dloadsurface_t>& loadsurfaces);
+		bool LoadSetupCase(const fs::path& filename, const dloaddef_t* ld, std::vector<dloadsurface_t>& loadsurfaces);
+		bool LoadSetup(const fs::path& filename, const dloaddef_t* ld, std::vector<dloadsurface_t>& loadsurfaces);
 
+		bool IsPredefinedFrame(frameInt_t frameNum) const;
 		bool IsValidFrame(size_t maxFrames, frameInt_t frameNum) const;
-		void FixFrameNum(const TIKIAnim *ptiki, const SkeletonAnimation *animData, TIKIAnim::Command *cmd, const char *alias);
-		void LoadAnim(const TIKIAnim *ptiki);
-		TIKIAnim* InitTiki(dloaddef_t *ld);
+		void FixFrameNum(const TIKIAnim* ptiki, const SkeletonAnimation* animData, TIKIAnim::Command* cmd, const char* alias);
+		void LoadAnim(const TIKIAnim* ptiki);
+		TIKIAnim* InitTiki(dloaddef_t* ld);
 
 		// animations
-		void GetAnimOrder(const dloaddef_t *ld, std::vector<size_t>& order) const;
+		void GetAnimOrder(const dloaddef_t* ld, std::vector<size_t>& order) const;
 
 		// main
-		void SetupIndividualSurface(const char *filename, TIKISurface* surf, const char *name, const dloadsurface_t *loadsurf);
+		void SetupIndividualSurface(const fs::path& filename, TIKISurface* surf, const char* name, const dloadsurface_t* loadsurf);
+
+	private:
+		TIKIPtr tiki;
 	};
 
 	namespace TIKIError

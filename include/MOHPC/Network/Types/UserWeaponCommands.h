@@ -1,33 +1,33 @@
 #pragma once
 
 #include "../NetGlobal.h"
-#include "../../Utility/DynamicEnum.h"
+
+#include <cstdint>
 
 namespace MOHPC
 {
 namespace Network
 {
-	class MOHPC_NET_EXPORTS WeaponCommand : public DynamicEnum<WeaponCommand, uint8_t, 1>
-	{
-	};
+	using weaponCommand_t = uint32_t;
 
 	namespace WeaponCommands
 	{
-		MOHPC_NET_EXPORTS extern const WeaponCommand UsePistol;
-		MOHPC_NET_EXPORTS extern const WeaponCommand UseRifle;
-		MOHPC_NET_EXPORTS extern const WeaponCommand UseSmg;
-		MOHPC_NET_EXPORTS extern const WeaponCommand UseMg;
-		MOHPC_NET_EXPORTS extern const WeaponCommand UseGrenade;
-		MOHPC_NET_EXPORTS extern const WeaponCommand UseHeavy;
-		MOHPC_NET_EXPORTS extern const WeaponCommand UseItem1;
-		MOHPC_NET_EXPORTS extern const WeaponCommand UseItem2;
-		MOHPC_NET_EXPORTS extern const WeaponCommand UseItem3;
-		MOHPC_NET_EXPORTS extern const WeaponCommand UseItem4;
-		MOHPC_NET_EXPORTS extern const WeaponCommand PreviousWeapon;
-		MOHPC_NET_EXPORTS extern const WeaponCommand NextWeapon;
-		MOHPC_NET_EXPORTS extern const WeaponCommand UseLast;
-		MOHPC_NET_EXPORTS extern const WeaponCommand Holster;
-		MOHPC_NET_EXPORTS extern const WeaponCommand Drop;
+		MOHPC_NET_EXPORTS extern const weaponCommand_t UsePistol;
+		MOHPC_NET_EXPORTS extern const weaponCommand_t UseRifle;
+		MOHPC_NET_EXPORTS extern const weaponCommand_t UseSmg;
+		MOHPC_NET_EXPORTS extern const weaponCommand_t UseMg;
+		MOHPC_NET_EXPORTS extern const weaponCommand_t UseGrenade;
+		MOHPC_NET_EXPORTS extern const weaponCommand_t UseHeavy;
+		MOHPC_NET_EXPORTS extern const weaponCommand_t UseItem1;
+		MOHPC_NET_EXPORTS extern const weaponCommand_t UseItem2;
+		MOHPC_NET_EXPORTS extern const weaponCommand_t UseItem3;
+		MOHPC_NET_EXPORTS extern const weaponCommand_t UseItem4;
+		MOHPC_NET_EXPORTS extern const weaponCommand_t PreviousWeapon;
+		MOHPC_NET_EXPORTS extern const weaponCommand_t NextWeapon;
+		MOHPC_NET_EXPORTS extern const weaponCommand_t UseLast;
+		MOHPC_NET_EXPORTS extern const weaponCommand_t Holster;
+		MOHPC_NET_EXPORTS extern const weaponCommand_t Drop;
+		MOHPC_NET_EXPORTS extern const uint32_t MAX;
 	}
 }
 }

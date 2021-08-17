@@ -26,22 +26,17 @@ public:
 	typedef typename traits_type::pos_type 		pos_type;
 	typedef typename traits_type::off_type 		off_type;
 
-	basic_decompression_buf()
+	basic_decompression_buf(unzFile File, const unz_file_pos& Position, size_t size)
 	{
 		m_offset = 0;
 		m_roffset = 0;
-		m_file = NULL;
+		m_file = File;
+		m_pos = Position;
+		m_size = size;
 	}
 
 	~basic_decompression_buf()
 	{
-	}
-
-	void init(unzFile File, const unz_file_pos& Position, size_t size)
-	{
-		m_file = File;
-		m_pos = Position;
-		m_size = size;
 	}
 
 	virtual pos_type seekpos(pos_type pt,

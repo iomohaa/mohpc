@@ -22,9 +22,9 @@ ModuleBase::~ModuleBase()
 {
 }
 
-void ModuleBase::init(uintptr_t serverMessageSequence, rsequence_t serverCommandSequence)
+void ModuleBase::init(const ServerGameStatePtr& gs, uintptr_t serverMessageSequence, rsequence_t serverCommandSequence)
 {
-	processedSnapshots->init(serverMessageSequence, serverCommandSequence);
+	processedSnapshots->init(gs, serverMessageSequence, serverCommandSequence);
 }
 
 void ModuleBase::setProtocol(protocolType_c protocol)

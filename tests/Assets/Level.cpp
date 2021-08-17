@@ -1,4 +1,5 @@
 #include <MOHPC/Assets/Formats/BSP.h>
+#include <MOHPC/Assets/Formats/BSP_Collision.h>
 #include <MOHPC/Assets/Formats/DCL.h>
 #include <MOHPC/Assets/Managers/AssetManager.h>
 #include <MOHPC/Assets/Managers/ShaderManager.h>
@@ -75,7 +76,6 @@ Archive& operator>>(Archive& ar, const T& obj)
 }
 */
 
-
 void traceTest(MOHPC::BSPPtr Asset);
 void leafTesting(MOHPC::BSPPtr Asset);
 
@@ -84,18 +84,19 @@ int main(int argc, const char* argv[])
 	InitCommon();
 	const MOHPC::AssetManagerPtr AM = AssetLoad(GetGamePathFromCommandLine(argc, argv));
 
-	MOHPC::DCLPtr DCL = AM->LoadAsset<MOHPC::DCL>("/maps/dm/mohdm4.dcl");
-	MOHPC::DCLPtr DCLBT = AM->LoadAsset<MOHPC::DCL>("/maps/e1l1.dcl");
+	MOHPC::DCLPtr DCL = AM->readAsset<MOHPC::DCLReader>("/maps/dm/mohdm4.dcl");
+	MOHPC::DCLPtr DCLBT = AM->readAsset<MOHPC::DCLReader>("/maps/e1l1.dcl");
 
-	//MOHPC::BSPPtr Asset = AM->LoadAsset<MOHPC::BSP>("/maps/dm/mp_stadt_dm.bsp");
-	MOHPC::BSPPtr Asset = AM->LoadAsset<MOHPC::BSP>("/maps/e1l1.bsp");
+	//MOHPC::BSPPtr Asset = AM->readAsset<MOHPC::BSP>("/maps/dm/mp_stadt_dm.bsp");
+	MOHPC::BSPPtr Asset = AM->readAsset<MOHPC::BSPReader>("/maps/e1l1.bsp");
 	if (Asset)
 	{
 		traceTest(Asset);
 		leafTesting(Asset);
 
+		MOHPC::BSPCollisionPtr bspCollision = MOHPC::BSPCollision::create(Asset);
 		MOHPC::BSPData::TerrainCollide collision;
-		Asset->GenerateTerrainCollide(Asset->GetTerrainPatch(0), collision);
+		bspCollision->GenerateTerrainCollide(Asset->GetTerrainPatch(0), collision);
 	}
 }
 
@@ -103,7 +104,9 @@ void traceTest(MOHPC::BSPPtr Asset)
 {
 	using namespace MOHPC;
 	CollisionWorldPtr cm = CollisionWorld::create();
-	Asset->FillCollisionWorld(*cm);
+
+	MOHPC::BSPCollisionPtr bspCollision = MOHPC::BSPCollision::create(Asset);
+	bspCollision->FillCollisionWorld(*cm);
 
 	union {
 		float infinite;

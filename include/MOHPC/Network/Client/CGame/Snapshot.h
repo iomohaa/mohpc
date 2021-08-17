@@ -9,6 +9,7 @@
 #include "../../Types/Snapshot.h"
 #include "../../Exception.h"
 #include "../../Configstring.h"
+#include "../GameState.h"
 
 #include <functional>
 #include <cstdint>
@@ -60,6 +61,9 @@ namespace Network
 			 * @param	configString	The string pointed at by the csNum.
 			 */
 			struct Configstring : public HandlerNotifyBase<void(csNum_t csNum, const char* configString)> {};
+
+			/** This is called after all configstrings have been parsed. */
+			struct ProcessedConfigstrings : public HandlerNotifyBase<void()> {};
 		}
 
 		/**
@@ -106,13 +110,14 @@ namespace Network
 				FunctionList<Handlers::EntityRemoved> entityRemovedHandler;
 				FunctionList<Handlers::EntityModified> entityModifiedHandler;
 				FunctionList<Handlers::Configstring> configstringModifiedHandler;
+				FunctionList<Handlers::ProcessedConfigstrings> processedConfigStringsHandler;
 			};
 
 		public:
 			SnapshotProcessor();
 			~SnapshotProcessor();
 
-			void init(uintptr_t serverMessageSequence, rsequence_t serverCommandSequence);
+			void init(const ServerGameStatePtr& gs, uintptr_t serverMessageSequence, rsequence_t serverCommandSequence);
 
 			MOHPC_NET_EXPORTS const HandlerList& handlers() const;
 			MOHPC_NET_EXPORTS HandlerList& handlers();
@@ -188,6 +193,7 @@ namespace Network
 			uintptr_t processedSnapshotNum;
 			uintptr_t latestSnapshotNum;
 			rsequence_t latestCommandSequence;
+			bool newConfigstrings : 1;
 			bool nextFrameTeleport : 1;
 			bool nextFrameCameraCut : 1;
 			bool thisFrameTeleport : 1;
