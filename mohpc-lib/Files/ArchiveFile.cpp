@@ -3,7 +3,7 @@
 
 using namespace MOHPC;
 
-ArchiveFile::ArchiveFile(const fs::path& nameRef, void* file, void* pos, uint64_t uncompressedSize)
+ArchiveFile::ArchiveFile(const fs::path& nameRef, void* file, const void* pos, uint64_t uncompressedSize)
 	: IFile(nameRef)
 	, streamBuf(new basic_decompression_buf<char>(file, *(unz_file_pos*)pos, uncompressedSize))
 	, archiveStream(streamBuf)
@@ -15,9 +15,12 @@ ArchiveFile::ArchiveFile(const fs::path& nameRef, void* file, void* pos, uint64_
 
 ArchiveFile::~ArchiveFile()
 {
-	if (buffer)
-	{
+	if (buffer) {
 		delete[] buffer;
+	}
+
+	if (streamBuf) {
+		delete streamBuf;
 	}
 }
 

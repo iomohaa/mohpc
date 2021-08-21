@@ -1,6 +1,5 @@
 #include <Shared.h>
 #include <MOHPC/Utility/LevelEntity.h>
-#include <MOHPC/Files/Managers/FileManager.h>
 #include <MOHPC/Files/FileHelpers.h>
 
 #include <cstring>

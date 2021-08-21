@@ -2,6 +2,7 @@
 #include <MOHPC/Assets/Managers/ShaderManager.h>
 
 #include <cassert>
+#include <cstring>
 
 using namespace MOHPC;
 
@@ -170,6 +171,17 @@ patchCollide_t::patchCollide_t()
 	, numFacets(0)
 	, facets(nullptr)
 {
+}
+
+patchCollide_t::~patchCollide_t()
+{
+	if (facets) {
+		delete[] facets;
+	}
+
+	if (planes) {
+		delete[] planes;
+	}
 }
 
 collisionPatch_t::collisionPatch_t()
@@ -1966,7 +1978,7 @@ void CollisionWorld::BoxTrace(trace_t * results, const vec3r_t start, const vec3
 	c_traces++;				// for statistics, may be zeroed
 
 	// fill in a default trace
-	memset(&tw, 0, sizeof(tw));
+	std::memset(&tw, 0, sizeof(tw));
 	tw.trace.fraction = 1;	// assume it goes the entire distance until shown otherwise
 
 	// set basic parms
@@ -2450,7 +2462,7 @@ bool CollisionWorld::BoxSightTrace(const vec3r_t start, const vec3r_t end, const
 	}
 
 	// fill in a default trace
-	memset(&tw, 0, sizeof(tw));
+	std::memset(&tw, 0, sizeof(tw));
 	tw.trace.fraction = 1;	// assume it goes the entire distance until shown otherwise
 
 	// set basic parms

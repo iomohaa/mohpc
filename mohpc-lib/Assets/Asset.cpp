@@ -1,7 +1,8 @@
 #include <Shared.h>
 #include <MOHPC/Assets/Asset.h>
 #include <MOHPC/Assets/Managers/AssetManager.h>
-#include <MOHPC/Files/Managers/FileManager.h>
+#include <MOHPC/Files/Managers/IFileManager.h>
+#include <MOHPC/Files/Category.h>
 #include <MOHPC/Common/Log.h>
 #include <MOHPC/Version.h>
 #include "Utility/Misc/SHA1.h"
@@ -20,8 +21,9 @@ intptr_t mfuse::Hash<std::type_index>::operator()(const std::type_index& key) co
 }
 */
 
-AssetManager::AssetManager(const FileManagerPtr& FMptr)
+AssetManager::AssetManager(const IFileManagerPtr& FMptr, const SharedPtr<FileCategoryManager>& catManPtr)
 	: FM(FMptr)
+	, catMan(catManPtr)
 {
 	MOHPC_LOG(Debug, "MOHPC %s version %s build %d", VERSION_ARCHITECTURE, VERSION_SHORT_STRING, VERSION_BUILD);
 }
@@ -55,9 +57,14 @@ AssetManager::~AssetManager()
 	*/
 }
 
-const FileManagerPtr& AssetManager::GetFileManager() const
+const IFileManagerPtr& AssetManager::GetFileManager() const
 {
 	return FM;
+}
+
+const FileCategoryManagerPtr& AssetManager::GetFileCategoryManager() const
+{
+	return catMan;
 }
 
 void AssetManager::addManager(const std::type_index& ti, const SharedPtr<Manager>& manager)
@@ -77,12 +84,12 @@ SharedPtr<Manager> AssetManager::getManager(const std::type_index& ti) const
 	return nullptr;
 }
 
-SharedPtr<Asset2> AssetManager::cacheFindAsset(const fs::path& Filename)
+SharedPtr<Asset> AssetManager::cacheFindAsset(const fs::path& Filename)
 {
 	auto it = m_assetCache.find(Filename);
 	if (it != m_assetCache.end())
 	{
-		WeakPtr<Asset2>& asset = it->second;
+		WeakPtr<Asset>& asset = it->second;
 
 		if(!asset.expired())
 		{
@@ -98,12 +105,12 @@ SharedPtr<Asset2> AssetManager::cacheFindAsset(const fs::path& Filename)
 	return nullptr;
 }
 
-SharedPtr<Asset2> AssetManager::readAsset(const fs::path& fileName, const SharedPtr<AssetReader>& A)
+SharedPtr<Asset> AssetManager::readAsset(const fs::path& fileName, const SharedPtr<AssetReader>& A)
 {
 	IFilePtr file = GetFileManager()->OpenFile(fileName);
 	if (file)
 	{
-		const SharedPtr<Asset2> assetPtr = readAsset(file, A);
+		const SharedPtr<Asset> assetPtr = readAsset(file, A);
 		if(assetPtr)
 		{
 			m_assetCache.insert_or_assign(fileName, assetPtr);
@@ -119,88 +126,11 @@ SharedPtr<Asset2> AssetManager::readAsset(const fs::path& fileName, const Shared
 	return nullptr;
 }
 
-SharedPtr<MOHPC::Asset2> AssetManager::readAsset(const IFilePtr& file, const SharedPtr<AssetReader>& A)
+SharedPtr<MOHPC::Asset> AssetManager::readAsset(const IFilePtr& file, const SharedPtr<AssetReader>& A)
 {
 	A->InitAssetManager(shared_from_this());
 	// read and return the resulting asset
 	return A->read(file);
-}
-
-Asset::Asset()
-{
-	Hash = nullptr;
-}
-
-Asset::~Asset()
-{
-	if (Hash)
-	{
-		delete (CSHA1*)Hash;
-	}
-}
-
-void Asset::Init(const fs::path& F)
-{
-	Filename = F;
-}
-
-const fs::path& Asset::GetFilename() const
-{
-	return Filename;
-}
-
-void Asset::HashGetHash(uint8_t* Destination) const
-{
-	/*
-	if (Hash)
-	{
-		CSHA1* SHA1 = (CSHA1*)Hash;
-		SHA1->GetHash(Destination);
-	}
-	*/
-}
-
-void Asset::HashUpdate(const uint8_t* Data, uint64_t Length)
-{
-	/*
-	if (!Hash)
-	{
-		Hash = (class Hasher*)new CSHA1;
-	}
-
-	CSHA1* SHA1 = (CSHA1*)Hash;
-	SHA1->Update(Data, (UINT_32)Length);
-	*/
-}
-
-void Asset::HashCopy(const Asset* A)
-{
-	/*
-	if (A->Hash)
-	{
-		if (!Hash)
-		{
-			Hash = (class Hasher*)new CSHA1;
-		}
-
-		CSHA1* SHA1 = (CSHA1*)Hash;
-		*SHA1 = *(CSHA1*)A->Hash;
-	}
-	else if (Hash)
-	{
-		delete (CSHA1*)Hash;
-		Hash = nullptr;
-	}
-	*/
-}
-
-void Asset::HashFinalize()
-{
-	if (Hash)
-	{
-		CSHA1* SHA1 = (CSHA1*)Hash;
-		SHA1->Final();
-	}
 }
 
 AssetError::AssetNotFound::AssetNotFound(const fs::path& inFileName)
@@ -240,18 +170,18 @@ const char* AssetError::BadHeader4::what() const noexcept
 	return "Bad asset header";
 }
 
-Asset2::Asset2(const fs::path& fileNameRef)
+Asset::Asset(const fs::path& fileNameRef)
 	: fileName(fileNameRef)
 {
 
 }
 
-Asset2::~Asset2()
+Asset::~Asset()
 {
 
 }
 
-const fs::path& Asset2::getFilename() const
+const fs::path& Asset::getFilename() const
 {
 	return fileName;
 }

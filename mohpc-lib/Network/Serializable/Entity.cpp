@@ -6,6 +6,8 @@
 
 #include <MOHPC/Utility/Misc/MSG/MSGCoord.h>
 
+#include <cstring>
+
 using namespace MOHPC;
 using namespace MOHPC::Network;
 

@@ -9,7 +9,7 @@ using namespace MOHPC::Network;
 
 int main(int argc, const char* argv[])
 {
-	const MOHPC::AssetManagerPtr AM = AssetLoad(GetGamePathFromCommandLine(argc, argv));
+	const MOHPC::AssetManagerPtr AM = AssetLoad(GetGamePathFromCommandLine());
 
 	srand((unsigned int)time(NULL));
 

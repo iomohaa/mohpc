@@ -28,7 +28,6 @@ BSPCollision::~BSPCollision()
 {
 }
 
-
 void BSPCollision::FillCollisionWorld(CollisionWorld& cm)
 {
 	const size_t numShaders = bsp->GetNumShaders();

@@ -6,7 +6,7 @@
 
 int main(int argc, const char* argv[])
 {
-	const MOHPC::AssetManagerPtr AM = AssetLoad(GetGamePathFromCommandLine(argc, argv));
+	const MOHPC::AssetManagerPtr AM = AssetLoad(GetGamePathFromCommandLine());
 
 	MOHPC::SkeletonAnimationPtr Animation = AM->readAsset<MOHPC::SkeletonAnimationReader>("/models/human/animation/deaths/death_chest.skc");
 	MOHPC::TIKIPtr Tiki = AM->readAsset<MOHPC::TIKIReader>("/models/player/american_army.tik");

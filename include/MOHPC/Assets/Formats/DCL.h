@@ -38,7 +38,7 @@ namespace MOHPC
 		bool bDoLighting;
 	};
 
-	class DCL : public Asset2
+	class DCL : public Asset
 	{
 		MOHPC_ASSET_OBJECT_DECLARATION(DCL);
 
@@ -70,7 +70,7 @@ namespace MOHPC
 		MOHPC_ASSETS_EXPORTS DCLReader();
 		MOHPC_ASSETS_EXPORTS ~DCLReader();
 
-		MOHPC_ASSETS_EXPORTS Asset2Ptr read(const IFilePtr& file) override;
+		MOHPC_ASSETS_EXPORTS AssetPtr read(const IFilePtr& file) override;
 	};
 
 	namespace DCLError

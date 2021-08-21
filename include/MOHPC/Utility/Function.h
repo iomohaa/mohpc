@@ -3,6 +3,9 @@
 #include <vector>
 #include <functional>
 
+#include <cstdint>
+#include <cstddef>
+
 namespace MOHPC
 {
 	/*

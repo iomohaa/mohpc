@@ -3,6 +3,9 @@
 #include "../NetGlobal.h"
 #include "../ProtocolSingleton.h"
 
+#include <cstdint>
+#include <cstddef>
+
 namespace MOHPC
 {
 namespace Network

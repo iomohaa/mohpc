@@ -3,6 +3,7 @@
 #include "SimpleVector.h"
 
 #include <cstdio>
+#include <cmath>
 
 namespace MOHPC
 {

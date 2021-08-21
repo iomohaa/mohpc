@@ -8,43 +8,11 @@
 
 namespace MOHPC
 {
-	class Asset : public AssetObject
+	class Asset
 	{
-	friend AssetManager;
-
 	public:
+		Asset(const fs::path& fileNameRef);
 		virtual ~Asset();
-
-		/** Returns the filename of the asset. */
-		MOHPC_ASSETS_EXPORTS const fs::path& GetFilename() const;
-
-		/** Returns the 20-bit hash for this asset. */
-		MOHPC_ASSETS_EXPORTS void HashGetHash(uint8_t* Destination) const;
-
-	protected:
-		MOHPC_ASSETS_EXPORTS Asset();
-
-	private:
-		// Called by the asset manager
-		void Init(const fs::path& Filename);
-		void HashFinalize();
-
-	protected:
-		void HashUpdate(const uint8_t* Data, uint64_t Length);
-		void HashCopy(const Asset* A);
-
-		virtual void Load() = 0;
-
-	private:
-		fs::path Filename;
-		class Hasher* Hash;
-	};
-
-	class Asset2
-	{
-	public:
-		Asset2(const fs::path& fileNameRef);
-		virtual ~Asset2();
 
 		/** Returns the filename of the asset. */
 		MOHPC_ASSETS_EXPORTS const fs::path& getFilename() const;
@@ -52,12 +20,12 @@ namespace MOHPC
 	private:
 		fs::path fileName;
 	};
-	using Asset2Ptr = SharedPtr<Asset2>;
+	using AssetPtr = SharedPtr<Asset>;
 
 	class AssetReader : public AssetObject
 	{
 	public:
-		MOHPC_ASSETS_EXPORTS virtual Asset2Ptr read(const IFilePtr& file) = 0;
+		MOHPC_ASSETS_EXPORTS virtual AssetPtr read(const IFilePtr& file) = 0;
 	};
 	using AssetReaderPtr = SharedPtr<AssetReader>;
 

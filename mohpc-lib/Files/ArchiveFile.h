@@ -9,7 +9,7 @@ namespace MOHPC
 	class ArchiveFile : public IFile
 	{
 	public:
-		ArchiveFile(const fs::path& nameRef, void* file, void* pos, uint64_t uncompressedSize);
+		ArchiveFile(const fs::path& nameRef, void* file, const void* pos, uint64_t uncompressedSize);
 		~ArchiveFile();
 
 		std::istream* GetStream() override;

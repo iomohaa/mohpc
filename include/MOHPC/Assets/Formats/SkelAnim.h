@@ -13,9 +13,20 @@ namespace MOHPC
 	using SkeletonAnimationPtr = SharedPtr<class SkeletonAnimation>;
 	using ConstSkeletonAnimationPtr =  SharedPtr<const class SkeletonAnimation>;
 
-	static constexpr unsigned int MAX_ANIM_POSES = 64;
-	static constexpr unsigned int MAX_ANIM_MOVEMENTS_POSES = (MAX_ANIM_POSES >> 1);
-	static constexpr unsigned int MAX_ANIM_ACTIONS_POSES = (MAX_ANIM_POSES >> 1);
+	using skelFlag_t = uint32_t;
+
+	/**
+	 * Skeleton animation flags.
+	 */
+	namespace SKF
+	{
+		 /** The animation should loop. */
+		MOHPC_ASSETS_EXPORTS extern const skelFlag_t LOOP;
+		/** Contains delta data. */
+		MOHPC_ASSETS_EXPORTS extern const skelFlag_t HASDELTA;
+		/** Contains morph data. */
+		MOHPC_ASSETS_EXPORTS extern const skelFlag_t HASMORPH;
+	}
 
 	struct SkanAnimFrame
 	{
@@ -51,7 +62,7 @@ namespace MOHPC
 		std::vector<SkanGameFrame> ary_frames;
 	};
 
-	class SkeletonAnimation : public Asset2
+	class SkeletonAnimation : public Asset
 	{
 		MOHPC_ASSET_OBJECT_DECLARATION(SkeletonAnimation);
 
@@ -141,8 +152,8 @@ namespace MOHPC
 		MOHPC_ASSETS_EXPORTS SkeletonAnimationReader();
 		MOHPC_ASSETS_EXPORTS ~SkeletonAnimationReader();
 
-		MOHPC_ASSETS_EXPORTS Asset2Ptr read(const IFilePtr& file) override;
-		MOHPC_ASSETS_EXPORTS static Asset2Ptr readNewAnim(const AssetManagerPtr& assetManager, const fs::path& path);
+		MOHPC_ASSETS_EXPORTS AssetPtr read(const IFilePtr& file) override;
+		MOHPC_ASSETS_EXPORTS static SkeletonAnimationPtr readNewAnim(const AssetManagerPtr& assetManager, const fs::path& path);
 
 	private:
 		void ConvertSkelFileToGame(const File_AnimDataHeader* pHeader, size_t iBuffLength, SkeletonAnimation& skelAnim);

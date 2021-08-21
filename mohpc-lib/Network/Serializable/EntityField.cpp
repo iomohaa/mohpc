@@ -7,6 +7,7 @@
 #include <MOHPC/Utility/Misc/MSG/MSG.h>
 #include <MOHPC/Utility/Misc/Endian.h>
 
+#include <cmath>
 #include <cstring>
 
 using namespace MOHPC;

@@ -6,9 +6,13 @@
 #include <MOHPC/Utility/Misc/MSG/MSG.h>
 #include <MOHPC/Utility/Misc/MSG/Codec.h>
 #include <MOHPC/Utility/Info.h>
+
 #include <MOHPC/Common/Log.h>
 #include <MOHPC/Common/Math.h>
+#include <MOHPC/Common/str.h>
+
 #include <vector>
+#include <cstring>
 
 using namespace MOHPC;
 using namespace Network;
@@ -77,7 +81,7 @@ SharedPtr<IRequestBase> ServerList::Request_SendCon::process(InputRequest& data)
 	data.stream.Read(dataStr, len);
 	dataStr[len] = 0;
 
-	char* ptr = strstr(dataStr, "\\secure\\");
+	const char* ptr = strHelpers::find(dataStr, "\\secure\\");
 	if (!ptr) {
 		return nullptr;
 	}
@@ -102,7 +106,7 @@ ServerList::Request_SendToken::Request_SendToken(const char* challenge, gameList
 	: gameType(inType)
 {
 	char encdata[6];
-	memcpy(encdata, challenge, sizeof(encdata));
+	std::memcpy(encdata, challenge, sizeof(encdata));
 
 	const uint8_t* key = gameKeys[(uint8_t)gameType];
 	// Take the challenge and encrypt it with the key
@@ -245,7 +249,7 @@ SharedPtr<IRequestBase> ServerList::Request_FetchServers::process(InputRequest& 
 	char dataStr[sizeof(pendingData) * 100];
 
 	// copy pending data
-	memcpy(dataStr, pendingData, pendingLen);
+	std::memcpy(dataStr, pendingData, pendingLen);
 
 	size_t processedLen = 0;
 	size_t len = 0;
@@ -267,7 +271,7 @@ SharedPtr<IRequestBase> ServerList::Request_FetchServers::process(InputRequest& 
 		const char* endbuf = dataStr + maxlen;
 		while (p < endbuf)
 		{
-			if (!strncmp(p, "\\final\\", 7))
+			if (!strHelpers::cmpn(p, "\\final\\", 7))
 			{
 				// finished processing
 				return nullptr;
@@ -281,14 +285,14 @@ SharedPtr<IRequestBase> ServerList::Request_FetchServers::process(InputRequest& 
 			// for now, only use netadr4_t
 			NetAddr4Ptr adr = makeShared<NetAddr4>();
 			const IRemoteIdentifierPtr identifier = makeShared<IPRemoteIdentifier>(adr);
-			memcpy(adr->ip, ip, sizeof(adr->ip));
+			std::memcpy(adr->ip, ip, sizeof(adr->ip));
 			adr->port = port;
 	
 			IServerPtr ptr = makeShared<GSServer>(dispatcher, comm, identifier);
 			callback(ptr);
 		}
 
-		memcpy(pendingData, p, pendingLen);
+		std::memcpy(pendingData, p, pendingLen);
 	}
 
 	return shared_from_this();
@@ -349,7 +353,7 @@ SharedPtr<IRequestBase> ServerListLAN::Request_InfoBroadcast::process(InputReque
 	// Don't create a server without a callback
 	if (response)
 	{
-		IServerPtr lanServer = makeShared<LANServer>(data.identifier, dataStr, strlen(dataStr));
+		IServerPtr lanServer = makeShared<LANServer>(data.identifier, dataStr, strHelpers::len(dataStr));
 		response(lanServer);
 	}
 
@@ -382,7 +386,7 @@ bool ServerListLAN::Request_InfoBroadcast::isThisRequest(InputRequest& data) con
 	}
 
 	StringMessage arg = msg.ReadString();
-	const size_t len = strlen(arg);
+	const size_t len = strHelpers::len(arg.c_str());
 	if (len <= 0)
 	{
 		// invalid length
@@ -390,7 +394,7 @@ bool ServerListLAN::Request_InfoBroadcast::isThisRequest(InputRequest& data) con
 	}
 
 	TokenParser parser;
-	parser.Parse(arg, strlen(arg) + 1);
+	parser.Parse(arg, strHelpers::len(arg.c_str()) + 1);
 
 	const char* command = parser.GetToken(false);
 	return !strHelpers::icmp(command, "infoResponse");

@@ -34,6 +34,7 @@ BSPData::TerrainTri::TerrainTri()
 	nSplit = 0;
 	uiDistRecalc = 0;
 	patch = nullptr;
+	info = nullptr;
 	varnode = nullptr;
 	index = 0;
 	lod = 0;
@@ -46,6 +47,13 @@ BSPData::TerrainTri::TerrainTri()
 	iParent = 0;
 	iPrev = 0;
 	iNext = 0;
+}
+
+BSPData::PoolInfo::PoolInfo()
+	: iFreeHead(0)
+	, iCur(0)
+	, nFree(0)
+{
 }
 
 void BSPReader::GenerateTerrainPatch(const TerrainPatch* Patch, Surface* Out)
@@ -147,20 +155,20 @@ void BSPReader::GenerateTerrainPatch(const TerrainPatch* Patch, Surface* Out)
 	Out->CalculateCentroid();
 }
 
-void BSPReader::GenerateTerrainPatch2(const TerrainPatch* Patch, Surface* Out)
+void BSPReader::GenerateTerrainPatch2(const TerrainPatch* Patch, TerrainPatchDrawInfo& info, Surface* Out)
 {
 	Out->shader = Patch->shader;
 
 	MOHPC::ShaderManagerPtr ShaderManager = GetAssetManager()->getManager<MOHPC::ShaderManager>();
 	ShaderPtr Shader = ShaderManager->GetShader(Out->shader->shaderName.c_str());
 
-	if (!Patch->drawInfo.vertHead || !Patch->drawInfo.triHead)
+	if (!info.drawInfo.vertHead || !info.drawInfo.triHead)
 	{
 		return;
 	}
 
 	size_t numIndexes = 0;
-	for (terraInt triNum = Patch->drawInfo.triHead; triNum; triNum = trTris[triNum].iNext)
+	for (terraInt triNum = info.drawInfo.triHead; triNum; triNum = trTris[triNum].iNext)
 	{
 		if (trTris[triNum].byConstChecks & 4)
 		{
@@ -169,7 +177,7 @@ void BSPReader::GenerateTerrainPatch2(const TerrainPatch* Patch, Surface* Out)
 	}
 
 	size_t numVerts = 0;
-	for (terraInt vertNum = Patch->drawInfo.vertHead; vertNum; vertNum = trVerts[vertNum].iNext)
+	for (terraInt vertNum = info.drawInfo.vertHead; vertNum; vertNum = trVerts[vertNum].iNext)
 	{
 		numVerts++;
 	}
@@ -179,7 +187,7 @@ void BSPReader::GenerateTerrainPatch2(const TerrainPatch* Patch, Surface* Out)
 	Out->vertices.resize(numVerts);
 
 	size_t ndx = 0;
-	for (terraInt vertNum = Patch->drawInfo.vertHead; vertNum; vertNum = trVerts[vertNum].iNext)
+	for (terraInt vertNum = info.drawInfo.vertHead; vertNum; vertNum = trVerts[vertNum].iNext)
 	{
 		Vertice* vert = &Out->vertices[ndx];
 		TerrainVert* terrainVert = &trVerts[vertNum];
@@ -195,7 +203,7 @@ void BSPReader::GenerateTerrainPatch2(const TerrainPatch* Patch, Surface* Out)
 	}
 
 	ndx = 0;
-	for (terraInt triNum = Patch->drawInfo.triHead; triNum; triNum = trTris[triNum].iNext)
+	for (terraInt triNum = info.drawInfo.triHead; triNum; triNum = trTris[triNum].iNext)
 	{
 		TerrainTri* terrainTri = &trTris[triNum];
 
@@ -227,16 +235,16 @@ void BSPReader::GenerateTerrainPatch2(const TerrainPatch* Patch, Surface* Out)
 	Out->CalculateCentroid();
 }
 
-void BSPReader::CreateTerrainSurfaces(std::vector<BSPData::TerrainPatch>& terrainPatches, std::vector<BSPData::Surface>& terrainSurfaces)
+void BSPReader::CreateTerrainSurfaces(const std::vector<BSPData::TerrainPatch>& terrainPatches, std::vector<BSPData::TerrainPatchDrawInfo>& infoList, std::vector<BSPData::Surface>& terrainSurfaces)
 {
 	size_t numTerrainPatches = terrainPatches.size();
 	if (numTerrainPatches)
 	{
 		// Allocate and prepare vertices & indexes
-		TR_PreTessellateTerrain(terrainPatches);
+		TR_PreTessellateTerrain(terrainPatches, infoList);
 
 		// Split vertices
-		TR_DoTriSplitting(terrainPatches);
+		TR_DoTriSplitting(terrainPatches, infoList);
 
 		// Morph geometry according to the view
 		// It is useless anyway so don't call it
@@ -254,7 +262,7 @@ void BSPReader::CreateTerrainSurfaces(std::vector<BSPData::TerrainPatch>& terrai
 			const TerrainPatch *terrain = &terrainPatches[i];
 			Surface *tsurf = &terrainSurfaces[i];
 
-			GenerateTerrainPatch2(terrain, tsurf);
+			GenerateTerrainPatch2(terrain, infoList[i], tsurf);
 		}
 
 		trTris.clear();
@@ -268,7 +276,7 @@ void BSPReader::CreateTerrainSurfaces(std::vector<BSPData::TerrainPatch>& terrai
 ///////////   Disassembly   /////////////
 /////////////////////////////////////////
 
-terraInt BSPReader::TR_AllocateVert(TerrainPatch *patch)
+terraInt BSPReader::TR_AllocateVert(const TerrainPatch *patch, TerrainPatchDrawInfo& info)
 {
 	terraInt iVert = trpiVert.iFreeHead;
 
@@ -276,11 +284,11 @@ terraInt BSPReader::TR_AllocateVert(TerrainPatch *patch)
 	trVerts[trpiVert.iFreeHead].iPrev = 0;
 
 	trVerts[iVert].iPrev = 0;
-	trVerts[iVert].iNext = patch->drawInfo.vertHead;
-	trVerts[patch->drawInfo.vertHead].iPrev = iVert;
+	trVerts[iVert].iNext = info.drawInfo.vertHead;
+	trVerts[info.drawInfo.vertHead].iPrev = iVert;
 
-	patch->drawInfo.vertHead = iVert;
-	patch->drawInfo.numVerts++;
+	info.drawInfo.vertHead = iVert;
+	info.drawInfo.numVerts++;
 	trpiVert.nFree--;
 
 	trVerts[iVert].nRef = 0;
@@ -291,9 +299,9 @@ terraInt BSPReader::TR_AllocateVert(TerrainPatch *patch)
 
 void BSPReader::TR_InterpolateVert(TerrainTri *pTri, TerrainVert *pVert)
 {
-	TerrainVert *pVert0 = &trVerts[pTri->iPt[0]];
-	TerrainVert *pVert1 = &trVerts[pTri->iPt[1]];
-	TerrainPatch *pPatch = pTri->patch;
+	const TerrainVert *pVert0 = &trVerts[pTri->iPt[0]];
+	const TerrainVert *pVert1 = &trVerts[pTri->iPt[1]];
+	const TerrainPatch *pPatch = pTri->patch;
 
 	// Interpolate texture coordinates
 	pVert->texCoords[0][0] = (pVert0->texCoords[0][0] + pVert1->texCoords[0][0]) * 0.5f;
@@ -310,7 +318,7 @@ void BSPReader::TR_InterpolateVert(TerrainTri *pTri, TerrainVert *pVert)
 	pVert->xyz[2] = pVert->fHgtAvg;
 }
 
-void BSPReader::TR_ReleaseVert(TerrainPatch *patch, terraInt iVert)
+void BSPReader::TR_ReleaseVert(const TerrainPatch *patch, TerrainPatchDrawInfo& info, terraInt iVert)
 {
 	TerrainVert *pVert = &trVerts[iVert];
 
@@ -319,12 +327,12 @@ void BSPReader::TR_ReleaseVert(TerrainPatch *patch, terraInt iVert)
 	trVerts[iPrev].iNext = iNext;
 	trVerts[iNext].iPrev = iPrev;
 
-	assert(patch->drawInfo.numVerts > 0);
-	patch->drawInfo.numVerts--;
+	assert(info.drawInfo.numVerts > 0);
+	info.drawInfo.numVerts--;
 
-	if (patch->drawInfo.vertHead == iVert)
+	if (info.drawInfo.vertHead == iVert)
 	{
-		patch->drawInfo.vertHead = iNext;
+		info.drawInfo.vertHead = iNext;
 	}
 
 	pVert->iPrev = 0;
@@ -334,29 +342,29 @@ void BSPReader::TR_ReleaseVert(TerrainPatch *patch, terraInt iVert)
 	trpiVert.nFree++;
 }
 
-terraInt BSPReader::TR_AllocateTri(TerrainPatch *patch, uint8_t byConstChecks)
+terraInt BSPReader::TR_AllocateTri(const TerrainPatch* patch, TerrainPatchDrawInfo& info, uint8_t byConstChecks)
 {
 	terraInt iTri = trpiTri.iFreeHead;
 
 	trpiTri.iFreeHead = trTris[iTri].iNext;
 	trTris[trpiTri.iFreeHead].iPrev = 0;
 
-	trTris[iTri].iPrev = patch->drawInfo.triTail;
+	trTris[iTri].iPrev = info.drawInfo.triTail;
 	trTris[iTri].iNext = 0;
-	trTris[patch->drawInfo.triTail].iNext = iTri;
-	patch->drawInfo.triTail = iTri;
+	trTris[info.drawInfo.triTail].iNext = iTri;
+	info.drawInfo.triTail = iTri;
 
-	if (!patch->drawInfo.triHead)
+	if (!info.drawInfo.triHead)
 	{
-		patch->drawInfo.triHead = iTri;
+		info.drawInfo.triHead = iTri;
 	}
 
-	patch->drawInfo.numTris++;
+	info.drawInfo.numTris++;
 	trpiTri.nFree--;
 
 	trTris[iTri].byConstChecks = byConstChecks;
 	trTris[iTri].uiDistRecalc = 0;
-	patch->distRecalc = 0;
+	info.distRecalc = 0;
 
 	return iTri;
 }
@@ -398,7 +406,7 @@ void BSPReader::TR_SetTriConstChecks(TerrainTri* pTri)
 	}
 }
 
-void BSPReader::TR_ReleaseTri(TerrainPatch *patch, terraInt iTri)
+void BSPReader::TR_ReleaseTri(const TerrainPatch *patch, TerrainPatchDrawInfo& info, terraInt iTri)
 {
 	TerrainTri *pTri = &trTris[iTri];
 
@@ -412,19 +420,19 @@ void BSPReader::TR_ReleaseTri(TerrainPatch *patch, terraInt iTri)
 		trpiTri.iCur = iNext;
 	}
 
-	patch->distRecalc = 0;
+	info.distRecalc = 0;
 
-	assert(patch->drawInfo.numTris > 0);
-	patch->drawInfo.numTris--;
+	assert(info.drawInfo.numTris > 0);
+	info.drawInfo.numTris--;
 
-	if (patch->drawInfo.triHead == iTri)
+	if (info.drawInfo.triHead == iTri)
 	{
-		patch->drawInfo.triHead = iNext;
+		info.drawInfo.triHead = iNext;
 	}
 
-	if (patch->drawInfo.triTail == iTri)
+	if (info.drawInfo.triTail == iTri)
 	{
-		patch->drawInfo.triTail = iPrev;
+		info.drawInfo.triTail = iPrev;
 	}
 
 	pTri->iPrev = 0;
@@ -440,12 +448,12 @@ void BSPReader::TR_ReleaseTri(TerrainPatch *patch, terraInt iTri)
 		trVerts[ptNum].nRef--;
 		if (trVerts[ptNum].nRef-- == 1)
 		{
-			TR_ReleaseVert(patch, ptNum);
+			TR_ReleaseVert(patch, info, ptNum);
 		}
 	}
 }
 
-void BSPReader::TR_DemoteInAncestry(TerrainPatch *patch, terraInt iTri)
+void BSPReader::TR_DemoteInAncestry(const TerrainPatch* patch, TerrainPatchDrawInfo& info, terraInt iTri)
 {
 	terraInt iPrev = trTris[iTri].iPrev;
 	terraInt iNext = trTris[iTri].iNext;
@@ -458,23 +466,23 @@ void BSPReader::TR_DemoteInAncestry(TerrainPatch *patch, terraInt iTri)
 		trpiTri.iCur = iNext;
 	}
 
-	assert(patch->drawInfo.numTris > 0);
-	patch->drawInfo.numTris--;
+	assert(info.drawInfo.numTris > 0);
+	info.drawInfo.numTris--;
 
-	if (patch->drawInfo.triHead == iTri)
+	if (info.drawInfo.triHead == iTri)
 	{
-		patch->drawInfo.triHead = iNext;
+		info.drawInfo.triHead = iNext;
 	}
 
-	if (patch->drawInfo.triTail == iTri)
+	if (info.drawInfo.triTail == iTri)
 	{
-		patch->drawInfo.triTail = iPrev;
+		info.drawInfo.triTail = iPrev;
 	}
 
 	trTris[iTri].iPrev = 0;
-	trTris[iTri].iNext = patch->drawInfo.mergeHead;
-	trTris[patch->drawInfo.mergeHead].iPrev = iTri;
-	patch->drawInfo.mergeHead = iTri;
+	trTris[iTri].iNext = info.drawInfo.mergeHead;
+	trTris[info.drawInfo.mergeHead].iPrev = iTri;
+	info.drawInfo.mergeHead = iTri;
 }
 
 void BSPReader::TR_TerrainHeapInit()
@@ -529,11 +537,12 @@ void BSPReader::TR_SplitTri(terraInt iSplit, terraInt iNewPt, terraInt iLeft, te
 
 	int iNextLod = pSplit->lod + 1;
 	int index = pSplit->index;
-	Varnode *varnode = pSplit->varnode + index;
+	const Varnode *varnode = pSplit->varnode + index;
 
 	if (pLeft)
 	{
 		pLeft->patch = pSplit->patch;
+		pLeft->info = pSplit->info;
 		pLeft->index = index * 2;
 		pLeft->varnode = varnode;
 		pLeft->lod = iNextLod;
@@ -577,6 +586,7 @@ void BSPReader::TR_SplitTri(terraInt iSplit, terraInt iNewPt, terraInt iLeft, te
 	if (pRight)
 	{
 		pRight->patch = pSplit->patch;
+		pRight->info = pSplit->info;
 		pRight->index = index * 2 + 1;
 		pRight->varnode = varnode + 1;
 		pRight->lod = iNextLod;
@@ -622,7 +632,7 @@ void BSPReader::TR_SplitTri(terraInt iSplit, terraInt iNewPt, terraInt iLeft, te
 	trTris[iLeft].iParent = iSplit;
 	trTris[iRight].iParent = iSplit;
 
-	TR_DemoteInAncestry(pSplit->patch, iSplit);
+	TR_DemoteInAncestry(pSplit->patch, *pSplit->info, iSplit);
 }
 
 void BSPReader::TR_ForceSplit(terraInt iTri)
@@ -640,10 +650,10 @@ void BSPReader::TR_ForceSplit(terraInt iTri)
 
 	uint8_t flags = pTri->varnode->s.flags;
 
-	terraInt iTriLeft = TR_AllocateTri(pTri->patch, (flags & 2) ? 0 : 4);
-	terraInt iTriRight = TR_AllocateTri(pTri->patch, (flags & 1) ? 0 : 4);
+	terraInt iTriLeft = TR_AllocateTri(pTri->patch, *pTri->info, (flags & 2) ? 0 : 4);
+	terraInt iTriRight = TR_AllocateTri(pTri->patch, *pTri->info, (flags & 1) ? 0 : 4);
 
-	terraInt iNewPt = TR_AllocateVert(pTri->patch);
+	terraInt iNewPt = TR_AllocateVert(pTri->patch, *pTri->info);
 	TR_InterpolateVert(pTri, &trVerts[iNewPt]);
 
 	trVerts[iNewPt].fVariance = pTri->varnode->variance;
@@ -656,13 +666,13 @@ void BSPReader::TR_ForceSplit(terraInt iTri)
 		uint8_t flags2 = pBase->varnode->s.flags;
 		flags |= flags2;
 
-		iBaseLeft = TR_AllocateTri(pBase->patch, (flags2 & 2) ? 0 : 4);
-		iBaseRight = TR_AllocateTri(pBase->patch, (flags2 & 1) ? 0 : 4);
+		iBaseLeft = TR_AllocateTri(pBase->patch, *pBase->info, (flags2 & 2) ? 0 : 4);
+		iBaseRight = TR_AllocateTri(pBase->patch, *pBase->info, (flags2 & 1) ? 0 : 4);
 
 		terraInt iNewBasePt = iNewPt;
 		if (pBase->patch != pTri->patch)
 		{
-			iNewBasePt = TR_AllocateVert(pBase->patch);
+			iNewBasePt = TR_AllocateVert(pBase->patch, *pBase->info);
 			TerrainVert *pVert = &trVerts[iNewBasePt];
 			TR_InterpolateVert(pBase, pVert);
 
@@ -694,7 +704,8 @@ void BSPReader::TR_ForceSplit(terraInt iTri)
 void BSPReader::TR_ForceMerge(terraInt iTri)
 {
 	TerrainTri *pTri = &trTris[iTri];
-	TerrainPatch *patch = pTri->patch;
+	const TerrainPatch *patch = pTri->patch;
+	TerrainPatchDrawInfo& info = *pTri->info;
 	terraInt iPrev = pTri->iPrev;
 	terraInt iNext = pTri->iNext;
 
@@ -717,7 +728,7 @@ void BSPReader::TR_ForceMerge(terraInt iTri)
 			}
 		}
 
-		TR_ReleaseTri(pTri->patch, pTri->iLeftChild);
+		TR_ReleaseTri(pTri->patch, *pTri->info, pTri->iLeftChild);
 
 		pTri->iLeftChild = 0;
 		trTris[pTri->iParent].nSplit--;
@@ -739,7 +750,7 @@ void BSPReader::TR_ForceMerge(terraInt iTri)
 			}
 		}
 
-		TR_ReleaseTri(pTri->patch, pTri->iRightChild);
+		TR_ReleaseTri(pTri->patch, *pTri->info, pTri->iRightChild);
 
 		pTri->iRightChild = 0;
 		trTris[pTri->iParent].nSplit--;
@@ -753,25 +764,25 @@ void BSPReader::TR_ForceMerge(terraInt iTri)
 		trpiTri.iCur = iNext;
 	}
 
-	patch->drawInfo.numTris++;
-	if (patch->drawInfo.mergeHead == iTri)
+	info.drawInfo.numTris++;
+	if (info.drawInfo.mergeHead == iTri)
 	{
-		patch->drawInfo.mergeHead = iNext;
+		info.drawInfo.mergeHead = iNext;
 	}
 
-	trTris[iTri].iPrev = patch->drawInfo.triTail;
+	trTris[iTri].iPrev = info.drawInfo.triTail;
 	trTris[iTri].iNext = 0;
 
-	trTris[patch->drawInfo.triTail].iNext = iTri;
+	trTris[info.drawInfo.triTail].iNext = iTri;
 
-	patch->drawInfo.triTail = iTri;
-	if (!patch->drawInfo.triHead)
+	info.drawInfo.triTail = iTri;
+	if (!info.drawInfo.triHead)
 	{
-		patch->drawInfo.triHead = iTri;
+		info.drawInfo.triHead = iTri;
 	}
 }
 
-int BSPReader::TR_TerraTriNeighbor(TerrainPatch *terraPatches, int iPatch, int dir)
+int BSPReader::TR_TerraTriNeighbor(const TerrainPatch *terraPatches, int iPatch, int dir)
 {
 	if (iPatch >= 0)
 	{
@@ -815,7 +826,7 @@ int BSPReader::TR_TerraTriNeighbor(TerrainPatch *terraPatches, int iPatch, int d
 	return 0;
 }
 
-void BSPReader::TR_PreTessellateTerrain(std::vector<BSPData::TerrainPatch>& terrainPatches)
+void BSPReader::TR_PreTessellateTerrain(const std::vector<BSPData::TerrainPatch>& terrainPatches, std::vector<BSPData::TerrainPatchDrawInfo>& infoList)
 {
 	const size_t numTerrainPatches = terrainPatches.size();
 	if (!numTerrainPatches)
@@ -835,13 +846,14 @@ void BSPReader::TR_PreTessellateTerrain(std::vector<BSPData::TerrainPatch>& terr
 
 	for (size_t i = 0; i < numTerrainPatches; i++)
 	{
-		TerrainPatch *patch = &terrainPatches[i];
+		const TerrainPatch *patch = &terrainPatches[i];
+		TerrainPatchDrawInfo& info = infoList[i];
 
-		patch->drawInfo.numTris = 0;
-		patch->drawInfo.numVerts = 0;
-		patch->drawInfo.triHead = 0;
-		patch->drawInfo.triTail = 0;
-		patch->drawInfo.vertHead = 0;
+		info.drawInfo.numTris = 0;
+		info.drawInfo.numVerts = 0;
+		info.drawInfo.triHead = 0;
+		info.drawInfo.triTail = 0;
+		info.drawInfo.vertHead = 0;
 
 		float sMin, tMin;
 
@@ -933,16 +945,16 @@ void BSPReader::TR_PreTessellateTerrain(std::vector<BSPData::TerrainPatch>& terr
 		const float t10 = patch->texCoord[1][0][1] - tMin;
 		const float t11 = patch->texCoord[1][1][1] - tMin;
 
-		const float lmapSize = (float)(patch->drawInfo.lmapSize - 1) * lightmapSize;
+		const float lmapSize = (float)(info.drawInfo.lmapSize - 1) * lightmapSize;
 		const float ls = patch->s * lmapSize;
 		const float lt = patch->t * lmapSize;
 
-		terraInt iTri0 = TR_AllocateTri(patch);
-		terraInt iTri1 = TR_AllocateTri(patch);
-		terraInt i00 = TR_AllocateVert(patch);
-		terraInt i01 = TR_AllocateVert(patch);
-		terraInt i10 = TR_AllocateVert(patch);
-		terraInt i11 = TR_AllocateVert(patch);
+		terraInt iTri0 = TR_AllocateTri(patch, info);
+		terraInt iTri1 = TR_AllocateTri(patch, info);
+		terraInt i00 = TR_AllocateVert(patch, info);
+		terraInt i01 = TR_AllocateVert(patch, info);
+		terraInt i10 = TR_AllocateVert(patch, info);
+		terraInt i11 = TR_AllocateVert(patch, info);
 
 		TerrainVert *pVert;
 		pVert = &trVerts[i00];
@@ -999,6 +1011,7 @@ void BSPReader::TR_PreTessellateTerrain(std::vector<BSPData::TerrainPatch>& terr
 
 		TerrainTri *pTri = &trTris[iTri0];
 		pTri->patch = patch;
+		pTri->info = &info;
 		pTri->varnode = &patch->varTree[0][0];
 		pTri->index = 1;
 		pTri->lod = 0;
@@ -1043,6 +1056,7 @@ void BSPReader::TR_PreTessellateTerrain(std::vector<BSPData::TerrainPatch>& terr
 
 		pTri = &trTris[iTri1];
 		pTri->patch = patch;
+		pTri->info = &info;
 		pTri->varnode = &patch->varTree[1][0];
 		pTri->index = 1;
 		pTri->lod = 0;
@@ -1117,14 +1131,15 @@ bool BSPReader::TR_NeedSplitTri(TerrainTri *pTri)
 	return true;
 }
 
-void BSPReader::TR_DoTriSplitting(std::vector<BSPData::TerrainPatch>& terrainPatches)
+void BSPReader::TR_DoTriSplitting(const std::vector<BSPData::TerrainPatch>& terrainPatches, std::vector<BSPData::TerrainPatchDrawInfo>& infoList)
 {
 	for (size_t i = 0; i < terrainPatches.size(); i++)
 	{
-		TerrainPatch *patch = &terrainPatches[i];
+		const TerrainPatch *patch = &terrainPatches[i];
+		TerrainPatchDrawInfo& info = infoList[i];
 
-		patch->distRecalc = -1;
-		trpiTri.iCur = patch->drawInfo.triHead;
+		info.distRecalc = -1;
+		trpiTri.iCur = info.drawInfo.triHead;
 		while(trpiTri.iCur != 0)
 		{
 			TerrainTri *pTri = &trTris[trpiTri.iCur];
@@ -1133,7 +1148,7 @@ void BSPReader::TR_DoTriSplitting(std::vector<BSPData::TerrainPatch>& terrainPat
 			{
 				assert(trpiTri.nFree > 13 && trpiVert.nFree > 13);
 
-				patch->distRecalc = 0;
+				info.distRecalc = 0;
 				TR_ForceSplit(trpiTri.iCur);
 
 				if (&trTris[trpiTri.iCur] == pTri)
@@ -1145,9 +1160,9 @@ void BSPReader::TR_DoTriSplitting(std::vector<BSPData::TerrainPatch>& terrainPat
 			{
 				if ((pTri->byConstChecks & 3) != 2)
 				{
-					if (patch->distRecalc > pTri->uiDistRecalc)
+					if (info.distRecalc > pTri->uiDistRecalc)
 					{
-						patch->distRecalc = pTri->uiDistRecalc;
+						info.distRecalc = pTri->uiDistRecalc;
 					}
 				}
 
@@ -1167,7 +1182,7 @@ void BSPReader::TR_DoGeomorphs()
 	{
 		TerrainPatch* patch = &terrainPatches[n];
 
-		trpiVert.iCur = patch->drawInfo.vertHead;
+		trpiVert.iCur = info.drawInfo.vertHead;
 		if (!patch->bByDirty)
 		{
 			patch->bByDirty = true;
@@ -1230,13 +1245,14 @@ bool BSPReader::TR_MergeInternalCautious()
 	return false;
 }
 
-void BSPReader::TR_DoTriMerging(const std::vector<BSPData::TerrainPatch>& terrainPatches)
+void BSPReader::TR_DoTriMerging(const std::vector<BSPData::TerrainPatch>& terrainPatches, std::vector<BSPData::TerrainPatchDrawInfo>& infoList)
 {
 	for (size_t n = 0; n < terrainPatches.size(); n++)
 	{
 		const BSPData::TerrainPatch *patch = &terrainPatches[n];
+		BSPData::TerrainPatchDrawInfo& info = infoList[n];
 
-		trpiTri.iCur = patch->drawInfo.mergeHead;
+		trpiTri.iCur = info.drawInfo.mergeHead;
 		while (trpiTri.iCur)
 		{
 			if (!TR_MergeInternalCautious())

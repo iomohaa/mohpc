@@ -3,6 +3,7 @@
 #include "Manager.h"
 #include "../AssetsGlobal.h"
 #include "../../Common/str.h"
+#include "../../Files/FileDefs.h"
 
 #include <cstdint>
 #include <unordered_map>
@@ -11,7 +12,8 @@
 
 namespace MOHPC
 {
-	class Script;
+	class TokenParser;
+	class FileCategory;
 
 	enum SoundChannel_e
 	{
@@ -115,10 +117,10 @@ namespace MOHPC
 
 	private:
 		/** Parse an ubersound and returns the total size of all sound nodes. */
-		SoundResults ParseUbersound(const char* filename, const char* categoryName, SoundNode* firstSoundNode, SoundNode** ppLastSoundNode = nullptr);
+		SoundResults ParseUbersound(const fs::path& filename, const FileCategory* category, SoundNode* firstSoundNode, SoundNode** ppLastSoundNode = nullptr);
 
 		/** Parse an alias and returns the size of all strings in the sound node. */
-		size_t ParseAlias(Script& script, SoundNode* soundNode);
+		size_t ParseAlias(TokenParser& script, SoundNode* soundNode);
 
 		/** Sort the node list. */
 		void SortList();

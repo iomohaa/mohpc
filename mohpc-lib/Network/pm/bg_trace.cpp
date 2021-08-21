@@ -1,5 +1,7 @@
 #include <MOHPC/Network/pm/bg_trace.h>
 
+#include <cstring>
+
 using namespace MOHPC;
 using namespace MOHPC::Network;
 
@@ -27,7 +29,7 @@ public:
 		bool traceDeep
 	) override
 	{
-		memset(results, 0, sizeof(trace_t));
+		std::memset(results, 0, sizeof(trace_t));
 
 		VecCopy(end, results->endpos);
 		results->fraction = 1.f;

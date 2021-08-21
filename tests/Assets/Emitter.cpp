@@ -10,7 +10,7 @@
 
 int main(int argc, const char* argv[])
 {
-	const MOHPC::AssetManagerPtr AM = AssetLoad(GetGamePathFromCommandLine(argc, argv));
+	const MOHPC::AssetManagerPtr AM = AssetLoad(GetGamePathFromCommandLine());
 
 	MOHPC_LOG(Info, "Loading test emitter...");
 	auto start = std::chrono::system_clock().now();

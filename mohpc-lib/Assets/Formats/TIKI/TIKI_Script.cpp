@@ -1,9 +1,12 @@
 #include <Shared.h>
 #include "TIKI_Script.h"
-#include <MOHPC/Files/Managers/FileManager.h>
+
+#include <MOHPC/Files/File.h>
+#include <MOHPC/Files/FileHelpers.h>
 #include <MOHPC/Common/Log.h>
 
 #include <cstring>
+#include <utility>
 
 constexpr char MOHPC_LOG_NAMESPACE[] = "tikiscript";
 
@@ -18,9 +21,9 @@ TikiScript::~TikiScript()
 }
 
 MOHPC_OBJECT_DEFINITION(TikiScript);
-TikiScript::TikiScript(const SharedPtr<AssetManager>& assetManager, const fs::path& fileNameRef)
-	: AssetObject(assetManager)
-	, Asset2(fileNameRef)
+TikiScript::TikiScript(const SharedPtr<AssetManager>& assetManagerPtr, const fs::path& fileNameRef)
+	: Asset(fileNameRef)
+	, assetManager(assetManagerPtr)
 {
 	error = false;
 	buffer = NULL;
@@ -35,7 +38,6 @@ TikiScript::TikiScript(const SharedPtr<AssetManager>& assetManager, const fs::pa
 	//parent = NULL;
 	nummacros = 0;
 	mark_pos = 0;
-	path[0] = 0;
 }
 
 /*
@@ -66,18 +68,6 @@ void TikiScript::Close(void)
 	nummacros = 0;
 	memset(token, 0, sizeof(token));
 	mark_pos = 0;
-}
-
-/*
-==============
-=
-= Filename
-=
-==============
-*/
-const char *TikiScript::Filename()
-{
-	return filename;
 }
 
 /*
@@ -161,9 +151,9 @@ void TikiScript::CheckOverflow(void)
 	{
 		// FIXME: throw
 		this->error = true;
-		TIKI_DPrintf("End of tiki file reached prematurely reading %s\n", Filename());
-		TIKI_DPrintf("   This may be caused by having a tiki file command at the end of the file\n");
-		TIKI_DPrintf("   without an 'end' at the end of the tiki file.\n");
+		TIKI_DPrintf("End of tiki file reached prematurely reading %s", getFilename().generic_string().c_str());
+		TIKI_DPrintf("   This may be caused by having a tiki file command at the end of the file");
+		TIKI_DPrintf("   without an 'end' at the end of the tiki file.");
 	}
 }
 
@@ -187,7 +177,7 @@ void TikiScript::SkipWhiteSpace(bool crossline)
 			{
 				if (!crossline)
 				{
-					TIKI_DPrintf("Line %i is incomplete in file %s\n", line, Filename());
+					TIKI_DPrintf("Line %i is incomplete in file %s", line, Filename());
 					return;
 				}
 
@@ -216,7 +206,7 @@ void TikiScript::SkipWhiteSpace(bool crossline)
 			{
 				if (!crossline)
 				{
-					TIKI_DPrintf("Line %i is incomplete in file %s\n", line, Filename());
+					TIKI_DPrintf("Line %i is incomplete in file %s", line, Filename());
 					return;
 				}
 				SkipToEOL();
@@ -339,6 +329,11 @@ void TikiScript::SetCurrentScript(SharedPtr<TikiScript> Script)
 	i->currentScript = Script;
 }
 
+const SharedPtr<MOHPC::TikiScript>& TikiScript::getCurrentScript() const
+{
+	return currentScript;
+}
+
 /*
 ==============
 =
@@ -381,7 +376,7 @@ void TikiScript::Uninclude(void)
 		SetCurrentScript(shared_from_this());
 		//delete include;
 		//include = TikiScriptPtr();
-		//GetAssetManager()->UnloadAsset(include);
+		//assetManager->UnloadAsset(include);
 		include = nullptr;
 	}
 }
@@ -399,13 +394,14 @@ void TikiScript::AddMacro(const char *name, const char *expansion)
 
 	for (i = 0; i < nummacros; i++)
 	{
-		if (!strHelpers::icmp(name, macros[i].name))
+		if (!strHelpers::icmp(name, macros[i].name)) {
 			return;
+		}
 	}
 
 	if (nummacros >= MAXMACROS)
 	{
-		TIKI_DPrintf("Too many %cdefine in file %s\n", TOKENSPECIAL, Filename());
+		TIKI_DPrintf("Too many %cdefine in file %s", TOKENSPECIAL, Filename());
 	}
 	else
 	{
@@ -430,12 +426,11 @@ bool TikiScript::ProcessCommand(bool crossline)
 {
 	char dummy;
 	int i;
-	size_t len;
 	char command[256];
 	char argument1[256];
 	char argument2[256];
 
-	sscanf(script_p, "%c%s %s %s\n", &dummy, &command, &argument1, &argument2);
+	sscanf(script_p, "%c%s %s %s", &dummy, command, argument1, argument2);
 
 	if (!strHelpers::icmp(command, "define"))
 	{
@@ -449,7 +444,7 @@ bool TikiScript::ProcessCommand(bool crossline)
 		SkipWhiteSpace(crossline);
 		try
 		{
-			include = GetAssetManager()->readAsset<TikiScriptReader>(argument1);
+			include = assetManager->readAsset<TikiScriptReader>(argument1);
 			include->SkipNonToken(crossline);
 			for (i = 0; i < nummacros; i++)
 			{
@@ -460,20 +455,13 @@ bool TikiScript::ProcessCommand(bool crossline)
 		}
 		catch (const std::exception& exception)
 		{
-			TIKI_Error("^~^~^ Couldn't parse include '%s' in %s on line %d: %s", &argument1, Filename(), GetLineNumber(), exception.what());
+			TIKI_Error("^~^~^ Couldn't parse include '%s' in %s on line %d: %s", &argument1, getFilename().generic_string().c_str(), GetLineNumber(), exception.what());
 			Uninclude();
 		}
 	}
 	else if (!strHelpers::icmp(command, "path"))
 	{
-		strcpy(path, argument1);
-		len = strlen(path);
-
-		if (path[len - 1] != '/' &&
-			path[len - 1] != '\\')
-		{
-			strcat(path, "/");
-		}
+		setPath(argument1);
 
 		SkipToEOL();
 		SkipWhiteSpace(crossline);
@@ -781,7 +769,7 @@ const char *TikiScript::GetToken(bool crossline)
 
 		if (token_p == &i->token[MAXTOKEN])
 		{
-			TIKI_DPrintf("Token too large on line %i in file %s\n", i->line, i->Filename());
+			TIKI_DPrintf("Token too large on line %i in file %s", i->line, i->Filename());
 			break;
 		}
 
@@ -895,7 +883,7 @@ const char *TikiScript::GetLine(bool crossline)
 	}
 	else
 	{
-		TIKI_DPrintf("Token too large on line %i in file %s\n", i->line, i->filename);
+		TIKI_DPrintf("Token too large on line %i in file %s", i->line, i->filename);
 	}
 
 	return i->token;
@@ -954,7 +942,7 @@ const char *TikiScript::GetAndIgnoreLine(bool crossline)
 	}
 	else
 	{
-		TIKI_DPrintf("Token too large on line %i in file %s\n", line, filename);
+		TIKI_DPrintf("Token too large on line %i in file %s", line, filename);
 	}
 
 	return token;
@@ -1007,7 +995,7 @@ const char *TikiScript::GetRaw(void)
 	}
 	else
 	{
-		TIKI_DPrintf("Token too large on line %i in file %s\n", line, filename);
+		TIKI_DPrintf("Token too large on line %i in file %s", line, filename);
 	}
 
 	return token;
@@ -1063,7 +1051,7 @@ const char *TikiScript::GetString(bool crossline)
 
 	if (*i->script_p != '"')
 	{
-		TIKI_DPrintf("Expecting string on line %i in file %s\n", i->line, i->filename);
+		TIKI_DPrintf("Expecting string on line %i in file %s", i->line, i->filename);
 		return i->token;
 	}
 
@@ -1075,7 +1063,7 @@ const char *TikiScript::GetString(bool crossline)
 	{
 		if (*i->script_p == TOKENEOL)
 		{
-			TIKI_DPrintf("Line %i is incomplete while reading string in file %s\n", i->line, i->filename);
+			TIKI_DPrintf("Line %i is incomplete while reading string in file %s", i->line, i->filename);
 			return i->token;
 		}
 
@@ -1100,13 +1088,13 @@ const char *TikiScript::GetString(bool crossline)
 
 		if (i->script_p >= i->end_p)
 		{
-			TIKI_DPrintf("End of token file reached prematurely while reading string on\n"
-				"line %d in file %s\n", startline, i->filename);
+			TIKI_DPrintf("End of token file reached prematurely while reading string on"
+				"line %d in file %s", startline, i->filename);
 		}
 
 		if (token_p == &i->token[MAXTOKEN])
 		{
-			TIKI_DPrintf("String too large on line %i in file %s\n", i->line, i->filename);
+			TIKI_DPrintf("String too large on line %i in file %s", i->line, i->filename);
 		}
 	}
 
@@ -1258,7 +1246,6 @@ void TikiScript::Parse(char *data, uintmax_t length, const char *name)
 	Reset();
 	this->length = length;
 	end_p = script_p + length;
-	strncpy(filename, name, MAXTOKEN);
 }
 
 /*
@@ -1405,11 +1392,35 @@ void TikiScript::SetAllowExtendedComment(bool bAllow)
 	allow_extended_comment = bAllow;
 }
 
+void TikiScript::setPath(const char* newPath)
+{
+	const char* ext = FileHelpers::getExtension(newPath);
+	if (*ext)
+	{
+		MOHPC_LOG(Error, "(file %s:%d) tried to set an invalid path: '%s'", getFilename().generic_string().c_str(), line, newPath);
+		return;
+	}
+
+	path = newPath;
+	const size_t len = path.length();
+
+	if (path[len - 1] != '/' &&
+		path[len - 1] != '\\')
+	{
+		path += '/';
+	}
+}
+
+const std::string& TikiScript::getPath() const
+{
+	return path;
+}
+
 MOHPC_OBJECT_DEFINITION(TikiScriptReader);
-Asset2Ptr TikiScriptReader::read(const IFilePtr& file)
+AssetPtr TikiScriptReader::read(const IFilePtr& file)
 {
 	SharedPtr<TikiScript> tikiScript(new TikiScript(GetAssetManager(), file->getName()));
 	tikiScript->LoadFile(file);
 
-	return Asset2Ptr(tikiScript);
+	return AssetPtr(tikiScript);
 }

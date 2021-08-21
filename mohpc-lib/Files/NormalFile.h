@@ -9,7 +9,7 @@ namespace MOHPC
 	class NormalFile : public IFile
 	{
 	public:
-		NormalFile(const fs::path& nameRef, std::ifstream&& fileRef);
+		NormalFile(fs::path&& nameRef, std::ifstream&& fileRef);
 		~NormalFile();
 
 		std::istream* GetStream() override;

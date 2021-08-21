@@ -5,21 +5,18 @@
 #include <MOHPC/Utility/SharedPtr.h>
 #include <string>
 
-#define TOKENCOMMENT		(';')
-#define TOKENCOMMENT2		('#')
-#define TOKENEOL			('\n')
-//#define TOKENNULL			('\0')
-#define TOKENSPACE			(' ')
-#define TOKENSPECIAL		('$')
-
-#ifndef MAXTOKEN
-#define	MAXTOKEN	256
-#endif
-
-#define MAXMACROS	48
-
 namespace MOHPC
 {
+	static constexpr char TOKENCOMMENT(';');
+	static constexpr char TOKENCOMMENT2('#');
+	static constexpr char TOKENEOL('\n');
+	static constexpr char TOKENNULL('\0');
+	static constexpr char TOKENSPACE(' ');
+	static constexpr char TOKENSPECIAL('$');
+	static constexpr unsigned int MAXTOKEN = 256;
+
+	static constexpr unsigned int MAXMACROS = 48;
+
 	typedef struct {
 		char name[MAXTOKEN];
 		char macro[MAXTOKEN];
@@ -31,58 +28,16 @@ namespace MOHPC
 		char mark_token[MAXTOKEN];
 	} tiki_mark_t;
 
-	class TikiScript : public AssetObject, public Asset2, public EnableSharedFromThis<TikiScript>
+	class TikiScript : public Asset, public EnableSharedFromThis<TikiScript>
 	{
 		MOHPC_ASSET_OBJECT_DECLARATION(TikiScript);
 
-	protected:
-		bool error;
-		bool tokenready;
-		SharedPtr<TikiScript> include;
-		SharedPtr<TikiScript> parent;
-		char filename[MAXTOKEN];
-		const char *script_p;
-		const char *end_p;
-		tiki_macro_t macros[MAXMACROS];
-		int nummacros;
-		int line;
-		char token[MAXTOKEN];
-		bool releaseBuffer;
-		bool allow_extended_comment;
-		tiki_mark_t mark[64];
-		int mark_pos;
-
 	public:
-		char *buffer;
-		uintmax_t length;
-		char path[256];
-		SharedPtr<TikiScript> currentScript;
-
-	protected:
-		bool AtComment();
-		bool AtExtendedComment();
-		bool AtCommand();
-		bool AtString(bool crossline);
-		bool ProcessCommand(bool crossline);
-		bool Completed();
-		bool SafeCheckOverflow();
-		void CheckOverflow();
-		void Uninclude();
-		const char *FindMacro(const char *macro);
-		void AddMacro(const char *macro, const char *expansion);
-		bool SkipToEOL();
-		void SkipWhiteSpace(bool crossline);
-		void SkipNonToken(bool crossline);
-		bool CommentAvailable(bool crossline);
-		void SkipExtendedComment();
-
-	public:
-		TikiScript(const SharedPtr<AssetManager>& assetManager, const fs::path& fileNameRef);
+		TikiScript(const SharedPtr<AssetManager>& assetManagerPtr, const fs::path& fileNameRef);
 		~TikiScript();
 
 		void Load();
 		void Close();
-		const char *Filename();
 		int GetLineNumber();
 		void Reset();
 		bool TokenAvailable(bool crossline);
@@ -107,8 +62,51 @@ namespace MOHPC
 		void Exclude();
 		const char *GetParentToken();
 		void SetCurrentScript(SharedPtr<TikiScript> Script);
+		const SharedPtr<MOHPC::TikiScript>& getCurrentScript() const;
 		void SetAllowExtendedComment(bool bAllow);
+		void setPath(const char* newPath);
+		const std::string& getPath() const;
+
+	protected:
+		bool AtComment();
+		bool AtExtendedComment();
+		bool AtCommand();
+		bool AtString(bool crossline);
+		bool ProcessCommand(bool crossline);
+		bool Completed();
+		bool SafeCheckOverflow();
+		void CheckOverflow();
+		void Uninclude();
+		const char* FindMacro(const char* macro);
+		void AddMacro(const char* macro, const char* expansion);
+		bool SkipToEOL();
+		void SkipWhiteSpace(bool crossline);
+		void SkipNonToken(bool crossline);
+		bool CommentAvailable(bool crossline);
+		void SkipExtendedComment();
+
+	private:
+		SharedPtr<AssetManager> assetManager;
+		char* buffer;
+		SharedPtr<TikiScript> currentScript;
+		SharedPtr<TikiScript> include;
+		SharedPtr<TikiScript> parent;
+		const char* script_p;
+		const char* end_p;
+		uintmax_t length;
+		tiki_macro_t macros[MAXMACROS];
+		tiki_mark_t mark[64];
+		std::string path;
+		char token[MAXTOKEN];
+		int nummacros;
+		int line;
+		int mark_pos;
+		bool releaseBuffer;
+		bool allow_extended_comment;
+		bool error;
+		bool tokenready;
 	};
+	using TikiScriptPtr = SharedPtr<TikiScript>;
 
 	class TikiSwitchKey
 	{
@@ -145,6 +143,6 @@ namespace MOHPC
 		using AssetType = TikiScript;
 
 	public:
-		Asset2Ptr read(const IFilePtr& file) override;
+		AssetPtr read(const IFilePtr& file) override;
 	};
 }

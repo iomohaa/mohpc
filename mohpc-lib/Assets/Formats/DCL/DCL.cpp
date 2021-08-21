@@ -2,7 +2,7 @@
 #include <MOHPC/Assets/Formats/DCL.h>
 #include <MOHPC/Assets/Managers/AssetManager.h>
 #include <MOHPC/Assets/Managers/ShaderManager.h>
-#include <MOHPC/Files/Managers/FileManager.h>
+#include <MOHPC/Files/File.h>
 #include <MOHPC/Common/Math.h>
 #include <MOHPC/Utility/Misc/Endian.h>
 #include <MOHPC/Utility/Misc/EndianCoordHelpers.h>
@@ -54,7 +54,7 @@ static constexpr char DCL_SIGNATURE[] = { 'D', 'C', 'L', ' ' };
 
 MOHPC_OBJECT_DEFINITION(DCL);
 DCL::DCL(const fs::path& fileName, DCLMarkDef* decalList, size_t numDecalsVal, size_t numFragmentsVal)
-	: Asset2(fileName)
+	: Asset(fileName)
 	, dclDecals(decalList)
 	, numDecals(numDecalsVal)
 	, numFragments(numFragmentsVal)
@@ -96,7 +96,7 @@ DCLReader::~DCLReader()
 {
 }
 
-Asset2Ptr DCLReader::read(const IFilePtr& file)
+AssetPtr DCLReader::read(const IFilePtr& file)
 {
 	dclHeader_t dclHeader;
 	file->GetStream()->read((char*)&dclHeader, sizeof(dclHeader_t));
@@ -154,9 +154,9 @@ Asset2Ptr DCLReader::read(const IFilePtr& file)
 		pPoly->bDoLighting = saveMark.bDoLighting;
 	}
 
-	MOHPC_LOG(Info, "%d decals loaded for '%s'.", numDecals, file->getName().c_str());
+	MOHPC_LOG(Info, "%d decals loaded for '%s'.", numDecals, file->getName().generic_string().c_str());
 
-	return Asset2Ptr(new DCL(file->getName(), dclDecals, numDecals, numFragments));
+	return AssetPtr(new DCL(file->getName(), dclDecals, numDecals, numFragments));
 }
 
 DCLError::BadHeader::BadHeader(const uint8_t inHeader[4])

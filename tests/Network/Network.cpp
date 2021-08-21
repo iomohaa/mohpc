@@ -26,8 +26,6 @@
 #include "Common/Common.h"
 #include "Common/platform.h"
 
-#include <ctime>
-#include <cstdarg>
 #include <iostream>
 #include <vector>
 #include <locale>
@@ -35,6 +33,10 @@
 #include <mutex>
 #include <string>
 #include <chrono>
+#include <ctime>
+#include <cstdarg>
+#include <cstring>
+#include <random>
 
 #define MOHPC_LOG_NAMESPACE "test_net"
 
@@ -70,7 +72,7 @@ void waitFor(time_point<steady_clock> startTime, nanoseconds maxDelay);
 
 int main(int argc, const char* argv[])
 {
-	InitCommon();
+	InitCommon(argc, argv);
 
 	MOHPC_LOG(Info, "Supported protocol(s):");
 	for (const IClientProtocol* proto = IClientProtocol::getHead(); proto; proto = proto->getNext())
@@ -79,28 +81,30 @@ int main(int argc, const char* argv[])
 		MOHPC_LOG(Info, "- protocol %d game version %s", proto->getServerProtocol(), proto->getVersion());
 	}
 
-	const MOHPC::AssetManagerPtr AM = AssetLoad(GetGamePathFromCommandLine(argc, argv));
+	const MOHPC::AssetManagerPtr AM = AssetLoad(GetGamePathFromCommandLine());
 
-	memset(buf, 0, sizeof(buf));
+	std::memset(buf, 0, sizeof(buf));
 	count = 0;
 	wantsDisconnect = false;
 
+	std::random_device rd;
+	std::mt19937 gen(rd());
+
 	// create a message dispatcher for server list
 	NetAddr4Ptr bindAdr = NetAddr4::create();
-	//bindAdr->setIp(0, 0, 0, 0);
-	bindAdr->setIp(127, 0, 0, 1);
-	bindAdr->setPort(rand() % 65536);
+	bindAdr->setIp(0, 0, 0, 0);
+	//bindAdr->setIp(127, 0, 0, 1);
+	bindAdr->setPort(gen() % 65536);
 	//testMasterServer(bindAdr);
 	//testLANQuery(bindAdr);
 
 	NetAddr4Ptr adr = NetAddr4::create();
 	NetAddr4Ptr adrGs = NetAddr4::create();
-	adr->setIp(127, 0, 0, 1);
-	//adr->setIp(149, 202, 88, 84);
-	//adr->setIp(192, 168, 1, 85);
+	adr->setIp(192, 168, 1, 13);
 	adr->setPort(12203);
-	adrGs->setIp(127, 0, 0, 1);
-	//adrGs->setIp(149, 202, 88, 84);
+	//adrGs->setIp(127, 0, 0, 1);
+
+	// server's gamespy port
 	adrGs->setPort(12300);
 
 	const IRemoteIdentifierPtr remoteIdentifier = IPRemoteIdentifier::create(adr);
@@ -114,8 +118,8 @@ int main(int argc, const char* argv[])
 	const UDPCommunicatorPtr udpComm = UDPCommunicator::create(udpLatencySim);
 	dispatcher->addComm(udpComm);
 
-	// Send remote command
 	/*
+	// Send remote command
 	RemoteConsolePtr RCon = RemoteConsole::create(dispatcher, udpComm, remoteIdentifier, "12345");
 	RCon->getHandlerList().printHandler.add([](const char* text)
 	{
@@ -710,7 +714,7 @@ void waitFor(time_point<steady_clock> startTime, nanoseconds maxDelay)
 		// remaining
 		setTimerResolution(1);
 		std::this_thread::sleep_for(maxDelay - deltaTime);
-		restoreTimerSolution(1);
+		restoreTimerResolution(1);
 	}
 }
 

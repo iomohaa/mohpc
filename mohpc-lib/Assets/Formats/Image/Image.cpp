@@ -1,7 +1,7 @@
 #include <Shared.h>
 #include <MOHPC/Assets/Formats/Image.h>
 #include <MOHPC/Assets/Managers/AssetManager.h>
-#include <MOHPC/Files/Managers/FileManager.h>
+#include <MOHPC/Files/File.h>
 #include <MOHPC/Files/FileHelpers.h>
 #include <string>
 
@@ -10,7 +10,7 @@ using namespace MOHPC;
 MOHPC_OBJECT_DEFINITION(Image);
 
 Image::Image(const fs::path& fileNameRef, uint8_t* dataBuf, uint32_t size, uint32_t widthVal, uint32_t heightVal, PixelFormat format)
-	: Asset2(fileNameRef)
+	: Asset(fileNameRef)
 	, data(dataBuf)
 	, dataSize(size)
 	, width(widthVal)
@@ -29,7 +29,7 @@ Image::~Image()
 
 MOHPC_OBJECT_DEFINITION(ImageReader);
 
-Asset2Ptr ImageReader::read(const IFilePtr& file)
+AssetPtr ImageReader::read(const IFilePtr& file)
 {
 	struct ExtensionWrapper
 	{

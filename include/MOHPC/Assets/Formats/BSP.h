@@ -2,7 +2,7 @@
 
 #include "../Asset.h"
 #include "../Managers/ShaderManager.h"
-#include "../../Files/Managers/FileManager.h"
+#include "../../Files/File.h"
 #include "../../Common/str.h"
 #include "../../Common/Vector.h"
 #include "../../Utility/SharedPtr.h"
@@ -218,24 +218,19 @@ namespace MOHPC
 
 		struct Brush
 		{
-			str name;
 			const Shader* shader;
 			int32_t contents;
 			vec3_t bounds[2];
 			size_t numsides;
 			const BrushSide* sides;
-			Brush* parent;
-			std::vector<const Surface*> surfaces;
 
 		public:
-			MOHPC_ASSETS_EXPORTS const char* GetName() const;
 			MOHPC_ASSETS_EXPORTS const Shader* GetShader() const;
 			MOHPC_ASSETS_EXPORTS int32_t GetContents() const;
 			MOHPC_ASSETS_EXPORTS const_vec3p_t GetMins() const;
 			MOHPC_ASSETS_EXPORTS const_vec3p_t GetMaxs() const;
 			MOHPC_ASSETS_EXPORTS size_t GetNumSides() const;
 			MOHPC_ASSETS_EXPORTS const BrushSide* GetSide(size_t Index) const;
-			MOHPC_ASSETS_EXPORTS Brush* GetParent() const;
 			MOHPC_ASSETS_EXPORTS void GetOrigin(vec3r_t out) const;
 		};
 
@@ -261,28 +256,6 @@ namespace MOHPC
 		{
 			uint32_t floodNum;
 			uint32_t floodValid;
-		};
-
-		class SurfacesGroup
-		{
-		public:
-			MOHPC_ASSETS_EXPORTS const str& GetGroupName() const;
-			MOHPC_ASSETS_EXPORTS size_t GetNumSurfaces() const;
-			MOHPC_ASSETS_EXPORTS const Surface* GetSurface(size_t index) const;
-			MOHPC_ASSETS_EXPORTS size_t GetNumBrushes() const;
-			MOHPC_ASSETS_EXPORTS const Brush* GetBrush(size_t index) const;
-			MOHPC_ASSETS_EXPORTS const Surface* const* GetSurfaces() const;
-			MOHPC_ASSETS_EXPORTS const Brush* const* GetBrushes() const;
-			MOHPC_ASSETS_EXPORTS const_vec3p_t GetMinBound() const;
-			MOHPC_ASSETS_EXPORTS const_vec3p_t GetMaxBound() const;
-			MOHPC_ASSETS_EXPORTS const_vec3p_t GetOrigin() const;
-
-		public:
-			str name;
-			std::vector<const Surface*> surfaces;
-			std::vector<const Brush*> brushes;
-			vec3_t bounds[2];
-			vec3_t origin;
 		};
 
 		struct Model
@@ -329,29 +302,42 @@ namespace MOHPC
 
 		struct TerrainSurface
 		{
-			terraInt vertHead;
-			terraInt triHead;
-			terraInt triTail;
-			terraInt mergeHead;
+		public:
+			TerrainSurface();
+
+		public:
+			uint8_t* lmapData;
 			int32_t numVerts;
 			int32_t numTris;
 			int32_t lmapSize;
 			int32_t dlightBits[2];
-			float lmapStep;
 			int32_t dlightmap[2];
-			uint8_t* lmapData;
+			float lmapStep;
 			float lmapX;
 			float lmapY;
+			terraInt vertHead;
+			terraInt triHead;
+			terraInt triTail;
+			terraInt mergeHead;
 		};
 
-		struct TerrainPatch
+		struct TerrainPatchDrawInfo
 		{
-			mutable TerrainSurface drawInfo;
+		public:
+			TerrainPatchDrawInfo();
+
+		public:
+			TerrainSurface drawInfo;
 			int32_t viewCount;
 			int32_t visCountCheck;
 			int32_t visCountDraw;
 			int32_t frameCount;
 			uint32_t distRecalc;
+		};
+
+		struct TerrainPatch
+		{
+			const Shader* shader;
 			float s;
 			float t;
 			float texCoord[2][2][2];
@@ -359,45 +345,47 @@ namespace MOHPC
 			float y0;
 			float z0;
 			float zmax;
-			const Shader* shader;
 			int16_t north;
 			int16_t east;
 			int16_t south;
 			int16_t west;
-			TerrainPatch* nextActive;
 			Varnode varTree[2][63];
 			uint8_t heightmap[81];
 			uint8_t flags;
-			bool bByDirty;
 		};
 
 		struct TerrainVert
 		{
-			vec3_t xyz;
-			vec2_t texCoords[2];
+		public:
+			TerrainVert();
+
+		public:
+			const uint8_t* pHgt;
 			float fVariance;
 			float fHgtAvg;
 			float fHgtAdd;
-			unsigned int uiDistRecalc;
+			vec3_t xyz;
+			vec2_t texCoords[2];
+			uint32_t uiDistRecalc;
 			terraInt nRef;
 			terraInt iVertArray;
-			uint8_t* pHgt;
 			terraInt iNext;
 			terraInt iPrev;
-
-			TerrainVert();
 		};
 
 		struct TerrainTri
 		{
+		public:
+			TerrainTri();
+
+		public:
+			const TerrainPatch* patch;
+			const Varnode* varnode;
+			TerrainPatchDrawInfo* info;
+			uint32_t uiDistRecalc;
 			terraInt iPt[3];
 			terraInt nSplit;
-			unsigned int uiDistRecalc;
-			TerrainPatch* patch;
-			Varnode* varnode;
 			terraInt index;
-			uint8_t lod;
-			uint8_t byConstChecks;
 			terraInt iLeft;
 			terraInt iRight;
 			terraInt iBase;
@@ -406,26 +394,23 @@ namespace MOHPC
 			terraInt iParent;
 			terraInt iPrev;
 			terraInt iNext;
-
-			TerrainTri();
+			uint8_t lod;
+			uint8_t byConstChecks;
 		};
 
 		struct PoolInfo
 		{
+		public:
+			PoolInfo();
+
+		public:
 			terraInt iFreeHead;
 			terraInt iCur;
 			size_t nFree;
-
-			PoolInfo()
-				: iFreeHead(0)
-				, iCur(0)
-				, nFree(0)
-			{
-			}
 		};
 	}
 
-	class BSP : public Asset2
+	class BSP : public Asset
 	{
 		MOHPC_ASSET_OBJECT_DECLARATION(BSP);
 
@@ -550,12 +535,6 @@ namespace MOHPC
 		/** Returns an array of entities with the specified targetname. */
 		MOHPC_ASSETS_EXPORTS const std::vector<class LevelEntity *>* GetEntities(const str& targetName) const;
 
-		/** Returns the number of grouped surfaces. */
-		MOHPC_ASSETS_EXPORTS size_t GetNumSurfacesGroup() const;
-
-		/** Returns the grouped surface at the specified number. */
-		MOHPC_ASSETS_EXPORTS const BSPData::SurfacesGroup *GetSurfacesGroup(size_t surfsGroupNum) const;
-
 		/** Return the leaf number of the point at the specified location. */
 		MOHPC_ASSETS_EXPORTS uintptr_t PointLeafNum(const vec3r_t p);
 
@@ -580,7 +559,6 @@ namespace MOHPC
 		std::vector<BSPData::Surface>& getTerrainSurfaces();
 		std::vector<class LevelEntity*>& getEntities();
 		std::unordered_map<str, std::vector<class LevelEntity*>>& getTargetList();
-		std::vector<BSPData::SurfacesGroup*>& getSurfacesGroups();
 		std::vector<uint8_t>& getVisibility();
 
 		void setNumClusters(uint32_t numClustersValue);
@@ -611,7 +589,6 @@ namespace MOHPC
 		std::vector<BSPData::Surface> terrainSurfaces;
 		std::vector<class LevelEntity*> entities;
 		std::unordered_map<str, std::vector<class LevelEntity*>> targetList;
-		std::vector<BSPData::SurfacesGroup*> surfacesGroups;
 		std::vector<uint8_t> visibility;
 		uint32_t numClusters;
 		uint32_t numAreas;
@@ -638,7 +615,7 @@ namespace MOHPC
 		MOHPC_ASSETS_EXPORTS BSPReader();
 		MOHPC_ASSETS_EXPORTS ~BSPReader();
 
-		MOHPC_ASSETS_EXPORTS Asset2Ptr read(const IFilePtr& file) override;
+		MOHPC_ASSETS_EXPORTS AssetPtr read(const IFilePtr& file) override;
 
 	private:
 
@@ -708,7 +685,7 @@ namespace MOHPC
 		void LoadEntityString(const BSPFile::GameLump* GameLump, char*& entityString, size_t& entityStringLength);
 		void LoadSphereLights(const BSPFile::GameLump* GameLump, std::vector<BSPData::SphereLight>& lights);
 		void LoadStaticModelDefs(const BSPFile::GameLump* GameLump, std::vector<BSPData::StaticModel>& staticModels);
-		void LoadTerrain(const BSPFile::GameLump* GameLump, const std::vector<BSPData::Shader>& shaders, std::vector<BSPData::TerrainPatch>& terrainPatches);
+		void LoadTerrain(const BSPFile::GameLump* GameLump, const std::vector<BSPData::Shader>& shaders, std::vector<BSPData::TerrainPatch>& terrainPatches, std::vector<BSPData::TerrainPatchDrawInfo>& infoList);
 		void LoadTerrainIndexes(
 			const BSPFile::GameLump* GameLump,
 			const std::vector<BSPData::TerrainPatch>& terrainPatches,
@@ -718,49 +695,42 @@ namespace MOHPC
 		void FloodAreaConnections(std::vector<BSPData::Area>& areas, const std::vector<uintptr_t>& areaPortals, uint32_t numAreas);
 
 		// terrain
-		terraInt TR_AllocateVert(BSPData::TerrainPatch* patch);
+		terraInt TR_AllocateVert(const BSPData::TerrainPatch* patch, BSPData::TerrainPatchDrawInfo& info);
 		void TR_InterpolateVert(BSPData::TerrainTri* pTri, BSPData::TerrainVert* pVert);
-		void TR_ReleaseVert(BSPData::TerrainPatch* patch, terraInt iVert);
-		terraInt TR_AllocateTri(BSPData::TerrainPatch* patch, uint8_t byConstChecks = 4);
+		void TR_ReleaseVert(const BSPData::TerrainPatch* patch, BSPData::TerrainPatchDrawInfo& info, terraInt iVert);
+		terraInt TR_AllocateTri(const BSPData::TerrainPatch* patch, BSPData::TerrainPatchDrawInfo& info, uint8_t byConstChecks = 4);
 		void TR_FixTriHeight(BSPData::TerrainTri* pTri);
 		void TR_SetTriConstChecks(BSPData::TerrainTri* pTri);
-		void TR_ReleaseTri(BSPData::TerrainPatch* patch, terraInt iTri);
-		void TR_DemoteInAncestry(BSPData::TerrainPatch* patch, terraInt iTri);
+		void TR_ReleaseTri(const BSPData::TerrainPatch* patch, BSPData::TerrainPatchDrawInfo& info, terraInt iTri);
+		void TR_DemoteInAncestry(const BSPData::TerrainPatch* patch, BSPData::TerrainPatchDrawInfo& info, terraInt iTri);
 		void TR_TerrainHeapInit();
 		void TR_SplitTri(terraInt iSplit, terraInt iNewPt, terraInt iLeft, terraInt iRight, terraInt iRightOfLeft, terraInt iLeftOfRight);
 		void TR_ForceSplit(terraInt iTri);
 		void TR_ForceMerge(terraInt iTri);
-		int TR_TerraTriNeighbor(BSPData::TerrainPatch* terraPatches, int iPatch, int dir);
-		void TR_PreTessellateTerrain(std::vector<BSPData::TerrainPatch>& terrainPatches);
+		int TR_TerraTriNeighbor(const BSPData::TerrainPatch* terraPatches, int iPatch, int dir);
+		void TR_PreTessellateTerrain(const std::vector<BSPData::TerrainPatch>& terrainPatches, std::vector<BSPData::TerrainPatchDrawInfo>& infoList);
 		bool TR_NeedSplitTri(BSPData::TerrainTri* pTri);
-		void TR_DoTriSplitting(std::vector<BSPData::TerrainPatch>& terrainPatches);
+		void TR_DoTriSplitting(const std::vector<BSPData::TerrainPatch>& terrainPatches, std::vector<BSPData::TerrainPatchDrawInfo>& infoList);
 		void TR_DoGeomorphs();
 		bool TR_MergeInternalAggressive();
 		bool TR_MergeInternalCautious();
-		void TR_DoTriMerging(const std::vector<BSPData::TerrainPatch>& terrainPatches);
+		void TR_DoTriMerging(const std::vector<BSPData::TerrainPatch>& terrainPatches, std::vector<BSPData::TerrainPatchDrawInfo>& infoList);
 		void TR_ShrinkData();
 
 		void GenerateTerrainPatch(const BSPData::TerrainPatch* Patch, BSPData::Surface* Out);
-		void GenerateTerrainPatch2(const BSPData::TerrainPatch* Patch, BSPData::Surface* Out);
-		void UnpackTerraPatch(const BSPFile::fterrainPatch_t* Packed, BSPData::TerrainPatch* Unpacked, const std::vector<BSPData::Shader>& shaders) const;
+		void GenerateTerrainPatch2(const BSPData::TerrainPatch* Patch, BSPData::TerrainPatchDrawInfo& info, BSPData::Surface* Out);
+		void UnpackTerraPatch(const BSPFile::fterrainPatch_t* Packed, BSPData::TerrainPatch* Unpacked, BSPData::TerrainPatchDrawInfo& info, const std::vector<BSPData::Shader>& shaders) const;
 
 		void BoundBrush(BSPData::Brush* Brush);
 		void ColorShiftLightingFloats(float in[4], float out[4], float scale);
 		void ColorShiftLightingFloats3(vec3_t in, vec3_t out, float scale);
 
-		void CreateTerrainSurfaces(std::vector<BSPData::TerrainPatch>& terrainPatches, std::vector<BSPData::Surface>& terrainSurfaces);
+		void CreateTerrainSurfaces(const std::vector<BSPData::TerrainPatch>& terrainPatches, std::vector<BSPData::TerrainPatchDrawInfo>& info, std::vector<BSPData::Surface>& terrainSurfaces);
 		void CreateEntities(
 			const char* entityString,
 			size_t length,
 			std::vector<class LevelEntity*>& entities,
 			std::unordered_map<str, std::vector<class LevelEntity*>>& targetList
-		);
-		void MapBrushes(
-			std::vector<BSPData::Brush>& brushes,
-			const std::vector<BSPData::Surface>& surfaces,
-			const std::vector<BSPData::Model>& brushModels,
-			const std::vector<BSPData::Surface>& terrainSurfaces,
-			std::vector<BSPData::SurfacesGroup*>& surfacesGroups
 		);
 
 		uint32_t LoadLump(const IFilePtr& file, BSPFile::flump_t* lump, BSPFile::GameLump* gameLump, size_t size = 0);

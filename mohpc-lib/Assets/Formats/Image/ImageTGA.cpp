@@ -1,7 +1,6 @@
 #include <Shared.h>
 #include <MOHPC/Assets/Formats/Image.h>
 #include <MOHPC/Utility/Misc/Endian.h>
-#include "ImagePrivate.h"
 
 #include <cstring>
 #include <cassert>

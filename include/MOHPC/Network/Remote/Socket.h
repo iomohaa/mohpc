@@ -31,7 +31,7 @@ namespace MOHPC
 			 * @param	timeout		Time to wait. (0 = no wait)
 			 * @return	True if there is any pending data.
 			 */
-			virtual bool wait(size_t timeout) = 0;
+			virtual bool wait(uint64_t timeout) = 0;
 
 			/**
 			 * Return the number of pending bytes waiting in socket.

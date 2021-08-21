@@ -11,10 +11,10 @@
 #include "Common/Common.h"
 
 #include <vector>
+#include <random>
 #include <cassert>
 #include <cstdlib>
-#include <ctime>
-#include <random>
+#include <cstring>
 
 using namespace MOHPC;
 using namespace Network;
@@ -225,7 +225,7 @@ void TestCompression()
 		CompressedMessage decompressed(instream, outstream);
 		decompressed.Decompress(0, instream.GetLength());
 
-		assert(!memcmp(decompressedBuffer, rawBuffer, sizeof(decompressedBuffer)));
+		assert(!std::memcmp(decompressedBuffer, rawBuffer, sizeof(decompressedBuffer)));
 	}
 }
 

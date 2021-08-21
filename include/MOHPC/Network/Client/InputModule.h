@@ -54,7 +54,7 @@ namespace Network
 
 		void process(const ClientTime& time) override;
 		bool canWrite() const override;
-		void write(MSG& msg, uint32_t key, bool deltaMove);
+		void write(MSG& msg, uint32_t key, bool deltaMove) override;
 
 	private:
 		uint8_t getNumCommandsToWrite(uint32_t index);

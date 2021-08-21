@@ -6,6 +6,7 @@ using namespace MOHPC;
 using namespace MOHPC::Network;
 using namespace MOHPC::Network::CGame;
 
+template<>
 std::map<csNum_t, ConfigstringMonitorTemplate<GameMonitor>::Callback> ConfigstringMonitorTemplate<GameMonitor>::callbackMap
 {
 	{ CS::SERVERINFO,		&GameMonitor::parseServerInfo },

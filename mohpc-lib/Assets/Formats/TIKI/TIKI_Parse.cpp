@@ -11,52 +11,34 @@ static constexpr char MOHPC_LOG_NAMESPACE[] = "tiki_parse";
 
 bool TIKIReader::ParseSetup(dloaddef_t* ld)
 {
-	const char *token;
-	float load_scale;
-	float lod_scale;
-	float lod_bias;
-	float tmpFloat;
-	int tmpInt;
-	size_t length;
-
 	// Skip the setup token
 	ld->tikiFile->GetToken(true);
 
 	while (ld->tikiFile->TokenAvailable(true))
 	{
-		token = ld->tikiFile->GetToken(true);
+		const char* token = ld->tikiFile->GetToken(true);
 
 		if (!strHelpers::icmp(token, "scale"))
 		{
-			load_scale = ld->tikiFile->GetFloat(false);
-			ld->loaddata.load_scale = load_scale;
+			ld->loaddata.load_scale = ld->tikiFile->GetFloat(false);
 		}
 		else if (!strHelpers::icmp(token, "lod_scale"))
 		{
-			lod_scale = ld->tikiFile->GetFloat(false) / 5.0f;
-			ld->loaddata.lod_scale = lod_scale;
+			ld->loaddata.lod_scale = ld->tikiFile->GetFloat(false) / 5.0f;
 		}
 		else if (!strHelpers::icmp(token, "lod_bias"))
 		{
-			lod_bias = ld->tikiFile->GetFloat(false);
-			ld->loaddata.lod_bias = lod_bias;
+			ld->loaddata.lod_bias = ld->tikiFile->GetFloat(false);
 		}
 		else if (!strHelpers::icmp(token, "skelmodel"))
 		{
 			token = ld->tikiFile->GetToken(false);
-			ld->loaddata.skelmodel.push_back(str(ld->tikiFile->currentScript->path) + token);
+			ld->loaddata.skelmodel.push_back(ld->tikiFile->getCurrentScript()->getPath() + token);
 		}
 		else if (!strHelpers::icmp(token, "path"))
 		{
 			token = ld->tikiFile->GetToken(false);
-			strcpy(ld->tikiFile->currentScript->path, token);
-			length = strHelpers::len(ld->tikiFile->currentScript->path);
-			token = ld->tikiFile->currentScript->path + length - 1;
-
-			if (*token != '/' && *token != '\\')
-			{
-				strcat(ld->tikiFile->currentScript->path, "/");
-			}
+			ld->tikiFile->getCurrentScript()->setPath(token);
 		}
 		else if (!strHelpers::icmp(token, "orgin"))
 		{
@@ -72,44 +54,39 @@ bool TIKIReader::ParseSetup(dloaddef_t* ld)
 		}
 		else if (!strHelpers::icmp(token, "radius"))
 		{
-			tmpFloat = ld->tikiFile->GetFloat(false);
-			ld->loaddata.radius = tmpFloat;
+			ld->loaddata.radius = ld->tikiFile->GetFloat(false);
 		}
 		else if (!strHelpers::icmp(token, "surface"))
 		{
 			token = ld->tikiFile->GetToken(false);
-			dloadsurface_t surf;
+
+			dloadsurface_t& surf = ld->loaddata.surfaces.emplace_back();
 			surf.name = token;
 			surf.flags = 0;
 			surf.damage_multiplier = 0;
+
 			while (ld->tikiFile->TokenAvailable(false))
 			{
 				token = ld->tikiFile->GetToken(false);
 				if (!strHelpers::icmp(token, "flags"))
 				{
 					token = ld->tikiFile->GetToken(false);
-					tmpInt = ParseSurfaceFlag(token);
-					surf.flags = tmpInt;
+					surf.flags = ParseSurfaceFlag(token);
 				}
 				else if (!strHelpers::icmp(token, "damage"))
 				{
-					tmpFloat = ld->tikiFile->GetFloat(false);
-					surf.damage_multiplier = tmpFloat;
+					surf.damage_multiplier = ld->tikiFile->GetFloat(false);
 				}
 				else if (!strHelpers::icmp(token, "shader"))
 				{
 					token = ld->tikiFile->GetToken(false);
-					if (strHelpers::find(token, "."))
-					{
-						surf.shader.push_back(str(ld->tikiFile->currentScript->path) + token);
-					}
-					else
-					{
+					if (strHelpers::find(token, ".")) {
+						surf.shader.push_back(ld->tikiFile->getCurrentScript()->getPath() + token);
+					} else {
 						surf.shader.push_back(token);
 					}
 				}
 			}
-			ld->loaddata.surfaces.push_back(surf);
 		}
 		else if (!strHelpers::icmp(token, "ischaracter"))
 		{
@@ -126,33 +103,32 @@ bool TIKIReader::ParseSetup(dloaddef_t* ld)
 		}
 		else
 		{
-			//TIKI_Error("TIKI_ParseSetup: unknown setup command '%s' in '%s' on line %d, skipping line.\n", token, ld->tikiFile->Filename(), ld->tikiFile->GetLineNumber());
-			while (ld->tikiFile->TokenAvailable(false))
+			MOHPC_LOG(Error, "ParseSetup(): unknown setup command '%s' in '%s' on line %d, skipping line.", token, ld->tikiFile->getFilename().generic_string().c_str(), ld->tikiFile->GetLineNumber());
+			
+			while (ld->tikiFile->TokenAvailable(false)) {
 				ld->tikiFile->GetToken(false);
+			}
 		}
 	}
 
 	return true;
 }
 
-void TIKIReader::ParseInitCommands(dloaddef_t* ld, std::vector<dloadinitcmd_t>& cmdlist)
+void TIKIReader::ParseInitCommands(dloaddef_t* ld, tiki_init_cmd_list_t& cmdlist)
 {
-	const char *token;
-	std::vector<str> szArgs;
-
 	// Skip current token
 	ld->tikiFile->GetToken(true);
 
 	while (ld->tikiFile->TokenAvailable(true))
 	{
-		token = ld->tikiFile->GetToken(true);
+		const char* token = ld->tikiFile->GetToken(true);
 
 		if (!strHelpers::icmp(token, "}"))
 		{
 			return;
 		}
 
-		dloadinitcmd_t cmd;
+		dloadinitcmd_t& cmd = cmdlist.emplace_back();
 
 		ld->tikiFile->UnGetToken();
 		while (ld->tikiFile->TokenAvailable(false))
@@ -160,21 +136,17 @@ void TIKIReader::ParseInitCommands(dloaddef_t* ld, std::vector<dloadinitcmd_t>& 
 			token = ld->tikiFile->GetToken(false);
 			cmd.args.push_back(token);
 		}
-
-		cmdlist.push_back(cmd);
 	}
 }
 
 void TIKIReader::ParseInit(dloaddef_t* ld)
 {
-	const char *token;
-
 	// Skip the init token
 	ld->tikiFile->GetToken(true);
 
 	while (ld->tikiFile->TokenAvailable(true))
 	{
-		token = ld->tikiFile->GetToken(true);
+		const char* token = ld->tikiFile->GetToken(true);
 		if (!strHelpers::icmp(token, "client"))
 		{
 			ParseInitCommands(ld, ld->loadclientinitcmds);
@@ -189,11 +161,12 @@ void TIKIReader::ParseInit(dloaddef_t* ld)
 		}
 		else
 		{
-			//TIKI_Error("TIKI_ParseInit: unknown init command %s in %s on line %d, skipping line.\n", token, ld->tikiFile->Filename(), ld->tikiFile->GetLineNumber());
+			MOHPC_LOG(Error, "ParseInit(): unknown init command '%s' in '%s' on line %d, skipping line.", token, ld->tikiFile->getFilename().generic_string().c_str(), ld->tikiFile->GetLineNumber());
 
 			// Skip the current line
-			while (ld->tikiFile->TokenAvailable(false))
+			while (ld->tikiFile->TokenAvailable(false)) {
 				ld->tikiFile->GetToken(false);
+			}
 		}
 	}
 }
@@ -214,7 +187,7 @@ __newcase:
 	{
 		if (!ld->tikiFile->TokenAvailable(true))
 		{
-			MOHPC_LOG(Error, "ParseCase(): unexpected end of file while parsing 'case' switch in %s on line %d.\n", ld->tikiFile->Filename(), ld->tikiFile->GetLineNumber());
+			MOHPC_LOG(Error, "ParseCase(): unexpected end of file while parsing 'case' switch in %s on line %d.", ld->tikiFile->getFilename().generic_string().c_str(), ld->tikiFile->GetLineNumber());
 			return false;
 		}
 
@@ -228,15 +201,11 @@ __newcase:
 			break;
 		}
 
-		ld->keyvalues.insert_or_assign(key, token);
-
-		if (isheadmodel && std::find(ld->headmodels.begin(), ld->headmodels.end(), token) == ld->headmodels.end())
-		{
+		if (isheadmodel && std::find(ld->headmodels.begin(), ld->headmodels.end(), token) == ld->headmodels.end()) {
 			ld->headmodels.push_back(token);
 		}
 
-		if (isheadskin && std::find(ld->headskins.begin(), ld->headskins.end(), token) == ld->headskins.end())
-		{
+		if (isheadskin && std::find(ld->headskins.begin(), ld->headskins.end(), token) == ld->headskins.end()) {
 			ld->headskins.push_back(token);
 		}
 	}
@@ -250,7 +219,7 @@ __newcase:
 	return true;
 }
 
-void TIKIReader::ParseFrameCommands(dloaddef_t* ld, std::vector<dloadframecmd_t>& cmdlist)
+void TIKIReader::ParseFrameCommands(dloaddef_t* ld, tiki_frame_cmd_list_t& cmdlist)
 {
 	bool usecurrentframe = false;
 	const char *token;
@@ -266,31 +235,31 @@ void TIKIReader::ParseFrameCommands(dloaddef_t* ld, std::vector<dloadframecmd_t>
 			return;
 		}
 
-		dloadframecmd_t cmd;
+		dloadframecmd_t& cmd = cmdlist.emplace_back();
 
 		if (!strHelpers::icmp(token, "start") || !strHelpers::icmp(token, "first"))
 		{
-			framenum = TIKI_FRAME_FIRST;
+			framenum = TF::FIRST;
 		}
 		else if (!strHelpers::icmp(token, "end"))
 		{
-			framenum = TIKI_FRAME_END;
+			framenum = TF::END;
 		}
 		else if (!strHelpers::icmp(token, "last"))
 		{
-			framenum = TIKI_FRAME_LAST;
+			framenum = TF::LAST;
 		}
 		else if (!strHelpers::icmp(token, "every"))
 		{
-			framenum = TIKI_FRAME_EVERY;
+			framenum = TF::EVERY;
 		}
 		else if (!strHelpers::icmp(token, "exit"))
 		{
-			framenum = TIKI_FRAME_EXIT;
+			framenum = TF::EXIT;
 		}
 		else if (!strHelpers::icmp(token, "entry") || !strHelpers::icmp(token, "enter"))
 		{
-			framenum = TIKI_FRAME_ENTRY;
+			framenum = TF::ENTRY;
 		}
 		else if (!strHelpers::icmp(token, "("))
 		{
@@ -312,9 +281,9 @@ void TIKIReader::ParseFrameCommands(dloaddef_t* ld, std::vector<dloadframecmd_t>
 		}
 
 		/*
-		if (framenum < TIKI_FRAME_LAST)
+		if (framenum < TF::LAST)
 		{
-			MOHPC_LOG(Error, "ParseFrameCommands(): illegal frame number %d on line %d in %s\n", framenum, ld->tikiFile->Filename(), ld->tikiFile->GetLineNumber());
+			MOHPC_LOG(Error, "ParseFrameCommands(): illegal frame number %d on line %d in %s", framenum, ld->tikiFile->getFilename().generic_string().c_str(), ld->tikiFile->GetLineNumber());
 			while (ld->tikiFile->TokenAvailable(false))
 				ld->tikiFile->GetToken(false);
 			continue;
@@ -322,11 +291,14 @@ void TIKIReader::ParseFrameCommands(dloaddef_t* ld, std::vector<dloadframecmd_t>
 		*/
 
 		cmd.frame_num = framenum;
-		if (ld->tikiFile->currentScript)
+
+		const TikiScriptPtr& tikiScript = ld->tikiFile->getCurrentScript();
+		if (tikiScript)
 		{
-			cmd.location = ld->tikiFile->Filename();
-			cmd.location += str(", line: ");
-			cmd.location += ld->tikiFile->GetLineNumber();
+			cmd.location.reserve(tikiScript->getFilename().native().length() + 8 + 6);
+			cmd.location = tikiScript->getFilename().generic_string();
+			cmd.location += ", line: ";
+			cmd.location += tikiScript->GetLineNumber();
 		}
 
 		while (ld->tikiFile->TokenAvailable(false))
@@ -334,18 +306,14 @@ void TIKIReader::ParseFrameCommands(dloaddef_t* ld, std::vector<dloadframecmd_t>
 			token = ld->tikiFile->GetToken(false);
 			cmd.args.push_back(token);
 		}
-
-		cmdlist.push_back(cmd);
 	}
 }
 
 void TIKIReader::ParseAnimationCommands(dloaddef_t* ld, dloadanim_t* anim)
 {
-	const char *token;
-
 	while (ld->tikiFile->TokenAvailable(true))
 	{
-		token = ld->tikiFile->GetToken(true);
+		const char* token = ld->tikiFile->GetToken(true);
 		if (!strHelpers::icmp(token, "client"))
 		{
 			ParseFrameCommands(ld, anim->loadclientcmds);
@@ -360,41 +328,37 @@ void TIKIReader::ParseAnimationCommands(dloaddef_t* ld, dloadanim_t* anim)
 		}
 		else
 		{
-			//TIKI_Error("TIKI_ParseAnimationCommands: unknown anim command '%s' in '%s' on line %d, skipping line.\n", token, ld->tikiFile->Filename(), ld->tikiFile->GetLineNumber());
-			while (ld->tikiFile->TokenAvailable(false))
+			MOHPC_LOG(Error, "ParseAnimationCommands(): unknown anim command '%s' in '%s' on line %d, skipping line.", token, ld->tikiFile->getFilename().generic_string().c_str(), ld->tikiFile->GetLineNumber());
+			
+			while (ld->tikiFile->TokenAvailable(false)) {
 				token = ld->tikiFile->GetToken(false);
+			}
 		}
 	}
 }
 
 void TIKIReader::ParseAnimationFlags(dloaddef_t* ld, dloadanim_t* anim)
 {
-	const char *token;
-
-	anim->weight = 1.0f;
-	anim->blendtime = 0.2f;
-	anim->flags = 0;
-
 	while (ld->tikiFile->TokenAvailable(false))
 	{
-		token = ld->tikiFile->GetToken(false);
+		const char* token = ld->tikiFile->GetToken(false);
 
 		if (!strHelpers::icmp(token, "weight"))
 		{
 			anim->weight = ld->tikiFile->GetFloat(false);
-			anim->flags |= TAF_RANDOM;
+			anim->flags |= TAF::RANDOM;
 		}
 		else if (!strHelpers::icmp(token, "deltadriven"))
 		{
-			anim->flags |= TAF_DELTADRIVEN;
+			anim->flags |= TAF::DELTADRIVEN;
 		}
 		else if (!strHelpers::icmp(token, "default_angles"))
 		{
-			anim->flags |= TAF_DEFAULT_ANGLES;
+			anim->flags |= TAF::DEFAULT_ANGLES;
 		}
 		else if (!strHelpers::icmp(token, "notimecheck"))
 		{
-			anim->flags |= TAF_NOTIMECHECK;
+			anim->flags |= TAF::NOTIMECHECK;
 		}
 		else if (!strHelpers::icmp(token, "crossblend"))
 		{
@@ -402,27 +366,27 @@ void TIKIReader::ParseAnimationFlags(dloaddef_t* ld, dloadanim_t* anim)
 		}
 		else if (!strHelpers::icmp(token, "dontrepeate"))
 		{
-			anim->flags |= TAF_NOREPEAT;
+			anim->flags |= TAF::NOREPEAT;
 		}
 		else if (!strHelpers::icmp(token, "random"))
 		{
-			anim->flags |= TAF_RANDOM;
+			anim->flags |= TAF::RANDOM;
 		}
 		else if (!strHelpers::icmp(token, "autosteps_run"))
 		{
-			anim->flags |= TAF_AUTOSTEPS_RUN;
+			anim->flags |= TAF::AUTOSTEPS_RUN;
 		}
 		else if (!strHelpers::icmp(token, "autosteps_walk"))
 		{
-			anim->flags |= TAF_AUTOSTEPS_WALK;
+			anim->flags |= TAF::AUTOSTEPS_WALK;
 		}
 		else if (!strHelpers::icmp(token, "autosteps_dog"))
 		{
-			anim->flags |= TAF_AUTOSTEPS_DOG;
+			anim->flags |= TAF::AUTOSTEPS_DOG;
 		}
 		else
 		{
-			//TIKI_Error("Unknown Animation flag %s for anim '%s' in %s\n", token, anim->alias, TikiScript::currentScript->Filename());
+			MOHPC_LOG(Error, "Unknown Animation flag %s for anim '%s' in %s", token, anim->alias.c_str(), ld->tikiFile->getFilename().generic_string().c_str());
 		}
 	}
 }
@@ -461,48 +425,41 @@ void TIKIReader::ParseAnimationsFail(dloaddef_t* ld)
 		else if (!strHelpers::icmp(token, "}"))
 		{
 			nestcount--;
-			if (!nestcount)
+			if (!nestcount) {
 				return;
+			}
 		}
 	}
 }
 
 bool TIKIReader::ParseIncludes(dloaddef_t* ld)
 {
-	const char *token;
 	bool b_incl = false;
-	const char *mapname;
-	int depth = 0;
+	size_t depth = 0;
 
-	token = ld->tikiFile->GetToken(true);
-	mapname = "utils"; // FIXME: get current map name
-
-	while (1)
+	while(ld->tikiFile->TokenAvailable(true))
 	{
-		// FIXME: add support for any mapname
-		// or an array of whatever
-		if (!strHelpers::icmpn(token, mapname, strHelpers::len(token))
-			|| !strHelpers::icmpn(token, "spearheadserver", strHelpers::len(token))
-			|| !strHelpers::icmpn(token, "breakthroughserver", strHelpers::len(token)))
-		{
-			b_incl = true;
-		}
-		else if ((!strHelpers::icmp(token, "{") || !ld->tikiFile->TokenAvailable(true)))
+		const char* token = ld->tikiFile->GetToken(true);
+		if ((!strHelpers::icmp(token, "{")))
 		{
 			break;
 		}
-
-		token = ld->tikiFile->GetToken(true);
+		else if (isIncludeAllowed(token))
+		{
+			b_incl = true;
+		}
 	}
 
 	if (b_incl)
 	{
+		// a condition successfully match so don't skip the include list
 		return true;
 	}
 
+	// skip the entire section
 	while (ld->tikiFile->TokenAvailable(true))
 	{
-		token = ld->tikiFile->GetAndIgnoreLine(false);
+		const char* token = ld->tikiFile->GetAndIgnoreLine(false);
 		if (strHelpers::find(token, "{"))
 		{
 			depth++;
@@ -512,6 +469,7 @@ bool TIKIReader::ParseIncludes(dloaddef_t* ld)
 		{
 			if (!depth)
 			{
+				// section closed
 				return false;
 			}
 
@@ -524,15 +482,16 @@ bool TIKIReader::ParseIncludes(dloaddef_t* ld)
 
 void TIKIReader::ParseAnimations(dloaddef_t* ld)
 {
-	const char *token;
 	bool b_mapspec = false;
-	const char *mapname;
 
 	ld->tikiFile->GetToken(true);
 
+	const TikiScriptPtr& tikiScript = ld->tikiFile->getCurrentScript();
+	std::string fileName = tikiScript->getFilename().generic_string();
+
 	while (ld->tikiFile->TokenAvailable(true))
 	{
-		token = ld->tikiFile->GetToken(true);
+		const char* token = ld->tikiFile->GetToken(true);
 		if (!strHelpers::icmp(token, "}"))
 		{
 			if (!b_mapspec) {
@@ -542,21 +501,17 @@ void TIKIReader::ParseAnimations(dloaddef_t* ld)
 		}
 		else if (!strHelpers::icmp(token, "$mapspec"))
 		{
-			token = ld->tikiFile->GetToken(true);
-			mapname = "utils"; // FIXME
-
 			while (ld->tikiFile->TokenAvailable(true))
 			{
-				if (!strHelpers::icmpn(token, mapname, strHelpers::len(token)))
-				{
-					b_mapspec = true;
-				}
-				else if (!strHelpers::icmp(token, "{"))
+				const char* token = ld->tikiFile->GetToken(true);
+				if ((!strHelpers::icmp(token, "{")))
 				{
 					break;
 				}
-
-				token = ld->tikiFile->GetToken(true);
+				else if (isIncludeAllowed(token))
+				{
+					b_mapspec = true;
+				}
 			}
 
 			if (!b_mapspec)
@@ -583,18 +538,28 @@ void TIKIReader::ParseAnimations(dloaddef_t* ld)
 		}
 		else
 		{
-			dloadanim_t anim;
-			anim.alias = token;
+			auto pair = ld->loadanims.emplace(token);
+
+			dloadanim_t& anim = const_cast<dloadanim_t&>(*pair.first);
+			if (!pair.second)
+			{
+				// already exist
+				// reset command list
+				anim.init();
+				anim.loadclientcmds.clear();
+				anim.loadservercmds.clear();
+			}
 
 			token = ld->tikiFile->GetToken(false);
-			anim.name = str(ld->tikiFile->currentScript->path) + token;
 
-			if (ld->tikiFile->currentScript)
-			{
-				anim.location += ld->tikiFile->currentScript->Filename();
-				anim.location += ", line: ";
-				anim.location += std::to_string(ld->tikiFile->currentScript->GetLineNumber()); //std::to_string(ld->tikiFile->currentScript->GetLineNumber());
-			}
+			anim.name.reserve(tikiScript->getPath().length() + strHelpers::len(token) + 1);
+			anim.name = tikiScript->getPath();
+			anim.name += token;
+
+			anim.location.reserve(fileName.length() + 8 + 6);
+			anim.location = fileName;
+			anim.location += ", line: ";
+			anim.location += std::to_string(tikiScript->GetLineNumber());
 
 			ParseAnimationFlags(ld, &anim);
 
@@ -610,35 +575,33 @@ void TIKIReader::ParseAnimations(dloaddef_t* ld)
 					ld->tikiFile->UnGetToken();
 				}
 			}
-
-			ld->loadanims.push_back(anim);
 		}
 	}
+
+	MOHPC_LOG(Error, "no closing braces");
 }
 
 void TIKIReader::ParseQuaked(dloaddef_t* ld)
 {
-	QuakedSection& quakedSection = tiki->GetQuakedSection();
-	quakedSection.name = ld->tikiFile->GetToken(true);
-	ld->tikiFile->GetVector(true, (float*)&quakedSection.color);
+	ld->loaddata.quaked.name = ld->tikiFile->GetToken(true);
+	ld->tikiFile->GetVector(true, (float*)&ld->loaddata.quaked.color);
 
 	const char* undefinedBounds = ld->tikiFile->GetToken(true);
 	if (*undefinedBounds != '?')
 	{
 		ld->tikiFile->UnGetToken();
-		ld->tikiFile->GetVector(true, (float*)&quakedSection.mins);
-		ld->tikiFile->GetVector(true, (float*)&quakedSection.maxs);
+		ld->tikiFile->GetVector(true, (float*)&ld->loaddata.quaked.mins);
+		ld->tikiFile->GetVector(true, (float*)&ld->loaddata.quaked.maxs);
 	}
 
 	while (ld->tikiFile->TokenAvailable(true))
 	{
 		const char* token = ld->tikiFile->GetToken(true);
-		if (!strHelpers::icmp(token, "*/"))
-		{
+		if (!strHelpers::icmp(token, "*/")) {
 			return;
 		}
 
-		quakedSection.spawnFlags.push_back(token);
+		ld->loaddata.quaked.spawnFlags.push_back(token);
 	}
 }
 
@@ -648,39 +611,39 @@ int32_t TIKIReader::ParseSurfaceFlag(const char* token)
 
 	if (!strHelpers::icmp(token, "skin1"))
 	{
-		flags = TIKI_SURF_SKIN1;
+		flags = TS::SKIN1;
 	}
 	else if (!strHelpers::icmp(token, "skin2"))
 	{
-		flags = TIKI_SURF_SKIN2;
+		flags = TS::SKIN2;
 	}
 	else if (!strHelpers::icmp(token, "skin3"))
 	{
-		flags = TIKI_SURF_SKIN3;
+		flags = TS::SKIN3;
 	}
 	else if (!strHelpers::icmp(token, "nodraw"))
 	{
-		flags = TIKI_SURF_NODRAW;
+		flags = TS::NODRAW;
 	}
 	else if (!strHelpers::icmp(token, "nodamage"))
 	{
-		flags = TIKI_SURF_NODAMAGE;
+		flags = TS::NODAMAGE;
 	}
 	else if (!strHelpers::icmp(token, "crossfade"))
 	{
-		flags = TIKI_SURF_CROSSFADE;
+		flags = TS::CROSSFADE;
 	}
 	else if (!strHelpers::icmp(token, "nomipmaps"))
 	{
-		flags = TIKI_SURF_NOMIPMAPS;
+		flags = TS::NOMIPMAPS;
 	}
 	else if (!strHelpers::icmp(token, "nopicmip"))
 	{
-		flags = TIKI_SURF_NOPICMIP;
+		flags = TS::NOPICMIP;
 	}
 	else
 	{
-		//TIKI_Error("Unknown surface flag %s\n", token);
+		//MOHPC_LOG(Error, "Unknown surface flag '%s'", token);
 	}
 
 	return flags;
@@ -700,29 +663,29 @@ void TIKIReader::InitSetup(dloaddef_t* ld)
 	ld->loaddata.radius = 0.f;
 }
 
-bool TIKIReader::LoadSetupCase(const fs::path& filename, const dloaddef_t* ld, std::vector<dloadsurface_t>& loadsurfaces)
+bool TIKIReader::LoadSetupCase(TIKI& tiki, const dloaddef_t* ld, tiki_surface_list_t& loadsurfaces)
 {
-	tiki->setLoadScale(ld->loaddata.load_scale);
-	tiki->setLodScale(ld->loaddata.lod_scale);
-	tiki->setLodBias(ld->loaddata.lod_bias);
+	tiki.setLoadScale(ld->loaddata.load_scale);
+	tiki.setLodScale(ld->loaddata.lod_scale);
+	tiki.setLodBias(ld->loaddata.lod_bias);
 
 	vec3_t loadOrigin;
 	VectorCopy(ld->loaddata.origin, loadOrigin);
-	tiki->setLoadOrigin(loadOrigin);
+	tiki.setLoadOrigin(loadOrigin);
 
 	vec3_t lightOffset;
 	VectorCopy(ld->loaddata.lightoffset, lightOffset);
-	tiki->setLightOffset(lightOffset);
-	tiki->setRadius(ld->loaddata.radius);
+	tiki.setLightOffset(lightOffset);
+	tiki.setRadius(ld->loaddata.radius);
 
 	loadsurfaces = ld->loaddata.surfaces;
 
 	size_t numSurfaces = 0;
 
-	std::vector<SkeletonPtr>& meshes = tiki->getMeshes();
+	std::vector<SkeletonPtr>& meshes = tiki.getMeshes();
 	for (auto& skelmodel : ld->loaddata.skelmodel)
 	{
-		SkeletonPtr Mesh = GetAssetManager()->readAsset<SkeletonReader>(skelmodel.c_str());
+		const SkeletonPtr Mesh = GetAssetManager()->readAsset<SkeletonReader>(skelmodel.c_str());
 		if (Mesh)
 		{
 			meshes.push_back(Mesh);
@@ -730,13 +693,34 @@ bool TIKIReader::LoadSetupCase(const fs::path& filename, const dloaddef_t* ld, s
 		}
 	}
 
-	std::vector<TIKISurface>& surfaces = tiki->getSurfaces();
+	std::vector<TIKISurface>& surfaces = tiki.getSurfaces();
 	surfaces.resize(numSurfaces);
 
 	return true;
 }
 
-bool TIKIReader::LoadSetup(const fs::path& filename, const dloaddef_t* ld, std::vector<dloadsurface_t>& loadsurfaces)
+bool TIKIReader::LoadSetup(TIKI& tiki, const dloaddef_t* ld, tiki_surface_list_t& loadsurfaces)
 {
-	return LoadSetupCase(filename, ld, loadsurfaces);
+	return LoadSetupCase(tiki, ld, loadsurfaces);
+}
+
+bool TIKIReader::isIncludeAllowed(const char* includeName)
+{
+	if (!allowedIncludes || !numAllowedIncludes)
+	{
+		// allow everything by default
+		return true;
+	}
+
+	for (size_t i = 0; i < numAllowedIncludes; ++i)
+	{
+		if (!strHelpers::icmp(includeName, allowedIncludes[i]))
+		{
+			// the include name was found in allowed includes
+			return true;
+		}
+	}
+
+	// the include is not in the allowed list
+	return false;
 }

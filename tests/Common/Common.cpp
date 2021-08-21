@@ -2,13 +2,19 @@
 
 #include <MOHPC/Version.h>
 #include <MOHPC/Files/GameFileHelpers.h>
+#include <MOHPC/Files/Managers/PakFileManager.h>
+#include <MOHPC/Files/Managers/SystemFileManager.h>
+#include <MOHPC/Files/Category.h>
 
+#include <tclap/CmdLine.h>
+
+#include <algorithm>
 #include <cstdarg>
 #include <ctime>
 
-using namespace MOHPC;
-
 constexpr char MOHPC_LOG_NAMESPACE[] = "common";
+
+std::filesystem::path gameDir;
 
 class Logger : public MOHPC::Log::ILog
 {
@@ -62,25 +68,44 @@ public:
 
 MOHPC::Log::ILogPtr logPtr;
 
-void InitCommon()
+void InitCommands(int argc, const char* argv[])
+{
+	TCLAP::CmdLine cmd("Commands", ' ', MOHPC::VERSION_STRING);
+
+	TCLAP::ValueArg<std::filesystem::path> pathArg("p", "path", "Game path", false, std::filesystem::path(), "string");
+	cmd.add(pathArg);
+
+	cmd.parse(argc, argv);
+
+	gameDir = pathArg.getValue();
+}
+
+void InitCommon(int argc, const char* argv[])
 {
 	using namespace MOHPC::Log;
 	logPtr = MOHPC::makeShared<Logger>();
 	ILog::set(logPtr);
 
-	MOHPC_LOG(Info, "MOHPC %s %s", VERSION_STRING, VERSION_ARCHITECTURE);
+	MOHPC_LOG(Info, "MOHPC %s %s", MOHPC::VERSION_STRING, MOHPC::VERSION_ARCHITECTURE);
+
+	InitCommands(argc, argv);
 }
 
-const char* GetGamePathFromCommandLine(int argc, const char* argv[])
+const std::filesystem::path& GetGamePathFromCommandLine()
 {
-	return argv[1];
+	return gameDir;
 }
 
-MOHPC::AssetManagerPtr AssetLoad(const char* path)
+MOHPC::AssetManagerPtr AssetLoad(const MOHPC::fs::path& path)
 {
-	FileManagerPtr FM = FileManager::create();
-	AssetManagerPtr AM = AssetManager::create(FM);
+	MOHPC::FileCategoryManagerPtr catMan = MOHPC::FileCategoryManager::create();
+	MOHPC::PakFileManagerProxyPtr pakFM = MOHPC::PakFileManagerProxy::create();
+	MOHPC::SystemFileManagerProxyPtr sysFM = MOHPC::SystemFileManagerProxy::create(pakFM);
 
-	FileHelpers::FillGameDirectory(*FM, path);
+	MOHPC::AssetManagerPtr AM = MOHPC::AssetManager::create(sysFM, catMan);
+
+	if (path.native().length()) {
+		MOHPC::FileHelpers::FillGameDirectory(*catMan, pakFM->get(), sysFM->get(), path);
+	}
 	return AM;
 }

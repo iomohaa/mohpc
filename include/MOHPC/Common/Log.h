@@ -44,7 +44,11 @@ namespace MOHPC
 			static void reset();
 		};
 
+#define MOHPC_LOG_STRINGIFY(x) #x
+#define MOHPC_LOG_TO_STRING(x) MOHPC_LOG_STRINGIFY(x)
+
 #define MOHPC_LOG(type, fmt, ...) MOHPC::Log::ILog::get().log(MOHPC::Log::logType_e::type, MOHPC_LOG_NAMESPACE, fmt, ##__VA_ARGS__)
 #define MOHPC_LOG_FN(type, fmt, ...) MOHPC::Log::ILog::get().log(MOHPC::Log::logType_e::type, MOHPC_LOG_NAMESPACE, __FUNCTION__ ": " fmt, ##__VA_ARGS__)
+#define MOHPC_LOG_FN_FILE(type, fmt, ...) MOHPC::Log::ILog::get().log(MOHPC::Log::logType_e::type, MOHPC_LOG_NAMESPACE, __FUNCTION__ "(" __FILE__ ":" MOHPC_LOG_TO_STRING(__LINE__) "): " fmt, ##__VA_ARGS__)
 	}
 }

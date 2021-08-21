@@ -4,6 +4,7 @@ using namespace MOHPC;
 using namespace MOHPC::Network;
 using namespace MOHPC::Network::CGame;
 
+template<>
 std::map<csNum_t, ConfigstringMonitorTemplate<VoteMonitor>::Callback> ConfigstringMonitorTemplate<VoteMonitor>::callbackMap
 {
 	{ CS::VOTE_TIME,		&VoteMonitor::setVoteTime },

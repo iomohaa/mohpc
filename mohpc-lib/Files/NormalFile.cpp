@@ -2,8 +2,8 @@
 
 using namespace MOHPC;
 
-NormalFile::NormalFile(const fs::path& nameRef, std::ifstream&& fileRef)
-	: IFile(nameRef)
+NormalFile::NormalFile(fs::path&& nameRef, std::ifstream&& fileRef)
+	: IFile(std::move(nameRef))
 	, fileStream(std::move(fileRef))
 	, buffer(nullptr)
 	, streamSize(0)

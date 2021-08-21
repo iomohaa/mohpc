@@ -126,7 +126,7 @@ namespace MOHPC
 		LodCurvePointConstants Consts[4];
 	};
 
-	class Skeleton : public Asset2
+	class Skeleton : public Asset
 	{
 		MOHPC_ASSET_OBJECT_DECLARATION(Skeleton);
 
@@ -191,7 +191,7 @@ namespace MOHPC
 	public:
 		MOHPC_ASSETS_EXPORTS SkeletonReader();
 		MOHPC_ASSETS_EXPORTS ~SkeletonReader();
-		MOHPC_ASSETS_EXPORTS Asset2Ptr read(const IFilePtr& file) override;
+		MOHPC_ASSETS_EXPORTS AssetPtr read(const IFilePtr& file) override;
 
 	private:
 		SkeletonPtr LoadModel(const IFilePtr& file);

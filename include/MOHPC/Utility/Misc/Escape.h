@@ -10,6 +10,29 @@ namespace MOHPC
 {
 	using StandardEscapeRule = class QuoteEscapeRule;
 
+	namespace Escape_Private
+	{
+		template<typename T, typename EscapeRule = StandardEscapeRule>
+		size_t EscapeStringLen(const T& value, EscapeRule escapeRule)
+		{
+			size_t len = 0;
+			const char* p = static_cast<const char*>(value);
+			while (*p)
+			{
+				if (escapeRule.shouldEscape(*p))
+				{
+					// also include the escape character
+					++len;
+				}
+
+				++p;
+				++len;
+			}
+
+			return len;
+		}
+	}
+
 	template<typename T, typename EscapeRule = StandardEscapeRule>
 	str EscapeString(const T& stringValue, EscapeRule escapeRule = EscapeRule())
 	{
@@ -43,27 +66,4 @@ namespace MOHPC
 			return c == '\"';
 		}
 	};
-
-	namespace Escape_Private
-	{
-		template<typename T, typename EscapeRule = StandardEscapeRule>
-		size_t EscapeStringLen(const T& value, EscapeRule escapeRule)
-		{
-			size_t len = 0;
-			const char* p = static_cast<const char*>(value);
-			while (*p)
-			{
-				if (escapeRule.shouldEscape(*p))
-				{
-					// also include the escape character
-					++len;
-				}
-
-				++p;
-				++len;
-			}
-
-			return len;
-		}
-	}
 }

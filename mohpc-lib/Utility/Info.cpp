@@ -1,5 +1,7 @@
 #include <MOHPC/Utility/Info.h>
+
 #include <algorithm>
+#include <cstring>
 
 using namespace MOHPC;
 
@@ -60,7 +62,7 @@ void Info::SetValueForKey(const char* key, const char* value)
 		if (keyBuffer)
 		{
 			// copy without the null-terminated character
-			memcpy(newBuf, keyBuffer, size - 1);
+			std::memcpy(newBuf, keyBuffer, size - 1);
 			delete[] keyBuffer;
 		}
 
@@ -70,12 +72,12 @@ void Info::SetValueForKey(const char* key, const char* value)
 	char* pbuf = keyBuffer + sizeNoNul;
 	// copy the key
 	*(pbuf++) = '\\';
-	memcpy(pbuf, key, keyLen);
+	std::memcpy(pbuf, key, keyLen);
 	pbuf += keyLen;
 
 	// copy the value
 	*(pbuf++) = '\\';
-	memcpy(pbuf, value, valueLen + 1);
+	std::memcpy(pbuf, value, valueLen + 1);
 
 	size = newsz;
 }
@@ -114,7 +116,7 @@ void Info::RemoveKey(const char* key, size_t keyLen)
 		if (keyLen == ckeyLen && !strHelpers::cmpn(pkey, key, ckeyLen))
 		{
 			const size_t len = endValue - startKey;
-			memmove(startKey, endValue, keyBuffer + size - endValue);
+			std::memmove(startKey, endValue, keyBuffer + size - endValue);
 			size -= len;
 
 			break;
@@ -190,7 +192,7 @@ ReadOnlyInfo::ReadOnlyInfo(const char* existingBuffer, size_t len)
 	: keyBuffer(existingBuffer)
 {
 	if (!len && *existingBuffer) {
-		size = (strlen(keyBuffer) + 1);
+		size = (strHelpers::len(keyBuffer) + 1);
 	}
 	else {
 		size = len;
@@ -374,11 +376,11 @@ void InfoIterator::parseInfo()
 	const size_t p2len = end_p2 - p2;
 
 	tmpKey = new char[p1len + 1];
-	memcpy(tmpKey, p1, p1len);
+	std::memcpy(tmpKey, p1, p1len);
 	tmpKey[p1len] = 0;
 
 	tmpValue = new char[p2len + 1];
-	memcpy(tmpValue, p2, p2len);
+	std::memcpy(tmpValue, p2, p2len);
 	tmpValue[p2len] = 0;
 }
 

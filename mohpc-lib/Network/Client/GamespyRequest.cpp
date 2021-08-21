@@ -15,12 +15,12 @@ void IGamespyRequest::generateOutput(IMessageStream& output)
 	const char* infoStr = info.GetString();
 	if (infoStr)
 	{
-		output.Write(infoStr, strlen(infoStr));
+		output.Write(infoStr, strHelpers::len(infoStr));
 		output.Write("\\final\\", 7);
 
 		if (queryName) {
 			output.Write("\\queryid\\", 9);
-			output.Write(queryName, strlen(queryName));
+			output.Write(queryName, strHelpers::len(queryName));
 			output.Write("\\", 1);
 		}
 	}
@@ -32,6 +32,6 @@ void IGamespyServerRequest::generateOutput(IMessageStream& output)
 	const char* queryName = generateQuery();
 
 	output.Write("\\", 1);
-	output.Write(queryName, strlen(queryName));
+	output.Write(queryName, strHelpers::len(queryName));
 	output.Write("\\", 1);
 }

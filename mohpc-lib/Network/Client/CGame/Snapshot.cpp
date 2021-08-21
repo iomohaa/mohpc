@@ -5,6 +5,7 @@
 #include <MOHPC/Utility/CommandManager.h>
 
 #include <cassert>
+#include <cstring>
 
 using namespace MOHPC;
 using namespace MOHPC::Network;
@@ -364,7 +365,7 @@ void SnapshotProcessor::transitionSnapshot(bool differentServer)
 
 		// only check if the entity is present in snap
 		// otherwise it's useless
-		if (next && memcmp(&current, &next, sizeof(entityState_t)))
+		if (next && std::memcmp(&current, &next, sizeof(entityState_t)))
 		{
 			// notify about modification
 			handlers().entityModifiedHandler.broadcast(current, *next);

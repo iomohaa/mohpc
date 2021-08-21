@@ -16,7 +16,8 @@
 
 namespace MOHPC
 {
-	class FileManager;
+	class IFileManager;
+	class FileCategoryManager;
 
 	class AssetManager : public std::enable_shared_from_this<AssetManager>
 	{
@@ -25,12 +26,15 @@ namespace MOHPC
 		MOHPC_ASSET_OBJECT_DECLARATION(AssetManager);
 
 	private:
-		MOHPC_ASSETS_EXPORTS AssetManager(const SharedPtr<FileManager>& FMptr);
+		MOHPC_ASSETS_EXPORTS AssetManager(const SharedPtr<IFileManager>& FMptr, const SharedPtr<FileCategoryManager>& catManPtr);
 		~AssetManager();
 
 	public:
 		/** Get the virtual file manager associated with the asset manager. */
-		MOHPC_ASSETS_EXPORTS const SharedPtr<FileManager>& GetFileManager() const;
+		MOHPC_ASSETS_EXPORTS const SharedPtr<IFileManager>& GetFileManager() const;
+
+		/** Get the virtual file manager associated with the asset manager. */
+		MOHPC_ASSETS_EXPORTS const SharedPtr<FileCategoryManager>& GetFileCategoryManager() const;
 
 		/**
 		 * Return a class used to share data globally across assets.
@@ -95,12 +99,13 @@ namespace MOHPC
 	private:
 		MOHPC_ASSETS_EXPORTS void addManager(const std::type_index& ti, const SharedPtr<Manager>& manager);
 		MOHPC_ASSETS_EXPORTS SharedPtr<Manager> getManager(const std::type_index& ti) const;
-		MOHPC_ASSETS_EXPORTS SharedPtr<Asset2> cacheFindAsset(const fs::path& Filename);
-		MOHPC_ASSETS_EXPORTS SharedPtr<Asset2> readAsset(const fs::path& fileName, const SharedPtr<AssetReader>& A);
-		MOHPC_ASSETS_EXPORTS SharedPtr<Asset2> readAsset(const IFilePtr& file, const SharedPtr<AssetReader>& A);
+		MOHPC_ASSETS_EXPORTS SharedPtr<Asset> cacheFindAsset(const fs::path& Filename);
+		MOHPC_ASSETS_EXPORTS SharedPtr<Asset> readAsset(const fs::path& fileName, const SharedPtr<AssetReader>& A);
+		MOHPC_ASSETS_EXPORTS SharedPtr<Asset> readAsset(const IFilePtr& file, const SharedPtr<AssetReader>& A);
 
 	private:
-		SharedPtr<FileManager> FM;
+		SharedPtr<IFileManager> FM;
+		SharedPtr<FileCategoryManager> catMan;
 
 		/**
 		 * Shared pointer, because each manager is a storage, part of the asset manager
@@ -112,7 +117,7 @@ namespace MOHPC
 		 * Weak pointer, because it's just a cache of loaded assets.
 		 * They can be destroyed anytime.
 		 */
-		std::unordered_map<fs::path, WeakPtr<Asset2>, FileNameHash, FileNameMapCompare> m_assetCache;
+		std::unordered_map<fs::path, WeakPtr<Asset>, FileNameHash, FileNameMapCompare> m_assetCache;
 	};
 
 	using AssetManagerPtr = SharedPtr<AssetManager>;

@@ -187,9 +187,8 @@ bool TokenParser::SkipToEOL()
 
 void TokenParser::CheckOverflow()
 {
-	if (script_p >= end_p)
-	{
-		//glbs.Error(ERR_DROP, "End of token file reached prematurely reading %s\n", filename.c_str());
+	if (script_p >= end_p) {
+		throw TokenErrors::EndOfFileReached();
 	}
 }
 
@@ -212,10 +211,8 @@ void TokenParser::SkipWhiteSpace(bool crossline)
 	{
 		if (*script_p++ == TOKENEOL)
 		{
-			if (!crossline)
-			{
-				//glbs.Error(ERR_DROP, "Line %i is incomplete in file %s\n", line, filename.c_str());
-				return;
+			if (!crossline) {
+				throw TokenErrors::LineIncomplete(line);
 			}
 
 			line++;
@@ -634,8 +631,7 @@ const char* TokenParser::GetMacroString(const char* theMacroName)
 	sptr++;
 
 	// We didn't find what we were looking for
-	//glbs.Error( ERR_DROP, "No Macro Text found for %s in file %s\n", theMacroName, filename.c_str() );
-	return 0;
+	throw TokenErrors::NoMacroTextFound(theMacroName);
 
 }
 
@@ -830,10 +826,8 @@ const char* TokenParser::GetString(bool crossline, bool escape)
 	//
 	SkipNonToken(crossline);
 
-	if (*script_p != '"')
-	{
-		//glbs.Error( ERR_DROP, "Expecting string on line %i in file %s\n", line, filename.c_str() );
-		return "";
+	if (*script_p != '"') {
+		throw TokenErrors::ExpectedToken("string", line);
 	}
 
 	script_p++;
@@ -844,10 +838,8 @@ const char* TokenParser::GetString(bool crossline, bool escape)
 	{
 		while (*script_p != '"')
 		{
-			if (*script_p == TOKENEOL)
-			{
-				//glbs.Error( ERR_DROP, "Line %i is incomplete while reading string in file %s\n", line, filename.c_str() );
-				return "";
+			if (*script_p == TOKENEOL) {
+				throw TokenErrors::LineIncomplete(line);
 			}
 
 			if ((*script_p == '\\') && (script_p < (end_p - 1)))
@@ -869,12 +861,7 @@ const char* TokenParser::GetString(bool crossline, bool escape)
 				token.append(1, *script_p++);
 			}
 
-			if (script_p >= end_p)
-			{
-				//glbs.Error( ERR_DROP, "End of token file reached prematurely while reading string on\n"
-				//	"line %d in file %s\n", startline, filename.c_str() );
-				return token.c_str();
-			}
+			CheckOverflow();
 		}
 	}
 	else
@@ -883,12 +870,7 @@ const char* TokenParser::GetString(bool crossline, bool escape)
 		{
 			token.append(1, *script_p++);
 
-			if (script_p >= end_p)
-			{
-				//glbs.Error( ERR_DROP, "End of token file reached prematurely while reading string on\n"
-				//	"line %d in file %s\n", startline, filename.c_str() );
-				return token.c_str();
-			}
+			CheckOverflow();
 		}
 	}
 
@@ -1089,4 +1071,79 @@ const char* TokenParser::Token()
 const char* MOHPC::TokenParser::GetCurrentScript() const
 {
 	return script_p;
+}
+TokenErrors::EndOfFileReached::EndOfFileReached()
+{
+}
+
+TokenErrors::EndOfFileReached::~EndOfFileReached()
+{
+}
+
+const char* TokenErrors::EndOfFileReached::what() const noexcept
+{
+	return "End of token file reached prematurely while reading string";
+}
+
+TokenErrors::NoMacroTextFound::NoMacroTextFound(const char* macroNamePtr)
+	: macroName(macroNamePtr)
+{
+}
+
+TokenErrors::NoMacroTextFound::~NoMacroTextFound()
+{
+}
+
+const char* TokenErrors::NoMacroTextFound::getMacroName() const
+{
+	return macroName.c_str();
+}
+
+const char* TokenErrors::NoMacroTextFound::what() const noexcept
+{
+	return "No Macro Text found";
+}
+
+TokenErrors::LineIncomplete::LineIncomplete(uint32_t lineNumValue)
+	: lineNum(lineNumValue)
+{
+}
+
+TokenErrors::LineIncomplete::~LineIncomplete()
+{
+}
+
+uint32_t TokenErrors::LineIncomplete::getLineNum() const
+{
+	return lineNum;
+}
+
+const char* TokenErrors::LineIncomplete::what() const noexcept
+{
+	return "Line is incomplete while reading string";
+}
+
+TokenErrors::ExpectedToken::ExpectedToken(const char* expectedPtr, uint32_t lineNumValue)
+	: expected(expectedPtr)
+	, lineNum(lineNumValue)
+{
+}
+
+TokenErrors::ExpectedToken::~ExpectedToken()
+{
+}
+
+const char* TokenErrors::ExpectedToken::getExpected() const
+{
+	return expected;
+}
+
+uint32_t TokenErrors::ExpectedToken::getLineNum() const
+{
+	return lineNum;
+}
+
+const char* TokenErrors::ExpectedToken::what() const noexcept
+{
+	return "Expected another token";
 }

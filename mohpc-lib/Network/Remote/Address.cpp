@@ -1,5 +1,8 @@
 #include <MOHPC/Network/Remote/Address.h>
 
+#include <cstring>
+#include <cmath>
+
 using namespace MOHPC;
 using namespace MOHPC::Network;
 
@@ -26,7 +29,7 @@ bool NetAddr::operator==(const NetAddr& other) const
 	}
 
 	const uint8_t* buf = getAddress();
-	return !memcmp(buf, other.getAddress(), sz);
+	return !std::memcmp(buf, other.getAddress(), sz);
 }
 
 bool NetAddr::operator!=(const NetAddr& other) const
@@ -76,7 +79,7 @@ str NetAddr4::asString() const
 	for (size_t i = 0; i < sizeof(ip); ++i)
 	{
 		if (i != 0) adrBuf += '.';
-		adrBuf += ip[i];
+		adrBuf += std::to_string(ip[i]);
 	}
 
 	adrBuf += ":" + std::to_string(port);

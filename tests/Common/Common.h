@@ -1,9 +1,10 @@
 #pragma once
 
 #include <MOHPC/Assets/Managers/AssetManager.h>
-#include <MOHPC/Files/Managers/FileManager.h>
+#include <MOHPC/Files/Managers/IFileManager.h>
+#include <MOHPC/Files/FileDefs.h>
 #include <MOHPC/Common/Log.h>
 
-const char* GetGamePathFromCommandLine(int argc, const char* argv[]);
-MOHPC::AssetManagerPtr AssetLoad(const char* path);
-void InitCommon();
+const MOHPC::fs::path& GetGamePathFromCommandLine();
+MOHPC::AssetManagerPtr AssetLoad(const MOHPC::fs::path& path);
+void InitCommon(int argc, const char* argv[]);

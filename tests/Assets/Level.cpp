@@ -1,5 +1,6 @@
 #include <MOHPC/Assets/Formats/BSP.h>
 #include <MOHPC/Assets/Formats/BSP_Collision.h>
+#include <MOHPC/Assets/Formats/BSP_Group.h>
 #include <MOHPC/Assets/Formats/DCL.h>
 #include <MOHPC/Assets/Managers/AssetManager.h>
 #include <MOHPC/Assets/Managers/ShaderManager.h>
@@ -7,9 +8,10 @@
 #include <MOHPC/Utility/Collision/CollisionArchive.h>
 #include "Common/Common.h"
 
-#include <cassert>
 #include <map>
 #include <vector>
+#include <cassert>
+#include <cstring>
 
 class ArchiveReader : public MOHPC::IArchiveReader
 {
@@ -29,7 +31,7 @@ public:
 
 	void serialize(void* value, size_t size) override
 	{
-		memcpy(value, data + dataPos, size);
+		std::memcpy(value, data + dataPos, size);
 		dataPos += size;
 	}
 };
@@ -52,7 +54,7 @@ public:
 			data.resize(data.size() * 2 + size);
 		}
 
-		memcpy(data.data() + pos, value, size);
+		std::memcpy(data.data() + pos, value, size);
 		pos += size;
 	}
 
@@ -76,13 +78,14 @@ Archive& operator>>(Archive& ar, const T& obj)
 }
 */
 
-void traceTest(MOHPC::BSPPtr Asset);
-void leafTesting(MOHPC::BSPPtr Asset);
+void traceTest(const MOHPC::BSPPtr& Asset);
+void leafTesting(const MOHPC::BSPPtr& Asset);
+void groupTesting(const MOHPC::BSPPtr& Asset);
 
 int main(int argc, const char* argv[])
 {
-	InitCommon();
-	const MOHPC::AssetManagerPtr AM = AssetLoad(GetGamePathFromCommandLine(argc, argv));
+	InitCommon(argc, argv);
+	const MOHPC::AssetManagerPtr AM = AssetLoad(GetGamePathFromCommandLine());
 
 	MOHPC::DCLPtr DCL = AM->readAsset<MOHPC::DCLReader>("/maps/dm/mohdm4.dcl");
 	MOHPC::DCLPtr DCLBT = AM->readAsset<MOHPC::DCLReader>("/maps/e1l1.dcl");
@@ -93,6 +96,7 @@ int main(int argc, const char* argv[])
 	{
 		traceTest(Asset);
 		leafTesting(Asset);
+		groupTesting(Asset);
 
 		MOHPC::BSPCollisionPtr bspCollision = MOHPC::BSPCollision::create(Asset);
 		MOHPC::BSPData::TerrainCollide collision;
@@ -100,7 +104,7 @@ int main(int argc, const char* argv[])
 	}
 }
 
-void traceTest(MOHPC::BSPPtr Asset)
+void traceTest(const MOHPC::BSPPtr& Asset)
 {
 	using namespace MOHPC;
 	CollisionWorldPtr cm = CollisionWorld::create();
@@ -177,7 +181,7 @@ void traceTest(MOHPC::BSPPtr Asset)
 	assert(newResults.endpos[2] == results.endpos[2]);
 }
 
-void leafTesting(MOHPC::BSPPtr Asset)
+void leafTesting(const MOHPC::BSPPtr& Asset)
 {
 	using namespace MOHPC;
 	uintptr_t leafNum = Asset->PointLeafNum(vec3_zero);
@@ -214,4 +218,14 @@ void leafTesting(MOHPC::BSPPtr Asset)
 			++it;
 		}
 	}
+}
+
+void groupTesting(const MOHPC::BSPPtr& Asset)
+{
+	MOHPC::BSPGroupPtr bspGroup = MOHPC::BSPGroup::create();
+	bspGroup->groupSurfaces(*Asset);
+
+	const size_t num = bspGroup->getNumBrushData();
+	const size_t num2 = bspGroup->getNumGroupedSurfaces();
+	// FIXME: should test against a custom BSP file
 }

@@ -2,10 +2,10 @@
 #include <MOHPC/Assets/Managers/AssetManager.h>
 #include <MOHPC/Assets/Managers/ShaderManager.h>
 #include <MOHPC/Assets/Formats/Image.h>
-#include <MOHPC/Assets/Script.h>
-#include <MOHPC/Files/Managers/FileManager.h>
+#include <MOHPC/Files/Managers/IFileManager.h>
 #include <MOHPC/Files/FileHelpers.h>
 #include <MOHPC/Utility/SharedPtr.h>
+#include <MOHPC/Utility/TokenParser.h>
 #include <MOHPC/Common/Log.h>
 
 #include <cassert>
@@ -446,7 +446,7 @@ void Shader::ClearReference()
 	}
 }
 
-void Shader::ParseShader(Script& script)
+void Shader::ParseShader(TokenParser& script)
 {
 	while (script.TokenAvailable(true))
 	{
@@ -526,7 +526,7 @@ void Shader::ParseShader(Script& script)
 			token = script.GetToken(false);
 			if (token[0] == 0)
 			{
-				MOHPC_LOG(Warn, "missing cull parms in shader '%s' (file %s)", GetName(), GetFilename());
+				MOHPC_LOG(Warn, "missing cull parms in shader '%s' (file %s)", GetName(), GetFilename().generic_string().c_str());
 				continue;
 			}
 
@@ -541,7 +541,7 @@ void Shader::ParseShader(Script& script)
 				cullType = CT_FRONT_SIDED;
 			}
 			else {
-				MOHPC_LOG(Warn, "invalid cull parm '%s' in shader '%s' (file %s)", token, GetName(), GetFilename());
+				MOHPC_LOG(Warn, "invalid cull parm '%s' in shader '%s' (file %s)", token, GetName(), GetFilename().generic_string().c_str());
 			}
 		}
 		else if (!strHelpers::icmp(token, "portalsky"))
@@ -563,14 +563,14 @@ void Shader::ParseShader(Script& script)
 	}
 }
 
-void Shader::ParseWaveForm(Script& script, WaveForm *wave)
+void Shader::ParseWaveForm(TokenParser& script, WaveForm *wave)
 {
 	const char *token;
 
 	token = script.GetToken(false);
 	if (token[0] == 0)
 	{
-		MOHPC_LOG(Warn, "missing waveform func parm in shader '%s' (file %s)", GetName(), GetFilename());
+		MOHPC_LOG(Warn, "missing waveform func parm in shader '%s' (file %s)", GetName(), GetFilename().generic_string().c_str());
 		return;
 	}
 	wave->func = NameToGenFunc(token);
@@ -579,7 +579,7 @@ void Shader::ParseWaveForm(Script& script, WaveForm *wave)
 	token = script.GetToken(false);
 	if (token[0] == 0)
 	{
-		MOHPC_LOG(Warn, "missing waveform base parm in shader '%s' (file %s)", GetName(), GetFilename());
+		MOHPC_LOG(Warn, "missing waveform base parm in shader '%s' (file %s)", GetName(), GetFilename().generic_string().c_str());
 		return;
 	}
 	wave->base = (float)atof(token);
@@ -587,7 +587,7 @@ void Shader::ParseWaveForm(Script& script, WaveForm *wave)
 	token = script.GetToken(false);
 	if (token[0] == 0)
 	{
-		MOHPC_LOG(Warn, "missing waveform amplitude parm in shader '%s' (file %s)", GetName(), GetFilename());
+		MOHPC_LOG(Warn, "missing waveform amplitude parm in shader '%s' (file %s)", GetName(), GetFilename().generic_string().c_str());
 		return;
 	}
 	wave->amplitude = (float)atof(token);
@@ -595,7 +595,7 @@ void Shader::ParseWaveForm(Script& script, WaveForm *wave)
 	token = script.GetToken(false);
 	if (token[0] == 0)
 	{
-		MOHPC_LOG(Warn, "missing waveform phase parm in shader '%s' (file %s)", GetName(), GetFilename());
+		MOHPC_LOG(Warn, "missing waveform phase parm in shader '%s' (file %s)", GetName(), GetFilename().generic_string().c_str());
 		return;
 	}
 	wave->phase = (float)atof(token);
@@ -603,13 +603,13 @@ void Shader::ParseWaveForm(Script& script, WaveForm *wave)
 	token = script.GetToken(false);
 	if (token[0] == 0)
 	{
-		MOHPC_LOG(Warn, "missing waveform frequency parm in shader '%s' (file %s)", GetName(), GetFilename());
+		MOHPC_LOG(Warn, "missing waveform frequency parm in shader '%s' (file %s)", GetName(), GetFilename().generic_string().c_str());
 		return;
 	}
 	wave->frequency = (float)atof(token);
 }
 
-void Shader::ParseTexMod(Script& script, ShaderStage *stage)
+void Shader::ParseTexMod(TokenParser& script, ShaderStage *stage)
 {
 	stage->bundle[0].texMods.push_back(TextureModInfo());
 	TextureModInfo* tmi = stage->bundle[0].texMods.data();
@@ -624,28 +624,28 @@ void Shader::ParseTexMod(Script& script, ShaderStage *stage)
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			MOHPC_LOG(Warn, "missing tcMod turb parms in shader '%s' (file %s)", GetName(), GetFilename());
+			MOHPC_LOG(Warn, "missing tcMod turb parms in shader '%s' (file %s)", GetName(), GetFilename().generic_string().c_str());
 			return;
 		}
 		tmi->wave.base = (float)atof(token);
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			MOHPC_LOG(Warn, "missing tcMod turb in shader '%s' (file %s)", GetName(), GetFilename());
+			MOHPC_LOG(Warn, "missing tcMod turb in shader '%s' (file %s)", GetName(), GetFilename().generic_string().c_str());
 			return;
 		}
 		tmi->wave.amplitude = (float)atof(token);
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			MOHPC_LOG(Warn, "missing tcMod turb in shader '%s' (file %s)", GetName(), GetFilename());
+			MOHPC_LOG(Warn, "missing tcMod turb in shader '%s' (file %s)", GetName(), GetFilename().generic_string().c_str());
 			return;
 		}
 		tmi->wave.phase = (float)atof(token);
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			MOHPC_LOG(Warn, "missing tcMod turb in shader '%s' (file %s)", GetName(), GetFilename());
+			MOHPC_LOG(Warn, "missing tcMod turb in shader '%s' (file %s)", GetName(), GetFilename().generic_string().c_str());
 			return;
 		}
 		tmi->wave.frequency = (float)atof(token);
@@ -660,7 +660,7 @@ void Shader::ParseTexMod(Script& script, ShaderStage *stage)
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			MOHPC_LOG(Warn, "missing tcMod turb in shader '%s' (file %s)", GetName(), GetFilename());
+			MOHPC_LOG(Warn, "missing tcMod turb in shader '%s' (file %s)", GetName(), GetFilename().generic_string().c_str());
 			return;
 		}
 		tmi->scale[0] = (float)atof(token);
@@ -668,7 +668,7 @@ void Shader::ParseTexMod(Script& script, ShaderStage *stage)
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			MOHPC_LOG(Warn, "missing tcMod turb in shader '%s' (file %s)", GetName(), GetFilename());
+			MOHPC_LOG(Warn, "missing tcMod turb in shader '%s' (file %s)", GetName(), GetFilename().generic_string().c_str());
 			return;
 		}
 		tmi->scale[1] = (float)atof(token);
@@ -682,14 +682,14 @@ void Shader::ParseTexMod(Script& script, ShaderStage *stage)
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			MOHPC_LOG(Warn, "missing scale scroll parms in shader '%s' (file %s)", GetName(), GetFilename());
+			MOHPC_LOG(Warn, "missing scale scroll parms in shader '%s' (file %s)", GetName(), GetFilename().generic_string().c_str());
 			return;
 		}
 		tmi->scroll[0] = (float)atof(token);
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			MOHPC_LOG(Warn, "missing scale scroll parms in shader '%s' (file %s)", GetName(), GetFilename());
+			MOHPC_LOG(Warn, "missing scale scroll parms in shader '%s' (file %s)", GetName(), GetFilename().generic_string().c_str());
 			return;
 		}
 		tmi->scroll[1] = (float)atof(token);
@@ -703,7 +703,7 @@ void Shader::ParseTexMod(Script& script, ShaderStage *stage)
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			MOHPC_LOG(Warn, "missing stretch parms in shader '%s' (file %s)", GetName(), GetFilename());
+			MOHPC_LOG(Warn, "missing stretch parms in shader '%s' (file %s)", GetName(), GetFilename().generic_string().c_str());
 			return;
 		}
 		ParseWaveForm(script, &tmi->wave);
@@ -717,7 +717,7 @@ void Shader::ParseTexMod(Script& script, ShaderStage *stage)
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			MOHPC_LOG(Warn, "missing transform parms in shader '%s' (file %s)", GetName(), GetFilename());
+			MOHPC_LOG(Warn, "missing transform parms in shader '%s' (file %s)", GetName(), GetFilename().generic_string().c_str());
 			return;
 		}
 		tmi->matrix[0][0] = (float)atof(token);
@@ -725,7 +725,7 @@ void Shader::ParseTexMod(Script& script, ShaderStage *stage)
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			MOHPC_LOG(Warn, "missing transform parms in shader '%s' (file %s)", GetName(), GetFilename());
+			MOHPC_LOG(Warn, "missing transform parms in shader '%s' (file %s)", GetName(), GetFilename().generic_string().c_str());
 			return;
 		}
 		tmi->matrix[0][1] = (float)atof(token);
@@ -733,7 +733,7 @@ void Shader::ParseTexMod(Script& script, ShaderStage *stage)
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			MOHPC_LOG(Warn, "missing transform parms in shader '%s' (file %s)", GetName(), GetFilename());
+			MOHPC_LOG(Warn, "missing transform parms in shader '%s' (file %s)", GetName(), GetFilename().generic_string().c_str());
 			return;
 		}
 		tmi->matrix[1][0] = (float)atof(token);
@@ -741,7 +741,7 @@ void Shader::ParseTexMod(Script& script, ShaderStage *stage)
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			MOHPC_LOG(Warn, "missing transform parms in shader '%s' (file %s)", GetName(), GetFilename());
+			MOHPC_LOG(Warn, "missing transform parms in shader '%s' (file %s)", GetName(), GetFilename().generic_string().c_str());
 			return;
 		}
 		tmi->matrix[1][1] = (float)atof(token);
@@ -749,7 +749,7 @@ void Shader::ParseTexMod(Script& script, ShaderStage *stage)
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			MOHPC_LOG(Warn, "missing transform parms in shader '%s' (file %s)", GetName(), GetFilename());
+			MOHPC_LOG(Warn, "missing transform parms in shader '%s' (file %s)", GetName(), GetFilename().generic_string().c_str());
 			return;
 		}
 		tmi->translate[0] = (float)atof(token);
@@ -757,7 +757,7 @@ void Shader::ParseTexMod(Script& script, ShaderStage *stage)
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			MOHPC_LOG(Warn, "missing transform parms in shader '%s' (file %s)", GetName(), GetFilename());
+			MOHPC_LOG(Warn, "missing transform parms in shader '%s' (file %s)", GetName(), GetFilename().generic_string().c_str());
 			return;
 		}
 		tmi->translate[1] = (float)atof(token);
@@ -772,7 +772,7 @@ void Shader::ParseTexMod(Script& script, ShaderStage *stage)
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			MOHPC_LOG(Warn, "missing tcMod rotate parms in shader '%s' (file %s)", GetName(), GetFilename());
+			MOHPC_LOG(Warn, "missing tcMod rotate parms in shader '%s' (file %s)", GetName(), GetFilename().generic_string().c_str());
 			return;
 		}
 		tmi->rotateSpeed = (float)atof(token);
@@ -800,14 +800,14 @@ void Shader::ParseTexMod(Script& script, ShaderStage *stage)
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			MOHPC_LOG(Warn, "missing parallax parms in shader '%s' (file %s)", GetName(), GetFilename());
+			MOHPC_LOG(Warn, "missing parallax parms in shader '%s' (file %s)", GetName(), GetFilename().generic_string().c_str());
 			return;
 		}
 		tmi->parallax[0] = (float)atof(token);
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			MOHPC_LOG(Warn, "missing parallax parms in shader '%s' (file %s)", GetName(), GetFilename());
+			MOHPC_LOG(Warn, "missing parallax parms in shader '%s' (file %s)", GetName(), GetFilename().generic_string().c_str());
 			return;
 		}
 		tmi->parallax[1] = (float)atof(token);
@@ -821,14 +821,14 @@ void Shader::ParseTexMod(Script& script, ShaderStage *stage)
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			MOHPC_LOG(Warn, "missing offset parms in shader '%s' (file %s)", GetName(), GetFilename());
+			MOHPC_LOG(Warn, "missing offset parms in shader '%s' (file %s)", GetName(), GetFilename().generic_string().c_str());
 			return;
 		}
 		tmi->offset[0] = (float)atof(token);
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			MOHPC_LOG(Warn, "missing offset parms in shader '%s' (file %s)", GetName(), GetFilename());
+			MOHPC_LOG(Warn, "missing offset parms in shader '%s' (file %s)", GetName(), GetFilename().generic_string().c_str());
 			return;
 		}
 		tmi->offset[1] = (float)atof(token);
@@ -842,25 +842,25 @@ void Shader::ParseTexMod(Script& script, ShaderStage *stage)
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			MOHPC_LOG(Warn, "missing bulge parms in shader '%s' (file %s)", GetName(), GetFilename());
+			MOHPC_LOG(Warn, "missing bulge parms in shader '%s' (file %s)", GetName(), GetFilename().generic_string().c_str());
 			return;
 		}
 		tmi->bulge[0] = (float)atof(token);
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			MOHPC_LOG(Warn, "missing bulge parms in shader '%s' (file %s)", GetName(), GetFilename());
+			MOHPC_LOG(Warn, "missing bulge parms in shader '%s' (file %s)", GetName(), GetFilename().generic_string().c_str());
 			return;
 		}
 		tmi->bulge[1] = (float)atof(token);
 		tmi->type = TMOD_BULGE;
 	}
 	else {
-		MOHPC_LOG(Warn, "unknown tcMod '%s' in shader '%s' (file %s)", token, GetName(), GetFilename());
+		MOHPC_LOG(Warn, "unknown tcMod '%s' in shader '%s' (file %s)", token, GetName(), GetFilename().generic_string().c_str());
 	}
 }
 
-bool Shader::ParseStage(Script& script, ShaderStage *stage)
+bool Shader::ParseStage(TokenParser& script, ShaderStage *stage)
 {
 	int32_t bundleNum = 0;
 	int32_t atestBits = 0;
@@ -924,7 +924,7 @@ bool Shader::ParseStage(Script& script, ShaderStage *stage)
 			token = script.GetToken(false);
 			if (token[0] == 0)
 			{
-				MOHPC_LOG(Warn, "missing parameters for rgbGen in shader '%s' (file %s)", GetName(), GetFilename());
+				MOHPC_LOG(Warn, "missing parameters for rgbGen in shader '%s' (file %s)", GetName(), GetFilename().generic_string().c_str());
 				continue;
 			}
 
@@ -1056,7 +1056,7 @@ bool Shader::ParseStage(Script& script, ShaderStage *stage)
 							}
 							else
 							{
-								MOHPC_LOG(Warn, "missing rgbGen sCoord or tCoord parm 'max' in shader '%s' (file %s)", GetName(), GetFilename());
+								MOHPC_LOG(Warn, "missing rgbGen sCoord or tCoord parm 'max' in shader '%s' (file %s)", GetName(), GetFilename().generic_string().c_str());
 							}
 						}
 					}
@@ -1102,7 +1102,7 @@ bool Shader::ParseStage(Script& script, ShaderStage *stage)
 			}
 			else
 			{
-				MOHPC_LOG(Warn, "unknown rgbGen parameter '%s' in shader '%s' (file %s)", token, GetName(), GetFilename());
+				MOHPC_LOG(Warn, "unknown rgbGen parameter '%s' in shader '%s' (file %s)", token, GetName(), GetFilename().generic_string().c_str());
 				continue;
 			}
 		}
@@ -1114,7 +1114,7 @@ bool Shader::ParseStage(Script& script, ShaderStage *stage)
 			token = script.GetToken(false);
 			if (token[0] == 0)
 			{
-				MOHPC_LOG(Warn, "missing parameters for alphaGen in shader '%s' (file %s)", GetName(), GetFilename());
+				MOHPC_LOG(Warn, "missing parameters for alphaGen in shader '%s' (file %s)", GetName(), GetFilename().generic_string().c_str());
 				continue;
 			}
 
@@ -1160,7 +1160,7 @@ bool Shader::ParseStage(Script& script, ShaderStage *stage)
 				if (token[0] == 0)
 				{
 					portalRange = 256;
-					MOHPC_LOG(Warn, "missing range parameter for alphaGen portal in shader '%s', defaulting to 256 (file %s)", GetName(), GetFilename());
+					MOHPC_LOG(Warn, "missing range parameter for alphaGen portal in shader '%s', defaulting to 256 (file %s)", GetName(), GetFilename().generic_string().c_str());
 				}
 				else
 				{
@@ -1333,7 +1333,7 @@ bool Shader::ParseStage(Script& script, ShaderStage *stage)
 							}
 							else
 							{
-								MOHPC_LOG(Warn, "missing rgbGen sCoord or tCoord parm 'max' in shader '%s' (file %s)", GetName(), GetFilename());
+								MOHPC_LOG(Warn, "missing rgbGen sCoord or tCoord parm 'max' in shader '%s' (file %s)", GetName(), GetFilename().generic_string().c_str());
 							}
 						}
 					}
@@ -1347,7 +1347,7 @@ bool Shader::ParseStage(Script& script, ShaderStage *stage)
 			}
 			else
 			{
-				MOHPC_LOG(Warn, "unknown alphaGen parameter '%s' in shader '%s' (file %s)", token, GetName(), GetFilename());
+				MOHPC_LOG(Warn, "unknown alphaGen parameter '%s' in shader '%s' (file %s)", token, GetName(), GetFilename().generic_string().c_str());
 				continue;
 			}
 		}
@@ -1359,7 +1359,7 @@ bool Shader::ParseStage(Script& script, ShaderStage *stage)
 			token = script.GetToken(false);
 			if (token[0] == 0)
 			{
-				MOHPC_LOG(Warn, "missing texgen parm in shader '%s' (file %s)", GetName(), GetFilename());
+				MOHPC_LOG(Warn, "missing texgen parm in shader '%s' (file %s)", GetName(), GetFilename().generic_string().c_str());
 				continue;
 			}
 
@@ -1395,7 +1395,7 @@ bool Shader::ParseStage(Script& script, ShaderStage *stage)
 			}
 			else
 			{
-				MOHPC_LOG(Warn, "unknown texgen parm '%s' in shader '%s' (file %s)", token, GetName(), GetFilename());
+				MOHPC_LOG(Warn, "unknown texgen parm '%s' in shader '%s' (file %s)", token, GetName(), GetFilename().generic_string().c_str());
 			}
 		}
 		//
@@ -1489,12 +1489,12 @@ bool Shader::ParseStage(Script& script, ShaderStage *stage)
 	return true;
 }
 
-void Shader::ParseDeform(Script& script)
+void Shader::ParseDeform(TokenParser& script)
 {
 	const char *token = script.GetToken(false);
 	if (token[0] == 0)
 	{
-		MOHPC_LOG(Warn, "missing deform parm in shader '%s' (file %s)", GetName(), GetFilename());
+		MOHPC_LOG(Warn, "missing deform parm in shader '%s' (file %s)", GetName(), GetFilename().generic_string().c_str());
 		return;
 	}
 
@@ -1515,7 +1515,7 @@ void Shader::ParseDeform(Script& script)
 		ds->deformation = DEFORM_AUTOSPRITE2;
 		sprite.type = SPRITE_ORIENTED;
 	}
-	else if (!strnicmp(token, "text", 4))
+	else if (!strHelpers::icmpn(token, "text", 4))
 	{
 		int		n;
 
@@ -1530,7 +1530,7 @@ void Shader::ParseDeform(Script& script)
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			MOHPC_LOG(Warn, "missing deformVertexes bulge parm in shader '%s' (file %s)", GetName(), GetFilename());
+			MOHPC_LOG(Warn, "missing deformVertexes bulge parm in shader '%s' (file %s)", GetName(), GetFilename().generic_string().c_str());
 			return;
 		}
 		ds->bulgeWidth = (float)atof(token);
@@ -1538,7 +1538,7 @@ void Shader::ParseDeform(Script& script)
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			MOHPC_LOG(Warn, "missing deformVertexes bulge parm in shader '%s' (file %s)", GetName(), GetFilename());
+			MOHPC_LOG(Warn, "missing deformVertexes bulge parm in shader '%s' (file %s)", GetName(), GetFilename().generic_string().c_str());
 			return;
 		}
 		ds->bulgeHeight = (float)atof(token);
@@ -1546,7 +1546,7 @@ void Shader::ParseDeform(Script& script)
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			MOHPC_LOG(Warn, "missing deformVertexes bulge parm in shader '%s' (file %s)", GetName(), GetFilename());
+			MOHPC_LOG(Warn, "missing deformVertexes bulge parm in shader '%s' (file %s)", GetName(), GetFilename().generic_string().c_str());
 			return;
 		}
 		ds->bulgeSpeed = (float)atof(token);
@@ -1558,7 +1558,7 @@ void Shader::ParseDeform(Script& script)
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			MOHPC_LOG(Warn, "missing deformVertexes parm in shader '%s' (file %s)", GetName(), GetFilename());
+			MOHPC_LOG(Warn, "missing deformVertexes parm in shader '%s' (file %s)", GetName(), GetFilename().generic_string().c_str());
 			return;
 		}
 
@@ -1569,7 +1569,7 @@ void Shader::ParseDeform(Script& script)
 		else
 		{
 			ds->deformationSpread = 100.0f;
-			MOHPC_LOG(Warn, "illegal div value of 0 in deformVertexes command for shader '%s' (file %s)", GetName(), GetFilename());
+			MOHPC_LOG(Warn, "illegal div value of 0 in deformVertexes command for shader '%s' (file %s)", GetName(), GetFilename().generic_string().c_str());
 		}
 
 		ParseWaveForm(script, &ds->deformationWave);
@@ -1580,7 +1580,7 @@ void Shader::ParseDeform(Script& script)
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			MOHPC_LOG(Warn, "missing deformVertexes parm in shader '%s' (file %s)", GetName(), GetFilename());
+			MOHPC_LOG(Warn, "missing deformVertexes parm in shader '%s' (file %s)", GetName(), GetFilename().generic_string().c_str());
 			return;
 		}
 		ds->deformationWave.amplitude = (float)atof(token);
@@ -1588,7 +1588,7 @@ void Shader::ParseDeform(Script& script)
 		token = script.GetToken(false);
 		if (token[0] == 0)
 		{
-			MOHPC_LOG(Warn, "missing deformVertexes parm in shader '%s' (file %s)", GetName(), GetFilename());
+			MOHPC_LOG(Warn, "missing deformVertexes parm in shader '%s' (file %s)", GetName(), GetFilename().generic_string().c_str());
 			return;
 		}
 		ds->deformationWave.frequency = (float)atof(token);
@@ -1604,7 +1604,7 @@ void Shader::ParseDeform(Script& script)
 			token = script.GetToken(false);
 			if (token[0] == 0)
 			{
-				MOHPC_LOG(Warn, "missing deformVertexes parm in shader '%s' (file %s)", GetName(), GetFilename());
+				MOHPC_LOG(Warn, "missing deformVertexes parm in shader '%s' (file %s)", GetName(), GetFilename().generic_string().c_str());
 				return;
 			}
 			ds->moveVector[i] = (float)atof(token);
@@ -1649,7 +1649,7 @@ void Shader::ParseDeform(Script& script)
 	}
 }
 
-void Shader::ParseSkyParms(Script& script)
+void Shader::ParseSkyParms(TokenParser& script)
 {
 	static const char *suf[6] = { "rt", "bk", "lf", "ft", "up", "dn" };
 
@@ -1657,10 +1657,10 @@ void Shader::ParseSkyParms(Script& script)
 	const char *token = script.GetToken(false);
 	if (token[0] == 0)
 	{
-		MOHPC_LOG(Warn, "'skyParms' missing parameter in shader '%s'", GetName(), GetFilename());
+		MOHPC_LOG(Warn, "'skyParms' missing parameter in shader '%s'", GetName(), GetFilename().generic_string().c_str());
 		return;
 	}
-	if (strcmp(token, "-"))
+	if (strHelpers::cmp(token, "-"))
 	{
 		for (int32_t i = 0; i < 6; i++)
 		{
@@ -1680,7 +1680,7 @@ void Shader::ParseSkyParms(Script& script)
 	token = script.GetToken(false);
 	if (token[0] == 0)
 	{
-		MOHPC_LOG(Warn, "'skyParms' missing parameter in shader '%s'", GetName(), GetFilename());
+		MOHPC_LOG(Warn, "'skyParms' missing parameter in shader '%s'", GetName(), GetFilename().generic_string().c_str());
 		return;
 	}
 
@@ -1696,10 +1696,10 @@ void Shader::ParseSkyParms(Script& script)
 	token = script.GetToken(false);
 	if (token[0] == 0)
 	{
-		MOHPC_LOG(Warn, "'skyParms' missing parameter in shader '%s'", GetName(), GetFilename());
+		MOHPC_LOG(Warn, "'skyParms' missing parameter in shader '%s'", GetName(), GetFilename().generic_string().c_str());
 		return;
 	}
-	if (strcmp(token, "-"))
+	if (strHelpers::cmp(token, "-"))
 	{
 		for (int32_t i = 0; i < 6; i++)
 		{
@@ -1718,7 +1718,7 @@ void Shader::ParseSkyParms(Script& script)
 	bIsSky = true;
 }
 
-void Shader::ParseSurfaceParm(Script& script)
+void Shader::ParseSurfaceParm(TokenParser& script)
 {
 	struct paramToFlags
 	{
@@ -2093,7 +2093,7 @@ void ShaderManager::Init()
 	start = clock();
 
 	//pszFiles = FS_ListFilteredFiles( "scripts", "shader", NULL, false, &iNumFiles );
-	entryList = GetFileManager()->ListFilteredFiles("/scripts", "shader", false);
+	entryList = GetFileManager()->ListFilteredFiles("/scripts", fs::path("shader"), false);
 
 	//g_defaultshader = AllocShader();
 
@@ -2125,7 +2125,7 @@ void ShaderManager::ParseShaders(const FileEntryList& files)
 	for (size_t i = 0; i < numFiles; i++)
 	{
 		//FS_ReadFile(string("scripts/") + files[i], (void **)&buffer);
-		const fs::path& filename = files.GetFileEntry(i)->GetStr();
+		const fs::path& filename = files.GetFileEntry(i)->getName();
 
 		IFilePtr file = GetFileManager()->OpenFile(filename);
 		if (!file) {
@@ -2146,7 +2146,7 @@ void ShaderManager::ParseShaders(const FileEntryList& files)
 
 ShaderContainerPtr ShaderManager::ParseShaderContainer(const fs::path& fileName, const char *buffer, uint64_t length)
 {
-	Script script;
+	TokenParser script;
 	script.Parse(buffer, length, "");
 
 	if(!length || !script.TokenAvailable(true))
@@ -2196,7 +2196,7 @@ ShaderContainerPtr ShaderManager::ParseShaderContainer(const fs::path& fileName,
 
 		const ShaderPtr shader = AllocShader(shaderContainer.get());
 		shader->m_name = shadername;
-		strHelpers::tolower(*&shader->m_name.begin(), shader->m_name.end());
+		strHelpers::tolower(shader->m_name.begin(), shader->m_name.end());
 		//std::transform(shader->m_name.begin(), shader->m_name.end(), shader->m_name.begin(), &shader_tolower);
 
 		shaderContainer->AddShader(shader);

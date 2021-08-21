@@ -2,9 +2,10 @@
 #include <MOHPC/Network/Client/Time.h>
 #include <MOHPC/Network/Client/GameState.h>
 
+#include <cstring>
+
 using namespace MOHPC;
 using namespace Network;
-
 
 ServerSnapshotManager::ServerSnapshotManager(protocolType_c protocol)
 	: parseEntitiesNum(0)
@@ -207,7 +208,7 @@ bool ServerSnapshotManager::getSnapshot(uintptr_t snapshotNum, SnapshotInfo& out
 	outSnapshot.snapFlags = foundSnap->snapFlags;
 	outSnapshot.serverCommandSequence = foundSnap->serverCommandNum;
 	outSnapshot.serverTime = foundSnap->serverTime;
-	memcpy(outSnapshot.areamask, foundSnap->areamask, sizeof(outSnapshot.areamask));
+	std::memcpy(outSnapshot.areamask, foundSnap->areamask, sizeof(outSnapshot.areamask));
 	outSnapshot.ps = foundSnap->ps;
 
 	size_t count = foundSnap->numEntities;

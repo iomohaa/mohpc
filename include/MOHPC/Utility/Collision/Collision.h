@@ -205,6 +205,7 @@ namespace MOHPC
 
 	public:
 		patchCollide_t();
+		~patchCollide_t();
 
 	public:
 		vec3_t bounds[2];

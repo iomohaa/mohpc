@@ -30,6 +30,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "bg_local.h"
 
+#include <cstring>
+
 using namespace MOHPC;
 using namespace MOHPC::Network;
 
@@ -338,9 +340,9 @@ float Pmove::PM_CmdScale(const UserMovementInput& mInput)
 {
 	float fmove, smove;
 	PM_GetMove(&fmove, &smove);
-	const float smovepos = abs(smove);
+	const float smovepos = fabs(smove);
 
-	int max = (int)abs(fmove);
+	int max = (int)fabs(fmove);
 	if (smovepos > max) {
 		max = (int)smovepos;
 	}
@@ -1410,7 +1412,7 @@ void Pmove::moveSingle()
 	}
 
 	// clear all pmove local vars
-	memset( &pml, 0, sizeof( pml ) );
+	std::memset( &pml, 0, sizeof( pml ) );
 
 	// determine the time
 	pml.msec = pm.cmd.getServerTime() - time_cast<tickTime_t>(pm.ps->getCommandTime());
@@ -1597,7 +1599,7 @@ void Pmove::moveSingle()
 
 void Pmove::move_GroundTrace()
 {
-	memset( &pml, 0, sizeof( pml ) );
+	std::memset( &pml, 0, sizeof( pml ) );
 	using namespace ticks;
 	pml.msec = milliseconds(1);
 	pml.frametime = deltaTimeFloat_t(0.001f);

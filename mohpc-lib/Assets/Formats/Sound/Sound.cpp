@@ -1,7 +1,7 @@
 #include <Shared.h>
 #include <MOHPC/Assets/Formats/Sound.h>
 #include <MOHPC/Assets/Managers/AssetManager.h>
-#include <MOHPC/Files/Managers/FileManager.h>
+#include <MOHPC/Files/File.h>
 #include <MOHPC/Files/FileHelpers.h>
 #include <MOHPC/Utility/Misc/Endian.h>
 
@@ -214,7 +214,7 @@ int decode(unsigned char const *start, unsigned long length)
 
 MOHPC_OBJECT_DEFINITION(Sound);
 Sound::Sound(const fs::path& fileName, uint8_t* dataPtr, size_t size)
-	: Asset2(fileName)
+	: Asset(fileName)
 	, data(dataPtr)
 	, dataLen(size)
 {
@@ -229,7 +229,7 @@ Sound::~Sound()
 }
 
 MOHPC_OBJECT_DEFINITION(SoundReader);
-Asset2Ptr SoundReader::read(const IFilePtr& file)
+AssetPtr SoundReader::read(const IFilePtr& file)
 {
 	void *buf = nullptr;
 	const size_t dataLen = (size_t)file->ReadBuffer(&buf);
@@ -243,7 +243,7 @@ Asset2Ptr SoundReader::read(const IFilePtr& file)
 	const str ext = FileHelpers::getExtension<str>(fname.c_str());
 	if (!strHelpers::icmp(ext.c_str(), "mp3"))
 	{
-		DecodeLAME(fname, buf, dataLen);
+		return DecodeLAME(fname, buf, dataLen);
 	}
 	else if (!strHelpers::icmp(ext.c_str(), "wav"))
 	{
@@ -251,7 +251,7 @@ Asset2Ptr SoundReader::read(const IFilePtr& file)
 		uint8_t* data = new uint8_t[dataLen];
 		memcpy(data, buf, dataLen);
 		
-		return Asset2Ptr(new Sound(fname, data, dataLen));
+		return AssetPtr(new Sound(fname, data, dataLen));
 	}
 	else {
 		throw SoundError::BadOrUnsupportedSound(ext);
@@ -260,7 +260,7 @@ Asset2Ptr SoundReader::read(const IFilePtr& file)
 	return nullptr;
 }
 
-Asset2Ptr SoundReader::DecodeLAME(const fs::path& fileName, void *buf, uint64_t len)
+AssetPtr SoundReader::DecodeLAME(const fs::path& fileName, void *buf, uint64_t len)
 {
 #if 0
 	lame_t lame = lame_init();
@@ -420,7 +420,7 @@ Asset2Ptr SoundReader::DecodeLAME(const fs::path& fileName, void *buf, uint64_t 
 			uint8_t* data = new uint8_t[dataLen];
 			buffer.stream.read((char*)data, dataLen);
 
-			return Asset2Ptr(new Sound(fileName, data, dataLen));
+			return AssetPtr(new Sound(fileName, data, dataLen));
 		}
 	}
 #endif

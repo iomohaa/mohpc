@@ -9,11 +9,8 @@ namespace MOHPC
 {
 	namespace FileHelpers
 	{
-		template<typename T> static constexpr T extChar;
-		template<> static constexpr char* extChar<char> = ".";
-		template<> static constexpr wchar_t* extChar<wchar_t> = L".";
-		template<> static constexpr char16_t* extChar<char16_t> = u".";
-		template<> static constexpr char32_t* extChar<char32_t> = U".";
+		template<typename T> static constexpr T extChar[] = { '.' };
+		template<typename T> static constexpr T dirSlash = { '/' };
 
 		template<typename T>
 		static const T* getExtension(const T* val)
@@ -35,9 +32,10 @@ namespace MOHPC
 				--p;
 			}
 
-			if (*p == *extChar<T>) ++p;
+			if (*p == *extChar<T>) return p + 1;
 
-			return p;
+			// no extension
+			return strHelpers::emptyChar<T>;
 		}
 
 		static fs::path getExtension(const fs::path& val)
@@ -56,7 +54,7 @@ namespace MOHPC
 			using namespace fs;
 			const SourceT* p = getExtension(val);
 
-			return fs::path(p).generic_string<TargetT::value_type>();
+			return fs::path(p).generic_string<typename TargetT::value_type>();
 		}
 
 		template<typename T>
@@ -96,7 +94,7 @@ namespace MOHPC
 		template<typename T>
 		static const T* removeRootDir(const T* path)
 		{
-			if (*path == '/' || *path == '\\') ++path;
+			while(*path == '/' || *path == '\\') ++path;
 			return path;
 		}
 
@@ -137,6 +135,47 @@ namespace MOHPC
 			}
 
 			return newString;
+		}
+		template<typename T>
+		static T uniPathChar(T p)
+		{
+			return p == '\\' ? '/' : p;
+		}
+
+		static int pathsEqual(const typename fs::path::value_type* p1, const typename fs::path::value_type* p2)
+		{
+			while (*p1 || *p2)
+			{
+				char c1 = std::tolower(FileHelpers::uniPathChar(*p1)), c2 = std::tolower(FileHelpers::uniPathChar(*p2));
+				if (c1 < c2) return -1;
+				if (c1 > c2) return 1;
+				++p1; ++p2;
+			}
+			return 0;
+		}
+
+		template<typename T>
+		const T* getParentPath(const T* p)
+		{
+			const T* last = p;
+			while (*p)
+			{
+				if (*p == '/' && *(p + 1)) last = p;
+				++p;
+			}
+			return last;
+		}
+
+		template<typename T>
+		const T* getLastPath(const T* p)
+		{
+			const T* last = p;
+			while (*p)
+			{
+				if (*p == '/') last = p;
+				++p;
+			}
+			return last;
 		}
 	}
 }

@@ -19,6 +19,8 @@ target_sources(MOHPC PRIVATE $<TARGET_OBJECTS:MOHPC-Files>)
 target_sources(MOHPC PRIVATE $<TARGET_OBJECTS:MOHPC-Utility>)
 target_sources(MOHPC PRIVATE $<TARGET_OBJECTS:MOHPC-Net>)
 
+set_property(TARGET MOHPC PROPERTY INTERPROCEDURAL_OPTIMIZATION true)
+
 # Add support for std c++ filesystem on Unix
 if(UNIX)
 	target_link_libraries(MOHPC PUBLIC stdc++fs)

@@ -51,7 +51,7 @@ void setTimerResolution(uint64_t resolution)
 {
 }
 
-void restoreTimerSolution()
+void restoreTimerResolution(uint64_t resolution)
 {
 }
 
@@ -80,7 +80,7 @@ void setTimerResolution(uint64_t resolution)
 	timeBeginPeriod((UINT)resolution);
 }
 
-void restoreTimerSolution(uint64_t resolution)
+void restoreTimerResolution(uint64_t resolution)
 {
 	timeEndPeriod((UINT)resolution);
 }

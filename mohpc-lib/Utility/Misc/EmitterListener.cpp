@@ -2,7 +2,7 @@
 #include "EmitterListener.h"
 #include <MOHPC/Assets/Managers/AssetManager.h>
 #include <MOHPC/Utility/Managers/EmitterManager.h>
-#include <MOHPC/Files/Managers/FileManager.h>
+#include <MOHPC/Files/File.h>
 #include <MOHPC/Files/FileHelpers.h>
 #include <morfuse/Script/EventSystem.h>
 #include <MOHPC/Assets/Managers/ShaderManager.h>
@@ -1333,7 +1333,7 @@ void EmitterListener::StartSFXDelayed(mfuse::Event* ev)
 void EmitterListener::StartSFXInternal(mfuse::Event* ev, bool bDelayed)
 {
 	emitter->startTime = bDelayed ? ev->GetFloat(1) : 0.f;
-	str commandName = ev->GetString(bDelayed + 1);
+	mfuse::xstr commandName = ev->GetString(bDelayed + 1);
 
 	mfuse::Event newEvent(mfuse::EventSystem::Get().FindNormalEventNum(commandName.c_str()));
 	for (size_t i = bDelayed + 2; i < ev->NumArgs(); i++)
@@ -1350,7 +1350,7 @@ void EmitterListener::SetBaseAndAmplitude(mfuse::Event* ev, vec3r_t Base, vec3r_
 
 	for (int32_t j = 0; j < 3; j++)
 	{
-		const str org = ev->GetString(i++);
+		const mfuse::xstr org = ev->GetString(i++);
 		if (!strHelpers::cmp(org.c_str(), "crandom"))
 		{
 			const float ampl = ev->GetFloat(i++);
@@ -1412,14 +1412,14 @@ void EmitterListener::SetScaleMax(mfuse::Event* ev)
 
 void EmitterListener::SetModel(mfuse::Event* ev)
 {
-	str resourceName = ev->GetString(1);
+	mfuse::str resourceName = ev->GetString(1);
 	if (resourceName.length() > 0)
 	{
 		const char* extension = FileHelpers::getExtension(resourceName.c_str());
 		
 		if (!strHelpers::icmp(extension, "spr"))
 		{
-			resourceName = str(resourceName, extension - resourceName.c_str());
+			resourceName = mfuse::str(resourceName, extension - resourceName.c_str());
 			emitter->sprite.spriteType = Sprite::ST_Shader;
 			const ShaderManagerPtr shaderManager = assetManager->getManager<ShaderManager>();
 			if(shaderManager)

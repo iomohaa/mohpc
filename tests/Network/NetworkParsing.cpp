@@ -316,7 +316,7 @@ void PVSTest()
 
 int main(int argc, const char* argv[])
 {
-	InitCommon();
+	InitCommon(argc, argv);
 
 	hashTest();
 	stringTest();

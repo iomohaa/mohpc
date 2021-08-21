@@ -113,7 +113,7 @@ void DownloadManager::startDownload(const char* downloadNameValue)
 
 	// send the server command
 	const str escapedName = EscapeString(downloadNameValue);
-	sequence->addCommand((startDownloadCommand + '"' + escapedName + '"').c_str());
+	sequence->addCommand((std::string(startDownloadCommand) + '"' + escapedName + '"').c_str());
 	downloadRequested = true;
 	downloadName = downloadNameValue;
 }

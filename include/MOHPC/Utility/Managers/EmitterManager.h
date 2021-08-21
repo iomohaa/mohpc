@@ -125,7 +125,7 @@ namespace MOHPC
 		MOHPC_UTILITY_EXPORTS bool ParseEmitters(const TIKI* Tiki, EmitterResults& Results);
 
 	private:
-		bool ProcessCommand(const std::vector<str>& Arguments, class EmitterListener& Listener);
+		bool ProcessCommand(const char* const* Arguments, size_t numArgs, class EmitterListener& Listener);
 	};
 	using EmitterManagerPtr = SharedPtr<EmitterManager>;
 }

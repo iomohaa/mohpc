@@ -3,6 +3,7 @@
 #include <chrono>
 #include <random>
 #include <thread>
+#include <cstring>
 
 using namespace MOHPC;
 using namespace MOHPC::Network;
@@ -86,11 +87,10 @@ UdpSocketSimLatency::UdpSocketSimLatency(const IUdpSocketPtr& originalSocketPtr)
 	, jittering(0)
 	, enableOOD(false)
 	, isThreadActive(true)
+	, startTime(std::chrono::steady_clock::now())
 	, socketIncomingThread(&UdpSocketSimLatency::incomingThread, this)
 	, socketOutgoingThread(&UdpSocketSimLatency::outgoingThread, this)
 {
-	using namespace std::chrono;
-	startTime = steady_clock::now();
 }
 
 UdpSocketSimLatency::~UdpSocketSimLatency()
@@ -159,7 +159,7 @@ size_t UdpSocketSimLatency::receive(void* buf, size_t maxsize, NetAddrPtr& from)
 	return copySize;
 }
 
-bool UdpSocketSimLatency::wait(size_t timeout)
+bool UdpSocketSimLatency::wait(uint64_t timeout)
 {
 	using namespace std::chrono;
 
@@ -470,7 +470,7 @@ size_t UdpSocketSimLoss::receive(void* buf, size_t maxsize, NetAddrPtr& from)
 	return receivedLen;
 }
 
-bool UdpSocketSimLoss::wait(size_t timeout)
+bool UdpSocketSimLoss::wait(uint64_t timeout)
 {
 	using namespace std::chrono;
 	const time_point<steady_clock> startTime = steady_clock::now();

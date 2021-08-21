@@ -171,37 +171,3 @@ uint32_t SkeletonReader::CreateAvRotBoneFileData(char* newBoneName, char* newBon
 	// FIXME: stub
 	return 0;
 }
-
-void Skeletor::LoadMorphTargetNames(Skeleton* skelmodel)
-{
-	size_t numTargets = skelmodel->GetNumMorphTargets();
-
-	for (size_t i = 0; i < numTargets; i++)
-	{
-		const char* newTargetName = skelmodel->GetMorphTarget(i);
-
-		size_t newChannel = GetAssetManager()->getManager<SkeletorManager>()->GetChannelNamesTable()->RegisterChannel(newTargetName);
-		size_t morphTargetIndex = m_morphTargetList.AddChannel(newChannel);
-
-		if (!strncmp(newTargetName, "EYES_left", 9))
-		{
-			m_targetLookLeft = morphTargetIndex;
-		}
-		else if (!strncmp(newTargetName, "EYES_right", 10))
-		{
-			m_targetLookRight = morphTargetIndex;
-		}
-		else if (!strncmp(newTargetName, "EYES_up", 70))
-		{
-			m_targetLookUp = morphTargetIndex;
-		}
-		else if (!strncmp(newTargetName, "EYES_down", 9))
-		{
-			m_targetLookDown = morphTargetIndex;
-		}
-		else if (!strncmp(newTargetName, "EYES_blink", 9))
-		{
-			m_targetBlink = morphTargetIndex;
-		}
-	}
-}

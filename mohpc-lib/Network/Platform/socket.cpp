@@ -3,6 +3,7 @@
 #include "generic_sockets.h"
 
 #include <type_traits>
+#include <cstring>
 
 using namespace MOHPC;
 using namespace Network;
@@ -48,15 +49,18 @@ public:
 			// bind a default port
 			local.sin_port = 0;
 			// set address to 0
-			memset(&local.sin_addr, 0, sizeof(local.sin_addr));
+			std::memset(&local.sin_addr, 0, sizeof(local.sin_addr));
 		}
 		else
 		{
 			local.sin_port = htons(bindAddress->port);
-			memcpy(&local.sin_addr.s_addr, bindAddress->getAddress(), addressSize);
+			std::memcpy(&local.sin_addr.s_addr, bindAddress->getAddress(), addressSize);
 		}
 
-		bind(conn, (sockaddr*)&local, sizeof(local));
+		const int result = bind(conn, (sockaddr*)&local, sizeof(local));
+		if (result != 0) {
+			// FIXME: throw?
+		}
 	}
 
 	~WindowsUDPSocket()
@@ -74,7 +78,7 @@ public:
 		const uint8_t* inAddr = to->getAddress();
 
 		// check if the address is a broadcast ip
-		if (memcmp(inAddr, broadcastIP, addressSize))
+		if (std::memcmp(inAddr, broadcastIP, addressSize))
 		{
 			int val = 0;
 			setsockopt(conn, SOL_SOCKET, SO_BROADCAST, (const char*)&val, sizeof(val));
@@ -88,9 +92,9 @@ public:
 		sockaddr_in srvAddr{0};
 		srvAddr.sin_family = family;
 		srvAddr.sin_port = htons(to->port);
-		memcpy(&srvAddr.sin_addr, inAddr, sizeof(srvAddr.sin_addr));
+		std::memcpy(&srvAddr.sin_addr, inAddr, sizeof(srvAddr.sin_addr));
 
-		return sendto(
+		const size_t result = sendto(
 			conn,
 			(const char*)buf,
 			(int)bufsize,
@@ -98,6 +102,8 @@ public:
 			(sockaddr*)&srvAddr,
 			sizeof(srvAddr)
 		);
+
+		return result;
 	}
 
 	size_t receive(void* buf, size_t maxsize, NetAddrPtr& from) override
@@ -120,17 +126,17 @@ public:
 		return bytesWritten;
 	}
 
-	virtual bool wait(size_t timeout) override
+	virtual bool wait(uint64_t timeout) override
 	{
 		timeval t{0};
-		t.tv_usec = (long)timeout * 1000;
+		t.tv_usec = timeout * 1000;
 
 		fd_set readfds;
 		FD_ZERO(&readfds);
 		FD_SET(conn, &readfds);
 
 		int result = select(1, &readfds, NULL, NULL, timeout != -1 ? &t : NULL);
-		return result == 1;
+		return FD_ISSET(conn, &readfds) || dataCount();
 	}
 
 	virtual size_t dataCount() override
@@ -142,7 +148,7 @@ public:
 
 	void* getRaw() override
 	{
-		return (void*)conn;
+		return reinterpret_cast<void*>(conn);
 	}
 
 	NetAddrPtr createAddress(const sockaddr_template& addr) const;
@@ -162,7 +168,7 @@ template <>
 NetAddrPtr WindowsUDPSocket<addressType_e::IPv4>::createAddress(const sockaddr_in& addr) const
 {
 	const NetAddr4Ptr netAddress = NetAddr4::create();
-	memcpy(netAddress->ip, &addr.sin_addr, sizeof(netAddress->ip));
+	std::memcpy(netAddress->ip, &addr.sin_addr, sizeof(netAddress->ip));
 	netAddress->port = htons(addr.sin_port);
 
 	return netAddress;
@@ -172,7 +178,7 @@ template <>
 NetAddrPtr WindowsUDPSocket<addressType_e::IPv6>::createAddress(const sockaddr_in6& addr) const
 {
 	const NetAddr6Ptr netAddress = NetAddr6::create();
-	memcpy(netAddress->ip, &addr.sin6_addr, sizeof(netAddress->ip));
+	std::memcpy(netAddress->ip, &addr.sin6_addr, sizeof(netAddress->ip));
 	netAddress->port = htons(addr.sin6_port);
 
 	return netAddress;
@@ -222,18 +228,18 @@ public:
 			// bind a default port
 			local.sin_port = 0;
 			// set address to 0
-			memset(&local.sin_addr, 0, sizeof(local.sin_addr));
+			std::memset(&local.sin_addr, 0, sizeof(local.sin_addr));
 		}
 		else
 		{
 			local.sin_port = htons(bindAddress->port);
-			memcpy(&local.sin_addr.s_addr, bindAddress->getAddress(), addressSize);
+			std::memcpy(&local.sin_addr.s_addr, bindAddress->getAddress(), addressSize);
 		}
 
 		sockaddr_in srvAddr;
 		srvAddr.sin_family = AF_INET;
 		srvAddr.sin_port = htons(addr->port);
-		memcpy(&srvAddr.sin_addr, addr->getAddress(), addressSize);
+		std::memcpy(&srvAddr.sin_addr, addr->getAddress(), addressSize);
 		int srvAddrSz = sizeof(srvAddr);
 
 		// Set non-blocking
@@ -266,10 +272,11 @@ public:
 		return connectedAddress;
 	}
 
-	virtual bool wait(size_t timeout) override
+	virtual bool wait(uint64_t timeout) override
 	{
 		timeval t;
-		t.tv_usec = (long)timeout * 1000;
+		t.tv_sec = 0;
+		t.tv_usec = timeout * 1000;
 
 		fd_set readfds;
 		FD_ZERO(&readfds);
@@ -359,7 +366,7 @@ public:
 		sockaddr_in* sockad = (sockaddr_in*)result->ai_addr;
 
 		NetAddr4Ptr adr(NetAddr4::create());
-		memcpy(&adr->ip, &sockad->sin_addr, sizeof(adr->ip));
+		std::memcpy(&adr->ip, &sockad->sin_addr, sizeof(adr->ip));
 
 		freeaddrinfo(result);
 

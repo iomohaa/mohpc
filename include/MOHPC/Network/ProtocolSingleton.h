@@ -36,7 +36,7 @@ namespace Network
 	template<typename T>
 	const T* IProtocolSingleton<T>::get(uint32_t protocol)
 	{
-		for (const IProtocolSingleton* inst = getHead(); inst; inst = inst->getNext())
+		for (const IProtocolSingleton* inst = IProtocolSingleton<T>::getHead(); inst; inst = inst->getNext())
 		{
 			uint32_t min = 0, max = 0;
 			inst->getProtocol(min, max);
@@ -49,7 +49,7 @@ namespace Network
 		}
 
 		// fallback to a default protocol
-		for (const IProtocolSingleton* inst = getHead(); inst; inst = inst->getNext())
+		for (const IProtocolSingleton* inst = IProtocolSingleton<T>::getHead(); inst; inst = inst->getNext())
 		{
 			uint32_t min = 0, max = 0;
 			inst->getProtocol(min, max);
@@ -90,7 +90,7 @@ namespace Network
 	class ProtocolClassInstancier_Template : public IProtocolClassInstancier<Base>
 	{
 	public:
-		void getProtocol(uint32_t& minRange, uint32_t& maxRange) const { minRange = minProtocolVersion; maxRange = maxProtocolVersion; }
+		void getProtocol(uint32_t& minRange, uint32_t& maxRange) const override { minRange = minProtocolVersion; maxRange = maxProtocolVersion; }
 		T* createInstance() const override { return new T(); }
 	};
 }

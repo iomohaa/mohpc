@@ -2,6 +2,8 @@
 
 #include <type_traits>
 #include <cstdint>
+#include <cstddef>
+#include <cmath>
 
 namespace MOHPC
 {

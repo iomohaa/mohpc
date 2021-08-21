@@ -1,7 +1,8 @@
 #include <Shared.h>
 #include <MOHPC/Assets/Managers/SoundManager.h>
-#include <MOHPC/Files/Managers/FileManager.h>
-#include <MOHPC/Assets/Script.h>
+#include <MOHPC/Files/Managers/IFileManager.h>
+#include <MOHPC/Files/Category.h>
+#include <MOHPC/Utility/TokenParser.h>
 #include <MOHPC/Common/Log.h>
 
 #include <cstring>
@@ -218,8 +219,8 @@ void SoundManager::Init()
 
 	MOHPC_LOG(Info, "Loading sound aliases.");
 
-	std::vector<const char*> categoryList;
-	GetFileManager()->GetCategoryList(categoryList);
+	std::vector<const FileCategory*> categoryList;
+	GetFileCategoryManager()->GetCategoryList(categoryList);
 
 	numNodes = 0;
 	
@@ -316,16 +317,17 @@ const SoundNode* SoundManager::FindAlias(const char* aliasName, bool bAllowRando
 	return soundNode;
 }
 
-SoundResults SoundManager::ParseUbersound(const char* filename, const char* categoryName, SoundNode* firstSoundNode, SoundNode** ppLastSoundNode)
+SoundResults SoundManager::ParseUbersound(const fs::path& filename, const FileCategory* category, SoundNode* firstSoundNode, SoundNode** ppLastSoundNode)
 {
-	Script script;
-	script.InitAssetManager(GetAssetManager());
+	TokenParser script;
 
-	IFilePtr File = GetFileManager()->OpenFile(filename, categoryName);
+	const char* const categoryName = category ? category->getName() : nullptr;
+
+	IFilePtr File = GetFileManager()->OpenFile(filename, category);
 	if (!File)
 	{
 		if (firstSoundNode) {
-			MOHPC_LOG(Warn, "ubersound '%s' not found for %s.", filename, categoryName);
+			MOHPC_LOG(Warn, "ubersound '%s' not found for %s.", filename.generic_string().c_str(), categoryName);
 		}
 
 		return SoundResults();
@@ -334,13 +336,13 @@ SoundResults SoundManager::ParseUbersound(const char* filename, const char* cate
 	const char* buf = nullptr;
 	uint64_t streamSize = File->ReadBuffer((void**)&buf);
 
-	script.LoadFile(filename, (int)streamSize, buf);
+	script.Parse(buf, streamSize);
 
 	SoundResults results;
 
 	if (firstSoundNode)
 	{
-		MOHPC_LOG(Warn, "parsing ubersound '%s' from %s", filename, categoryName);
+		MOHPC_LOG(Warn, "parsing ubersound '%s' from %s", filename.generic_string().c_str(), categoryName);
 
 		SoundNode* soundNode = firstSoundNode;
 		SoundNode* prevSoundNode = ppLastSoundNode ? *ppLastSoundNode : nullptr;
@@ -378,7 +380,7 @@ SoundResults SoundManager::ParseUbersound(const char* filename, const char* cate
 			}
 			else
 			{
-				MOHPC_LOG(Warn, "unsupported command '%s' in ubersound '%s' from %s.", token, filename, categoryName);
+				MOHPC_LOG(Warn, "unsupported command '%s' in ubersound '%s' from %s.", token, filename.generic_string().c_str(), categoryName);
 				script.SkipToEOL();
 			}
 		}
@@ -421,7 +423,7 @@ SoundResults SoundManager::ParseUbersound(const char* filename, const char* cate
 	return results;
 }
 
-size_t SoundManager::ParseAlias(Script& script, SoundNode* soundNode)
+size_t SoundManager::ParseAlias(TokenParser& script, SoundNode* soundNode)
 {
 	const char* token = script.GetToken(true);
 	const size_t aliasNameSize = strlen(token) + 1;

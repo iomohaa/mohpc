@@ -4,6 +4,7 @@
 #include <MOHPC/Utility/Misc/MSG/Codec.h>
 #include <MOHPC/Utility/TokenParser.h>
 #include <MOHPC/Common/Log.h>
+#include <MOHPC/Common/str.h>
 
 using namespace MOHPC;
 using namespace MOHPC::Network;
@@ -132,11 +133,11 @@ SharedPtr<MOHPC::IRequestBase> RemoteConsole::RConMessageRequest::process(InputR
 	}
 
 	const uint8_t dir = msg.ReadByte();
-
+	// read the command string
 	const StringMessage cmd = msg.ReadString();
 
 	TokenParser parser;
-	parser.Parse(cmd, strlen(cmd));
+	parser.Parse(cmd, strHelpers::len(cmd.c_str()));
 
 	const char* token = parser.GetToken(false);
 	if (!strHelpers::icmp(token, "print"))

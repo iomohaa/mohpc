@@ -3,6 +3,7 @@
 #include "UtilityGlobal.h"
 #include "UtilityObject.h"
 #include "../Assets/Formats/Skel.h"
+#include "../Assets/Formats/Skel/Skeletor.h"
 #include "../Assets/Managers/ShaderManager.h"
 
 #include "../Common/str.h"

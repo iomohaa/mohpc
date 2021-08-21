@@ -8,8 +8,6 @@
 #include <filesystem>
 #include <vector>
 
-#include <tchar.h>
-
 namespace MOHPC
 {
 	/**
@@ -38,7 +36,7 @@ namespace MOHPC
 		MOHPC_FILES_EXPORTS const fs::path::value_type* GetRawName() const;
 
 		/** Return the file name. */
-		MOHPC_FILES_EXPORTS const fs::path& GetStr() const;
+		MOHPC_FILES_EXPORTS const fs::path& getName() const;
 
 		operator const fs::path& () const;
 

@@ -10,7 +10,7 @@ static constexpr char MOHPC_LOG_NAMESPACE[] = "test_info";
 
 int main(int argc, const char* argv[])
 {
-	InitCommon();
+	InitCommon(argc, argv);
 
 	Info info;
 	info.SetValueForKey("testKey1", "value");

@@ -5,16 +5,13 @@ file(GLOB SRCS "*.cpp")
 
 find_package(Threads REQUIRED)
 
-add_subdirectory(${glfw3_DIR} bin)
-
 foreach(source ${SRCS})
 	get_filename_component(fileName ${source} NAME_WE)
 
 	# Add executable with only the source file
 	add_executable(${fileName} ${source} ${COMMON_SRCS})
-	
-	#target_include_directories(${fileName} PUBLIC ${glfw3_INCLUDE})
-	target_link_libraries(${fileName} MOHPC-ALL TESTS_COMMON glfw ${glfw_LIBRARIES} Threads::Threads)
+
+	target_link_libraries(${fileName} MOHPC-ALL TESTS_COMMON Threads::Threads)
 
 	add_test(NAME ${fileName} COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/${fileName})
 

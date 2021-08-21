@@ -69,7 +69,7 @@ SharedPtr<IRequestBase> GSServer::Request_Query::process(InputRequest& data)
 
 	const char* endStr = infoStr.c_str() + infoStr.length();
 	const char* finalPos;
-	if ((finalPos = strstr(infoStr.c_str(), "\\final\\\\queryid\\")))
+	if ((finalPos = strHelpers::find(infoStr.c_str(), "\\final\\\\queryid\\")))
 	{
 		// Don't bother parsing the status without a valid callback
 		if (response)
@@ -274,7 +274,7 @@ bool EngineServer::IEngineRequest::isThisRequest(InputRequest& data) const
 	}
 
 	StringMessage arg = msg.ReadString();
-	const size_t len = strlen(arg);
+	const size_t len = strHelpers::len(arg.c_str());
 	if (len <= 0)
 	{
 		// invalid length
@@ -282,7 +282,7 @@ bool EngineServer::IEngineRequest::isThisRequest(InputRequest& data) const
 	}
 
 	TokenParser parser;
-	parser.Parse(arg, strlen(arg) + 1);
+	parser.Parse(arg, strHelpers::len(arg.c_str()) + 1);
 
 	const char* command = parser.GetToken(false);
 	// now return if the request supports the command
@@ -316,12 +316,12 @@ SharedPtr<IRequestBase> EngineServer::IEngineRequest::process(InputRequest& data
 
 	// Read request string from remote
 	StringMessage arg = msg.ReadString();
-	const size_t len = strlen(arg);
+	const size_t len = strHelpers::len(arg.c_str());
 	assert(len > 0);
 	if (len > 0)
 	{
 		TokenParser parser;
-		parser.Parse(arg, strlen(arg) + 1);
+		parser.Parse(arg, strHelpers::len(arg.c_str()) + 1);
 
 		const char* command = parser.GetToken(false);
 		if (supportsEvent(command)) {

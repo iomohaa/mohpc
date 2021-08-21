@@ -36,7 +36,7 @@ public:
 		maxRange = 8;
 	}
 
-	gameState_t create() const
+	gameState_t create() const override
 	{
 		return gameState_t(2736, 40000, 1024);
 	}
@@ -143,7 +143,7 @@ public:
 		return serverType_e::normal;
 	}
 
-	void saveGameState(MSG& msg, gameState_t& gameState, const gameStateClient_t& client) const
+	void saveGameState(MSG& msg, gameState_t& gameState, const gameStateClient_t& client) const override
 	{
 		uint32_t minProto = 0, maxProto = 0;
 		getProtocol(minProto, maxProto);
@@ -236,7 +236,7 @@ public:
 		}
 	}
 
-	void saveGameState(MSG& msg, gameState_t& gameState, const gameStateClient_t& client) const
+	void saveGameState(MSG& msg, gameState_t& gameState, const gameStateClient_t& client) const override
 	{
 		GameState_ver8::saveGameState(msg, gameState, client);
 

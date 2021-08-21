@@ -1,6 +1,8 @@
 #include <MOHPC/Network/Types/Configstring.h>
 #include <MOHPC/Network/Types/GameState.h>
 
+#include <cstring>
+
 using namespace MOHPC;
 using namespace MOHPC::Network;
 
@@ -218,8 +220,8 @@ void ConfigStringManager::reset()
 {
 	dataCount = 1;
 	highestConfigstring = 0;
-	memset(stringData, 0, maxChars * sizeof(char));
-	memset(stringOffsets, 0, maxConfigStrings * sizeof(size_t));
+	std::memset(stringData, 0, maxChars * sizeof(char));
+	std::memset(stringOffsets, 0, maxConfigStrings * sizeof(size_t));
 }
 
 ConfigStringManager::iterator::iterator(const ConfigStringManager& csManValue)

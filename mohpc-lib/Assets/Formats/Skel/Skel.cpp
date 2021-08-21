@@ -1,7 +1,7 @@
 #include <Shared.h>
 #include <MOHPC/Assets/Formats/Skel.h>
 #include <MOHPC/Utility/SharedPtr.h>
-#include <MOHPC/Files/Managers/FileManager.h>
+#include <MOHPC/Files/File.h>
 #include <MOHPC/Files/FileHelpers.h>
 #include <MOHPC/Common/Log.h>
 #include <MOHPC/Utility/Misc/Endian.h>
@@ -39,7 +39,7 @@ Skeleton::Skeleton(
 	std::vector<int32_t>&& boxesData,
 	std::vector<str>&& morphsData
 )
-	: Asset2(fileName)
+	: Asset(fileName)
 	, bones(bonesData)
 	, surfaces(surfacesData)
 	, boxes(boxesData)
@@ -109,7 +109,7 @@ SkeletonReader::~SkeletonReader()
 {
 }
 
-Asset2Ptr SkeletonReader::read(const IFilePtr& file)
+AssetPtr SkeletonReader::read(const IFilePtr& file)
 {
 	const fs::path& Fname = file->getName();
 
@@ -121,7 +121,7 @@ Asset2Ptr SkeletonReader::read(const IFilePtr& file)
 		}
 		else
 		{
-			MOHPC_LOG(Error, "Invalid extension '%s'", ext);
+			MOHPC_LOG(Error, "Invalid extension '%s'", ext.c_str());
 			throw SkelError::BadExtension(ext);
 		}
 	}

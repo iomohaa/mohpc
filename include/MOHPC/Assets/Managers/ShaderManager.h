@@ -47,7 +47,7 @@ namespace MOHPC
 	static constexpr unsigned GLS_ATEST_GE_80 = 0x40000000;
 
 	class ShaderManager;
-	class Script;
+	class TokenParser;
 	class Image;
 
 	enum ContentFlags
@@ -480,17 +480,17 @@ namespace MOHPC
 		MOHPC_ASSETS_EXPORTS const ShaderStage* GetStage(size_t index) const;
 		MOHPC_ASSETS_EXPORTS size_t GetNumStages() const;
 
-		void ParseShader(Script& script);
+		void ParseShader(TokenParser& script);
 
 	private:
 		void AddReference();
 		void ClearReference();
-		void ParseWaveForm(Script& script, WaveForm *wave);
-		void ParseTexMod(Script& script, ShaderStage *stage);
-		bool ParseStage(Script& script, ShaderStage*stage);
-		void ParseDeform(Script& script);
-		void ParseSkyParms(Script& script);
-		void ParseSurfaceParm(Script& script);
+		void ParseWaveForm(TokenParser& script, WaveForm *wave);
+		void ParseTexMod(TokenParser& script, ShaderStage *stage);
+		bool ParseStage(TokenParser& script, ShaderStage*stage);
+		void ParseDeform(TokenParser& script);
+		void ParseSkyParms(TokenParser& script);
+		void ParseSurfaceParm(TokenParser& script);
 
 		void Precache();
 		void ClearCache();

@@ -69,7 +69,7 @@ const fs::path::value_type* FileEntry::GetRawName() const
 	return Name.c_str();
 }
 
-const std::filesystem::path& FileEntry::GetStr() const
+const std::filesystem::path& FileEntry::getName() const
 {
 	return Name;
 }

@@ -12,9 +12,9 @@ using namespace MOHPC;
 
 int main(int argc, const char* argv[])
 {
-	InitCommon();
+	InitCommon(argc, argv);
 
-	const AssetManagerPtr AM = AssetLoad(GetGamePathFromCommandLine(argc, argv));
+	const AssetManagerPtr AM = AssetLoad(GetGamePathFromCommandLine().c_str());
 
 	MOHPC_LOG(Info, "Loading shaders...");
 

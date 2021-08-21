@@ -70,6 +70,8 @@ void SkeletonChannelList::PackChannels()
 		delete[] old_array;
 	}
 	*/
+
+	m_chanGlobalFromLocal.shrink_to_fit();
 }
 
 void SkeletonChannelList::CleanUpChannels()
@@ -108,13 +110,13 @@ intptr_t SkeletonChannelList::AddChannel(intptr_t newGlobalChannelNum )
 		return iLocalChannel;
 	}
 
-	iLocalChannel = GetLocalFromGlobal( newGlobalChannelNum );
-
-	if( iLocalChannel < 0 )
+	iLocalChannel = m_chanGlobalFromLocal.size();
+	// try to insert the element
+	auto pair = m_chanLocalFromGlobal.emplace(newGlobalChannelNum, iLocalChannel);
+	if (pair.second)
 	{
-		iLocalChannel = m_chanGlobalFromLocal.size();
+		// got it
 		m_chanGlobalFromLocal.push_back(newGlobalChannelNum);
-		m_chanLocalFromGlobal.insert_or_assign(newGlobalChannelNum, iLocalChannel);
 	}
 
 	return iLocalChannel;

@@ -1,16 +1,16 @@
 #include <Shared.h>
 #include <MOHPC/Assets/Formats/BSP.h>
 #include <MOHPC/Assets/Formats/BSP_Collision.h>
-#include <MOHPC/Assets/Script.h>
 #include <MOHPC/Common/Vector.h>
 #include <MOHPC/Utility/LevelEntity.h>
 #include <MOHPC/Common/Log.h>
-#include <MOHPC/Files/Managers/FileManager.h>
+#include <MOHPC/Files/File.h>
 #include <MOHPC/Assets/Managers/AssetManager.h>
 #include <MOHPC/Assets/Managers/ShaderManager.h>
 #include <MOHPC/Utility/Collision/Collision.h>
 #include <MOHPC/Utility/Misc/Endian.h>
 #include <MOHPC/Utility/Misc/EndianCoordHelpers.h>
+#include <MOHPC/Utility/TokenParser.h>
 
 #include "BSP_Curve.h"
 
@@ -21,22 +21,7 @@
 #include <algorithm>
 #include <functional>
 
-/*
-#ifdef DEBUG
-#define BEGIN_LOAD_PROFILING(name) \
-	{ \
-		auto start = std::chrono::system_clock().now(); \
-		const str profileName = name
-
-#define END_LOAD_PROFILING() \
-		auto end = std::chrono::system_clock().now();
-		printf("%lf time (" ##name ")\n", std::chrono::duration<double>(end - start).count());
-	}
-
-#endif
-*/
-
-#define MOHPC_LOG_NAMESPACE "bsp_asset"
+static constexpr char MOHPC_LOG_NAMESPACE[] = "bsp_asset";
 
 static constexpr unsigned int MIN_MAP_SUBDIVISIONS = 16;
 
@@ -284,81 +269,6 @@ namespace BSPFile
 		uint32_t numTerraPatches;
 	};
 }
-
-	struct Patch
-	{
-		Patch* parent;
-		const BSPData::Surface* surface;
-		vec3_t bounds[2];
-		BSPData::SurfacesGroup* surfaceGroup;
-
-		Patch(const BSPData::Surface* inSurface)
-			: parent(nullptr)
-			, surface(inSurface)
-			, surfaceGroup(nullptr)
-		{
-			const size_t numVerts = surface->GetNumVertices();
-			for (size_t i = 0; i < numVerts; ++i)
-			{
-				AddPointToBounds(surface->GetVertice(i)->xyz, bounds[0], bounds[1]);
-			}
-		}
-
-		Patch* GetRoot() const
-		{
-			Patch* p = const_cast<Patch*>(this);
-			while (p->parent)
-			{
-				p = p->parent;
-			}
-
-			return p;
-		}
-
-		bool HasParent(const Patch* other) const
-		{
-			Patch* p = parent;
-			for(Patch* p = parent; p; p = p->parent)
-			{
-				if (p == other)
-				{
-					return true;
-				}
-			}
-
-			return false;
-		}
-
-		bool IsTouching(const Patch* other) const
-		{
-			if (other->bounds[0][0] > bounds[1][0])
-			{
-				return false;
-			}
-			if (other->bounds[0][1] > bounds[1][1])
-			{
-				return false;
-			}
-			if (other->bounds[0][2] > bounds[1][2])
-			{
-				return false;
-			}
-			if (other->bounds[1][0] < bounds[0][0])
-			{
-				return false;
-			}
-			if (other->bounds[1][1] < bounds[0][1])
-			{
-				return false;
-			}
-			if (other->bounds[1][2] < bounds[0][2])
-			{
-				return false;
-			}
-
-			return true;
-		}
-	};
 };
 
 using namespace MOHPC;
@@ -375,11 +285,6 @@ BSPFile::GameLump::~GameLump()
 	if (buffer) {
 		delete[] (uint8_t*)buffer;
 	}
-}
-
-const char* BSPData::Brush::GetName() const
-{
-	return name.c_str();
 }
 
 const BSPData::Shader* BSPData::Brush::GetShader() const
@@ -410,11 +315,6 @@ size_t BSPData::Brush::GetNumSides() const
 const BSPData::BrushSide* BSPData::Brush::GetSide(size_t Index) const
 {
 	return Index < numsides ? &sides[Index] : nullptr;
-}
-
-BSPData::Brush* BSPData::Brush::GetParent() const
-{
-	return parent;
 }
 
 BSPData::PatchCollide::~PatchCollide()
@@ -568,90 +468,36 @@ void BSPData::Brush::GetOrigin(vec3r_t out) const
 	castVector(out) = vec;
 }
 
-const str& BSPData::SurfacesGroup::GetGroupName() const
+TerrainSurface::TerrainSurface()
+	: vertHead(0)
+	, triHead(0)
+	, triTail(0)
+	, mergeHead(0)
+	, numVerts(0)
+	, numTris(0)
+	, lmapSize(0)
+	, dlightBits{ 0 }
+	, lmapStep(0)
+	, dlightmap{ 0 }
+	, lmapData(nullptr)
+	, lmapX(0)
+	, lmapY(0)
 {
-	return name;
 }
 
-size_t BSPData::SurfacesGroup::GetNumSurfaces() const
+TerrainPatchDrawInfo::TerrainPatchDrawInfo()
+	: viewCount(0)
+	, visCountCheck(0)
+	, visCountDraw(0)
+	, frameCount(0)
+	, distRecalc(0)
 {
-	return surfaces.size();
-}
-
-const BSPData::Surface *BSPData::SurfacesGroup::GetSurface(size_t index) const
-{
-	return surfaces.at(index);
-}
-
-const BSPData::Surface* const *BSPData::SurfacesGroup::GetSurfaces() const
-{
-	return surfaces.data();
-}
-
-size_t BSPData::SurfacesGroup::GetNumBrushes() const
-{
-	return brushes.size();
-}
-
-const BSPData::Brush *BSPData::SurfacesGroup::GetBrush(size_t index) const
-{
-	return brushes.at(index);
-}
-
-const BSPData::Brush* const *BSPData::SurfacesGroup::GetBrushes() const
-{
-	return brushes.data();
-}
-
-const_vec3p_t BSPData::SurfacesGroup::GetMinBound() const
-{
-	return bounds[0];
-}
-
-const_vec3p_t BSPData::SurfacesGroup::GetMaxBound() const
-{
-	return bounds[1];
-}
-
-const_vec3p_t BSPData::SurfacesGroup::GetOrigin() const
-{
-	return origin;
-}
-
-static bool BrushIsTouching(BSPData::Brush* b1, BSPData::Brush* b2)
-{
-	if (b1->bounds[0][0] > b2->bounds[1][0])
-	{
-		return false;
-	}
-	if (b1->bounds[0][1] > b2->bounds[1][1])
-	{
-		return false;
-	}
-	if (b1->bounds[0][2] > b2->bounds[1][2])
-	{
-		return false;
-	}
-	if (b1->bounds[1][0] < b2->bounds[0][0])
-	{
-		return false;
-	}
-	if (b1->bounds[1][1] < b2->bounds[0][1])
-	{
-		return false;
-	}
-	if (b1->bounds[1][2] < b2->bounds[0][2])
-	{
-		return false;
-	}
-
-	return true;
 }
 
 MOHPC_OBJECT_DEFINITION(BSP);
 
 BSP::BSP(const fs::path& path)
-	: Asset2(path)
+	: Asset(path)
 {
 	numClusters = 0;
 	numAreas = 0;
@@ -662,11 +508,6 @@ BSP::~BSP()
 	for (size_t i = 0; i < entities.size(); i++)
 	{
 		delete entities[i];
-	}
-
-	for (size_t i = 0; i < surfacesGroups.size(); i++)
-	{
-		delete surfacesGroups[i];
 	}
 }
 
@@ -945,16 +786,6 @@ const std::vector<LevelEntity *>* BSP::GetEntities(const str& targetName) const
 	}
 
 	return nullptr;
-}
-
-size_t BSP::GetNumSurfacesGroup() const
-{
-	return surfacesGroups.size();
-}
-
-const BSPData::SurfacesGroup *BSP::GetSurfacesGroup(size_t surfsGroupNum) const
-{
-	return surfacesGroups.at(surfsGroupNum);
 }
 
 void BSPReader::LoadShaders(const BSPFile::GameLump* GameLump, std::vector<BSPData::Shader>& shaders)
@@ -1408,7 +1239,6 @@ void BSPReader::LoadBrushes(
 			out->shader = &shaders[Endian.LittleLong(in->shaderNum)];
 
 			out->contents = out->shader->contentFlags;
-			out->parent = NULL;
 
 			BoundBrush(out);
 		}
@@ -1740,7 +1570,7 @@ void BSPReader::LoadStaticModelDefs(const BSPFile::GameLump* GameLump, std::vect
 	}
 }
 
-void BSPReader::UnpackTerraPatch(const BSPFile::fterrainPatch_t* Packed, TerrainPatch* Unpacked, const std::vector<BSPData::Shader>& shaders) const
+void BSPReader::UnpackTerraPatch(const BSPFile::fterrainPatch_t* Packed, TerrainPatch* Unpacked, BSPData::TerrainPatchDrawInfo& info, const std::vector<BSPData::Shader>& shaders) const
 {
 	int i;
 	union {
@@ -1748,17 +1578,16 @@ void BSPReader::UnpackTerraPatch(const BSPFile::fterrainPatch_t* Packed, Terrain
 		uint8_t b[2];
 	} flags;
 
-	Unpacked->drawInfo.triHead = 0;
-	Unpacked->drawInfo.triTail = 0;
-	Unpacked->drawInfo.mergeHead = 0;
-	Unpacked->drawInfo.vertHead = 0;
-	Unpacked->drawInfo.numTris = 0;
-	Unpacked->drawInfo.numVerts = 0;
+	info.drawInfo.triHead = 0;
+	info.drawInfo.triTail = 0;
+	info.drawInfo.mergeHead = 0;
+	info.drawInfo.vertHead = 0;
+	info.drawInfo.numTris = 0;
+	info.drawInfo.numVerts = 0;
 
-	Unpacked->bByDirty = false;
-	Unpacked->visCountCheck = 0;
-	Unpacked->visCountDraw = 0;
-	Unpacked->distRecalc = 0;
+	info.visCountCheck = 0;
+	info.visCountDraw = 0;
+	info.distRecalc = 0;
 
 	if (Packed->lmapScale <= 0)
 	{
@@ -1766,12 +1595,12 @@ void BSPReader::UnpackTerraPatch(const BSPFile::fterrainPatch_t* Packed, Terrain
 		return;
 	}
 
-	Unpacked->drawInfo.lmapStep = (float)(64 / Packed->lmapScale);
-	Unpacked->drawInfo.lmapSize = (Packed->lmapScale * 8) | 1;
+	info.drawInfo.lmapStep = (float)(64 / Packed->lmapScale);
+	info.drawInfo.lmapSize = (Packed->lmapScale * 8) | 1;
 	Unpacked->s = ((float)Packed->s + 0.5f) / LIGHTMAP_SIZE;
 	Unpacked->t = ((float)Packed->t + 0.5f) / LIGHTMAP_SIZE;
 
-	Unpacked->drawInfo.lmapData = NULL;
+	info.drawInfo.lmapData = nullptr;
 
 	memcpy(Unpacked->texCoord, Packed->texCoord, sizeof(Unpacked->texCoord));
 	Unpacked->x0 = (float)((int32_t)Packed->x << 6);
@@ -1808,11 +1637,11 @@ void BSPReader::UnpackTerraPatch(const BSPFile::fterrainPatch_t* Packed, Terrain
 		}
 	}
 
-	Unpacked->frameCount = 0;
+	info.frameCount = 0;
 	Unpacked->zmax += Unpacked->zmax;
 }
 
-void BSPReader::LoadTerrain(const BSPFile::GameLump* GameLump, const std::vector<BSPData::Shader>& shaders, std::vector<BSPData::TerrainPatch>& terrainPatches)
+void BSPReader::LoadTerrain(const BSPFile::GameLump* GameLump, const std::vector<BSPData::Shader>& shaders, std::vector<BSPData::TerrainPatch>& terrainPatches, std::vector<BSPData::TerrainPatchDrawInfo>& infoList)
 {
 	if (GameLump->length % sizeof(BSPFile::fterrainPatch_t)) {
 		throw BSPError::FunnyLumpSize("terrain");
@@ -1822,12 +1651,14 @@ void BSPReader::LoadTerrain(const BSPFile::GameLump* GameLump, const std::vector
 	if (count > 0)
 	{
 		terrainPatches.resize(count);
+		infoList.resize(count);
 
 		BSPFile::fterrainPatch_t* in = (BSPFile::fterrainPatch_t *)GameLump->buffer;
 		TerrainPatch* out = terrainPatches.data();
+		TerrainPatchDrawInfo* outinfo = infoList.data();
 
-		for (size_t i = 0; i < count; in++, out++, i++) {
-			UnpackTerraPatch(in, out, shaders);
+		for (size_t i = 0; i < count; in++, out++, outinfo++, i++) {
+			UnpackTerraPatch(in, out, *outinfo, shaders);
 		}
 	}
 }
@@ -1990,7 +1821,7 @@ void BSPReader::CreateEntities(
 	std::unordered_map<str, std::vector<class LevelEntity*>>& targetList
 )
 {
-	Script script;
+	TokenParser script;
 
 	script.Parse(entityString, length);
 
@@ -2135,328 +1966,6 @@ void BSPReader::CreateEntities(
 	MOHPC_LOG(Info, "created %d entities", entities.size());
 }
 
-void BSPReader::MapBrushes(
-	std::vector<BSPData::Brush>& brushes,
-	const std::vector<BSPData::Surface>& surfaces,
-	const std::vector<BSPData::Model>& brushModels,
-	const std::vector<BSPData::Surface>& terrainSurfaces,
-	std::vector<BSPData::SurfacesGroup*>& surfacesGroups
-)
-{
-	size_t numParentedBrushes = 0;
-	const size_t numBrushes = brushes.size();
-
-	Brush* brushesList = brushes.data();
-
-	// Connects brushes by finding touching brushes that share at least one same shader
-	for (size_t b = 0; b < numBrushes; b++)
-	{
-		Brush* brush = &brushesList[b];
-		brush->name = "brush" + std::to_string(b);
-		for (size_t i = 0; i < numBrushes; i++)
-		{
-			Brush* brush2 = &brushesList[i];
-			if (brush2 == brush || brush2->parent)
-			{
-				continue;
-			}
-
-			const Brush* parent = brush;
-
-			// Checks for infinite parenting
-			bool bInfiniteParent = false;
-			do
-			{
-				if (parent == brush2)
-				{
-					bInfiniteParent = true;
-					break;
-				}
-				parent = parent->parent;
-			} while (parent != NULL);
-
-			if (bInfiniteParent)
-			{
-				continue;
-			}
-
-			// Checks if the two brushes are touching
-			if (BrushIsTouching(brush, brush2))
-			{
-				bool bFound = false;
-
-				// Finds at least one valid brush side that matches the parent's brush sides
-				for (size_t bs = 0; bs < brush->numsides; bs++)
-				{
-					const BrushSide* brushside = &brush->sides[bs];
-					if (brushside->surfaceFlags & SURF_NODRAW)
-					{
-						continue;
-					}
-
-					for (size_t bs2 = 0; bs2 < brush2->numsides; bs2++)
-					{
-						const BrushSide* brushside2 = &brush2->sides[bs2];
-						if (brushside2->surfaceFlags & SURF_NODRAW)
-						{
-							continue;
-						}
-
-						if (!strHelpers::icmp(brushside2->shader->shaderName.c_str(), brushside->shader->shaderName.c_str()))
-						{
-							// Found one that matches
-							bFound = true;
-							break;
-						}
-					}
-					
-					if (bFound)
-					{
-						break;
-					}
-				}
-
-				if (bFound)
-				{
-					numParentedBrushes++;
-					brush2->parent = brush;
-				}
-			}
-		}
-	}
-
-	assert(brushModels.size());
-	const Model* worldModel = &brushModels[0];
-
-	// Map brushes
-	size_t numMappedSurfaces = 0;
-	size_t numUnmappedSurfaces = 0;
-	size_t numValidBrushes = 0;
-	size_t numSurfacesGroups = 0;
-	bool bBrushHasMappedSurface = false;
-
-	const size_t numSurfaces = worldModel->numSurfaces;
-	const size_t numTerrainSurfaces = terrainSurfaces.size();
-	const size_t numTotalSurfaces = numSurfaces + numTerrainSurfaces;
-	bool *mappedSurfaces = new bool[numSurfaces]();
-
-	std::unordered_map<const Brush*, SurfacesGroup*> brushToSurfaces(numBrushes);
-	surfacesGroups.reserve(numTotalSurfaces);
-
-	const Surface *surfacesList = surfaces.data();
-	const Surface *terrainSurfacesList = terrainSurfaces.data();
-
-	// Group surfaces with brushes
-	for (size_t b = 0; b < numBrushes; b++)
-	{
-		Brush* brush = &brushesList[b];
-		const Brush* rootbrush = brush;
-		while (rootbrush->parent != NULL)
-		{
-			rootbrush = rootbrush->parent;
-		}
-
-		//const str& brushname = rootbrush->name;
-		const_vec3p_t mins = brush->bounds[0];
-		const_vec3p_t maxs = brush->bounds[1];
-
-		auto it = brushToSurfaces.find(rootbrush);
-
-		for (size_t k = 0; k < numSurfaces; k++)
-		{
-			if (!mappedSurfaces[k])
-			{
-				const Surface *surf = &worldModel->surface[k];
-
-				if (!surf->IsPatch()
-					&& surf->centroid[0] >= mins[0] && surf->centroid[0] <= maxs[0]
-					&& surf->centroid[1] >= mins[1] && surf->centroid[1] <= maxs[1]
-					&& surf->centroid[2] >= mins[2] && surf->centroid[2] <= maxs[2])
-				{
-					for (size_t s = 0; s < brush->numsides; s++)
-					{
-						const BrushSide* side = &brush->sides[s];
-						if (!strHelpers::icmp(side->shader->shaderName.c_str(), surf->shader->shaderName.c_str()))
-						{
-							brush->surfaces.push_back(surf);
-
-							SurfacesGroup *sg = nullptr;
-							if (it == brushToSurfaces.end())
-							{
-								sg = new SurfacesGroup;
-								sg->name = "surfacesgroup" + std::to_string(numSurfacesGroups); // std::to_string(numSurfacesGroups);
-								surfacesGroups.push_back(sg);
-								auto res = brushToSurfaces.emplace(rootbrush, sg);
-								assert(res.second);
-								if (res.second)
-								{
-									it = res.first;
-								}
-								numSurfacesGroups++;
-							}
-							else
-							{
-								sg = it->second;
-							}
-
-							sg->surfaces.push_back(surf);
-
-							if (std::find(sg->brushes.begin(), sg->brushes.end(), brush) == sg->brushes.end())
-							{
-								sg->brushes.push_back(brush);
-							}
-
-							mappedSurfaces[k] = true;
-							numMappedSurfaces++;
-							bBrushHasMappedSurface = true;
-							break;
-						}
-					}
-				}
-			}
-		}
-
-		if (bBrushHasMappedSurface)
-		{
-			bBrushHasMappedSurface = false;
-			numValidBrushes++;
-		}
-	}
-
-	// Add the LOD terrain
-	SurfacesGroup *terSg = new SurfacesGroup;
-	terSg->name = "lod_terrain";
-	terSg->surfaces.resize(numTerrainSurfaces);
-
-	for (size_t k = 0; k < numTerrainSurfaces; k++)
-	{
-		const Surface *surf = &terrainSurfaces[k];
-
-		terSg->surfaces[k] = surf;
-	}
-
-	surfacesGroups.push_back(terSg);
-
-	// Gather patches
-	{
-		std::vector<Patch> patchList;
-		patchList.reserve(numSurfaces);
-
-		for (size_t k = 0; k < numSurfaces; k++)
-		{
-			const Surface *surf = &worldModel->surface[k];
-			if (surf->IsPatch())
-			{
-				patchList.push_back(surf);
-			}
-		}
-
-		const size_t numPatches = patchList.size();
-		for (size_t k = 0; k < numPatches; k++)
-		{
-			Patch* patch1 = &patchList[k];
-			for (size_t l = 0; l < numPatches; l++)
-			{
-				if (l != k)
-				{
-					Patch* patch2 = &patchList[l];
-					if (!patch1->HasParent(patch2) && patch2->IsTouching(patch1))
-					{
-						patch2->parent = patch1;
-					}
-				}
-			}
-		}
-
-		size_t numGroupedPatches = 0;
-		for (size_t k = 0; k < numPatches; k++)
-		{
-			Patch* patch = &patchList[k];
-			Patch* rootPatch = patch->GetRoot();
-
-			// Get the number of surfaces
-			size_t numSurfaces = 0;
-			for (Patch* p = patch; p; p = p->parent)
-			{
-				bool& isMappedSurface = mappedSurfaces[p->surface - worldModel->surface];
-				if (!isMappedSurface)
-				{
-					numSurfaces++;
-				}
-			}
-
-			if (numSurfaces > 0)
-			{
-				if (!rootPatch->surfaceGroup)
-				{
-					rootPatch->surfaceGroup = new SurfacesGroup;
-					rootPatch->surfaceGroup->name = "meshpatch_grouped" + std::to_string(numGroupedPatches++); // std::to_string(numGroupedPatches++);
-					surfacesGroups.push_back(rootPatch->surfaceGroup);
-				}
-
-				SurfacesGroup *sg = rootPatch->surfaceGroup;
-
-				sg->surfaces.reserve(sg->surfaces.size() + numSurfaces);
-				for (Patch* p = patch; p; p = p->parent)
-				{
-					bool& isMappedSurface = mappedSurfaces[p->surface - worldModel->surface];
-					if (!isMappedSurface)
-					{
-						sg->surfaces.push_back(p->surface);
-						isMappedSurface = true;
-					}
-				}
-			}
-		}
-	}
-
-	// Group unused surfaces
-	for (size_t k = 0; k < numSurfaces; k++)
-	{
-		if (!mappedSurfaces[k])
-		{
-			const Surface *surf = &worldModel->surface[k];
-
-			SurfacesGroup *sg = new SurfacesGroup;
-			sg->name = "surfacesgroup_unmapped" + std::to_string(numUnmappedSurfaces); // std::to_string(numUnmappedSurfaces);
-			sg->surfaces.push_back(surf);
-			surfacesGroups.push_back(sg);
-
-			numUnmappedSurfaces++;
-		}
-	}
-
-	// Calculate the origin for each group of surfaces
-	for (size_t i = 0; i < surfacesGroups.size(); i++)
-	{
-		SurfacesGroup *sg = surfacesGroups[i];
-
-		Vector3 avg(0, 0, 0);
-		size_t numVertices = 0;
-
-		for (size_t k = 0; k < sg->surfaces.size(); k++)
-		{
-			const Surface* surf = sg->surfaces[k];
-
-			for (size_t v = 0; v < surf->vertices.size(); v++)
-			{
-				const Vertice* vert = &surf->vertices[v];
-
-				avg += castVector(vert->xyz);
-
-				AddPointToBounds(surf->vertices[v].xyz, sg->bounds[0], sg->bounds[1]);
-			}
-
-			numVertices += surf->vertices.size();
-		}
-
-		castVector(sg->origin) = avg / (float)numVertices;
-	}
-
-	surfacesGroups.shrink_to_fit();
-	delete[] mappedSurfaces;
-}
-
 uintptr_t BSP::PointLeafNum(const vec3r_t p)
 {
 	if (!nodes.size()) {
@@ -2515,7 +2024,7 @@ BSPReader::~BSPReader()
 {
 }
 
-Asset2Ptr BSPReader::read(const IFilePtr& file)
+AssetPtr BSPReader::read(const IFilePtr& file)
 {
 	std::istream* stream = file->GetStream();
 
@@ -2537,6 +2046,7 @@ Asset2Ptr BSPReader::read(const IFilePtr& file)
 
 	char* entityString = nullptr;
 	size_t entityStringLength = 0;
+	std::vector<BSPData::TerrainPatchDrawInfo> terrainDrawInfo;
 
 	const BSPPtr bsp = BSPPtr(new BSP(file->getName()));
 
@@ -2701,7 +2211,7 @@ Asset2Ptr BSPReader::read(const IFilePtr& file)
 			BSPFile::GameLump GameLump;
 
 			LoadLump(file, &Header.lumps[LUMP_TERRAIN], &GameLump, 0);
-			LoadTerrain(&GameLump, bsp->getShaders(), bsp->getTerrainPatches());
+			LoadTerrain(&GameLump, bsp->getShaders(), bsp->getTerrainPatches(), terrainDrawInfo);
 		});
 
 	ProfilableCode("terrain indexes",
@@ -2728,13 +2238,7 @@ Asset2Ptr BSPReader::read(const IFilePtr& file)
 	ProfilableCode("generation of terrain surfaces",
 		[&]()
 		{
-			CreateTerrainSurfaces(bsp->getTerrainPatches(), bsp->getTerrainSurfaces());
-		});
-
-	ProfilableCode("brush mapping",
-		[&]()
-		{
-			MapBrushes(bsp->getBrushes(), bsp->getSurfaces(), bsp->getBrushModels(), bsp->getTerrainSurfaces(), bsp->getSurfacesGroups());
+			CreateTerrainSurfaces(bsp->getTerrainPatches(), terrainDrawInfo, bsp->getTerrainSurfaces());
 		});
 
 	// FIXME: Should use an external class for creating entities
@@ -2743,6 +2247,12 @@ Asset2Ptr BSPReader::read(const IFilePtr& file)
 		{
 			CreateEntities(entityString, entityStringLength, bsp->getEntities(), bsp->getTargetList());
 		});
+
+	if (entityString)
+	{
+		// free up the world entity string that has been loaded from lump
+		delete[] entityString;
+	}
 
 	MOHPC_LOG(Info, "Loaded map '%s', version %d", file->getName().generic_string().c_str(), version);
 
@@ -2853,11 +2363,6 @@ std::vector<class LevelEntity*>& BSP::getEntities()
 std::unordered_map<MOHPC::str, std::vector<class LevelEntity*>>& BSP::getTargetList()
 {
 	return targetList;
-}
-
-std::vector<MOHPC::BSPData::SurfacesGroup*>& BSP::getSurfacesGroups()
-{
-	return surfacesGroups;
 }
 
 std::vector<uint8_t>& BSP::getVisibility()

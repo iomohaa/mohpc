@@ -6,6 +6,7 @@
 #include "TIKI_Script.h"
 
 #include <vector>
+#include <set>
 #include <unordered_map>
 
 // skb skeletor
@@ -35,54 +36,88 @@ namespace MOHPC
 	struct dtikicmd_t
 	{
 		frameInt_t frame_num;
-		std::vector<str> args;
+		tiki_str_list_t args;
 	};
 
 	struct dloadframecmd_t 
 	{
 		frameInt_t frame_num;
-		std::vector<str> args;
+		tiki_str_list_t args;
 		str location;
 	};
 
 	struct dloadinitcmd_t
 	{
-		std::vector<str> args;
+		tiki_str_list_t args;
 	};
 
 	struct dloadsurface_t
 	{
 		str name;
-		std::vector<str> shader;
+		tiki_str_list_t shader;
 		int flags;
 		float damage_multiplier;
 	};
 
 	struct dloadanim_t
 	{
+	public:
+		dloadanim_t();
+		dloadanim_t(const char* aliasValue);
+
+		void init();
+
+		operator const char* () const;
+
+	public:
 		str alias;
 		str name;
 		str location;
 		float weight;
 		float blendtime;
 		int32_t flags;
-		std::vector<dloadframecmd_t> loadservercmds;
-		std::vector<dloadframecmd_t> loadclientcmds;
+		tiki_frame_cmd_list_t loadservercmds;
+		tiki_frame_cmd_list_t loadclientcmds;
+	};
+
+	struct danimcomp_t
+	{
+	public:
+		bool operator ()(const char* left, const char* right) const
+		{
+			return strHelpers::icmp(left, right) < 0;
+		}
+
+		/*
+		bool operator ()(const dloadanim_t& left, const dloadanim_t& right) const
+		{
+			return strHelpers::icmp(left.alias.c_str(), right.alias.c_str()) < 0;
+		}
+		*/
+	};
+
+	using tiki_anim_list_t = std::set<dloadanim_t, danimcomp_t>;
+
+	struct dloadquaked_t
+	{
+		str name;
+		vec3_t color;
+		vec3_t mins;
+		vec3_t maxs;
+		tiki_str_list_t spawnFlags;
 	};
 
 	struct dloaddef_t
 	{
-		fs::path path;
 		SharedPtr<TikiScript> tikiFile;
 
-		std::unordered_map<str, str> keyvalues;
-		std::vector<dloadanim_t> loadanims;
-		std::vector<dloadinitcmd_t> loadserverinitcmds;
-		std::vector<dloadinitcmd_t> loadclientinitcmds;
+		tiki_anim_list_t loadanims;
+		tiki_init_cmd_list_t loadserverinitcmds;
+		tiki_init_cmd_list_t loadclientinitcmds;
 
+		tiki_str_list_t headmodels;
+		tiki_str_list_t headskins;
 		int32_t skelIndex_ld[12];
-		std::vector<str> headmodels;
-		std::vector<str> headskins;
 		bool bIsCharacter;
 
 		struct
@@ -90,11 +125,12 @@ namespace MOHPC
 			float load_scale;
 			float lod_scale;
 			float lod_bias;
-			std::vector<str> skelmodel;
+			tiki_str_list_t skelmodel;
 			vec3_t origin;
 			vec3_t lightoffset;
 			float radius;
-			std::vector<dloadsurface_t> surfaces;
+			std::list<dloadsurface_t> surfaces;
+			dloadquaked_t quaked;
 		} loaddata;
 
 		bool bInIncludesSection;

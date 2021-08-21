@@ -1,7 +1,9 @@
 #pragma once
 
 #include "SharedPtr.h"
+
 #include <tuple>
+#include <cassert>
 
 namespace MOHPC
 {

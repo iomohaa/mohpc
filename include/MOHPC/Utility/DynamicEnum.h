@@ -68,11 +68,11 @@ namespace MOHPC
 		{}
 
 		DynamicRangeEnum(CountType range)
-			: DynamicEnum()
+			: DynamicRangeEnum()
 			, num(range)
 		{
 			// increase the count by the range so that it's consistent
-			count += num - 1;
+			this->count += num - 1;
 		}
 
 		CountType getNumElements() const

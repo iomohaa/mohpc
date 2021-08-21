@@ -11,7 +11,9 @@
 #include <MOHPC/Utility/Misc/MSG/Stream.h>
 #include <MOHPC/Utility/Info.h>
 #include <MOHPC/Utility/TokenParser.h>
+
 #include <MOHPC/Common/Log.h>
+#include <MOHPC/Common/str.h>
 
 #include <chrono>
 #include <random>
@@ -243,7 +245,7 @@ void ServerHost::processRequests()
 
 			// get the user info (without quotes)
 			const char* userInfo = arguments + 1;
-			ReadOnlyInfo info(userInfo, strlen(userInfo) - 1);
+			ReadOnlyInfo info(userInfo, strHelpers::len(userInfo) - 1);
 
 			const uint32_t challengeNum = info.IntValueForKey("challenge");
 			// find the challenge by the source address

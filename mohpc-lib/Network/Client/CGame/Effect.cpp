@@ -1,5 +1,8 @@
 #include <MOHPC/Network/Client/CGame/Effect.h>
 
+#include <cstdint>
+#include <cstddef>
+
 using namespace MOHPC;
 using namespace MOHPC::Network;
 using namespace MOHPC::Network::CGame;

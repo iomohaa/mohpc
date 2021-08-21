@@ -1,10 +1,13 @@
 #pragma once
 
 #include "FilesGlobal.h"
+#include "FileDefs.h"
 
 namespace MOHPC
 {
-	class FileManager;
+	class FileCategoryManager;
+	class PakFileManager;
+	class SystemFileManager;
 
 	namespace FileHelpers
 	{
@@ -13,6 +16,6 @@ namespace MOHPC
 		 *
 		 * @param Directory - The full path to the game directory.
 		 */
-		MOHPC_FILES_EXPORTS bool FillGameDirectory(FileManager& fm, const char* directory);
+		MOHPC_FILES_EXPORTS bool FillGameDirectory(FileCategoryManager& categoryManager, PakFileManager& pakFM, SystemFileManager& sysFM, const fs::path& directory);
 	}
 }

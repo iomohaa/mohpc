@@ -75,7 +75,7 @@ void testGameState()
 
 int main(int argc, const char* argv[])
 {
-	InitCommon();
+	InitCommon(argc, argv);
 
 	testGameState();
 }

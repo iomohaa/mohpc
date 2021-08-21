@@ -5,7 +5,7 @@
 
 namespace MOHPC
 {
-	class Sound : public Asset2
+	class Sound : public Asset
 	{
 		MOHPC_ASSET_OBJECT_DECLARATION(Sound);
 
@@ -31,10 +31,10 @@ namespace MOHPC
 		using AssetType = Sound;
 
 	public:
-		MOHPC_ASSETS_EXPORTS Asset2Ptr read(const IFilePtr& file) override;
+		MOHPC_ASSETS_EXPORTS AssetPtr read(const IFilePtr& file) override;
 
 	private:
-		Asset2Ptr DecodeLAME(const fs::path& fileName, void* buf, uint64_t len);
+		AssetPtr DecodeLAME(const fs::path& fileName, void* buf, uint64_t len);
 	};
 
 	namespace SoundError

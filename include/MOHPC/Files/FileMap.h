@@ -2,7 +2,9 @@
 
 #include "FileDefs.h"
 #include "FileHelpers.h"
+
 #include <filesystem>
+#include <cassert>
 
 namespace MOHPC
 {
@@ -40,12 +42,12 @@ namespace MOHPC
 		template<typename T>
 		static size_t GetParentDir(const T& path)
 		{
-			using charT = T::value_type;
+			using charT = typename T::value_type;
 
 			const charT* str = path.c_str();
 			for (const charT* p = str + path.native().length() - 1; p != str - 1; p--)
 			{
-				if (*p == '/')
+				if (FileHelpers::uniPathChar(*p))
 				{
 					return p - str + 1;
 				}
@@ -57,12 +59,12 @@ namespace MOHPC
 		template<typename T>
 		static const typename T::value_type* GetFilename(const T& path)
 		{
-			using charT = T::value_type;
+			using charT = typename T::value_type;
 
 			const charT* str = path.c_str();
 			for (const charT* p = str + path.native().length() - 1; p != str - 1; p--)
 			{
-				if (*p == '/')
+				if (FileHelpers::uniPathChar(*p))
 				{
 					return p + 1;
 				}
@@ -73,7 +75,12 @@ namespace MOHPC
 
 		bool operator() (const fs::path& s1, const fs::path& s2) const
 		{
-			using charT = fs::path::value_type;
+			assert(s1.c_str() == FileHelpers::removeRootDir(s1.c_str()));
+			assert(s2.c_str() == FileHelpers::removeRootDir(s2.c_str()));
+
+			return FileHelpers::pathsEqual(s1.c_str(), s2.c_str()) < 0;
+#if 0
+			using charT = typename fs::path::value_type;
 
 			const size_t parentdirl1 = GetParentDir(s1);
 			const size_t parentdirl2 = GetParentDir(s2);
@@ -89,7 +96,7 @@ namespace MOHPC
 			// HACK HACK : Faster than std::equal combined with std::lexicographical_compare
 			*pend1 = 0;
 			*pend2 = 0;
-			int comp = strHelpers::icmp(p1 + 1, p2 + 1);
+			const int comp = FileHelpers::pathsEqual(p1, p2);
 			*pend1 = ch1;
 			*pend2 = ch2;
 			if (!comp)
@@ -97,17 +104,16 @@ namespace MOHPC
 				const charT* fname1 = GetFilename(s1);
 				const charT* fname2 = GetFilename(s2);
 
-				if ((*fname1 == '.') ^ (*fname2 == '.'))
-				{
+				if ((*fname1 == '.') ^ (*fname2 == '.')) {
 					return *fname1 == '.';
 				}
-				else
-				{
-					return strHelpers::icmp(fname1, fname2) < 0;
+				else {
+					return FileHelpers::pathsEqual(fname1, fname2) < 0;
 				}
 			}
 			return comp < 0;
 			//return std::lexicographical_compare(p1 + 1, p1 + parentdirl1, p2 + 1, p2 + parentdirl2, &CompareCharPath);
+#endif
 		}
 	};
 
@@ -116,7 +122,10 @@ namespace MOHPC
 		template<typename T>
 		bool operator() (const T& s1, const T& s2) const
 		{
-			return !strHelpers::icmp(FileHelpers::removeRootDir(s1.c_str()), FileHelpers::removeRootDir(s2.c_str()));
+			assert(s1.c_str() == FileHelpers::removeRootDir(s1.c_str()));
+			assert(s2.c_str() == FileHelpers::removeRootDir(s2.c_str()));
+
+			return !FileHelpers::pathsEqual(s1.c_str(), s2.c_str());
 		}
 	};
 
@@ -125,13 +134,17 @@ namespace MOHPC
 		template<typename T>
 		size_t operator()(const T& s1) const
 		{
+			assert(s1.c_str() == FileHelpers::removeRootDir(s1.c_str()));
+
+			using charT = typename T::value_type;
 			size_t hash = 0;
 
-			const T::value_type* p = s1.c_str();
-			if (*p == '\\' || *p == '/') ++p;
+			const charT* p = s1.c_str();
 
-			while (*p) {
-				hash = tolower(*p++) + 31 * hash;
+			while (*p)
+			{
+				const charT c = FileHelpers::uniPathChar(*p++);
+				hash = tolower(c) + 31 * hash;
 			}
 
 			return hash;

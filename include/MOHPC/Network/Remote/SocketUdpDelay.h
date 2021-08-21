@@ -69,7 +69,7 @@ namespace Network
 	public:
 		size_t send(const NetAddrPtr& to, const void* buf, size_t bufsize) override;
 		size_t receive(void* buf, size_t maxsize, NetAddrPtr& from) override;
-		bool wait(size_t timeout) override;
+		bool wait(uint64_t timeout) override;
 		size_t dataCount() override;
 		void* getRaw() override;
 
@@ -91,8 +91,8 @@ namespace Network
 
 	private:
 		IUdpSocketPtr originalSocket;
-		std::thread socketIncomingThread;
-		std::thread socketOutgoingThread;
+		bool enableOOD;
+		bool isThreadActive;
 		std::condition_variable incomingEvent;
 		std::condition_variable outgoingEvent;
 		std::mutex incomingMutex;
@@ -102,8 +102,8 @@ namespace Network
 		std::chrono::time_point<std::chrono::steady_clock> startTime;
 		uint32_t minLatency;
 		uint32_t jittering;
-		bool enableOOD;
-		bool isThreadActive;
+		std::thread socketIncomingThread;
+		std::thread socketOutgoingThread;
 	};
 	using UdpSocketSimLatencyPtr = SharedPtr<UdpSocketSimLatency>;
 
@@ -142,7 +142,7 @@ namespace Network
 	public:
 		size_t send(const NetAddrPtr& to, const void* buf, size_t bufsize) override;
 		size_t receive(void* buf, size_t maxsize, NetAddrPtr& from) override;
-		bool wait(size_t timeout) override;
+		bool wait(uint64_t timeout) override;
 		size_t dataCount() override;
 		void* getRaw() override;
 

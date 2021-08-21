@@ -7,7 +7,7 @@
 
 namespace MOHPC
 {
-	template<typename T, typename ArrayType = std::array<T>>
+	template<typename T, typename ArrayType = T[1]>
 	class WarpArray
 	{
 	public:
@@ -35,16 +35,6 @@ namespace MOHPC
 
 	template<typename T, size_t count>
 	using StaticWarpArray = WarpArray<T, std::array<T, count>>;
-
-	template<typename T>
-	class DynamicWarpArray : public WarpArray<T, std::vector<T>>
-	{
-	public:
-		DynamicWarpArray(size_t size)
-		{
-			data.SetNumObjects(size);
-		}
-	};
 
 	template<typename WarpArrayType>
 	class WarpArrayCounter

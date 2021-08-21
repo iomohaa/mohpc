@@ -1,6 +1,8 @@
 #include <MOHPC/Utility/Tick.h>
 #include <MOHPC/Utility/TickTypes.h>
 
+#include <algorithm>
+
 using namespace MOHPC;
 
 ITickable::ITickable()

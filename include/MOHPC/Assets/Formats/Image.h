@@ -13,7 +13,7 @@ namespace MOHPC
 		RGBA
 	};
 
-	class Image : public Asset2
+	class Image : public Asset
 	{
 		MOHPC_ASSET_OBJECT_DECLARATION(Image);
 
@@ -48,7 +48,7 @@ namespace MOHPC
 		MOHPC_ASSETS_EXPORTS ImageReader();
 		MOHPC_ASSETS_EXPORTS ~ImageReader();
 
-		MOHPC_ASSETS_EXPORTS Asset2Ptr read(const IFilePtr& file);
+		MOHPC_ASSETS_EXPORTS AssetPtr read(const IFilePtr& file);
 
 	private:
 		ImagePtr LoadJPEG(const fs::path& name, void* buf, uint64_t len);

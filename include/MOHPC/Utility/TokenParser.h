@@ -107,4 +107,71 @@ namespace MOHPC
 		MOHPC_UTILITY_EXPORTS std::vector<macro*>* GetMacroList() { return &macrolist; }
 		MOHPC_UTILITY_EXPORTS void AddMacro(const char* name, const char* value);
 	};
+
+	namespace TokenErrors
+	{
+		class Base : public std::exception {};
+
+		/**
+		 * End of token file reached prematurely while reading string.
+		 */
+		class EndOfFileReached : public Base
+		{
+		public:
+			EndOfFileReached();
+			~EndOfFileReached();
+
+			MOHPC_UTILITY_EXPORTS const char* what() const noexcept override;
+		};
+
+		/**
+		 * No Macro Text found.
+		 */
+		class NoMacroTextFound : public Base
+		{
+		public:
+			NoMacroTextFound(const char* macroNamePtr);
+			~NoMacroTextFound();
+
+			MOHPC_UTILITY_EXPORTS const char* getMacroName() const;
+			MOHPC_UTILITY_EXPORTS const char* what() const noexcept override;
+
+		private:
+			std::string macroName;
+		};
+
+		/**
+		 * Line is incomplete while reading string.
+		 */
+		class LineIncomplete : public Base
+		{
+		public:
+			LineIncomplete(uint32_t lineNum);
+			~LineIncomplete();
+
+			MOHPC_UTILITY_EXPORTS uint32_t getLineNum() const;
+			MOHPC_UTILITY_EXPORTS const char* what() const noexcept override;
+
+		private:
+			uint32_t lineNum;
+		};
+
+		/**
+		 * Expecting string on line
+		 */
+		class ExpectedToken : public Base
+		{
+		public:
+			ExpectedToken(const char* expected, uint32_t lineNum);
+			~ExpectedToken();
+
+			MOHPC_UTILITY_EXPORTS const char* getExpected() const;
+			MOHPC_UTILITY_EXPORTS uint32_t getLineNum() const;
+			MOHPC_UTILITY_EXPORTS const char* what() const noexcept override;
+
+		private:
+			const char* expected;
+			uint32_t lineNum;
+		};
+	}
 };

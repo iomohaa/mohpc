@@ -1,6 +1,7 @@
 #include <Shared.h>
 #include "TIKI_Private.h"
 
+#include <cstdlib>
 #include <cassert>
 
 using namespace MOHPC;
@@ -10,34 +11,14 @@ static float randweight()
 	return ((float)(rand() & 0x7fff)) / ((float)0x8000);
 }
 
-#ifdef _WIN32
-static int AnimCompareFunc(void *context, const void *a, const void *b)
-#else
-static int AnimCompareFunc(const void *a, const void *b, void *context)
-#endif
-{
-	dloaddef_t *ld = (dloaddef_t*)context;
-	return stricmp(ld->loadanims[*(int *)a].alias.c_str(), ld->loadanims[*(int *)b].alias.c_str());
-}
-
-void TIKIReader::GetAnimOrder(const dloaddef_t *ld, std::vector<size_t>& order) const
-{
-	for (size_t i = 0; i < ld->loadanims.size(); i++)
-	{
-		order.push_back(i);
-	}
-
-	qsort2(&order[0], order.size(), sizeof(size_t), AnimCompareFunc, (void*)ld);
-}
-
 size_t TIKI::GetNumAnimations() const
 {
-	return tikianim ? tikianim->animdefs.size() : 0;
+	return tikianim ? tikianim->num_animdefs : 0;
 }
 
 SkeletonAnimationPtr TIKI::GetAnimation(size_t num) const
 {
-	const TIKIAnim::AnimDef* panimdef = GetAnimDef(num);
+	const TIKIAnimDef* panimdef = GetAnimDef(num);
 	if (panimdef)
 	{
 		return panimdef->animData;
@@ -46,11 +27,11 @@ SkeletonAnimationPtr TIKI::GetAnimation(size_t num) const
 	return nullptr;
 }
 
-const TIKIAnim::AnimDef* TIKI::GetAnimDef(size_t num) const
+const TIKIAnimDef* TIKI::GetAnimDef(size_t num) const
 {
 	assert(tikianim);
-	assert(num >= 0 && num < tikianim->animdefs.size());
-	if (!tikianim || num < 0 || num >= tikianim->animdefs.size())
+	assert(num >= 0 && num < tikianim->num_animdefs);
+	if (!tikianim || num < 0 || num >= tikianim->num_animdefs)
 	{
 		return NULL;
 	}
@@ -62,7 +43,7 @@ const TIKIAnim::AnimDef* TIKI::GetAnimDef(size_t num) const
 
 SkeletonAnimationPtr TIKI::GetAnimationByName(const char *name) const
 {
-	const TIKIAnim::AnimDef* panimdef = GetAnimDefByName(name);
+	const TIKIAnimDef* panimdef = GetAnimDefByName(name);
 	if (panimdef)
 	{
 		return panimdef->animData;
@@ -71,22 +52,22 @@ SkeletonAnimationPtr TIKI::GetAnimationByName(const char *name) const
 	return nullptr;
 }
 
-const TIKIAnim::AnimDef* TIKI::GetAnimDefByName(const char *name) const
+const TIKIAnimDef* TIKI::GetAnimDefByName(const char *name) const
 {
 	intptr_t iTop;
 	intptr_t iBottom;
 	intptr_t iMiddle;
 	intptr_t iComp;
-	TIKIAnim::AnimDef *panimdef;
+	TIKIAnimDef *panimdef;
 	std::vector<float> fAnimWeights;
 	float fWeight;
 	float fTotalWeight;
 	intptr_t i, k;
 
-	const intptr_t numAnims = tikianim->animdefs.size();
+	const intptr_t numAnims = tikianim->num_animdefs;
 
 	iBottom = 0;
-	iTop = tikianim->animdefs.size() - 1;
+	iTop = numAnims - 1;
 
 	while (iBottom <= iTop)
 	{
@@ -99,19 +80,19 @@ const TIKIAnim::AnimDef* TIKI::GetAnimDefByName(const char *name) const
 		}
 		else
 		{
-			iComp = stricmp(panimdef->alias.c_str(), name);
+			iComp = strHelpers::icmp(panimdef->alias, name);
 		}
 
 		if (!iComp)
 		{
-			if (!(panimdef->flags & TAF_RANDOM))
+			if (!(panimdef->flags & TAF::RANDOM))
 			{
 				return &tikianim->animdefs[iMiddle];
 			}
 
 			for (i = iMiddle; i > 0; i--)
 			{
-				if (stricmp(panimdef->alias.c_str(), tikianim->animdefs[i - 1].alias.c_str()))
+				if (strHelpers::icmp(panimdef->alias, tikianim->animdefs[i - 1].alias))
 				{
 					break;
 				}
@@ -121,7 +102,7 @@ const TIKIAnim::AnimDef* TIKI::GetAnimDefByName(const char *name) const
 
 			for (iMiddle++; iMiddle < numAnims; iMiddle++)
 			{
-				if (stricmp(panimdef->alias.c_str(), tikianim->animdefs[iMiddle].alias.c_str()))
+				if (strHelpers::icmp(panimdef->alias, tikianim->animdefs[iMiddle].alias))
 				{
 					break;
 				}
@@ -137,10 +118,10 @@ const TIKIAnim::AnimDef* TIKI::GetAnimDefByName(const char *name) const
 					continue;
 				}
 
-				if (panimdef->flags & TAF_AUTOSTEPS_DOG)
+				if (panimdef->flags & TAF::AUTOSTEPS_DOG)
 				{
 					fAnimWeights.push_back(0.0f);
-					panimdef->flags &= ~TAF_AUTOSTEPS_DOG;
+					panimdef->flags &= ~TAF::AUTOSTEPS_DOG;
 				}
 				else
 				{
@@ -164,9 +145,9 @@ const TIKIAnim::AnimDef* TIKI::GetAnimDefByName(const char *name) const
 
 			iMiddle = i + k;
 			panimdef = &tikianim->animdefs[iMiddle];
-			if (panimdef && panimdef->flags & TAF_NOREPEAT)
+			if (panimdef && panimdef->flags & TAF::NOREPEAT)
 			{
-				panimdef->flags |= TAF_AUTOSTEPS_DOG;
+				panimdef->flags |= TAF::AUTOSTEPS_DOG;
 			}
 
 			return &tikianim->animdefs[iMiddle];
@@ -185,9 +166,9 @@ const TIKIAnim::AnimDef* TIKI::GetAnimDefByName(const char *name) const
 	return nullptr;
 }
 
-const TIKIAnim::AnimDef* TIKI::GetRandomAnimation(const char *name) const
+const TIKIAnimDef* TIKI::GetRandomAnimation(const char *name) const
 {
-	std::vector<TIKIAnim::AnimDef*> anims;
+	std::vector<TIKIAnimDef*> anims;
 	GetAllAnimations(name, anims);
 
 	// animation name found
@@ -205,7 +186,7 @@ const TIKIAnim::AnimDef* TIKI::GetRandomAnimation(const char *name) const
 		float weight = randweight() * totalweight;
 		for (size_t i = 0; i < numAnims; i++)
 		{
-			TIKIAnim::AnimDef *panimdef = anims[i];
+			TIKIAnimDef *panimdef = anims[i];
 			if (weight < panimdef->weight)
 			{
 				return panimdef;
@@ -218,24 +199,24 @@ const TIKIAnim::AnimDef* TIKI::GetRandomAnimation(const char *name) const
 	return nullptr;
 }
 
-void TIKI::GetAllAnimations(const char* name, std::vector<TIKIAnim::AnimDef*>& out) const
+void TIKI::GetAllAnimations(const char* name, std::vector<TIKIAnimDef*>& out) const
 {
-	TIKIAnim::AnimDef *panimdef;
-	std::vector<TIKIAnim::AnimDef*> anims;
+	TIKIAnimDef *panimdef;
+	std::vector<TIKIAnimDef*> anims;
 	size_t len;
 	int diff;
 
-	len = strlen(name);
+	len = strHelpers::len(name);
 	if (!len)
 	{
 		return;
 	}
 
-	const size_t numAnims = tikianim->animdefs.size();
+	const size_t numAnims = tikianim->num_animdefs;
 	for (size_t i = 0; i < numAnims; i++)
 	{
 		panimdef = &tikianim->animdefs[i];
-		diff = strnicmp(panimdef->alias.c_str(), name, len);
+		diff = strHelpers::icmpn(panimdef->alias, name, len);
 		if (diff || panimdef->alias[len] == '_')
 		{
 			if (diff > 0)

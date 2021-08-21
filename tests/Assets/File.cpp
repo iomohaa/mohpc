@@ -1,5 +1,8 @@
 #include "Common/Common.h"
-#include <MOHPC/Files/Managers/FileManager.h>
+#include <MOHPC/Files/Managers/IFileManager.h>
+#include <MOHPC/Files/Managers/PakFileManager.h>
+#include <MOHPC/Files/Managers/SystemFileManager.h>
+#include <MOHPC/Files/Category.h>
 
 #include <cassert>
 #include <string>
@@ -15,13 +18,30 @@ void testExtensions()
 	assert(!strHelpers::icmp(extU.c_str(), L"extuni"));
 }
 
-int main(int argc, const char* argv[])
+void testCategories()
 {
-	InitCommon();
+	const AssetManagerPtr AM = AssetLoad(GetGamePathFromCommandLine());
+	const IFileManagerPtr& FM = AM->GetFileManager();
+	const FileCategoryManagerPtr& catMan = AM->GetFileCategoryManager();
 
-	const AssetManagerPtr AM = AssetLoad(GetGamePathFromCommandLine(argc, argv));
-	const FileManagerPtr& FM = AM->GetFileManager();
-	FileEntryList entries = FM->ListFilteredFiles("/", "");
+	const FileCategory* category = catMan->findCategory("BT");
+	assert(FM->FileExists("models/weapons/enfield_lite.tik", category));
+	assert(FM->FileExists("models/weapons/enfield_lite.tik"));
+
+	category = catMan->findCategory("BT_240");
+	assert(FM->FileExists("models/weapons/enfield_lite.tik", category));
+	assert(FM->FileExists("models/weapons/It_W_Breda.tik", category));
+	assert(!FM->FileExists("models/static/v2.tik", category));
+
+	category = catMan->findCategory("AA");
+	assert(FM->FileExists("models/static/v2.tik", category));
+}
+
+void testFiles()
+{
+	const AssetManagerPtr AM = AssetLoad(GetGamePathFromCommandLine());
+	const IFileManagerPtr& FM = AM->GetFileManager();
+	FileEntryList entries = FM->ListAllFilteredFiles("/");
 	assert(entries.GetNumFiles() > 0);
 
 	assert(FM->FileExists("/default.cfg"));
@@ -32,8 +52,8 @@ int main(int argc, const char* argv[])
 	FileEntryList cfgEntries = FM->ListFilteredFiles("/", "cfg");
 	assert(cfgEntries.GetNumFiles() > 0);
 
-	assert(FM->FileExists("/newconfig.cfg", false));
-	assert(FM->FileExists("newconfig.cfg", false));
+	assert(FM->FileExists("/newconfig.cfg"));
+	assert(FM->FileExists("newconfig.cfg"));
 	assert(FM->OpenFile("/newconfig.cfg"));
 	assert(FM->OpenFile("newconfig.cfg"));
 
@@ -49,6 +69,13 @@ int main(int argc, const char* argv[])
 
 	ExtensionList extension{ "bsp", "scr" };
 	entries = FM->ListFilteredFiles("maps", extension);
+}
 
+int main(int argc, const char* argv[])
+{
+	InitCommon(argc, argv);
+
+	testCategories();
+	testFiles();
 	testExtensions();
 }

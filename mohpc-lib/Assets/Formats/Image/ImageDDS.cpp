@@ -1,8 +1,8 @@
 #include <Shared.h>
 #include <MOHPC/Assets/Formats/Image.h>
 #include <MOHPC/Utility/Misc/Endian.h>
+
 #include <cstring>
-#include "ImagePrivate.h"
 
 using namespace MOHPC;
 
@@ -400,7 +400,7 @@ ImagePtr ImageReader::LoadDDS(const fs::path& name, void *buf, uint64_t len)
 			else if (fourCC == EncodeFourCC("BC5S"))
 				picFormat = GL_COMPRESSED_SIGNED_RG_RGTC2;
 			else
-				throw ImageException("DDS File %s has unsupported FourCC.", name);
+				throw ImageError::DDS::UnsupportedFourCCFormat(fourCC);
 		}
 		else if (pixelFormatFlags == (DDSPF_RGB | DDSPF_ALPHAPIXELS)
 			&& rgbBitCount == 32
@@ -410,9 +410,8 @@ ImagePtr ImageReader::LoadDDS(const fs::path& name, void *buf, uint64_t len)
 			&& aBitMask == 0xff000000)
 		{
 			picFormat = GL_RGBA8;
-		}
-		else {
-			throw ImageException("DDS File %s has unsupported RGBA format.", name);
+		} else {
+			throw ImageError::DDS::UnsupportedRGBAFormat(pixelFormatFlags);
 		}
 	}
 

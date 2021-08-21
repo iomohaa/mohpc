@@ -48,12 +48,7 @@ namespace MOHPC
 	namespace strHelpers
 	{
 		template<typename T>
-		static constexpr T emptyChar;
-
-		template<> static constexpr char emptyChar<char> = *"";
-		template<> static constexpr wchar_t emptyChar<wchar_t> = *L"";
-		template<> static constexpr char16_t emptyChar<char16_t> = *u"";
-		template<> static constexpr char32_t emptyChar<char32_t> = *U"";
+		static constexpr T emptyChar[] = { 0 };
 
 		template<typename T>
 		size_t len(const T* a)
@@ -98,8 +93,9 @@ namespace MOHPC
 		{
 			while (*s1 || *s2)
 			{
-				if (std::tolower(*s1) < std::tolower(*s2)) return -1;
-				if (std::tolower(*s1) > std::tolower(*s2)) return 1;
+				const char c1 = std::tolower(*s1), c2 = std::tolower(*s2);
+				if (c1 < c2) return -1;
+				if (c1 > c2) return 1;
 				++s1; ++s2;
 			}
 			return 0;
@@ -110,8 +106,9 @@ namespace MOHPC
 		{
 			while (n != 0)
 			{
-				if (std::tolower(*s1) < std::tolower(*s2)) return -1;
-				if (std::tolower(*s1) > std::tolower(*s2)) return 1;
+				const char c1 = std::tolower(*s1), c2 = std::tolower(*s2);
+				if (c1 < c2) return -1;
+				if (c1 > c2) return 1;
 				++s1; ++s2;
 				--n;
 			}
@@ -209,13 +206,19 @@ namespace MOHPC
 		template<typename T>
 		void tolower(T start, T end)
 		{
-			std::transform(start, end, start, [](T::value_type c) { return std::tolower(c); });
+			std::transform(start, end, start, [](typename T::value_type c) { return std::tolower(c); });
+		}
+
+		template<typename T>
+		void tolower(typename std::basic_string<T>::iterator start, typename std::basic_string<T>::iterator end)
+		{
+			std::transform(start, end, start, [](typename T::value_type c) { return std::tolower(c); });
 		}
 
 		template<typename T>
 		void toupper(T start, T end)
 		{
-			std::transform(start, end, start, [](T::value_type c) { return std::toupper(c); });
+			std::transform(start, end, start, [](typename T::value_type c) { return std::toupper(c); });
 		}
 	}
 }

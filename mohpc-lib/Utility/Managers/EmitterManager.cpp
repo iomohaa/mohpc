@@ -144,9 +144,9 @@ bool EmitterManager::ParseEmitters(const TIKI* Tiki, EmitterResults& Results)
 			const size_t numCmds = Tiki->GetNumClientInitCommands();
 			for (; cursor < numCmds; cursor++)
 			{
-				const TIKIAnim::Command* cmd = Tiki->GetClientInitCommand(cursor);
+				const TIKICommand* cmd = Tiki->GetClientInitCommand(cursor);
 
-				if(ProcessCommand(cmd->args, listener))
+				if(ProcessCommand(cmd->args, cmd->num_args, listener))
 				{
 					bProcessedCommands = true;
 					bAnimHasCommands = true;
@@ -162,17 +162,17 @@ bool EmitterManager::ParseEmitters(const TIKI* Tiki, EmitterResults& Results)
 		}
 		else if (animNum < Tiki->GetNumAnimations())
 		{
-			const TIKIAnim::AnimDef* animDef = Tiki->GetAnimDef(animNum);
+			const TIKIAnimDef* animDef = Tiki->GetAnimDef(animNum);
 
 			// Parse animation commands
-			const size_t numCmds = animDef->client_cmds.size();
+			const size_t numCmds = animDef->num_client_cmds;
 			for (; cursor < numCmds; cursor++)
 			{
-				const TIKIAnim::Command* cmd = &animDef->client_cmds[cursor];
+				const TIKICommand* cmd = &animDef->client_cmds[cursor];
 
-				if (cmd->args.size())
+				if (cmd->num_args)
 				{
-					if (ProcessCommand(cmd->args, listener))
+					if (ProcessCommand(cmd->args, cmd->num_args, listener))
 					{
 						bProcessedCommands = true;
 						bAnimHasCommands = true;
@@ -208,14 +208,13 @@ bool EmitterManager::ParseEmitters(const TIKI* Tiki, EmitterResults& Results)
 	return bAnimHasCommands;
 }
 
-bool EmitterManager::ProcessCommand(const std::vector<str>& Arguments, EmitterListener& Listener)
+bool EmitterManager::ProcessCommand(const char* const* Arguments, size_t numArgs, EmitterListener& Listener)
 {
-	mfuse::Event ev(mfuse::EventSystem::Get().FindNormalEventNum(Arguments[0].c_str()));
+	mfuse::Event ev(mfuse::EventSystem::Get().FindNormalEventNum(Arguments[0]));
 
-	const size_t numArgs = Arguments.size();
 	for (size_t j = 1; j < numArgs; j++)
 	{
-		ev.AddString(Arguments[j].c_str());
+		ev.AddString(Arguments[j]);
 	}
 
 	Listener.ProcessEvent(ev);

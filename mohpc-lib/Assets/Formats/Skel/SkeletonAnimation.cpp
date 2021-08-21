@@ -1,7 +1,7 @@
 #include <Shared.h>
 #include <MOHPC/Utility/Misc/MSG/MSG.h>
 #include <MOHPC/Utility/Misc/MSG/Stream.h>
-#include <MOHPC/Files/Managers/FileManager.h>
+#include <MOHPC/Files/File.h>
 #include <MOHPC/Files/FileHelpers.h>
 #include <MOHPC/Utility/Misc/Endian.h>
 #include <MOHPC/Utility/Misc/EndianCoordHelpers.h>
@@ -9,6 +9,10 @@
 #include "../TIKI/TIKI_Private.h"
 
 using namespace MOHPC;
+
+const tikiFlag_t SKF::LOOP = (1 << 5);
+const tikiFlag_t SKF::HASDELTA = (1 << 6);
+const tikiFlag_t SKF::HASMORPH = (1 << 7);
 
 static SkelVec3 LittleSkelVec(const SkelVec3& inVec)
 {
@@ -35,7 +39,7 @@ AnimFrame::~AnimFrame()
 
 MOHPC_OBJECT_DEFINITION(SkeletonAnimation);
 SkeletonAnimation::SkeletonAnimation(const fs::path& fileName)
-	: Asset2(fileName)
+	: Asset(fileName)
 {
 }
 
@@ -620,7 +624,7 @@ void SkeletonAnimation::setBounds(const_vec3r_t mins, const_vec3r_t maxs)
 
 float SkeletonAnimation::GetTime() const
 {
-	return flags & TAF_DELTADRIVEN
+	return flags & TAF::DELTADRIVEN
 		? frameTime * m_frame.size()
 		: frameTime * (m_frame.size() - 1);
 }
@@ -651,12 +655,12 @@ int32_t SkeletonAnimation::GetFlagsSkel() const
 
 	if (bHasDelta)
 	{
-		flagsSkel |= TAF_HASDELTA;
+		flagsSkel |= SKF::HASDELTA;
 	}
 
 	if (bHasMorph)
 	{
-		flagsSkel |= TAF_HASMORPH;
+		flagsSkel |= SKF::HASMORPH;
 	}
 
 	return flagsSkel;
@@ -718,14 +722,16 @@ SkeletonAnimationReader::~SkeletonAnimationReader()
 {
 }
 
-Asset2Ptr SkeletonAnimationReader::read(const IFilePtr& file)
+static const fs::path newAnimFolder("newanim/");
+
+AssetPtr SkeletonAnimationReader::read(const IFilePtr& file)
 {
 	const fs::path& Fname = file->getName();
 	void* buf;
 	uint64_t length = 0;
 
 	// MOH:AA new anim
-	if (!strHelpers::icmp(Fname.generic_string().c_str(), "/newanim/"))
+	if (!strHelpers::icmpn(Fname.c_str(), newAnimFolder.c_str(), 8))
 	{
 		length = file->ReadBuffer(&buf);
 		if (length > 0)
@@ -779,22 +785,21 @@ Asset2Ptr SkeletonAnimationReader::read(const IFilePtr& file)
 	return nullptr;
 }
 
-Asset2Ptr SkeletonAnimationReader::readNewAnim(const AssetManagerPtr& assetManager, const fs::path& path)
+SkeletonAnimationPtr SkeletonAnimationReader::readNewAnim(const AssetManagerPtr& assetManager, const fs::path& path)
 {
-	Asset2Ptr asset;
+	SkeletonAnimationPtr asset;
 	try
 	{
-		asset = assetManager->readAsset<SkeletonAnimationReader>(path);
+		fs::path nwPath = "newanim" / path;
+		asset = assetManager->readAsset<SkeletonAnimationReader>(nwPath);
 	}
 	catch(std::exception& baseException)
 	{
 		try
 		{
-			fs::path nwPath = fs::path("/newanim/");
-			nwPath.append(FileHelpers::removeRootDir(path.c_str()));
-			asset = assetManager->readAsset<SkeletonAnimationReader>(nwPath);
+			asset = assetManager->readAsset<SkeletonAnimationReader>(path);
 		}
-		catch(...)
+		catch (...)
 		{
 			throw baseException;
 		}

@@ -9,4 +9,4 @@ bool isKeyboardHit();
 int getConsoleChar();
 
 void setTimerResolution(uint64_t resolution);
-void restoreTimerSolution(uint64_t resolution);
+void restoreTimerResolution(uint64_t resolution);
