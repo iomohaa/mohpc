@@ -81,7 +81,7 @@ namespace MOHPC
 		MOHPC_UTILITY_EXPORTS const char* GetToken(bool crossline);
 		MOHPC_UTILITY_EXPORTS const char* GetLine(bool crossline);
 		MOHPC_UTILITY_EXPORTS const char* GetRaw();
-		MOHPC_UTILITY_EXPORTS const char* GetString(bool crossline, bool escape = true);
+		MOHPC_UTILITY_EXPORTS const char* GetString(bool crossline, bool escape = true, bool allowMultiLines = false);
 		MOHPC_UTILITY_EXPORTS const char* GetCurrentScript() const;
 		MOHPC_UTILITY_EXPORTS bool GetSpecific(const char* string);
 		MOHPC_UTILITY_EXPORTS bool GetBoolean(bool crossline);

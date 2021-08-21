@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../NetGlobal.h"
+#include "../../NetObject.h"
 #include "../../pm/bg_public.h"
 #include "../../Types/Snapshot.h"
 #include "../../../Common/Vector.h"
@@ -21,7 +22,11 @@ namespace Network
 		class TraceManager
 		{
 		public:
-			TraceManager();
+			MOHPC_NET_OBJECT_DECLARATION(TraceManager);
+
+		public:
+			MOHPC_NET_EXPORTS TraceManager();
+			MOHPC_NET_EXPORTS ~TraceManager();
 
 			/**
 			 * Trace through various entities. This function should be used in conjunction to a previous trace.
@@ -72,6 +77,7 @@ namespace Network
 			const EntityInfo* solidEntities[MAX_ENTITIES_IN_SNAPSHOT];
 			const EntityInfo* triggerEntities[MAX_ENTITIES_IN_SNAPSHOT];
 		};
+		using TraceManagerPtr = SharedPtr<TraceManager>;
 	}
 }
 }

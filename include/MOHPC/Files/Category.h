@@ -20,6 +20,7 @@ namespace MOHPC
 
 		MOHPC_FILES_EXPORTS const char* getName() const noexcept;
 		MOHPC_FILES_EXPORTS const FileCategory* getParent() const noexcept;
+		MOHPC_FILES_EXPORTS const FileCategory* getLast() const noexcept;
 		MOHPC_FILES_EXPORTS bool hasParent(const FileCategory* category) const noexcept;
 
 	public:

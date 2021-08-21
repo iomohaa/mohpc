@@ -152,7 +152,7 @@ const char* SoundNode::GetChannelName() const
 str SoundNode::GetAliasNameNotRandom() const
 {
 	const char* name = GetAliasName();
-	const char* aliasNameEnd = name + strlen(name) - 1;
+	const char* aliasNameEnd = name + strHelpers::len(name) - 1;
 
 	const char* p = aliasNameEnd;
 	while (isdigit(*p) && p != name) p--;
@@ -172,7 +172,7 @@ str SoundNode::GetAliasNameNotRandom() const
 size_t SoundNode::GetAliasNameNotRandomLength() const
 {
 	const char* name = GetAliasName();
-	const char* aliasNameEnd = name + strlen(name) - 1;
+	const char* aliasNameEnd = name + strHelpers::len(name) - 1;
 
 	const char* p = aliasNameEnd;
 	while (isdigit(*p) && p != name) p--;
@@ -183,7 +183,7 @@ size_t SoundNode::GetAliasNameNotRandomLength() const
 bool SoundNode::IsRandomized() const
 {
 	const char* name = GetAliasName();
-	const char* p = name + strlen(name) - 1;
+	const char* p = name + strHelpers::len(name) - 1;
 
 	if (isdigit(*p))
 	{
@@ -227,11 +227,16 @@ void SoundManager::Init()
 	const size_t numCategory = categoryList.size();
 	for (size_t i = 0; i < numCategory; i++)
 	{
-		results = ParseUbersound("ubersound/ubersound.scr", categoryList[i], nullptr);
+		const FileCategory* category = categoryList[i];
+		if (!shouldProcessCategory(category)) {
+			continue;
+		}
+
+		results = ParseUbersound("ubersound/ubersound.scr", category, nullptr);
 		numNodes += results.numNodes;
 		totalSize += results.totalNodesSize;
 
-		results = ParseUbersound("ubersound/uberdialog.scr", categoryList[i], nullptr);
+		results = ParseUbersound("ubersound/uberdialog.scr", category, nullptr);
 		numNodes += results.numNodes;
 		totalSize += results.totalNodesSize;
 	}
@@ -247,10 +252,15 @@ void SoundManager::Init()
 
 		for (size_t i = 0; i < numCategory; i++)
 		{
-			results = ParseUbersound("ubersound/ubersound.scr", categoryList[i], firstSoundNode, &lastSoundNode);
+			const FileCategory* category = categoryList[i];
+			if (!shouldProcessCategory(category)) {
+				continue;
+			}
+
+			results = ParseUbersound("ubersound/ubersound.scr", category, firstSoundNode, &lastSoundNode);
 			firstSoundNode = (SoundNode*)((uint8_t*)firstSoundNode + results.totalNodesSize);
 
-			results = ParseUbersound("ubersound/uberdialog.scr", categoryList[i], firstSoundNode, &lastSoundNode);
+			results = ParseUbersound("ubersound/uberdialog.scr", category, firstSoundNode, &lastSoundNode);
 			firstSoundNode = (SoundNode*)((uint8_t*)firstSoundNode + results.totalNodesSize);
 		}
 
@@ -315,6 +325,12 @@ const SoundNode* SoundManager::FindAlias(const char* aliasName, bool bAllowRando
 	}
 
 	return soundNode;
+}
+
+bool SoundManager::shouldProcessCategory(const FileCategory* category) const
+{
+	// ignore children category, only process root
+	return !category->getParent();
 }
 
 SoundResults SoundManager::ParseUbersound(const fs::path& filename, const FileCategory* category, SoundNode* firstSoundNode, SoundNode** ppLastSoundNode)
@@ -426,7 +442,7 @@ SoundResults SoundManager::ParseUbersound(const fs::path& filename, const FileCa
 size_t SoundManager::ParseAlias(TokenParser& script, SoundNode* soundNode)
 {
 	const char* token = script.GetToken(true);
-	const size_t aliasNameSize = strlen(token) + 1;
+	const size_t aliasNameSize = strHelpers::len(token) + 1;
 
 	if (soundNode)
 	{
@@ -438,7 +454,7 @@ size_t SoundManager::ParseAlias(TokenParser& script, SoundNode* soundNode)
 	}
 
 	token = script.GetToken(true);
-	const size_t realNameSize = strlen(token) + 1;
+	const size_t realNameSize = strHelpers::len(token) + 1;
 
 	if (soundNode)
 	{
@@ -495,8 +511,8 @@ size_t SoundManager::ParseAlias(TokenParser& script, SoundNode* soundNode)
 
 	if (!strHelpers::icmp(token, "subtitle") || !strHelpers::icmp(token, "forcesubtitle"))
 	{
-		token = script.GetString(true, true);
-		subtitleSize = strlen(token) + 1;
+		token = script.GetString(true, true, true);
+		subtitleSize = strHelpers::len(token) + 1;
 
 		if (soundNode)
 		{
@@ -510,7 +526,7 @@ size_t SoundManager::ParseAlias(TokenParser& script, SoundNode* soundNode)
 
 	if(!strHelpers::icmp(token, "maps"))
 	{
-		token = script.GetString(true, true);
+		token = script.GetString(true, true, true);
 		// for now, ignore maps
 	}
 
@@ -537,7 +553,7 @@ void SoundManager::SortList()
 			nextIt++;
 
 			const char* aliasName = soundNode->GetAliasName();
-			const char* aliasNameEnd = aliasName + strlen(aliasName) - 1;
+			const char* aliasNameEnd = aliasName + strHelpers::len(aliasName) - 1;
 
 			const char* p = aliasNameEnd;
 			while (isdigit(*p) && p != aliasName) p--;

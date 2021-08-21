@@ -6,6 +6,8 @@
 
 int main(int argc, const char* argv[])
 {
+	InitCommon(argc, argv);
+
 	const MOHPC::AssetManagerPtr AM = AssetLoad(GetGamePathFromCommandLine());
 
 	MOHPC::SoundManagerPtr SoundManager = AM->getManager<MOHPC::SoundManager>();

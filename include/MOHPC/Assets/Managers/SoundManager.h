@@ -116,6 +116,7 @@ namespace MOHPC
 		virtual void Init() override;
 
 	private:
+		bool shouldProcessCategory(const FileCategory* category) const;
 		/** Parse an ubersound and returns the total size of all sound nodes. */
 		SoundResults ParseUbersound(const fs::path& filename, const FileCategory* category, SoundNode* firstSoundNode, SoundNode** ppLastSoundNode = nullptr);
 

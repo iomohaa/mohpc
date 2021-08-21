@@ -109,6 +109,18 @@ bool FileCategory::hasParent(const FileCategory* category) const noexcept
 	return false;
 }
 
+const FileCategory* FileCategory::getLast() const noexcept
+{
+	if (children.size())
+	{
+		const MOHPC::FileCategory* child = *children.rbegin();
+		return child->getLast();
+	}
+	else {
+		return this;
+	}
+}
+
 FileCategory::~FileCategory()
 {
 }

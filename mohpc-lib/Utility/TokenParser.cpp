@@ -810,7 +810,7 @@ const char* TokenParser::GetRaw()
 ==============
 */
 
-const char* TokenParser::GetString(bool crossline, bool escape)
+const char* TokenParser::GetString(bool crossline, bool escape, bool allowMultiLines)
 {
 	int startline;
 
@@ -838,8 +838,14 @@ const char* TokenParser::GetString(bool crossline, bool escape)
 	{
 		while (*script_p != '"')
 		{
-			if (*script_p == TOKENEOL) {
-				throw TokenErrors::LineIncomplete(line);
+			if (*script_p == TOKENEOL)
+			{
+				if (!allowMultiLines) {
+					throw TokenErrors::LineIncomplete(line);
+				}
+
+				++script_p;
+				continue;
 			}
 
 			if ((*script_p == '\\') && (script_p < (end_p - 1)))

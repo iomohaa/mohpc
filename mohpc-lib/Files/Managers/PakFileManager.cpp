@@ -145,8 +145,8 @@ namespace MOHPC
 		{}
 
 	public:
-		PakFile& pak;
 		fs::path Name;
+		PakFile& pak;
 		unz_file_pos Pos;
 		size_t uncompressedSize;
 	};

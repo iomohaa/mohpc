@@ -67,15 +67,18 @@ void testFiles()
 	assert(script3.GetNumFiles() == script1.GetNumFiles());
 	assert(script4.GetNumFiles() == script1.GetNumFiles());
 
-	ExtensionList extension{ "bsp", "scr" };
-	entries = FM->ListFilteredFiles("maps", extension);
+	ExtensionList extensions{ "bsp", "scr" };
+	entries = FM->ListFilteredFiles("maps", extensions);
+
+	ExtensionList extensions2{ "skc", "skb" };
+	entries = FM->ListFilteredFiles("/", extensions2);
 }
 
 int main(int argc, const char* argv[])
 {
 	InitCommon(argc, argv);
 
-	testCategories();
 	testFiles();
+	testCategories();
 	testExtensions();
 }
