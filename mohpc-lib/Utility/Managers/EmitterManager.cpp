@@ -5,6 +5,7 @@
 #include "../Misc/EmitterListener.h"
 
 #include <morfuse/Script/EventSystem.h>
+#include <morfuse/Script/EventContext.h>
 
 using namespace MOHPC;
 
@@ -121,6 +122,8 @@ const char* MOHPC::EmitterResults::GetAnimName() const
 
 bool EmitterManager::ParseEmitters(const TIKI* Tiki, EmitterResults& Results)
 {
+	mfuse::EventContext context;
+
 	size_t cursor = 0;
 
 	uint32_t animNum = Results.animNum;

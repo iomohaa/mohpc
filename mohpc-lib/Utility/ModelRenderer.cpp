@@ -15,6 +15,26 @@ using namespace MOHPC;
 
 MOHPC_OBJECT_DEFINITION(ModelRenderer);
 
+ModelMorph::ModelMorph()
+	: offset{ 0 }
+	, morphIndex(0)
+{
+}
+
+ModelWeight::ModelWeight()
+	: boneIndex(0)
+	, boneWeight(0.f)
+	, offset{ 0 }
+{
+}
+
+ModelVertice::ModelVertice()
+	: normal{ 0 }
+	, xyz{ 0 }
+	, st{ 0 }
+{
+}
+
 ModelRenderer::ModelRenderer(const MOHPC::AssetManagerPtr& AssetManager)
 	: AssetObject(AssetManager)
 {
@@ -415,7 +435,7 @@ void ModelRenderer::BuildRenderData()
 
 				if (numMorphs > 0)
 				{
-					vec3_t totalMorph;
+					vec3_t totalMorph{ 0, 0, 0 };
 					const SkeletorMorph* skelMorph = skelVertex->Morphs.data();
 
 					/*

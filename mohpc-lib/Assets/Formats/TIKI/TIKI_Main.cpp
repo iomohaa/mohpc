@@ -206,6 +206,10 @@ TIKICommand::TIKICommand() noexcept
 
 }
 
+TIKICommand::~TIKICommand()
+{
+}
+
 size_t TIKICommand::getNumArgs() const
 {
 	return num_args;
@@ -232,6 +236,10 @@ TIKIAnimDef::TIKIAnimDef() noexcept
 	, flags(0)
 {
 
+}
+
+TIKIAnimDef::~TIKIAnimDef()
+{
 }
 
 const char* TIKIAnimDef::getAlias() const
@@ -294,7 +302,26 @@ TIKIAnim::TIKIAnim() noexcept
 	, maxs{ 0 }
 	, bIsCharacter(false)
 {
+}
 
+TIKIAnim::~TIKIAnim()
+{
+	// need to call destructor because some instances
+	// have to release pointers
+	for (size_t i = 0; i < num_animdefs; ++i)
+	{
+		animdefs[i].~TIKIAnimDef();
+	}
+
+	for (size_t i = 0; i < num_client_initcmds; ++i)
+	{
+		client_initcmds[i].~TIKICommand();
+	}
+
+	for (size_t i = 0; i < num_server_initcmds; ++i)
+	{
+		server_initcmds[i].~TIKICommand();
+	}
 }
 
 size_t TIKIAnim::getNumAnimDefs() const
