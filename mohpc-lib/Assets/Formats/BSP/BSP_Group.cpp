@@ -164,7 +164,7 @@ void BSPGroup::connectBrushes(const BSP& bsp, std::vector<BSPData::BrushGroupDat
 		{
 			const BSPData::Brush* brush2 = bsp.GetBrush(i);
 			BSPData::BrushGroupData& brushData2 = list[startList + i];
-			if (brush2 == brush || brushData2.parent)
+			if (brush2 == brush || brushData2.parentData)
 			{
 				// ignore parented brushes
 				continue;
@@ -182,8 +182,8 @@ void BSPGroup::connectBrushes(const BSP& bsp, std::vector<BSPData::BrushGroupDat
 					bInfiniteParent = true;
 					break;
 				}
-				parent = parentData->parent;
 				parentData = parentData->parentData;
+				parent = parentData->brush;
 			} while (parentData);
 
 			if (bInfiniteParent)
@@ -231,7 +231,6 @@ void BSPGroup::connectBrushes(const BSP& bsp, std::vector<BSPData::BrushGroupDat
 				if (bFound)
 				{
 					numParentedBrushes++;
-					brushData2.parent = brush;
 					brushData2.parentData = &brushData;
 				}
 			}
@@ -275,10 +274,10 @@ void BSPGroup::mapBrushes(
 
 		const BSPData::Brush* rootbrush = brush;
 		const BSPData::BrushGroupData* rootBrushData = &brushData;
-		while (rootBrushData->parent != NULL)
+		while (rootBrushData->parentData != nullptr)
 		{
-			rootbrush = rootBrushData->parent;
 			rootBrushData = rootBrushData->parentData;
+			rootbrush = rootBrushData->brush;
 		}
 
 		//const str& brushname = rootbrush->name;
@@ -326,9 +325,9 @@ void BSPGroup::mapBrushes(
 
 							sg->surfaces.push_back(surf);
 
-							if (std::find(sg->brushes.begin(), sg->brushes.end(), brush) == sg->brushes.end())
+							if (std::find(sg->brushes.begin(), sg->brushes.end(), startList + b) == sg->brushes.end())
 							{
-								sg->brushes.push_back(brush);
+								sg->brushes.push_back(startList + b);
 							}
 
 							mappedSurfaces[k] = true;
@@ -482,9 +481,9 @@ void BSPGroup::mapBrushes(
 	delete[] mappedSurfaces;
 }
 
-const str& BSPData::GroupedSurfaces::GetGroupName() const
+const char* BSPData::GroupedSurfaces::GetGroupName() const
 {
-	return name;
+	return name.c_str();
 }
 
 size_t BSPData::GroupedSurfaces::GetNumSurfaces() const
@@ -502,19 +501,14 @@ const BSPData::Surface* const* BSPData::GroupedSurfaces::GetSurfaces() const
 	return surfaces.data();
 }
 
-size_t BSPData::GroupedSurfaces::GetNumBrushes() const
+size_t BSPData::GroupedSurfaces::GetNumBrushesData() const
 {
 	return brushes.size();
 }
 
-const BSPData::Brush* BSPData::GroupedSurfaces::GetBrush(size_t index) const
+size_t BSPData::GroupedSurfaces::GetBrushData(size_t index) const
 {
 	return brushes.at(index);
-}
-
-const BSPData::Brush* const* BSPData::GroupedSurfaces::GetBrushes() const
-{
-	return brushes.data();
 }
 
 const_vec3p_t BSPData::GroupedSurfaces::GetMinBound() const
@@ -533,6 +527,26 @@ const_vec3p_t BSPData::GroupedSurfaces::GetOrigin() const
 }
 
 BSPData::BrushGroupData::BrushGroupData()
-	: parent(nullptr)
+	: brush(nullptr)
 	, parentData(nullptr)
 {}
+
+const BSPData::Brush* BSPData::BrushGroupData::getBrush() const
+{
+	return brush;
+}
+
+const BSPData::BrushGroupData* BSPData::BrushGroupData::getParent() const
+{
+	return parentData;
+}
+
+size_t BSPData::BrushGroupData::getNumSurfaces() const
+{
+	return surfaces.size();
+}
+
+const BSPData::Surface* BSPData::BrushGroupData::getSurface(size_t surfaceNum) const
+{
+	return surfaces[surfaceNum];
+}

@@ -8,16 +8,17 @@ namespace MOHPC
 {
 	namespace BSPData
 	{
+		struct BrushGroupData;
+
 		class GroupedSurfaces
 		{
 		public:
-			MOHPC_ASSETS_EXPORTS const str& GetGroupName() const;
+			MOHPC_ASSETS_EXPORTS const char* GetGroupName() const;
 			MOHPC_ASSETS_EXPORTS size_t GetNumSurfaces() const;
 			MOHPC_ASSETS_EXPORTS const Surface* GetSurface(size_t index) const;
-			MOHPC_ASSETS_EXPORTS size_t GetNumBrushes() const;
-			MOHPC_ASSETS_EXPORTS const Brush* GetBrush(size_t index) const;
+			MOHPC_ASSETS_EXPORTS size_t GetNumBrushesData() const;
+			MOHPC_ASSETS_EXPORTS size_t GetBrushData(size_t index) const;
 			MOHPC_ASSETS_EXPORTS const Surface* const* GetSurfaces() const;
-			MOHPC_ASSETS_EXPORTS const Brush* const* GetBrushes() const;
 			MOHPC_ASSETS_EXPORTS const_vec3p_t GetMinBound() const;
 			MOHPC_ASSETS_EXPORTS const_vec3p_t GetMaxBound() const;
 			MOHPC_ASSETS_EXPORTS const_vec3p_t GetOrigin() const;
@@ -25,7 +26,7 @@ namespace MOHPC
 		public:
 			str name;
 			std::vector<const Surface*> surfaces;
-			std::vector<const Brush*> brushes;
+			std::vector<size_t> brushes;
 			vec3_t bounds[2];
 			vec3_t origin;
 		};
@@ -35,8 +36,13 @@ namespace MOHPC
 		public:
 			BrushGroupData();
 
+			MOHPC_ASSETS_EXPORTS const Brush* getBrush() const;
+			MOHPC_ASSETS_EXPORTS const BrushGroupData* getParent() const;
+			MOHPC_ASSETS_EXPORTS size_t getNumSurfaces() const;
+			MOHPC_ASSETS_EXPORTS const Surface* getSurface(size_t surfaceNum) const;
+
 		public:
-			const BSPData::Brush* parent;
+			const BSPData::Brush* brush;
 			const BrushGroupData* parentData;
 			std::vector<const Surface*> surfaces;
 		};

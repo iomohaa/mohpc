@@ -7,6 +7,7 @@ using namespace MOHPC;
 using namespace MOHPC::Network;
 using namespace MOHPC::Network::CGame;
 
+MOHPC_OBJECT_DEFINITION(TraceManager);
 TraceManager::TraceManager()
 	: numSolidEntities(0)
 	, numTriggerEntities(0)
@@ -14,6 +15,10 @@ TraceManager::TraceManager()
 	// Create predefined box hull
 	boxHull = CollisionWorld::create();
 	boxHull->InitBoxHull();
+}
+
+TraceManager::~TraceManager()
+{
 }
 
 void TraceManager::clipMoveToEntities(CollisionWorld& cm, const_vec3r_t start, const_vec3r_t mins, const_vec3r_t maxs, const_vec3r_t end, uint16_t skipNumber, uint32_t mask, bool cylinder, trace_t& tr) const

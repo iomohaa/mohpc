@@ -23,7 +23,8 @@ namespace Network
 			 * @param collisionWorld The world collision to use.
 			 * @param traceManager The trace manager, used to trace through world + entities.
 			 */
-			TraceWithWorld(const CollisionWorldPtr& collisionWorld, const TraceManager& traceManager);
+			MOHPC_NET_EXPORTS TraceWithWorld(const CollisionWorldPtr& collisionWorld, const TraceManager& traceManager);
+			MOHPC_NET_EXPORTS ~TraceWithWorld();
 
 			void trace(
 				trace_t* results,
@@ -43,6 +44,7 @@ namespace Network
 			CollisionWorldPtr cm;
 			const TraceManager& tm;
 		};
+		using TraceWithWorldPtr = SharedPtr<TraceWithWorld>;
 	}
 }
 }

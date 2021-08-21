@@ -17,11 +17,11 @@ struct pathCategory_t
 bool FileHelpers::FillGameDirectory(FileCategoryManager& categoryManager, PakFileManager& pakFM, SystemFileManager& sysFM, const fs::path& directory)
 {
 	FileCategory* categoryAA = categoryManager.createCategory("AA");
+	FileCategory* categorySH = categoryManager.createCategory("SH");
+	FileCategory* categoryBT = categoryManager.createCategory("BT");
 	FileCategory* categoryAA_111 = categoryManager.createCategory(categoryAA, "AA_111");
-	FileCategory* categorySH = categoryManager.createCategory(categoryAA_111, "SH");
 	FileCategory* categorySH_211 = categoryManager.createCategory(categorySH, "SH_211");
 	FileCategory* categorySH_215 = categoryManager.createCategory(categorySH, "SH_215");
-	FileCategory* categoryBT = categoryManager.createCategory(categoryAA_111, "BT");
 	FileCategory* categoryBT_240 = categoryManager.createCategory(categoryBT, "BT_240");
 
 	const pathCategory_t gameDirs[] =

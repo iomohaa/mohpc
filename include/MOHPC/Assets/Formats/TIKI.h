@@ -251,7 +251,7 @@ namespace MOHPC
 		MOHPC_ASSETS_EXPORTS intptr_t GetBoneNumFromName(const char *name) const;
 		MOHPC_ASSETS_EXPORTS float GetScale() const;
 		MOHPC_ASSETS_EXPORTS const QuakedSection& GetQuakedSection() const;
-		QuakedSection& GetQuakedSection();
+		MOHPC_ASSETS_EXPORTS QuakedSection& GetQuakedSection();
 
 		const TIKIAnim* getTikiAnim() const;
 		void setLoadScale(float loadScaleValue);

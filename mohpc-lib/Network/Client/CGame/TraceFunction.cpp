@@ -4,9 +4,14 @@ using namespace MOHPC;
 using namespace MOHPC::Network;
 using namespace MOHPC::Network::CGame;
 
+MOHPC_OBJECT_DEFINITION(TraceWithWorld);
 TraceWithWorld::TraceWithWorld(const CollisionWorldPtr& collisionWorld, const TraceManager& traceManager)
 	: cm(collisionWorld)
 	, tm(traceManager)
+{
+}
+
+TraceWithWorld::~TraceWithWorld()
 {
 }
 
