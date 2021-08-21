@@ -128,7 +128,7 @@ size_t BSPGroup::getNumGroupedSurfaces() const
 	return groupedSurfaces.size();
 }
 
-const BSPData::GroupedSurfaces* BSPGroup::getGroupedSurface(size_t surfsGroupNum) const
+const BSPData::GroupedSurfaces* BSPGroup::getGroupedSurfaces(size_t surfsGroupNum) const
 {
 	return groupedSurfaces.at(surfsGroupNum);
 }

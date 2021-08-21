@@ -58,7 +58,7 @@ namespace MOHPC
 		MOHPC_ASSETS_EXPORTS size_t getNumGroupedSurfaces() const;
 
 		/** Returns the grouped surface at the specified number. */
-		MOHPC_ASSETS_EXPORTS const BSPData::GroupedSurfaces* getGroupedSurface(size_t surfsGroupNum) const;
+		MOHPC_ASSETS_EXPORTS const BSPData::GroupedSurfaces* getGroupedSurfaces(size_t surfsGroupNum) const;
 
 		/** Returns the number of grouped surfaces. */
 		MOHPC_ASSETS_EXPORTS size_t getNumBrushData() const;
