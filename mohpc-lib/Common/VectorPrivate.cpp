@@ -2,6 +2,11 @@
 
 using namespace MOHPC;
 
+void MOHPC::VectorFromString(const char* value, vec3r_t out)
+{
+	std::sscanf(value, "%f %f %f", &out[0], &out[1], &out[2]);
+}
+
 Vector3 MOHPC::makeVector(const_vec3r_t vec)
 {
 	return Vector3(vec[0], vec[1], vec[2]);

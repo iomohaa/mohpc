@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../Global.h"
 #include "SimpleVector.h"
 
 #include <cstdio>
@@ -7,10 +8,7 @@
 
 namespace MOHPC
 {
-	static void VectorFromString(const char* value, vec3r_t out)
-	{
-		sscanf(value, "%f %f %f", &out[0], &out[1], &out[2]);
-	}
+	MOHPC_EXPORTS void VectorFromString(const char* value, vec3r_t out);
 
 	static void VectorClear(vec3r_t vec)
 	{
