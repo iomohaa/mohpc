@@ -148,6 +148,24 @@ void BSPGroup::groupSurfaces(const BSP& bsp)
 	mapBrushes(bsp, groupedSurfaces);
 }
 
+bool BSPGroup::isParented(const BSPData::BrushGroupData& b1, const BSPData::BrushGroupData& b2) const
+{
+	const BSPData::BrushGroupData* parentData = &b1;
+
+	// Checks for infinite parenting
+	bool bInfiniteParent = false;
+	do
+	{
+		const BSPData::Brush* const parent = parentData->brush;
+		if (parentData == &b2) {
+			return true;
+		}
+		parentData = parentData->parentData;
+	} while (parentData);
+
+	return false;
+}
+
 void BSPGroup::connectBrushes(const BSP& bsp, std::vector<BSPData::BrushGroupData>& list)
 {
 	const size_t numBrushes = bsp.GetNumBrushes();
@@ -170,23 +188,7 @@ void BSPGroup::connectBrushes(const BSP& bsp, std::vector<BSPData::BrushGroupDat
 				continue;
 			}
 
-			const BSPData::Brush* parent = brush;
-			const BSPData::BrushGroupData* parentData = &brushData;
-
-			// Checks for infinite parenting
-			bool bInfiniteParent = false;
-			do
-			{
-				if (parent == brush2)
-				{
-					bInfiniteParent = true;
-					break;
-				}
-				parentData = parentData->parentData;
-				parent = parentData->brush;
-			} while (parentData);
-
-			if (bInfiniteParent)
+			if (isParented(brushData, brushData2))
 			{
 				// would cause an infinite loop
 				continue;

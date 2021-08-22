@@ -6,12 +6,16 @@
 #include <MOHPC/Assets/Managers/ShaderManager.h>
 #include <MOHPC/Utility/Collision/Collision.h>
 #include <MOHPC/Utility/Collision/CollisionArchive.h>
+#include <MOHPC/Common/Log.h>
+
 #include "Common/Common.h"
 
 #include <map>
 #include <vector>
 #include <cassert>
 #include <cstring>
+
+static constexpr char MOHPC_LOG_NAMESPACE[] = "test_level";
 
 class ArchiveReader : public MOHPC::IArchiveReader
 {
@@ -78,6 +82,7 @@ Archive& operator>>(Archive& ar, const T& obj)
 }
 */
 
+void testAsset(const MOHPC::BSPPtr& Asset);
 void traceTest(const MOHPC::BSPPtr& Asset);
 void leafTesting(const MOHPC::BSPPtr& Asset);
 void groupTesting(const MOHPC::BSPPtr& Asset);
@@ -85,23 +90,28 @@ void groupTesting(const MOHPC::BSPPtr& Asset);
 int main(int argc, const char* argv[])
 {
 	InitCommon(argc, argv);
+
 	const MOHPC::AssetManagerPtr AM = AssetLoad(GetGamePathFromCommandLine());
 
-	MOHPC::DCLPtr DCL = AM->readAsset<MOHPC::DCLReader>("/maps/dm/mohdm4.dcl");
-	MOHPC::DCLPtr DCLBT = AM->readAsset<MOHPC::DCLReader>("/maps/e1l1.dcl");
+	MOHPC::DCLPtr DCL = AM->readAsset<MOHPC::DCLReader>("maps/dm/mohdm4.dcl");
+	MOHPC::DCLPtr DCLBT = AM->readAsset<MOHPC::DCLReader>("maps/e1l1.dcl");
 
 	//MOHPC::BSPPtr Asset = AM->readAsset<MOHPC::BSP>("/maps/dm/mp_stadt_dm.bsp");
-	MOHPC::BSPPtr Asset = AM->readAsset<MOHPC::BSPReader>("/maps/e1l1.bsp");
-	if (Asset)
-	{
-		traceTest(Asset);
-		leafTesting(Asset);
-		groupTesting(Asset);
+	MOHPC::BSPPtr Asset = AM->readAsset<MOHPC::BSPReader>("maps/e1l1.bsp");
+	testAsset(Asset);
+	Asset = AM->readAsset<MOHPC::BSPReader>("maps/dm/mohdm6.bsp");
+	testAsset(Asset);
+}
 
-		MOHPC::BSPCollisionPtr bspCollision = MOHPC::BSPCollision::create(Asset);
-		MOHPC::BSPData::TerrainCollide collision;
-		bspCollision->GenerateTerrainCollide(Asset->GetTerrainPatch(0), collision);
-	}
+void testAsset(const MOHPC::BSPPtr& Asset)
+{
+	traceTest(Asset);
+	leafTesting(Asset);
+	groupTesting(Asset);
+
+	MOHPC::BSPCollisionPtr bspCollision = MOHPC::BSPCollision::create(Asset);
+	MOHPC::BSPData::TerrainCollide collision;
+	bspCollision->GenerateTerrainCollide(Asset->GetTerrainPatch(0), collision);
 }
 
 void traceTest(const MOHPC::BSPPtr& Asset)
@@ -227,5 +237,7 @@ void groupTesting(const MOHPC::BSPPtr& Asset)
 
 	const size_t num = bspGroup->getNumBrushData();
 	const size_t num2 = bspGroup->getNumGroupedSurfaces();
+	assert(num == Asset->GetNumBrushes());
+	MOHPC_LOG(Info, "%zu brushes, %zu grouped surfaces", num, num2);
 	// FIXME: should test against a custom BSP file
 }
