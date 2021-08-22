@@ -65,6 +65,10 @@ namespace MOHPC
 
 		struct Plane
 		{
+		public:
+			Plane();
+
+		public:
 			enum PlaneType
 			{
 				PLANE_X,
@@ -169,20 +173,19 @@ namespace MOHPC
 
 		public:
 			const Shader* shader;
+			PatchCollide* pc;
 			std::vector<Vertice> vertices;
 			std::vector<uint32_t> indexes;
 			vec3_t centroid;
-			bool bIsPatch;
-			int32_t lightmapNum;
-			int32_t lightmapX;
-			int32_t lightmapY;
-			int32_t lightmapWidth;
-			int32_t lightmapHeight;
-			uint32_t width;
-			uint32_t height;
+			uint32_t lightmapNum;
+			uint32_t lightmapX;
+			uint32_t lightmapY;
+			uint32_t lightmapWidth;
+			uint32_t lightmapHeight;
 			vec3_t lightmapOrigin;
 			vec3_t lightmapVecs[3];
-			PatchCollide* pc;
+			uint32_t width;
+			uint32_t height;
 
 			struct
 			{
@@ -200,6 +203,8 @@ namespace MOHPC
 				float radius;
 				Plane plane;
 			} cullInfo;
+
+			bool bIsPatch;
 		};
 
 		struct SideEquation

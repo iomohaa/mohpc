@@ -353,10 +353,21 @@ void BSPData::Lightmap::GetColor(size_t pixelNum, uint8_t(&out)[3]) const
 }
 
 BSPData::Surface::Surface()
+	: shader(nullptr)
+	, centroid{ 0 }
+	, lightmapNum(0)
+	, lightmapX(0)
+	, lightmapY(0)
+	, lightmapWidth(0)
+	, lightmapHeight(0)
+	, lightmapOrigin{ 0 }
+	, lightmapVecs{ 0 }
+	, width(0)
+	, height(0)
+	, pc(nullptr)
+	, cullInfo{ 0 }
+	, bIsPatch(false)
 {
-	shader = nullptr;
-	bIsPatch = false;
-	pc = nullptr;
 }
 
 BSPData::Surface::~Surface()
@@ -888,7 +899,6 @@ void BSPReader::ParseMesh(const BSPFile::fsurface_t* InSurface, const BSPFile::f
 		subdivisions = MIN_MAP_SUBDIVISIONS;
 	}
 
-	// FIXME
 	out->pc = GeneratePatchCollide(Width, Height, Points, (float)subdivisions);
 }
 
@@ -1998,6 +2008,15 @@ uintptr_t BSP::PointLeafNum_r(const vec3r_t p, intptr_t num)
 	}
 
 	return -1 - num;
+}
+
+Plane::Plane()
+	: normal{ 0 }
+	, distance(0.f)
+	, type((PlaneType)0)
+	, signBits(0)
+{
+
 }
 
 Vertice::Vertice()

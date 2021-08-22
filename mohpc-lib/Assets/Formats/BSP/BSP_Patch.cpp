@@ -101,8 +101,8 @@ static int SignbitsForNormal(vec3_t normal) {
 	return bits;
 }
 
-#define	NORMAL_EPSILON	0.0001
-#define	DIST_EPSILON	0.02
+static constexpr float NORMAL_EPSILON = 0.0001f;
+static constexpr float DIST_EPSILON = 0.02f;
 
 int PlaneEqual(BSPData::PatchPlane *p, float plane[4], int *flipped) {
 	float invplane[4];
@@ -676,7 +676,7 @@ void AddFacetBevels(patchWork_t& pw, BSPData::Facet *facet) {
 			for (dir = -1; dir <= 1; dir += 2)
 			{
 				// construct a plane
-				vec2 = Vector3();
+				vec2 = Vector3::Zero();
 				vec2[axis] = (float)dir;
 				castVector(plane) = vec.cross(vec2);
 				if (castVector(plane).squaredNorm() < 0.5) {
