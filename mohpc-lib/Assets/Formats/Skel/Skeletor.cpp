@@ -1,7 +1,8 @@
 #include <Shared.h>
 #include "SkelPrivate.h"
 #include "../TIKI/TIKI_Private.h"
-#include "../../../Common/VectorPrivate.h"
+
+#include <MOHPC/Common/Math.h>
 
 #include <chrono>
 

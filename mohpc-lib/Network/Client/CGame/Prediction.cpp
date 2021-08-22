@@ -3,14 +3,10 @@
 #include <MOHPC/Network/Client/CGame/ServerInfo.h>
 #include <MOHPC/Network/Client/Time.h>
 #include <MOHPC/Network/Client/UserInput.h>
-
 #include <MOHPC/Network/pm/bg_public.h>
-
 #include <MOHPC/Assets/Managers/ShaderManager.h>
-
+#include <MOHPC/Common/Math.h>
 #include <MOHPC/Common/Log.h>
-
-#include "../../../Common/VectorPrivate.h"
 
 using namespace MOHPC;
 using namespace MOHPC::Network;
@@ -137,7 +133,10 @@ void Prediction::predictPlayerState(tickTime_t simulatedRemoteTime, const Predic
 	{
 		const float f = frameInterpolation - 1.f;
 
-		castVector(predictedPlayerState.origin) += (castVector(entInfo->nextState.netorigin) - castVector(entInfo->currentState.netorigin)) * f;
+		vec3_t delta;
+		VecSubtract(entInfo->nextState.netorigin, entInfo->currentState.netorigin, delta);
+		VectorScale(delta, f, delta);
+		VecAdd(predictedPlayerState.origin, delta, predictedPlayerState.origin);
 	}
 }
 
@@ -414,7 +413,10 @@ void Prediction::extendMove(Pmove& pmove, deltaTime_t deltaTime)
 void Prediction::physicsNoclip(Pmove& pmove, deltaTimeFloat_t frametime)
 {
 	const pmove_t& pm = pmove.get();
-	castVector(pm.ps->origin) += castVector(pm.ps->velocity) * frametime.count();
+
+	vec3_t delta;
+	VectorScale(pm.ps->velocity, frametime.count(), delta);
+	VecAdd(pm.ps->origin, delta, pm.ps->origin);
 }
 
 void Prediction::transitionPlayerState(const PredictionParm& pparm, const playerState_t& current, const playerState_t* old)

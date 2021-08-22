@@ -1,13 +1,14 @@
 #include <Shared.h>
 #include <MOHPC/Assets/Formats/TIKI.h>
 #include <MOHPC/Common/Log.h>
+#include <MOHPC/Common/Math.h>
+
 #include "TIKI_Private.h"
 #include "../Skel/SkelPrivate.h"
 #include "../../../Common/Memory/DummyAllocator.h"
 #include "../../../Common/Memory/FixedAllocator.h"
-#include <cstring>
 
-#include "../../../Common/VectorPrivate.h"
+#include <cstring>
 
 static constexpr char MOHPC_LOG_NAMESPACE[] = "tikifiles";
 
@@ -243,11 +244,12 @@ TIKIAnim* TIKIReader::LoadTIKIAnim(const fs::path& Filename, dloaddef_t* ld)
 			constexpr float maxLength = 100000.0f;
 			constexpr float maxLengthSquared = maxLength * maxLength;
 
-			const Vector3 tempVec = castVector(TikiAnim->maxs) - castVector(TikiAnim->mins);
-			if (tempVec.squaredNorm() > maxLengthSquared)
+			vec3_t tempVec;
+			VecSubtract(TikiAnim->maxs, TikiAnim->mins, tempVec);
+			if (VectorLengthSquared(tempVec) > maxLengthSquared)
 			{
-				castVector(TikiAnim->mins) = Vector3(-4.f, -4.f, -4.f);
-				castVector(TikiAnim->maxs) = Vector3(4.f, 4.f, 4.f);
+				VecCopy(vec3_t{ -4, -4, -4 }, TikiAnim->mins);
+				VecCopy(vec3_t{ 4, 4, 4 }, TikiAnim->maxs);
 			}
 		}
 		else

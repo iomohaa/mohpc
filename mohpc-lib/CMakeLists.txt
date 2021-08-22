@@ -40,7 +40,6 @@ add_dependencies(MOHPC MOHPC-3PT)
 
 target_compile_definitions(MOHPC PRIVATE MOHPC_DLL=1)
 
-target_include_directories(MOHPC PUBLIC ${Eigen_DIR})
 target_include_directories(MOHPC PRIVATE ${PROJECT_SOURCE_DIR})
 target_include_directories(MOHPC PRIVATE ${PROJECT_SOURCE_DIR}/../thirdparty)
 target_include_directories(MOHPC PUBLIC $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include> $<INSTALL_INTERFACE:${CMAKE_INSTALL_PREFIX}/include>)

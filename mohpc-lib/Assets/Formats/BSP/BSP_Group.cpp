@@ -1,6 +1,8 @@
 #include <MOHPC/Assets/Formats/BSP_Group.h>
 #include <MOHPC/Assets/Formats/BSP.h>
-#include "../../../Common/VectorPrivate.h"
+#include <MOHPC/Common/Math.h>
+
+#include <cassert>
 
 using namespace MOHPC;
 
@@ -148,6 +150,24 @@ void BSPGroup::groupSurfaces(const BSP& bsp)
 	mapBrushes(bsp, groupedSurfaces);
 }
 
+bool BSPGroup::isParented(const BSPData::BrushGroupData& b1, const BSPData::BrushGroupData& b2) const
+{
+	const BSPData::BrushGroupData* parentData = &b1;
+
+	// Checks for infinite parenting
+	bool bInfiniteParent = false;
+	do
+	{
+		const BSPData::Brush* const parent = parentData->brush;
+		if (parentData == &b2) {
+			return true;
+		}
+		parentData = parentData->parentData;
+	} while (parentData);
+
+	return false;
+}
+
 void BSPGroup::connectBrushes(const BSP& bsp, std::vector<BSPData::BrushGroupData>& list)
 {
 	const size_t numBrushes = bsp.GetNumBrushes();
@@ -170,23 +190,7 @@ void BSPGroup::connectBrushes(const BSP& bsp, std::vector<BSPData::BrushGroupDat
 				continue;
 			}
 
-			const BSPData::Brush* parent = brush;
-			const BSPData::BrushGroupData* parentData = &brushData;
-
-			// Checks for infinite parenting
-			bool bInfiniteParent = false;
-			do
-			{
-				if (parent == brush2)
-				{
-					bInfiniteParent = true;
-					break;
-				}
-				parentData = parentData->parentData;
-				parent = parentData->brush;
-			} while (parentData);
-
-			if (bInfiniteParent)
+			if (isParented(brushData, brushData2))
 			{
 				// would cause an infinite loop
 				continue;
@@ -455,7 +459,8 @@ void BSPGroup::mapBrushes(
 	{
 		BSPData::GroupedSurfaces* sg = outGroups[i];
 
-		Vector3 avg(0, 0, 0);
+		vec3_t avg{ 0 };
+
 		size_t numVertices = 0;
 
 		for (size_t k = 0; k < sg->surfaces.size(); k++)
@@ -466,7 +471,7 @@ void BSPGroup::mapBrushes(
 			{
 				const BSPData::Vertice* vert = &surf->vertices[v];
 
-				avg += castVector(vert->xyz);
+				VecAdd(avg, vert->xyz, avg);
 
 				AddPointToBounds(surf->vertices[v].xyz, sg->bounds[0], sg->bounds[1]);
 			}
@@ -474,7 +479,7 @@ void BSPGroup::mapBrushes(
 			numVertices += surf->vertices.size();
 		}
 
-		castVector(sg->origin) = avg / (float)numVertices;
+		VectorDiv(avg, (vec_t)numVertices, sg->origin);
 	}
 
 	outGroups.shrink_to_fit();

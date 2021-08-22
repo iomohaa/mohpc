@@ -23,12 +23,20 @@ namespace MOHPC
 
 	struct ModelMorph
 	{
-		int32_t morphIndex;
+	public:
+		ModelMorph();
+
+	public:
 		vec3_t offset;
+		int32_t morphIndex;
 	};
 
 	struct ModelWeight
 	{
+	public:
+		ModelWeight();
+
+	public:
 		uintptr_t boneIndex;
 		float boneWeight;
 		vec3_t offset;
@@ -36,9 +44,13 @@ namespace MOHPC
 
 	struct ModelVertice
 	{
+	public:
+		ModelVertice();
+
+	public:
 		vec3_t normal;
-		float st[2];
 		vec3_t xyz;
+		float st[2];
 		std::vector<ModelWeight> weights;
 		std::vector<ModelMorph> morphs;
 	};

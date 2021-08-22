@@ -94,6 +94,7 @@ namespace MOHPC
 	{
 	public:
 		TIKICommand() noexcept;
+		~TIKICommand();
 
 		/** Return the number of arguments this command contains.*/
 		MOHPC_ASSETS_EXPORTS size_t getNumArgs() const;
@@ -112,6 +113,7 @@ namespace MOHPC
 	{
 	public:
 		TIKIAnimDef() noexcept;
+		~TIKIAnimDef();
 
 		/** Return the alias name for this definition. */
 		MOHPC_ASSETS_EXPORTS const char* getAlias() const;
@@ -148,6 +150,7 @@ namespace MOHPC
 	{
 	public:
 		TIKIAnim() noexcept;
+		~TIKIAnim();
 
 		/** Return the number of animation definitions. */
 		MOHPC_ASSETS_EXPORTS size_t getNumAnimDefs() const;

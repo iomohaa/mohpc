@@ -6,14 +6,31 @@
 #include <MOHPC/Assets/Formats/Skel.h>
 #include <MOHPC/Assets/Formats/Skel/Skeletor.h>
 #include <MOHPC/Assets/Formats/Skel/SkeletonBones.h>
-
-#include "../Common/VectorPrivate.h"
-
-#include <Eigen/Geometry>
+#include <MOHPC/Common/Math.h>
 
 using namespace MOHPC;
 
 MOHPC_OBJECT_DEFINITION(ModelRenderer);
+
+ModelMorph::ModelMorph()
+	: offset{ 0 }
+	, morphIndex(0)
+{
+}
+
+ModelWeight::ModelWeight()
+	: boneIndex(0)
+	, boneWeight(0.f)
+	, offset{ 0 }
+{
+}
+
+ModelVertice::ModelVertice()
+	: normal{ 0 }
+	, xyz{ 0 }
+	, st{ 0 }
+{
+}
 
 ModelRenderer::ModelRenderer(const MOHPC::AssetManagerPtr& AssetManager)
 	: AssetObject(AssetManager)
@@ -415,7 +432,7 @@ void ModelRenderer::BuildRenderData()
 
 				if (numMorphs > 0)
 				{
-					vec3_t totalMorph;
+					vec3_t totalMorph{ 0, 0, 0 };
 					const SkeletorMorph* skelMorph = skelVertex->Morphs.data();
 
 					/*
@@ -640,7 +657,8 @@ void ModelRenderer::SkelWeightGetXyz(const SkeletorWeight *weight, const ModelBo
 
 void ModelRenderer::SkelWeightMorphGetXyz(const SkeletorWeight *weight, const ModelBoneTransform *bone, const vec3r_t totalmorph, vec3r_t out)
 {
-	const Vector3 point = castVector(totalmorph) + castVector(weight->offset);
+	vec3_t point;
+	VecAdd(totalmorph, weight->offset, point);
 
 	out[0] += ((point[0] * bone->matrix[0][0] +
 		point[1] * bone->matrix[1][0] +
@@ -687,7 +705,7 @@ bool ModelRenderer::SetPose(uintptr_t poseIndex, skelAnimStoreFrameList_c& frame
 		for (size_t j = 0; j <= pose->frameNum; j++)
 		{
 			const AnimFrame* animFrame = pose->animation->GetFrame(j);
-			castVector(delta) += castVector((float*)animFrame->delta);
+			VecAdd(delta, (float*)animFrame->delta, delta);
 		}
 
 		blendInfo.pAnimationData = pose->animation;

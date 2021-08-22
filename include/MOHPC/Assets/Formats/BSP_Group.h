@@ -74,6 +74,7 @@ namespace MOHPC
 
 	private:
 		void connectBrushes(const BSP& bsp, std::vector<BSPData::BrushGroupData>& list);
+		bool isParented(const BSPData::BrushGroupData& b1, const BSPData::BrushGroupData& b2) const;
 
 		void mapBrushes(
 			const BSP& bsp,

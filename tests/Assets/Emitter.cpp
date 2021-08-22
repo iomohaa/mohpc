@@ -10,11 +10,13 @@
 
 int main(int argc, const char* argv[])
 {
+	InitCommon(argc, argv);
+
 	const MOHPC::AssetManagerPtr AM = AssetLoad(GetGamePathFromCommandLine());
 
 	MOHPC_LOG(Info, "Loading test emitter...");
 	auto start = std::chrono::system_clock().now();
-	MOHPC::TIKIPtr Tiki = AM->readAsset<MOHPC::TIKIReader>("/models/fx/fx_tank_explosion.tik");
+	MOHPC::TIKIPtr Tiki = AM->readAsset<MOHPC::TIKIReader>("models/fx/fx_tank_explosion.tik");
 	auto end = std::chrono::system_clock().now();
 	MOHPC_LOG(Debug, "%lf time", std::chrono::duration<double>(end - start).count());
 

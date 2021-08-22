@@ -2,8 +2,7 @@
 #include <MOHPC/Assets/Formats/BSP.h>
 #include "BSP_Curve.h"
 
-#include "../../../Common/VectorPrivate.h"
-#include <Eigen/Geometry>
+#include <MOHPC/Common/Math.h>
 
 using namespace MOHPC;
 using namespace BSPData;
@@ -74,14 +73,14 @@ static void Transpose(int width, int height, BSPData::Vertice ctrl[MAX_GRID_SIZE
 
 static void MakeMeshNormals(int width, int height, BSPData::Vertice ctrl[MAX_GRID_SIZE][MAX_GRID_SIZE]) {
 	int		i, j, k, dist;
-	Vector3 normal;
-	Vector3 sum;
+	vec3_t normal;
+	vec3_t sum;
 	int		count = 0;
-	Vector3	base;
-	Vector3	delta;
+	vec3_t	base;
+	vec3_t	delta;
 	int		x, y;
 	BSPData::Vertice *dv;
-	Vector3		around[8], temp;
+	vec3_t		around[8], temp;
 	bool	good[8];
 	bool	wrapWidth, wrapHeight;
 	double len;
@@ -92,8 +91,8 @@ static void MakeMeshNormals(int width, int height, BSPData::Vertice ctrl[MAX_GRI
 	wrapWidth = false;
 	for (i = 0; i < height; i++)
 	{
-		delta = castVector(ctrl[i][0].xyz) - castVector(ctrl[i][width - 1].xyz);
-		len = delta.squaredNorm();
+		VecSubtract(ctrl[i][0].xyz, ctrl[i][width - 1].xyz, delta);
+		len = VectorLengthSquared(delta);
 		if (len > 1.0) {
 			break;
 		}
@@ -104,8 +103,8 @@ static void MakeMeshNormals(int width, int height, BSPData::Vertice ctrl[MAX_GRI
 
 	wrapHeight = false;
 	for (i = 0; i < width; i++) {
-		delta = castVector(ctrl[i][0].xyz) - castVector(ctrl[i][height - 1].xyz);
-		len = delta.squaredNorm();
+		VecSubtract(ctrl[i][0].xyz, ctrl[i][height - 1].xyz, delta);
+		len = VectorLengthSquared(delta);
 		if (len > 1.0) {
 			break;
 		}
@@ -119,9 +118,9 @@ static void MakeMeshNormals(int width, int height, BSPData::Vertice ctrl[MAX_GRI
 		for (j = 0; j < height; j++) {
 			count = 0;
 			dv = &ctrl[j][i];
-			base = castVector(dv->xyz);
+			VectorCopy(dv->xyz, base);
 			for (k = 0; k < 8; k++) {
-				around[k] = castVector(vec3_zero);
+				VectorClear(around[k]);
 				good[k] = false;
 
 				for (dist = 1; dist <= 3; dist++) {
@@ -147,38 +146,39 @@ static void MakeMeshNormals(int width, int height, BSPData::Vertice ctrl[MAX_GRI
 					if (x < 0 || x >= width || y < 0 || y >= height) {
 						break;					// edge of patch
 					}
-					temp = castVector(ctrl[y][x].xyz) - base;
-					if (temp.squaredNorm() == 0.f)
+					VecSubtract(ctrl[y][x].xyz, base, temp);
+					if (VectorNormalize(temp) == 0.f)
 					{
 						// degenerate edge, get more dist
 						continue;
 					}
 					else
 					{
-						temp.normalize();
 						good[k] = true;
-						around[k] = temp;
+						VectorCopy(temp, around[k]);
 						// good edge
 						break;
 					}
 				}
 			}
 
-			sum = castVector(vec3_zero);
+			VectorClear(sum);
 			for (k = 0; k < 8; k++) {
 				if (!good[k] || !good[(k + 1) & 7]) {
 					continue;	// didn't get two points
 				}
-				normal = around[(k + 1) & 7];
-				normal.cross(around[k]);
-				sum += normal;
+				CrossProduct(around[(k + 1) & 7], around[k], normal);
+				if (VectorNormalize(normal) == 0.f) {
+					continue;
+				}
+
+				VecAdd(sum, normal, sum);
 				count++;
 			}
 			//if ( count == 0 ) {
 			//	printf("bad normal\n");
 			//}
-			castVector(dv->normal) = sum;
-			castVector(dv->normal).normalize();
+			VectorNormalize2(sum, dv->normal);
 		}
 	}
 }
@@ -287,7 +287,7 @@ static void PutPointsOnCurve(BSPData::Vertice ctrl[MAX_GRID_SIZE][MAX_GRID_SIZE]
 void BSPReader::CreateSurfaceGridMesh(int32_t width, int32_t height, BSPData::Vertice *ctrl, int32_t numIndexes, int32_t *indexes, BSPData::Surface* grid)
 {
 	BSPData::Vertice *vert;
-	Vector3 tmpVec;
+	vec3_t tmpVec;
 
 	grid->indexes.resize(numIndexes);
 	grid->vertices.resize(width * height);
@@ -311,10 +311,10 @@ void BSPReader::CreateSurfaceGridMesh(int32_t width, int32_t height, BSPData::Ve
 	}
 
 	// compute local origin and bounds
-	castVector(grid->cullInfo.localOrigin) = castVector(grid->cullInfo.bounds[0]) + castVector(grid->cullInfo.bounds[1]);
-	castVector(grid->cullInfo.localOrigin) *= 0.5f;
-	tmpVec = castVector(grid->cullInfo.bounds[0]) - castVector(grid->cullInfo.localOrigin);
-	grid->cullInfo.radius = (float)tmpVec.norm();
+	VecAdd(grid->cullInfo.bounds[0], grid->cullInfo.bounds[1], grid->cullInfo.localOrigin);
+	VectorScale(grid->cullInfo.localOrigin, 0.5f, grid->cullInfo.localOrigin);
+	VecSubtract(grid->cullInfo.bounds[0], grid->cullInfo.localOrigin, tmpVec);
+	grid->cullInfo.radius = VectorLength(tmpVec);
 }
 
 void BSPReader::SubdividePatchToGrid(int32_t Width, int32_t Height, const Vertice* Points, Surface* Out)
@@ -355,10 +355,10 @@ void BSPReader::SubdividePatchToGrid(int32_t Width, int32_t Height, const Vertic
 
 			maxLen = 0;
 			for (i = 0; i < Height; i++) {
-				Vector3 midxyz;
-				Vector3 midxyz2;
-				Vector3 dir;
-				Vector3 projected;
+				vec3_t midxyz;
+				vec3_t midxyz2;
+				vec3_t dir;
+				vec3_t projected;
 				float		d;
 
 				// calculate the point on the curve
@@ -371,14 +371,14 @@ void BSPReader::SubdividePatchToGrid(int32_t Width, int32_t Height, const Vertic
 				// using dist-from-line will not account for internal
 				// texture warping, but it gives a lot less polygons than
 				// dist-from-midpoint
-				midxyz -= castVector(cgrid->ctrl[i][j].xyz);
-				dir = castVector(cgrid->ctrl[i][j + 2].xyz) - castVector(cgrid->ctrl[i][j].xyz);
-				dir.normalize();
+				VecSubtract(midxyz, cgrid->ctrl[i][j].xyz, midxyz);
+				VecSubtract(cgrid->ctrl[i][j + 2].xyz, cgrid->ctrl[i][j].xyz, dir);
+				VectorNormalize(dir);
 
-				d = (float)midxyz.dot(dir);
-				projected = dir * d;
-				midxyz2 = midxyz - projected;
-				len = (float)midxyz2.squaredNorm(); // we will do the sqrt later
+				d = DotProduct(midxyz, dir);
+				VectorScale(dir, d, projected);
+				VecSubtract(midxyz, projected, midxyz2);
+				len = (float)VectorLengthSquared(midxyz2); // we will do the sqrt later
 				if (len > maxLen) {
 					maxLen = len;
 				}
