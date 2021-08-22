@@ -8,9 +8,9 @@ namespace MOHPC
 	const unsigned long VERSION_MAJOR = 1;
 	const unsigned long VERSION_MINOR = 3;
 	const unsigned long VERSION_PATCH = 0;
-	const unsigned long VERSION_BUILD = 23680;
+	const unsigned long VERSION_BUILD = 23699;
 
-	const char VERSION_STRING[] = "1.3.0.23680";
+	const char VERSION_STRING[] = "1.3.0.23699";
 	const char VERSION_SHORT_STRING[] = "1.3.0";
 	const char VERSION_DATE[] = "Aug 22 2021";
 

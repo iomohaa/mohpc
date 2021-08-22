@@ -65,6 +65,7 @@ namespace MOHPC
 	MOHPC_EXPORTS void VectorInverse(vec3_t vec);
 	MOHPC_EXPORTS void VecNegate(const vec3_t vec, vec3_t out);
 	MOHPC_EXPORTS void VectorScale(const vec3_t in, vec_t scale, vec3_t out);
+	MOHPC_EXPORTS void VectorDiv(const vec3_t in, vec_t div, vec3_t out);
 	MOHPC_EXPORTS void CrossProduct(const vec3_t v1, const vec3_t v2, vec3_t cross);
 
 	MOHPC_EXPORTS int DirToByte(const vec3_t dir);

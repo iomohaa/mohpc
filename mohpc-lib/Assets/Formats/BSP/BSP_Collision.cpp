@@ -1,7 +1,7 @@
 #include <MOHPC/Assets/Formats/BSP_Collision.h>
 #include <MOHPC/Assets/Formats/BSP.h>
 #include <MOHPC/Utility/Collision/Collision.h>
-#include "../../../Common/VectorPrivate.h"
+#include <MOHPC/Common/Math.h>
 
 using namespace MOHPC;
 
@@ -511,7 +511,7 @@ void BSPCollision::TR_PickTerrainSquareMode(BSPData::TerrainCollideSquare* squar
 
 	if (square->eMode == 2)
 	{
-		if (castVector(vTest).dot(castVector(square->plane[0])) < square->plane[0][3]) {
+		if (DotProduct(vTest, square->plane[0]) < square->plane[0][3]) {
 			square->eMode = 1;
 		}
 	}

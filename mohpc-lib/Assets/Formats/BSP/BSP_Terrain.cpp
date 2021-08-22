@@ -3,7 +3,6 @@
 #include <MOHPC/Assets/Managers/AssetManager.h>
 #include <MOHPC/Assets/Managers/ShaderManager.h>
 #include <MOHPC/Common/Math.h>
-#include "../../../Common/VectorPrivate.h"
 
 using namespace MOHPC;
 using namespace BSPData;
@@ -143,13 +142,17 @@ void BSPReader::GenerateTerrainPatch(const TerrainPatch* Patch, Surface* Out)
 		Vertice* v2 = &Out->vertices[Out->indexes[ndx + 1]];
 		Vertice* v3 = &Out->vertices[Out->indexes[ndx + 2]];
 
-		const Vector3 Delta1 = castVector(v1->xyz) - castVector(v2->xyz);
-		const Vector3 Delta2 = castVector(v3->xyz) - castVector(v2->xyz);
+		vec3_t d1, d2;
+		VecSubtract(v1->xyz, v2->xyz, d1);
+		VecSubtract(v3->xyz, v2->xyz, d2);
 
-		Vector3 normal = Delta1.cross(Delta2);
-		normal.normalize();
+		vec3_t normal;
+		CrossProduct(d1, d2, normal);
+		VectorNormalize(normal);
 
-		castVector(v1->normal) = castVector(v2->normal) = castVector(v3->normal) = normal;
+		VectorCopy(normal, v1->normal);
+		VectorCopy(normal, v2->normal);
+		VectorCopy(normal, v3->normal);
 	}
 
 	Out->CalculateCentroid();
@@ -223,13 +226,17 @@ void BSPReader::GenerateTerrainPatch2(const TerrainPatch* Patch, TerrainPatchDra
 		Vertice* v2 = &Out->vertices[Out->indexes[ndx + 1]];
 		Vertice* v3 = &Out->vertices[Out->indexes[ndx + 2]];
 
-		const Vector3 Delta1 = castVector(v1->xyz) - castVector(v2->xyz);
-		const Vector3 Delta2 = castVector(v3->xyz) - castVector(v2->xyz);
-		
-		Vector3 normal = Delta1.cross(Delta2);
-		normal.normalize();
+		vec3_t d1, d2;
+		VecSubtract(v1->xyz, v2->xyz, d1);
+		VecSubtract(v3->xyz, v2->xyz, d2);
 
-		castVector(v1->normal) = castVector(v2->normal) = castVector(v3->normal) = normal;
+		vec3_t normal;
+		CrossProduct(d1, d2, normal);
+		VectorNormalize(normal);
+
+		VectorCopy(normal, v1->normal);
+		VectorCopy(normal, v2->normal);
+		VectorCopy(normal, v3->normal);
 	}
 
 	Out->CalculateCentroid();

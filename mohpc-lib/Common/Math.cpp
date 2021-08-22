@@ -718,6 +718,13 @@ void MOHPC::VectorScale(const vec3_t in, vec_t scale, vec3_t out)
 	out[2] = in[2] * scale;
 }
 
+void MOHPC::VectorDiv(const vec3_t in, vec_t div, vec3_t out)
+{
+	out[0] = in[0] / div;
+	out[1] = in[1] / div;
+	out[2] = in[2] / div;
+}
+
 void MOHPC::VecMatrixInverse(void* DstMatrix, const void* SrcMatrix)
 {
 	typedef float Float4x4[4][4];

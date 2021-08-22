@@ -14,8 +14,7 @@
 
 #include "BSP_Curve.h"
 
-#include "../../../Common/VectorPrivate.h"
-#include <Eigen/Geometry>
+#include <MOHPC/Common/Math.h>
 
 #include <chrono>
 #include <algorithm>
@@ -461,22 +460,24 @@ bool BSPData::Surface::IsPatch() const
 
 void BSPData::Surface::CalculateCentroid()
 {
-	Vector3 avgVert = castVector(vec3_zero);
+	vec3_t avgVert{ 0 };
+
 	const size_t numVerts = vertices.size();
 	const Vertice *verts = vertices.data();
 	for (size_t v = 0; v < numVerts; v++)
 	{
 		const Vertice* pVert = &verts[v];
-		avgVert += castVector(pVert->xyz);
+		VecAdd(avgVert, pVert->xyz, avgVert);
 	}
 
-	castVector(centroid) = avgVert / (float)numVerts;
+	VectorDiv(avgVert, (vec_t)numVerts, centroid);
 }
 
 void BSPData::Brush::GetOrigin(vec3r_t out) const
 {
-	Vector3 vec = (castVector(bounds[0]) + castVector(bounds[1])) * 0.5f;
-	castVector(out) = vec;
+	vec3_t vec;
+	VecAdd(bounds[0], bounds[1], vec);
+	VectorScale(vec, 0.5f, out);
 }
 
 TerrainSurface::TerrainSurface()
@@ -978,7 +979,7 @@ void BSPReader::ParseFace(const BSPFile::fsurface_t* InSurface, const BSPFile::f
 		out->cullInfo.plane.normal[i] = Endian.LittleFloat(InSurface->lightmapVecs[2][i]);
 	}
 
-	out->cullInfo.plane.distance = (float)castVector(out->vertices[0].xyz).dot(castVector(out->cullInfo.plane.normal));
+	out->cullInfo.plane.distance = DotProduct(out->vertices[0].xyz, out->cullInfo.plane.normal);
 	out->cullInfo.plane.type = PlaneTypeForNormal(out->cullInfo.plane.normal);
 }
 
@@ -1472,8 +1473,8 @@ void BSPReader::LoadSubmodels(
 			// spread the mins / maxs by a pixel
 			EndianHelpers::LittleVector(Endian, in->mins, out->bounds[0]);
 			EndianHelpers::LittleVector(Endian, in->maxs, out->bounds[1]);
-			castVector(out->bounds[0]) -= Vector3(1, 1, 1);
-			castVector(out->bounds[1]) += Vector3(1, 1, 1);
+			VecSubtract(out->bounds[0], vec3_t{ 1, 1, 1 }, out->bounds[0]);
+			VecSubtract(out->bounds[1], vec3_t{ 1, 1, 1 }, out->bounds[1]);
 
 			out->numSurfaces = numSurfaces;
 			if (out->numSurfaces) {

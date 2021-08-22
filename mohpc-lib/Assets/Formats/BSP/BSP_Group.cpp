@@ -1,6 +1,8 @@
 #include <MOHPC/Assets/Formats/BSP_Group.h>
 #include <MOHPC/Assets/Formats/BSP.h>
-#include "../../../Common/VectorPrivate.h"
+#include <MOHPC/Common/Math.h>
+
+#include <cassert>
 
 using namespace MOHPC;
 
@@ -457,7 +459,8 @@ void BSPGroup::mapBrushes(
 	{
 		BSPData::GroupedSurfaces* sg = outGroups[i];
 
-		Vector3 avg(0, 0, 0);
+		vec3_t avg{ 0 };
+
 		size_t numVertices = 0;
 
 		for (size_t k = 0; k < sg->surfaces.size(); k++)
@@ -468,7 +471,7 @@ void BSPGroup::mapBrushes(
 			{
 				const BSPData::Vertice* vert = &surf->vertices[v];
 
-				avg += castVector(vert->xyz);
+				VecAdd(avg, vert->xyz, avg);
 
 				AddPointToBounds(surf->vertices[v].xyz, sg->bounds[0], sg->bounds[1]);
 			}
@@ -476,7 +479,7 @@ void BSPGroup::mapBrushes(
 			numVertices += surf->vertices.size();
 		}
 
-		castVector(sg->origin) = avg / (float)numVertices;
+		VectorDiv(avg, (vec_t)numVertices, sg->origin);
 	}
 
 	outGroups.shrink_to_fit();
