@@ -800,14 +800,14 @@ MSG& MSG::WriteClass(const ISerializableMessage& value)
 	return *this;
 }
 
-MSG& MSG::WriteDeltaClass(const ISerializableMessage* a, const ISerializableMessage* b)
+MSG& MSG::WriteDeltaClass(const ISerializableMessage* a, ISerializableMessage* b)
 {
 	assert(IsWriting());
 	b->SaveDelta(*this, a);
 	return *this;
 }
 
-MSG& MSG::WriteDeltaClass(const ISerializableMessage* a, const ISerializableMessage* b, intptr_t key)
+MSG& MSG::WriteDeltaClass(const ISerializableMessage* a, ISerializableMessage* b, intptr_t key)
 {
 	assert(IsWriting());
 	b->SaveDelta(*this, a, key);

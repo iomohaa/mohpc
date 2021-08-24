@@ -5,6 +5,11 @@
 using namespace MOHPC;
 using namespace MOHPC::Network;
 
+SerializableUsercmd::SerializableUsercmd(usercmd_t& inCmd)
+	: ucmd(inCmd)
+	, time32(0)
+{}
+
 void SerializableUsercmd::LoadDelta(MSG& msg, const ISerializableMessage* from, intptr_t key)
 {
 	using namespace std::chrono;
@@ -48,23 +53,27 @@ void SerializableUsercmd::LoadDelta(MSG& msg, const ISerializableMessage* from, 
 	}
 }
 
-void SerializableUsercmd::SaveDelta(MSG& msg, const ISerializableMessage* from, intptr_t key) const
+void SerializableUsercmd::SaveDelta(MSG& msg, const ISerializableMessage* from, intptr_t key)
 {
-	const usercmd_t* fromCmd = &((SerializableUsercmd*)from)->ucmd;
+	const SerializableUsercmd* fromCmdSer = static_cast<const SerializableUsercmd*>(from);
+	const usercmd_t* fromCmd = &fromCmdSer->ucmd;
 
-	using namespace std::chrono;
-	const deltaTime_t deltaTime = ucmd.getServerTime() - fromCmd->getServerTime();
-	const uint32_t serverTime = (uint32_t)duration_cast<milliseconds>(ucmd.getServerTime().time_since_epoch()).count();
-	const bool isByteTime = deltaTime < milliseconds(256);
+	using namespace ticks;
+	// use exact same values that are sent over the network (milliseconds)
+	time32 = (uint32_t)duration_cast<milliseconds>(ucmd.getServerTime().time_since_epoch()).count();
 
-	msg.WriteBool(isByteTime);
-	if (isByteTime) {
-		msg.WriteByte((uint8_t)duration_cast<milliseconds>(deltaTime).count());
+	// use milliseconds to be able to send the correct value over the network
+	const uint32_t deltaTime = time32 - fromCmdSer->time32;
+	if (deltaTime < 256)
+	{
+		msg.WriteBool(true);
+		msg.WriteByte(deltaTime);
 	}
 	else
 	{
+		msg.WriteBool(false);
 		// write the 32-bit server time
-		msg.WriteUInteger(serverTime);
+		msg.WriteUInteger(time32);
 	}
 
 	const UserMovementInput& mFromInput = fromCmd->getMovement();
@@ -87,7 +96,7 @@ void SerializableUsercmd::SaveDelta(MSG& msg, const ISerializableMessage* from, 
 	msg.WriteBool(hasChanges);
 	if (hasChanges)
 	{
-		const uint32_t keyTime = (uint32_t)key ^ serverTime;
+		const uint32_t keyTime = (uint32_t)key ^ time32;
 		msg.WriteDeltaTypeKey(fromAngles[0], angles[0], keyTime, 16);
 		msg.WriteDeltaTypeKey(fromAngles[1], angles[1], keyTime, 16);
 		msg.WriteDeltaTypeKey(fromAngles[2], angles[2], keyTime, 16);
@@ -113,7 +122,7 @@ void SerializableUserEyes::LoadDelta(MSG& msg, const ISerializableMessage* from)
 	}
 }
 
-void SerializableUserEyes::SaveDelta(MSG& msg, const ISerializableMessage* from) const
+void SerializableUserEyes::SaveDelta(MSG& msg, const ISerializableMessage* from)
 {
 	const usereyes_t& fromEye = ((SerializableUserEyes*)from)->eyesInfo;
 

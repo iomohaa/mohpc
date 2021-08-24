@@ -15,8 +15,8 @@ namespace MOHPC
 	public:
 		virtual ~ISerializableMessage() {};
 		virtual void Save(MSG& msg) const {};
-		virtual void SaveDelta(MSG& msg, const ISerializableMessage* from) const {};
-		virtual void SaveDelta(MSG& msg, const ISerializableMessage* from, intptr_t key) const {};
+		virtual void SaveDelta(MSG& msg, const ISerializableMessage* from) {};
+		virtual void SaveDelta(MSG& msg, const ISerializableMessage* from, intptr_t key) {};
 		virtual void Load(MSG& msg) {};
 		virtual void LoadDelta(MSG& msg, const ISerializableMessage* from) {};
 		virtual void LoadDelta(MSG& msg, const ISerializableMessage* from, intptr_t key) {};
