@@ -400,7 +400,7 @@ namespace Network
 		MOHPC_NET_EXPORTS uint8_t getViewHeight() const;
 
 		/** The angles at which the player is leaning. */
-		MOHPC_NET_EXPORTS float getLeanAngles() const;
+		MOHPC_NET_EXPORTS float getLeanAngle() const;
 		/** Return the current view model animation number. */
 		MOHPC_NET_EXPORTS uint8_t getViewModelAnim() const;
 		/** Value that changes when the current viewmodelanim is the same but is repeating. */

@@ -18,6 +18,7 @@ namespace Network
 		MOHPC_NET_EXPORTS extern const userButton_t Use;
 		MOHPC_NET_EXPORTS extern const userButton_t LeanLeft;
 		MOHPC_NET_EXPORTS extern const userButton_t LeanRight;
+		MOHPC_NET_EXPORTS extern const userButton_t InMenu;
 	}
 }
 }

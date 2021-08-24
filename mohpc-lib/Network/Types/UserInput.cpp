@@ -7,7 +7,7 @@ using namespace MOHPC::Network;
 
 uint32_t GetWeaponCommandMask()
 {
-	return WeaponCommands::MAX - 1;
+	return WeaponCommands::MAX << 7;
 }
 
 usercmd_t::usercmd_t()
@@ -70,7 +70,7 @@ UserActionInput::UserActionInput()
 {
 }
 
-bool UserActionInput::isHeld(userButton_t button)
+bool UserActionInput::isHeld(userButton_t button) const
 {
 	return flags & button;
 }
@@ -87,12 +87,12 @@ uint16_t UserActionInput::getFlags() const
 
 void UserActionInput::addWeaponCommand(weaponCommand_t weaponCommand)
 {
-	flags |= (weaponCommand & GetWeaponCommandMask()) << 7;
+	flags |= (weaponCommand << 7) & GetWeaponCommandMask();
 }
 
 void UserActionInput::removeWeaponCommand(weaponCommand_t weaponCommand)
 {
-	flags &= ~((weaponCommand & GetWeaponCommandMask()) << 7);
+	flags &= ~(weaponCommand << 7) & GetWeaponCommandMask();
 }
 
 void UserActionInput::addButton(userButton_t newButton)
@@ -103,6 +103,16 @@ void UserActionInput::addButton(userButton_t newButton)
 void UserActionInput::removeButton(userButton_t button)
 {
 	flags &= ~button;
+}
+
+void UserActionInput::removeAllButtons()
+{
+	flags = 0;
+}
+
+void UserActionInput::setOnlyButton(userButton_t button)
+{
+	flags = button;
 }
 
 UserMovementInput::UserMovementInput()

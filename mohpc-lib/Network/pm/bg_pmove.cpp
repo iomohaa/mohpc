@@ -30,8 +30,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "bg_local.h"
 
-#include <cstring>
-
 using namespace MOHPC;
 using namespace MOHPC::Network;
 
@@ -80,23 +78,30 @@ pmove_t::pmove_t()
 }
 
 pml_t::pml_t()
-	: forward(), left(), up()
-	, flat_forward(), flat_left(), flat_up()
+	: forward{ 0 }, left{ 0 }, up{ 0 }
+	, flat_forward{ 0 }, flat_left{ 0 }, flat_up{ 0 }
 	, frametime(0)
 	, msec(0)
 	, walking(false)
 	, groundPlane(false)
 	, impactSpeed(0)
-	, previous_origin()
-	, previous_velocity()
-	, previous_waterlevel(0)
+	, previous_origin{ 0 }
+	, previous_velocity{ 0 }
+	, previous_waterlevel{ 0 }
 {
 }
 
-Pmove::Pmove()
-	: c_pmove(0)
+pms_t::pms_t()
+	: leanAngleMax(0)
+	, leanDecaySpeed(0)
+	, leanIncreaseSpeed(0)
+	, leanSpeedMax(0)
 	, canLeanWhileMoving(false)
 	, clearLeanOnExit(true)
+{}
+
+Pmove::Pmove()
+	: c_pmove(0)
 {
 }
 
@@ -107,6 +112,11 @@ Pmove::~Pmove()
 pmove_t& Pmove::get()
 {
 	return pm;
+}
+
+pms_t& Pmove::getSettings()
+{
+	return pms;
 }
 
 /*
@@ -1379,12 +1389,87 @@ void Pmove::PM_UpdateViewAngles(playerState_t* ps, const UserMovementInput& mInp
 }
 
 
-/*
-================
-PmoveSingle
+void Pmove::adjustLean()
+{
+	const UserActionInput& cmdAction = pm.cmd.getAction();
 
-================
-*/
+	if (cmdAction.checkAnyHeld(UserButtons::LeanLeft, UserButtons::LeanRight) &&
+		!cmdAction.checkAllHeld(UserButtons::LeanLeft, UserButtons::LeanRight)
+		&& canLean(pm.cmd.getMovement()))
+	{
+		if (cmdAction.checkAnyHeld(UserButtons::LeanLeft, UserButtons::LeanRight))
+		{
+			if (cmdAction.isHeld(UserButtons::LeanLeft))
+			{
+				if (pm.ps->fLeanAngle <= -pms.leanAngleMax)
+				{
+					pm.ps->fLeanAngle = -pms.leanAngleMax;
+				}
+				else
+				{
+					float fDelta = (-pms.leanAngleMax - pm.ps->fLeanAngle) * pml.frametime.count() * pms.leanIncreaseSpeed;
+					const float fMax = pml.frametime.count() * -pms.leanSpeedMax;
+					if (fDelta > fMax) {
+						fDelta = fMax;
+					}
+
+					pm.ps->fLeanAngle += fDelta;
+					if (pm.ps->fLeanAngle < -pms.leanAngleMax) {
+						pm.ps->fLeanAngle = -pms.leanAngleMax;
+					}
+				}
+			}
+			else if (cmdAction.isHeld(UserButtons::LeanRight))
+			{
+				if (pm.ps->fLeanAngle >= pms.leanAngleMax)
+				{
+					pm.ps->fLeanAngle = pms.leanAngleMax;
+				}
+				else
+				{
+					float fDelta = (pms.leanAngleMax - pm.ps->fLeanAngle) * pml.frametime.count() * pms.leanIncreaseSpeed;
+					const float fMax = pml.frametime.count() * pms.leanSpeedMax;
+					if (fDelta < fMax) {
+						fDelta = fMax;
+					}
+
+					pm.ps->fLeanAngle += fDelta;
+					if (pm.ps->fLeanAngle > pms.leanAngleMax) {
+						pm.ps->fLeanAngle = pms.leanAngleMax;
+					}
+				}
+			}
+		}
+	}
+	else if (pm.ps->fLeanAngle)
+	{
+		float fDelta = pml.frametime.count() * pm.ps->fLeanAngle * pms.leanDecaySpeed;
+		if (pm.ps->fLeanAngle <= 0.f)
+		{
+			const float fMax = pml.frametime.count() * -pms.leanSpeedMax;
+			if (fDelta > fMax) {
+				fDelta = fMax;
+			}
+
+			pm.ps->fLeanAngle -= fDelta;
+			if (pm.ps->fLeanAngle > 0.f) {
+				pm.ps->fLeanAngle = 0.f;
+			}
+		}
+		else
+		{
+			const float fMax = pml.frametime.count() * pms.leanSpeedMax;
+			if (fDelta < fMax) {
+				fDelta = fMax;
+			}
+
+			pm.ps->fLeanAngle -= fDelta;
+			if (pm.ps->fLeanAngle < 0.f) {
+				pm.ps->fLeanAngle = 0.f;
+			}
+		}
+	}
+}
 
 void Pmove::moveSingle()
 {
@@ -1404,18 +1489,29 @@ void Pmove::moveSingle()
 		pm.tracemask &= ~( CONTENTS_BODY | CONTENTS_NOBOTCLIP );	// corpses can fly through bodies
 	}
 
+	UserActionInput& cmdAction = pm.cmd.getAction();
+	UserMovementInput& mInput = pm.cmd.getMovement();
+	if (cmdAction.isHeld(UserButtons::InMenu))
+	{
+		// clear the input/movement if the user is in menu
+		cmdAction.setOnlyButton(UserButtons::InMenu);
+		mInput.clear();
+		pm.ps->fLeanAngle = 0.f;
+	}
+
 	if( pm.ps->pm_type == pmType_e::ClimbWall )
 	{
 		pm.ps->fLeanAngle = 0.0f;
-		pm.cmd.getAction().removeButton(UserButtons::LeanLeft);
-		pm.cmd.getAction().removeButton(UserButtons::LeanRight);
+		cmdAction.removeButton(UserButtons::LeanLeft);
+		cmdAction.removeButton(UserButtons::LeanRight);
 	}
 
 	// clear all pmove local vars
-	std::memset( &pml, 0, sizeof( pml ) );
+	pml = pml_t();
 
 	// determine the time
 	pml.msec = pm.cmd.getServerTime() - time_cast<tickTime_t>(pm.ps->getCommandTime());
+
 	using namespace ticks;
 	if ( pml.msec < milliseconds(1) ) {
 		pml.msec = milliseconds(1);
@@ -1426,93 +1522,20 @@ void Pmove::moveSingle()
 	pm.ps->commandTime = time_cast<netTime_t>(pm.cmd.getServerTime());
 
 	// save old org in case we get stuck
-	VecCopy( pm.ps->origin, pml.previous_origin );
+	VecCopy(pm.ps->origin, pml.previous_origin);
 
 	// save old velocity for crashlanding
-	VecCopy( pm.ps->velocity, pml.previous_velocity );
+	VecCopy(pm.ps->velocity, pml.previous_velocity);
 
 	pml.frametime = duration_cast<deltaTimeFloat_t>(pml.msec);
 
-	if (pm.cmd.getAction().checkAnyHeld(UserButtons::LeanLeft, UserButtons::LeanRight) &&
-		!pm.cmd.getAction().checkAllHeld(UserButtons::LeanLeft, UserButtons::LeanRight)
-		&& canLean(pm.cmd.getMovement()))
-	{
-		if(pm.cmd.getAction().isHeld(UserButtons::LeanLeft))
-		{
-			if( pm.ps->fLeanAngle <= -40.0f )
-			{
-				pm.ps->fLeanAngle = -40.0f;
-			}
-			else
-			{
-				float fAngle = pml.frametime.count() * ( -40.0f - pm.ps->fLeanAngle );
-				float fLeanAngle = pml.frametime.count() * -4.0f;
-
-				if( fAngle * 10.0f <= fLeanAngle ) {
-					fLeanAngle = fAngle * 10.0f;
-				}
-
-				pm.ps->fLeanAngle += fLeanAngle;
-			}
-		}
-		else
-		{
-			if( pm.ps->fLeanAngle >= 40.0f )
-			{
-				pm.ps->fLeanAngle = 40.0f;
-			}
-			else
-			{
-				float fAngle = 40.0f - pm.ps->fLeanAngle;
-				float fLeanAngle = pml.frametime.count() * 4.0f;
-				float fMult = pml.frametime.count() * fAngle;
-
-				if( fLeanAngle <= fMult * 10.0f )
-				{
-					fLeanAngle = fMult * 10.0f;
-				}
-				else
-				{
-					fLeanAngle = fMult;
-				}
-
-				pm.ps->fLeanAngle += fLeanAngle;
-			}
-		}
-	}
-	else if( pm.ps->fLeanAngle )
-	{
-		float fAngle = pm.ps->fLeanAngle * pml.frametime.count() * 15.0f;
-
-		if( pm.ps->fLeanAngle <= 0.0f )
-		{
-			float fLeanAngle = -4.0f * pml.frametime.count();
-
-			if( fAngle <= fLeanAngle )
-			{
-				fLeanAngle = fAngle;
-			}
-
-			pm.ps->fLeanAngle -= fLeanAngle;
-		}
-		else
-		{
-			float fLeanAngle = pml.frametime.count() * 4.0f;
-
-			if( fLeanAngle <= fAngle ) {
-				fLeanAngle = fAngle;
-			}
-
-			pm.ps->fLeanAngle -= fLeanAngle;
-		}
-	}
+	adjustLean();
 
 	if (shouldClearLean()) {
 		pm.ps->fLeanAngle = 0.f;
 	}
 
 	// update the viewangles
-	UserMovementInput& mInput = pm.cmd.getMovement();
 	PM_UpdateViewAngles(pm.ps, mInput);
 
 	AngleVectorsLeft( pm.ps->viewangles, pml.forward, pml.left, pml.up );
@@ -1599,7 +1622,7 @@ void Pmove::moveSingle()
 
 void Pmove::move_GroundTrace()
 {
-	std::memset( &pml, 0, sizeof( pml ) );
+	pml = pml_t();
 	using namespace ticks;
 	pml.msec = milliseconds(1);
 	pml.frametime = deltaTimeFloat_t(0.001f);
@@ -1657,40 +1680,41 @@ void Pmove::moveAdjustViewAngleSettings_OnLadder(vec3r_t vViewAngles, vec3r_t vA
 	float yawAngle;
 	float temp;
 
-	vAngles[ 0 ] = 0.0f;
-	vAngles[ 2 ] = 0.0f;
+	vAngles[0] = 0.0f;
+	vAngles[2] = 0.0f;
 
-	if( vViewAngles[ 0 ] > 73.0f ) {
-		vViewAngles[ 0 ] = 73.0f;
+	if (vViewAngles[0] > 73.0f) {
+		vViewAngles[0] = 73.0f;
 	}
 
-	deltayaw = AngleSubtract( vViewAngles[ 1 ], vAngles[ 1 ] );
+	deltayaw = AngleSubtract(vViewAngles[1], vAngles[1]);
 
 	yawAngle = 70.0f;
-	if( deltayaw <= 70.0f )
+	if (deltayaw <= 70.0f)
 	{
 		yawAngle = deltayaw;
-		if( deltayaw < -70.0f )
+		if (deltayaw < -70.0f)
 		{
 			yawAngle = -70.0f;
 		}
 	}
 
-	vViewAngles[ 1 ] = vAngles[ 1 ] + yawAngle;
+	vViewAngles[1] = vAngles[1] + yawAngle;
 
-	fDelta = sqrtf( yawAngle * yawAngle + vViewAngles[ 0 ] * vViewAngles[ 0 ] );
+	fDelta = sqrtf(yawAngle * yawAngle + vViewAngles[0] * vViewAngles[0]);
 
-	if( vViewAngles[ 0 ] <= 0.0f ) {
+	if (vViewAngles[0] <= 0.0f) {
 		temp = 80.0f;
-	} else {
+	}
+	else {
 		temp = 73.0f;
 	}
 
-	if( fDelta > temp )
+	if (fDelta > temp)
 	{
 		float deltalimit = temp * 1.0f / fDelta;
-		vViewAngles[ 0 ] *= deltalimit;
-		vViewAngles[ 1 ] = yawAngle * deltalimit + vAngles[ 1 ];
+		vViewAngles[0] *= deltalimit;
+		vViewAngles[1] = yawAngle * deltalimit + vAngles[1];
 	}
 }
 
@@ -1700,88 +1724,88 @@ void Pmove::moveAdjustAngleSettings(vec3r_t vViewAngles, vec3r_t vAngles, player
 	vec3_t armsAngles, torsoAngles, headAngles;
 	float fTmp;
 
-	if( pPlayerState->pm_type == pmType_e::ClimbWall )
+	if (pPlayerState->pm_type == pmType_e::ClimbWall)
 	{
-		moveAdjustViewAngleSettings_OnLadder( vViewAngles, vAngles, pPlayerState, pEntState );
-		VecSet( pEntState->bone_angles[ TORSO_TAG ], 0, 0, 0 );
-		VecSet( pEntState->bone_angles[ ARMS_TAG ], 0, 0, 0 );
-		VecSet( pEntState->bone_angles[ PELVIS_TAG ], 0, 0, 0 );
-		QuatSet( pEntState->bone_quat[ TORSO_TAG ], 0, 0, 0, 1 );
-		QuatSet( pEntState->bone_quat[ ARMS_TAG ], 0, 0, 0, 1 );
-		QuatSet( pEntState->bone_quat[ PELVIS_TAG ], 0, 0, 0, 1 );
+		moveAdjustViewAngleSettings_OnLadder(vViewAngles, vAngles, pPlayerState, pEntState);
+		VecSet(pEntState->bone_angles[TORSO_TAG], 0, 0, 0);
+		VecSet(pEntState->bone_angles[ARMS_TAG], 0, 0, 0);
+		VecSet(pEntState->bone_angles[PELVIS_TAG], 0, 0, 0);
+		QuatSet(pEntState->bone_quat[TORSO_TAG], 0, 0, 0, 1);
+		QuatSet(pEntState->bone_quat[ARMS_TAG], 0, 0, 0, 1);
+		QuatSet(pEntState->bone_quat[PELVIS_TAG], 0, 0, 0, 1);
 
-		AnglesSubtract( vViewAngles, vAngles, headAngles );
-		VectorScale( headAngles, 0.5f, pEntState->bone_angles[ HEAD_TAG ] );
+		AnglesSubtract(vViewAngles, vAngles, headAngles);
+		VectorScale(headAngles, 0.5f, pEntState->bone_angles[HEAD_TAG]);
 
-		EulerToQuat( headAngles, pEntState->bone_quat[ HEAD_TAG ] );
+		EulerToQuat(headAngles, pEntState->bone_quat[HEAD_TAG]);
 		return;
 	}
 
-	if( pPlayerState->pm_type != pmType_e::Dead )
+	if (pPlayerState->pm_type != pmType_e::Dead)
 	{
-		fTmp = AngleMod( vViewAngles[ 1 ] );
-		VecSet( vAngles, 0, fTmp, 0 );
+		fTmp = AngleMod(vViewAngles[1]);
+		VecSet(vAngles, 0, fTmp, 0);
 
-		if( !( pPlayerState->pm_flags & PMF_VIEW_PRONE ) || ( pPlayerState->pm_flags & PMF_DUCKED ) )
+		if (!(pPlayerState->pm_flags & PMF_VIEW_PRONE) || (pPlayerState->pm_flags & PMF_DUCKED))
 		{
-			fTmp = AngleMod( vViewAngles[ 0 ] );
+			fTmp = AngleMod(vViewAngles[0]);
 
-			VecSet( temp, fTmp, 0, pPlayerState->fLeanAngle * 0.60f );
-			VecSet( temp2, fTmp, 0, pPlayerState->fLeanAngle );
+			VecSet(temp, fTmp, 0, pPlayerState->fLeanAngle * 0.60f);
+			VecSet(temp2, fTmp, 0, pPlayerState->fLeanAngle);
 
-			if( fTmp > 180.0f ) {
-				temp2[ 0 ] = fTmp - 360.0f;
+			if (fTmp > 180.0f) {
+				temp2[0] = fTmp - 360.0f;
 			}
 
-			temp2[ 0 ] = 0.90f * temp2[ 0 ] * 0.70f;
+			temp2[0] = 0.90f * temp2[0] * 0.70f;
 
-			AnglesSubtract( temp, temp2, headAngles );
-			VecCopy( headAngles, pEntState->bone_angles[ HEAD_TAG ] );
-			EulerToQuat( pEntState->bone_angles[ HEAD_TAG ], pEntState->bone_quat[ HEAD_TAG ] );
+			AnglesSubtract(temp, temp2, headAngles);
+			VecCopy(headAngles, pEntState->bone_angles[HEAD_TAG]);
+			EulerToQuat(pEntState->bone_angles[HEAD_TAG], pEntState->bone_quat[HEAD_TAG]);
 
-			if( temp2[ 0 ] <= 0.0f )
+			if (temp2[0] <= 0.0f)
 			{
 				fTmp = -0.1f;
 			}
-			else{
+			else {
 				fTmp = 0.3f;
 			}
 
-			VecSet( temp, fTmp * temp2[ 0 ], 0, pPlayerState->fLeanAngle * 0.8f );
-			VecCopy( temp, pEntState->bone_angles[ PELVIS_TAG ] );
-			EulerToQuat( pEntState->bone_angles[ PELVIS_TAG ], pEntState->bone_quat[ PELVIS_TAG ] );
+			VecSet(temp, fTmp * temp2[0], 0, pPlayerState->fLeanAngle * 0.8f);
+			VecCopy(temp, pEntState->bone_angles[PELVIS_TAG]);
+			EulerToQuat(pEntState->bone_angles[PELVIS_TAG], pEntState->bone_quat[PELVIS_TAG]);
 
-			float fDelta = ( 1.0f - fTmp ) * temp2[ 0 ];
+			float fDelta = (1.0f - fTmp) * temp2[0];
 
-			if( vViewAngles[ 0 ] <= 0.0f )
+			if (vViewAngles[0] <= 0.0f)
 			{
-				VecSet( torsoAngles, fDelta * 0.60f, 0, pPlayerState->fLeanAngle * 0.2f * -0.1f );
-				VecSet( armsAngles, fDelta * 0.40f, 0, pPlayerState->fLeanAngle * 0.2f * 1.1f );
+				VecSet(torsoAngles, fDelta * 0.60f, 0, pPlayerState->fLeanAngle * 0.2f * -0.1f);
+				VecSet(armsAngles, fDelta * 0.40f, 0, pPlayerState->fLeanAngle * 0.2f * 1.1f);
 			}
 			else
 			{
-				VecSet( torsoAngles, fDelta * 0.70f, 0, pPlayerState->fLeanAngle * 0.2f * -0.1f );
-				VecSet( armsAngles, fDelta * 0.30f, 0, pPlayerState->fLeanAngle * 0.2f * 1.1f );
+				VecSet(torsoAngles, fDelta * 0.70f, 0, pPlayerState->fLeanAngle * 0.2f * -0.1f);
+				VecSet(armsAngles, fDelta * 0.30f, 0, pPlayerState->fLeanAngle * 0.2f * 1.1f);
 			}
 
-			VecCopy( torsoAngles, pEntState->bone_angles[ TORSO_TAG ] );
-			EulerToQuat( pEntState->bone_angles[ TORSO_TAG ], pEntState->bone_quat[ TORSO_TAG ] );
+			VecCopy(torsoAngles, pEntState->bone_angles[TORSO_TAG]);
+			EulerToQuat(pEntState->bone_angles[TORSO_TAG], pEntState->bone_quat[TORSO_TAG]);
 
-			VecCopy( armsAngles, pEntState->bone_angles[ ARMS_TAG ] );
-			EulerToQuat( pEntState->bone_angles[ ARMS_TAG ], pEntState->bone_quat[ ARMS_TAG ] );
+			VecCopy(armsAngles, pEntState->bone_angles[ARMS_TAG]);
+			EulerToQuat(pEntState->bone_angles[ARMS_TAG], pEntState->bone_quat[ARMS_TAG]);
 			return;
 		}
 	}
 
 	// set the default angles
-	VecSet( pEntState->bone_angles[ HEAD_TAG ], 0, 0, 0 );
-	VecSet( pEntState->bone_angles[ TORSO_TAG ], 0, 0, 0 );
-	VecSet( pEntState->bone_angles[ ARMS_TAG ], 0, 0, 0 );
-	VecSet( pEntState->bone_angles[ PELVIS_TAG ], 0, 0, 0 );
-	QuatSet( pEntState->bone_quat[ HEAD_TAG ], 0, 0, 0, 1 );
-	QuatSet( pEntState->bone_quat[ TORSO_TAG ], 0, 0, 0, 1 );
-	QuatSet( pEntState->bone_quat[ ARMS_TAG ], 0, 0, 0, 1 );
-	QuatSet( pEntState->bone_quat[ PELVIS_TAG ], 0, 0, 0, 1 );
+	VecSet(pEntState->bone_angles[HEAD_TAG], 0, 0, 0);
+	VecSet(pEntState->bone_angles[TORSO_TAG], 0, 0, 0);
+	VecSet(pEntState->bone_angles[ARMS_TAG], 0, 0, 0);
+	VecSet(pEntState->bone_angles[PELVIS_TAG], 0, 0, 0);
+	QuatSet(pEntState->bone_quat[HEAD_TAG], 0, 0, 0, 1);
+	QuatSet(pEntState->bone_quat[TORSO_TAG], 0, 0, 0, 1);
+	QuatSet(pEntState->bone_quat[ARMS_TAG], 0, 0, 0, 1);
+	QuatSet(pEntState->bone_quat[PELVIS_TAG], 0, 0, 0, 1);
 }
 
 void Pmove::moveAdjustAngleSettings_Client(vec3r_t vViewAngles, vec3r_t vAngles, playerState_t *pPlayerState, entityState_t *pEntState)
@@ -1795,12 +1819,12 @@ void Pmove::moveAdjustAngleSettings_Client(vec3r_t vViewAngles, vec3r_t vAngles,
 bool Pmove::canLean(const UserMovementInput& mInput)
 {
 	// a new setting since SH that allow leaning while moving
-	return (!mInput.getForwardValue() || canLeanWhileMoving)
-		&& (!mInput.getRightValue() || canLeanWhileMoving)
-		&& (!mInput.getUpValue() || canLeanWhileMoving);
+	return (!mInput.getForwardValue() || pms.canLeanWhileMoving)
+		&& (!mInput.getRightValue() || pms.canLeanWhileMoving)
+		&& (!mInput.getUpValue() || pms.canLeanWhileMoving);
 }
 
 bool Pmove::shouldClearLean()
 {
-	return clearLeanOnExit && (pm.ps->getPlayerMoveFlags() & PMF_LEVELEXIT) != 0;
+	return pms.clearLeanOnExit && (pm.ps->getPlayerMoveFlags() & PMF_LEVELEXIT) != 0;
 }

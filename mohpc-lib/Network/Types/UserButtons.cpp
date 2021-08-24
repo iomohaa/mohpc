@@ -9,3 +9,4 @@ const userButton_t UserButtons::Run = (1 << 2);
 const userButton_t UserButtons::Use = (1 << 3);
 const userButton_t UserButtons::LeanLeft = (1 << 4);
 const userButton_t UserButtons::LeanRight = (1 << 5);
+const userButton_t UserButtons::InMenu = (1 << 6);

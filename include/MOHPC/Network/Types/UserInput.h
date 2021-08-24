@@ -54,6 +54,15 @@ namespace Network
 		 * @see UserButtons.
 		 */
 		void removeButton(userButton_t button);
+		void removeAllButtons();
+
+		/**
+		 * Set only the specified button.
+		 *
+		 * @param button.
+		 * @see UserButtons.
+		 */
+		void setOnlyButton(userButton_t button);
 
 		/**
 		 * Check if a button is held.
@@ -61,18 +70,18 @@ namespace Network
 		 * @param button the button to check.
 		 * @see UserButtons.
 		 */
-		bool isHeld(userButton_t button);
+		bool isHeld(userButton_t button) const;
 
 		/** Check if any of specified user buttons is present. */
 		template<typename...Args>
-		bool checkAnyHeld(Args&&... button)
+		bool checkAnyHeld(Args&&... button) const
 		{
 			return (isHeld(std::forward<Args>(button)) || ...);
 		}
 
 		/** Check if all user buttons are present. */
 		template<typename...Args>
-		bool checkAllHeld(Args&&... button)
+		bool checkAllHeld(Args&&... button) const
 		{
 			return (isHeld(std::forward<Args>(button)) && ...);
 		}

@@ -218,7 +218,7 @@ uint8_t playerState_t::getViewHeight() const
 	return viewheight;
 }
 
-float playerState_t::getLeanAngles() const
+float playerState_t::getLeanAngle() const
 {
 	return fLeanAngle;
 }
