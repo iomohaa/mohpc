@@ -25,8 +25,13 @@ public:
 
 	void setupPmove(const cgsInfo& serverInfo, Pmove& pmove) const override
 	{
-		pmove.canLeanWhileMoving = true;
-		pmove.clearLeanOnExit = false;
+		pms_t& pms = pmove.getSettings();
+		pms.leanAngleMax = 40.f;
+		pms.leanSpeedMax = 4.f;
+		pms.leanIncreaseSpeed = 10.f;
+		pms.leanDecaySpeed = 15.f;
+		pms.canLeanWhileMoving = true;
+		pms.clearLeanOnExit = false;
 	}
 };
 
@@ -41,10 +46,15 @@ public:
 
 	void setupPmove(const cgsInfo& serverInfo, Pmove& pmove) const override
 	{
+		pms_t& pms = pmove.getSettings();
+		pms.leanAngleMax = 45.f;
+		pms.leanSpeedMax = 2.f;
+		pms.leanIncreaseSpeed = 6.f;
+		pms.leanDecaySpeed = 8.5f;
 		// in SH/BT, can't lean by default
 		// unless a dmflag specify it
-		pmove.canLeanWhileMoving = serverInfo.hasAnyDMFlags(DF::ALLOW_LEAN);
-		pmove.clearLeanOnExit = true;
+		pms.canLeanWhileMoving = serverInfo.hasAnyDMFlags(DF::ALLOW_LEAN);
+		pms.clearLeanOnExit = true;
 	}
 };
 
@@ -310,7 +320,7 @@ bool Prediction::replayAllCommands(const PredictionParm& pparm)
 	// play all previous commands up to the current
 	for (uintptr_t cmdNum = pparm.userInput->getNumCommands(); cmdNum > 0; --cmdNum)
 	{
-		moved |= tryReplayCommand(pmove, pparm, oldPlayerState, latestCmd, cmdNum);
+		moved |= tryReplayCommand(pmove, pparm, oldPlayerState, latestCmd, cmdNum - 1);
 	}
 
 	transitionPlayerState(pparm, predictedPlayerState, &oldPlayerState);
