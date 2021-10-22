@@ -8,6 +8,7 @@ namespace MOHPC
 
 	using deltaTime_t = std::chrono::nanoseconds;
 	using deltaTimeFloat_t = std::chrono::duration<float>;
+	using deltaTimeMs_t = std::chrono::milliseconds;
 	using deltaTime16_t = std::chrono::duration<uint16_t, std::milli>;
 	using tickClock_t = std::chrono::steady_clock;
 	using tickTime_t = std::chrono::time_point<tickClock_t>;

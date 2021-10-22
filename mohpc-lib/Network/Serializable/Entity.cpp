@@ -325,7 +325,7 @@ static_assert(sizeof(entityStateFields_ver15) == sizeof(netField_t) * 146);
 
 static const entityState_t nullstate;
 
-void SerializableEntityState::SaveDelta(MSG& msg, const ISerializableMessage* from) const
+void SerializableEntityState::SaveDelta(MSG& msg, const ISerializableMessage* from)
 {
 	MsgCoordHelper msgHelper(msg);
 	MsgTypesEntityHelper msgEntHelper(msg);
@@ -527,7 +527,7 @@ void SerializableEntityState::LoadDelta(MSG& msg, const ISerializableMessage* fr
 	CopyFields<entityState_t>(fromEnt, GetState(), lc, numFields, entityStateFields);
 }
 
-void SerializableEntityState_ver15::SaveDelta(MSG& msg, const ISerializableMessage* from) const
+void SerializableEntityState_ver15::SaveDelta(MSG& msg, const ISerializableMessage* from)
 {
 	MsgCoordHelper msgHelper(msg);
 	MsgTypesEntityHelper msgEntHelper(msg);

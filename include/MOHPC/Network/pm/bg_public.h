@@ -199,6 +199,23 @@ namespace Network
 		pml_t();
 	};
 
+	/**
+	 * Player movement settings.
+	 */
+	struct pms_t
+	{
+	public:
+		pms_t();
+
+	public:
+		float leanAngleMax;
+		float leanSpeedMax;
+		float leanIncreaseSpeed;
+		float leanDecaySpeed;
+		bool canLeanWhileMoving : 1;
+		bool clearLeanOnExit : 1;
+	};
+
 	// FIXME: Make it an abstract interface for versions
 	class Pmove
 	{
@@ -207,6 +224,7 @@ namespace Network
 		MOHPC_NET_EXPORTS ~Pmove();
 
 		MOHPC_NET_EXPORTS pmove_t& get();
+		MOHPC_NET_EXPORTS pms_t& getSettings();
 
 		// if a full pmove isn't done on the client, you can just update the angles
 		void PM_GetMove(float* pfForward, float* pfRight);
@@ -217,6 +235,7 @@ namespace Network
 		void moveAdjustAngleSettings_Client(vec3r_t vViewAngles, vec3r_t vAngles, playerState_t* pPlayerState, entityState_t* pEntState);
 
 	private:
+		void adjustLean();
 		void PM_AirMove();
 		bool PM_FeetOnGround(const_vec3r_t pos);
 		bool PM_FindBestFallPos(const_vec3r_t pos, vec3r_t bestdir);
@@ -248,13 +267,10 @@ namespace Network
 		bool shouldClearLean();
 
 	private:
+		size_t c_pmove;
 		pmove_t pm;
 		pml_t pml;
-		size_t c_pmove;
-
-	public:
-		bool canLeanWhileMoving : 1;
-		bool clearLeanOnExit : 1;
+		pms_t pms;
 	};
 
 	//===================================================================================

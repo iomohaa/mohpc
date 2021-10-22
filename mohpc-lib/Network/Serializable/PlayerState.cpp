@@ -180,7 +180,7 @@ void SerializablePlayerState::UnNormalizePlayerState(playerState_t * ps) const
 	ps->pm_flags = newPmFlags;
 }
 
-void SerializablePlayerState::SaveDelta(MSG& msg, const ISerializableMessage* from) const
+void SerializablePlayerState::SaveDelta(MSG& msg, const ISerializableMessage* from)
 {
 	MsgCoordHelper msgHelper(msg);
 
@@ -516,7 +516,7 @@ SerializablePlayerState_ver15::SerializablePlayerState_ver15(playerState_t& inSt
 	: SerializablePlayerStateBase(inState)
 {}
 
-void SerializablePlayerState_ver15::SaveDelta(MSG& msg, const ISerializableMessage* from) const
+void SerializablePlayerState_ver15::SaveDelta(MSG& msg, const ISerializableMessage* from)
 {
 	MsgCoordHelper msgHelper(msg);
 

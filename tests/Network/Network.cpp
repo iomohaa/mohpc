@@ -100,9 +100,9 @@ int main(int argc, const char* argv[])
 
 	NetAddr4Ptr adr = NetAddr4::create();
 	NetAddr4Ptr adrGs = NetAddr4::create();
-	adr->setIp(192, 168, 1, 13);
+	adr->setIp(127, 0, 0, 1);
 	adr->setPort(12203);
-	//adrGs->setIp(127, 0, 0, 1);
+	adrGs->setIp(127, 0, 0, 1);
 
 	// server's gamespy port
 	adrGs->setPort(12300);
@@ -167,6 +167,8 @@ int main(int argc, const char* argv[])
 		bool attackPrimary;
 		bool attackSecondary;
 		bool use;
+		bool leanleft;
+		bool leanright;
 	} buttons;
 	memset(&buttons, 0, sizeof(buttons));
 
@@ -284,6 +286,8 @@ int main(int argc, const char* argv[])
 							if (buttons.attackSecondary) ucmd.getAction().addButton(UserButtons::AttackSecondary);
 							if (buttons.use) ucmd.getAction().addButton(UserButtons::Use);
 							if (buttons.weaponCommand) ucmd.getAction().addWeaponCommand(buttons.weaponCommand);
+							if (buttons.leanleft) ucmd.getAction().addButton(UserButtons::LeanLeft);
+							if (buttons.leanright) ucmd.getAction().addButton(UserButtons::LeanRight);
 
 							if (oldcmd.getAction().isHeld(UserButtons::AttackPrimary) != ucmd.getAction().isHeld(UserButtons::AttackPrimary))
 							{
@@ -480,12 +484,19 @@ int main(int argc, const char* argv[])
 				forwardValue = 0.f;
 				rightValue = 0.f;
 				circle = false;
+				memset(&buttons, 0, sizeof(buttons));
 			}
 			else if (!strcmp(cmd, "turnleft")) {
 				angleYaw += 20.f;
 			}
 			else if (!strcmp(cmd, "turnright")) {
 				angleYaw -= 20.f;
+			}
+			else if (!strcmp(cmd, "leanleft")) {
+				buttons.leanleft = true;
+			}
+			else if (!strcmp(cmd, "leanright")) {
+				buttons.leanright = true;
 			}
 			else if (!strcmp(cmd, "jump")) {
 				buttons.shouldJump = true;
@@ -653,7 +664,7 @@ int main(int argc, const char* argv[])
 		if (duration_cast<milliseconds>(pingCalc->getLatency()) != duration_cast<milliseconds>(lastLatency))
 		{
 			lastLatency = pingCalc->getLatency();
-			MOHPC_LOG(Info, "ping: %d", duration_cast<milliseconds>(lastLatency).count());
+			//MOHPC_LOG(Info, "ping: %d", duration_cast<milliseconds>(lastLatency).count());
 		}
 
 		/*
@@ -687,6 +698,12 @@ int main(int argc, const char* argv[])
 				{
 					lastVMChanged = iVMChanged;
 					MOHPC_LOG(Trace, "viewmodelanim changed (time %llu)", connection->getClientTime().getSimulatedRemoteTime().time_since_epoch().count());
+				}
+
+				const playerState_t& ps = prediction->getPredictedPlayerState();
+				if (ps.getLeanAngle())
+				{
+					MOHPC_LOG(Trace, "predicted lean: %f, lean: %f", ps.getLeanAngle(), snap->getPlayerState().getLeanAngle());
 				}
 			}
 		}

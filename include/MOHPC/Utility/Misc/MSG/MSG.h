@@ -413,10 +413,10 @@ namespace MOHPC
 		}
 
 		/** Serialize b if b is different than a. */
-		MSG& WriteDeltaClass(const ISerializableMessage* a, const ISerializableMessage* b);
+		MSG& WriteDeltaClass(const ISerializableMessage* a, ISerializableMessage* b);
 
 		/** Serialize b if b is different than a, with a key so output will be XORed. */
-		MSG& WriteDeltaClass(const ISerializableMessage* a, const ISerializableMessage* b, intptr_t key);
+		MSG& WriteDeltaClass(const ISerializableMessage* a, ISerializableMessage* b, intptr_t key);
 
 		/** Return the stream associated to this message. */
 		IMessageStream& stream() const noexcept

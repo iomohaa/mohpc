@@ -26,7 +26,7 @@ namespace Network
 	public:
 		SerializablePlayerState(playerState_t& inState);
 
-		void SaveDelta(MSG& msg, const ISerializableMessage* from) const override;
+		void SaveDelta(MSG& msg, const ISerializableMessage* from) override;
 		void LoadDelta(MSG& msg, const ISerializableMessage* from) override;
 		void NormalizePlayerState(playerState_t* ps) const;
 		void UnNormalizePlayerState(playerState_t* ps) const;
@@ -39,7 +39,7 @@ namespace Network
 	public:
 		SerializablePlayerState_ver15(playerState_t& inState);
 
-		void SaveDelta(MSG& msg, const ISerializableMessage* from) const override;
+		void SaveDelta(MSG& msg, const ISerializableMessage* from) override;
 		void LoadDelta(MSG& msg, const ISerializableMessage* from) override;
 	};
 }

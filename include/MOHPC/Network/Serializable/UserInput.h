@@ -1,8 +1,7 @@
 #pragma once
 
-#include "../../Utility/Misc/MSG/Serializable.h"
-
 #include "../NetGlobal.h"
+#include "../../Utility/Misc/MSG/Serializable.h"
 
 namespace MOHPC
 {
@@ -17,12 +16,13 @@ namespace Network
 		usercmd_t& ucmd;
 
 	public:
-		SerializableUsercmd(usercmd_t& inCmd)
-			: ucmd(inCmd)
-		{}
+		SerializableUsercmd(usercmd_t& inCmd);
 
 		void LoadDelta(MSG& msg, const ISerializableMessage* from, intptr_t key) override;
-		void SaveDelta(MSG& msg, const ISerializableMessage* from, intptr_t key) const override;
+		void SaveDelta(MSG& msg, const ISerializableMessage* from, intptr_t key) override;
+
+	private:
+		uint32_t time32;
 	};
 
 	class MOHPC_NET_EXPORTS SerializableUserEyes : public ISerializableMessage
@@ -35,7 +35,7 @@ namespace Network
 			: eyesInfo(inEyesInfo)
 		{}
 
-		void SaveDelta(MSG& msg, const ISerializableMessage* from) const override;
+		void SaveDelta(MSG& msg, const ISerializableMessage* from) override;
 		void LoadDelta(MSG& msg, const ISerializableMessage* from) override;
 	};
 }
