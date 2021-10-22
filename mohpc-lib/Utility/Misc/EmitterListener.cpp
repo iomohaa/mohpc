@@ -1333,7 +1333,7 @@ void EmitterListener::StartSFXDelayed(mfuse::Event* ev)
 void EmitterListener::StartSFXInternal(mfuse::Event* ev, bool bDelayed)
 {
 	emitter->startTime = bDelayed ? ev->GetFloat(1) : 0.f;
-	mfuse::xstr commandName = ev->GetString(bDelayed + 1);
+	mfuse::str commandName = ev->GetString(bDelayed + 1);
 
 	mfuse::Event newEvent(mfuse::EventSystem::Get().FindNormalEventNum(commandName.c_str()));
 	for (size_t i = bDelayed + 2; i < ev->NumArgs(); i++)
@@ -1350,7 +1350,7 @@ void EmitterListener::SetBaseAndAmplitude(mfuse::Event* ev, vec3r_t Base, vec3r_
 
 	for (int32_t j = 0; j < 3; j++)
 	{
-		const mfuse::xstr org = ev->GetString(i++);
+		const mfuse::str org = ev->GetString(i++);
 		if (!strHelpers::cmp(org.c_str(), "crandom"))
 		{
 			const float ampl = ev->GetFloat(i++);
