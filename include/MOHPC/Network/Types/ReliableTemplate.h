@@ -36,8 +36,10 @@ namespace Network
 	template<size_t MAX_RELIABLE_COMMANDS, size_t RELIABLE_COMMAND_SIZE>
 	void SequenceTemplate<MAX_RELIABLE_COMMANDS, RELIABLE_COMMAND_SIZE>::set(rsequence_t index, const char* command)
 	{
-		const size_t smallest = std::min(std::char_traits<char>::length(command), RELIABLE_COMMAND_SIZE);
+		const size_t smallest = std::min(std::char_traits<char>::length(command), RELIABLE_COMMAND_SIZE - 1);
 		std::copy(&command[0], &command[smallest], reliableCommands[index]);
+		// null-terminated string
+		reliableCommands[index][smallest] = 0;
 	}
 
 	template<size_t MAX_RELIABLE_COMMANDS, size_t RELIABLE_COMMAND_SIZE>
@@ -55,8 +57,10 @@ namespace Network
 	template<size_t MAX_RELIABLE_COMMANDS, size_t RELIABLE_COMMAND_SIZE>
 	void RemoteCommandSequenceTemplate<MAX_RELIABLE_COMMANDS, RELIABLE_COMMAND_SIZE>::set(rsequence_t index, const char* command)
 	{
-		const size_t smallest = std::min(std::char_traits<char>::length(command), RELIABLE_COMMAND_SIZE);
+		const size_t smallest = std::min(std::char_traits<char>::length(command), RELIABLE_COMMAND_SIZE - 1);
 		std::copy(&command[0], &command[smallest], serverCommands[index]);
+		// null-terminated string
+		serverCommands[index][smallest] = 0;
 	}
 
 	template<size_t MAX_RELIABLE_COMMANDS, size_t RELIABLE_COMMAND_SIZE>
