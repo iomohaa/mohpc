@@ -68,7 +68,7 @@ namespace Network
 			/**
 			 * Build the solid list from snapshot.
 			 */
-			void buildSolidList(const SnapshotProcessor& snapshotProcessor);
+			MOHPC_NET_EXPORTS void buildSolidList(const SnapshotProcessor& snapshotProcessor);
 
 		private:
 			CollisionWorldPtr boxHull;
