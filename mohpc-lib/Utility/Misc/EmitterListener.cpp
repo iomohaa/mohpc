@@ -1297,75 +1297,75 @@ bool EmitterListener::FinishedParsing() const
 	return bProcessed;
 }
 
-void EmitterListener::BeginOriginSpawn(mfuse::Event* ev)
+void EmitterListener::BeginOriginSpawn(mfuse::Event& ev)
 {
 	emitter->bIsEmitter = false;
-	emitter->emitterName = ev->GetString(1);
+	emitter->emitterName = ev.GetString(1).c_str();
 }
 
-void EmitterListener::BeginOriginEmitter(mfuse::Event* ev)
+void EmitterListener::BeginOriginEmitter(mfuse::Event& ev)
 {
 	emitter->bIsEmitter = true;
-	emitter->emitterName = ev->GetString(1);
+	emitter->emitterName = ev.GetString(1).c_str();
 }
 
-void EmitterListener::StartBlock(mfuse::Event* ev)
+void EmitterListener::StartBlock(mfuse::Event& ev)
 {
 	bInBlock = true;
 }
 
-void EmitterListener::EndBlock(mfuse::Event* ev)
+void EmitterListener::EndBlock(mfuse::Event& ev)
 {
 	bInBlock = false;
 	bProcessed = true;
 }
 
-void EmitterListener::StartSFX(mfuse::Event* ev)
+void EmitterListener::StartSFX(mfuse::Event& ev)
 {
 	StartSFXInternal(ev, false);
 }
 
-void EmitterListener::StartSFXDelayed(mfuse::Event* ev)
+void EmitterListener::StartSFXDelayed(mfuse::Event& ev)
 {
 	StartSFXInternal(ev, true);
 }
 
-void EmitterListener::StartSFXInternal(mfuse::Event* ev, bool bDelayed)
+void EmitterListener::StartSFXInternal(mfuse::Event& ev, bool bDelayed)
 {
-	emitter->startTime = bDelayed ? ev->GetFloat(1) : 0.f;
-	mfuse::str commandName = ev->GetString(bDelayed + 1);
+	emitter->startTime = bDelayed ? ev.GetFloat(1) : 0.f;
+	mfuse::str commandName = ev.GetString(bDelayed + 1);
 
 	mfuse::Event newEvent(mfuse::EventSystem::Get().FindNormalEventNum(commandName.c_str()));
-	for (size_t i = bDelayed + 2; i < ev->NumArgs(); i++)
+	for (size_t i = bDelayed + 2; i < ev.NumArgs(); i++)
 	{
-		newEvent.AddString(ev->GetString(i));
+		newEvent.AddString(ev.GetString(i));
 	}
 
 	ProcessEvent(newEvent);
 }
 
-void EmitterListener::SetBaseAndAmplitude(mfuse::Event* ev, vec3r_t Base, vec3r_t Amplitude)
+void EmitterListener::SetBaseAndAmplitude(mfuse::Event& ev, vec3r_t Base, vec3r_t Amplitude)
 {
 	int32_t i = 1;
 
 	for (int32_t j = 0; j < 3; j++)
 	{
-		const mfuse::str org = ev->GetString(i++);
+		const mfuse::str org = ev.GetString(i++);
 		if (!strHelpers::cmp(org.c_str(), "crandom"))
 		{
-			const float ampl = ev->GetFloat(i++);
+			const float ampl = ev.GetFloat(i++);
 			Amplitude[j] = ampl + ampl;
 			Base[j] = -ampl;
 		}
 		else if (!strHelpers::cmp(org.c_str(), "random"))
 		{
 			Base[j] = 0.f;
-			Amplitude[j] = ev->GetFloat(i++);
+			Amplitude[j] = ev.GetFloat(i++);
 		}
 		else if (!strHelpers::cmp(org.c_str(), "range"))
 		{
-			Base[j] = ev->GetFloat(i++);
-			Amplitude[j] = ev->GetFloat(i++);
+			Base[j] = ev.GetFloat(i++);
+			Amplitude[j] = ev.GetFloat(i++);
 		}
 		else
 		{
@@ -1375,51 +1375,51 @@ void EmitterListener::SetBaseAndAmplitude(mfuse::Event* ev, vec3r_t Base, vec3r_
 	}
 }
 
-void EmitterListener::SetSpawnRate(mfuse::Event* ev)
+void EmitterListener::SetSpawnRate(mfuse::Event& ev)
 {
-	emitter->spawnRate = ev->GetFloat(1);
+	emitter->spawnRate = ev.GetFloat(1);
 }
 
-void EmitterListener::SetScaleRate(mfuse::Event* ev)
+void EmitterListener::SetScaleRate(mfuse::Event& ev)
 {
-	emitter->scaleRate = ev->GetFloat(1);
+	emitter->scaleRate = ev.GetFloat(1);
 }
 
-void EmitterListener::SetCount(mfuse::Event* ev)
+void EmitterListener::SetCount(mfuse::Event& ev)
 {
-	emitter->count = ev->GetInteger(1);
+	emitter->count = ev.GetInteger(1);
 }
 
-void EmitterListener::SetScale(mfuse::Event* ev)
+void EmitterListener::SetScale(mfuse::Event& ev)
 {
-	emitter->scale = ev->GetFloat(1);
+	emitter->scale = ev.GetFloat(1);
 }
 
-void EmitterListener::SetScaleUpDown(mfuse::Event* ev)
+void EmitterListener::SetScaleUpDown(mfuse::Event& ev)
 {
 	emitter->flags |= Emitter::EF_UpDownScale;
 }
 
-void EmitterListener::SetScaleMin(mfuse::Event* ev)
+void EmitterListener::SetScaleMin(mfuse::Event& ev)
 {
-	emitter->scaleMin = ev->GetFloat(1);
+	emitter->scaleMin = ev.GetFloat(1);
 }
 
-void EmitterListener::SetScaleMax(mfuse::Event* ev)
+void EmitterListener::SetScaleMax(mfuse::Event& ev)
 {
-	emitter->scaleMax = ev->GetFloat(1);
+	emitter->scaleMax = ev.GetFloat(1);
 }
 
-void EmitterListener::SetModel(mfuse::Event* ev)
+void EmitterListener::SetModel(mfuse::Event& ev)
 {
-	mfuse::str resourceName = ev->GetString(1);
+	mfuse::str resourceName = ev.GetString(1);
 	if (resourceName.length() > 0)
 	{
 		const char* extension = FileHelpers::getExtension(resourceName.c_str());
 		
 		if (!strHelpers::icmp(extension, "spr"))
 		{
-			resourceName = mfuse::str(resourceName, extension - resourceName.c_str());
+			resourceName = mfuse::str(resourceName.c_str(), extension - resourceName.c_str());
 			emitter->sprite.spriteType = Sprite::ST_Shader;
 			const ShaderManagerPtr shaderManager = assetManager->getManager<ShaderManager>();
 			if(shaderManager)
@@ -1443,126 +1443,126 @@ void EmitterListener::SetModel(mfuse::Event* ev)
 	}
 }
 
-void EmitterListener::SetOffset(mfuse::Event* ev)
+void EmitterListener::SetOffset(mfuse::Event& ev)
 {
 	SetBaseAndAmplitude(ev, emitter->originOffsetBase, emitter->originOffsetAmplitude);
 }
 
-void EmitterListener::SetOffsetAlongAxis(mfuse::Event* ev)
+void EmitterListener::SetOffsetAlongAxis(mfuse::Event& ev)
 {
 	emitter->flags |= Emitter::EF_UseParentAxis;
 	SetBaseAndAmplitude(ev, emitter->originOffsetBase, emitter->originOffsetAmplitude);
 }
 
-void EmitterListener::SetLife(mfuse::Event* ev)
+void EmitterListener::SetLife(mfuse::Event& ev)
 {
-	emitter->life = ev->GetFloat(1);
+	emitter->life = ev.GetFloat(1);
 
-	if (ev->NumArgs() > 1)
+	if (ev.NumArgs() > 1)
 	{
-		emitter->randomLife = ev->GetFloat(2);
+		emitter->randomLife = ev.GetFloat(2);
 	}
 }
 
-void EmitterListener::SetColor(mfuse::Event* ev)
+void EmitterListener::SetColor(mfuse::Event& ev)
 {
-	emitter->color[0] = ev->GetFloat(1);
-	emitter->color[1] = ev->GetFloat(2);
-	emitter->color[2] = ev->GetFloat(3);
+	emitter->color[0] = ev.GetFloat(1);
+	emitter->color[1] = ev.GetFloat(2);
+	emitter->color[2] = ev.GetFloat(3);
 
-	if (ev->NumArgs() > 3)
+	if (ev.NumArgs() > 3)
 	{
-		emitter->alpha = ev->GetFloat(4);
+		emitter->alpha = ev.GetFloat(4);
 	}
 }
 
-void EmitterListener::SetAlpha(mfuse::Event* ev)
+void EmitterListener::SetAlpha(mfuse::Event& ev)
 {
-	emitter->alpha = ev->GetFloat(1);
+	emitter->alpha = ev.GetFloat(1);
 }
 
-void EmitterListener::SetAngles(mfuse::Event* ev)
+void EmitterListener::SetAngles(mfuse::Event& ev)
 {
 	SetBaseAndAmplitude(ev, emitter->anglesOffsetBase, emitter->anglesOffsetAmplitude);
 }
 
-void EmitterListener::SetRadialVelocity(mfuse::Event* ev)
+void EmitterListener::SetRadialVelocity(mfuse::Event& ev)
 {
-	emitter->radialVelocity[0] = ev->GetFloat(1);
-	emitter->radialVelocity[1] = ev->GetFloat(2);
-	emitter->radialVelocity[2] = ev->GetFloat(3);
+	emitter->radialVelocity[0] = ev.GetFloat(1);
+	emitter->radialVelocity[1] = ev.GetFloat(2);
+	emitter->radialVelocity[2] = ev.GetFloat(3);
 }
 
-void EmitterListener::SetVelocity(mfuse::Event* ev)
+void EmitterListener::SetVelocity(mfuse::Event& ev)
 {
-	emitter->forwardVelocity = ev->GetFloat(1);
+	emitter->forwardVelocity = ev.GetFloat(1);
 }
 
-void EmitterListener::SetAngularVelocity(mfuse::Event* ev)
+void EmitterListener::SetAngularVelocity(mfuse::Event& ev)
 {
 	SetBaseAndAmplitude(ev, emitter->randAVelocityBase, emitter->randAVelocityAmplitude);
 }
 
-void EmitterListener::SetRandomVelocity(mfuse::Event* ev)
+void EmitterListener::SetRandomVelocity(mfuse::Event& ev)
 {
 	SetBaseAndAmplitude(ev, emitter->randVelocityBase, emitter->randVelocityAmplitude);
 }
 
-void EmitterListener::SetRandomVelocityAlongAxis(mfuse::Event* ev)
+void EmitterListener::SetRandomVelocityAlongAxis(mfuse::Event& ev)
 {
 	emitter->flags |= Emitter::EF_UseParentAxis;
 	SetRandomVelocity(ev);
 }
 
-void EmitterListener::SetAccel(mfuse::Event* ev)
+void EmitterListener::SetAccel(mfuse::Event& ev)
 {
-	emitter->accel[0] = ev->GetFloat(1);
-	emitter->accel[1] = ev->GetFloat(2);
-	emitter->accel[2] = ev->GetFloat(3);
+	emitter->accel[0] = ev.GetFloat(1);
+	emitter->accel[1] = ev.GetFloat(2);
+	emitter->accel[2] = ev.GetFloat(3);
 }
 
-void EmitterListener::SetCone(mfuse::Event* ev)
+void EmitterListener::SetCone(mfuse::Event& ev)
 {
 	emitter->spawnType = Emitter::EST_Cone;
-	emitter->coneHeight = ev->GetFloat(1);
-	emitter->sphereRadius = ev->GetFloat(2);
+	emitter->coneHeight = ev.GetFloat(1);
+	emitter->sphereRadius = ev.GetFloat(2);
 }
 
-void EmitterListener::SetCircle(mfuse::Event* ev)
+void EmitterListener::SetCircle(mfuse::Event& ev)
 {
 	emitter->spawnType = Emitter::EST_Circle;
 }
 
-void EmitterListener::SetSphere(mfuse::Event* ev)
+void EmitterListener::SetSphere(mfuse::Event& ev)
 {
 	emitter->spawnType = Emitter::EST_Sphere;
 }
 
-void EmitterListener::SetInwardSphere(mfuse::Event* ev)
+void EmitterListener::SetInwardSphere(mfuse::Event& ev)
 {
 	emitter->spawnType = Emitter::EST_InwardSphere;
 }
 
-void EmitterListener::SetRadius(mfuse::Event* ev)
+void EmitterListener::SetRadius(mfuse::Event& ev)
 {
-	emitter->sphereRadius = ev->GetFloat(1);
+	emitter->sphereRadius = ev.GetFloat(1);
 }
 
-void EmitterListener::SetFade(mfuse::Event* ev)
-{
-	emitter->flags |= Emitter::EF_Fade;
-}
-
-void EmitterListener::SetFadeDelay(mfuse::Event* ev)
+void EmitterListener::SetFade(mfuse::Event& ev)
 {
 	emitter->flags |= Emitter::EF_Fade;
-	emitter->fadeDelay = ev->GetFloat(1);
 }
 
-void EmitterListener::SetFadeIn(mfuse::Event* ev)
+void EmitterListener::SetFadeDelay(mfuse::Event& ev)
+{
+	emitter->flags |= Emitter::EF_Fade;
+	emitter->fadeDelay = ev.GetFloat(1);
+}
+
+void EmitterListener::SetFadeIn(mfuse::Event& ev)
 {
 	emitter->flags |= Emitter::EF_FadeIn;
-	emitter->fadeInTime = ev->GetFloat(1);
+	emitter->fadeInTime = ev.GetFloat(1);
 }
 
 void EmitterListener::SetAssetManager(const AssetManagerPtr& inAssetManager)
