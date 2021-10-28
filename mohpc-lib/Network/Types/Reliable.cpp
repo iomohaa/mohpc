@@ -23,9 +23,9 @@ void IReliableSequence::addCommand(const char* command)
 	}
 
 	++reliableSequence;
-	const size_t index = reliableSequence % maxReliableCommands;
+	const rsequence_t index = reliableSequence % maxReliableCommands;
 
-	set(reliableSequence, command);
+	set(index, command);
 }
 
 rsequence_t IReliableSequence::getReliableSequence() const
