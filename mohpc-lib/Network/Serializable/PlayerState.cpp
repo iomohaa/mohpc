@@ -433,6 +433,9 @@ void SerializablePlayerState::LoadDelta(MSG& msg, const ISerializableMessage* fr
 			// no change
 			std::memcpy(toF, fromF, field->getSize());
 		}
+
+		// copy all statistics
+		std::copy(fromPS->stats, fromPS->stats + playerState_t::MAX_STATS, state.stats);
 	}
 
 	uint32_t statsBits = 0;
@@ -782,6 +785,9 @@ void SerializablePlayerState_ver15::LoadDelta(MSG& msg, const ISerializableMessa
 			// no change
 			std::memcpy(toF, fromF, field->getSize());
 		}
+
+		// copy all statistics
+		std::copy(fromPS->stats, fromPS->stats + playerState_t::MAX_STATS, state.stats);
 	}
 
 	uint32_t statsBits = 0;
