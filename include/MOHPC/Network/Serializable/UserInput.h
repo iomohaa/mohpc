@@ -12,9 +12,6 @@ namespace Network
 
 	class MOHPC_NET_EXPORTS SerializableUsercmd : public ISerializableMessage
 	{
-	private:
-		usercmd_t& ucmd;
-
 	public:
 		SerializableUsercmd(usercmd_t& inCmd);
 
@@ -22,14 +19,12 @@ namespace Network
 		void SaveDelta(MSG& msg, const ISerializableMessage* from, intptr_t key) override;
 
 	private:
+		usercmd_t* ucmd;
 		uint32_t time32;
 	};
 
 	class MOHPC_NET_EXPORTS SerializableUserEyes : public ISerializableMessage
 	{
-	private:
-		usereyes_t& eyesInfo;
-
 	public:
 		SerializableUserEyes(usereyes_t& inEyesInfo)
 			: eyesInfo(inEyesInfo)
@@ -37,6 +32,9 @@ namespace Network
 
 		void SaveDelta(MSG& msg, const ISerializableMessage* from) override;
 		void LoadDelta(MSG& msg, const ISerializableMessage* from) override;
+
+	private:
+		usereyes_t& eyesInfo;
 	};
 }
 }

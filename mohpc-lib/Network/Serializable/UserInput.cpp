@@ -6,7 +6,7 @@ using namespace MOHPC;
 using namespace MOHPC::Network;
 
 SerializableUsercmd::SerializableUsercmd(usercmd_t& inCmd)
-	: ucmd(inCmd)
+	: ucmd(&inCmd)
 	, time32(0)
 {}
 
@@ -14,28 +14,28 @@ void SerializableUsercmd::LoadDelta(MSG& msg, const ISerializableMessage* from, 
 {
 	using namespace std::chrono;
 
-	const usercmd_t* fromCmd = &((SerializableUsercmd*)from)->ucmd;
+	const usercmd_t* fromCmd = static_cast<const SerializableUsercmd*>(from)->ucmd;
 
 	const bool isByteTime = msg.ReadBool();
 	if (isByteTime)
 	{
 		const uint8_t deltaTime = msg.ReadByte();
-		ucmd = usercmd_t(fromCmd->getServerTime() + milliseconds(deltaTime));
+		*ucmd = usercmd_t(fromCmd->getServerTime() + milliseconds(deltaTime));
 	}
 	else
 	{
 		const uint32_t serverTime = msg.ReadUInteger();
-		ucmd = usercmd_t(tickTime_t(milliseconds(serverTime)));
+		*ucmd = usercmd_t(tickTime_t(milliseconds(serverTime)));
 	}
 
 	const bool hasChanges = msg.ReadBool();
 	if (hasChanges)
 	{
-		key = (uint32_t)((uint32_t)key ^ duration_cast<milliseconds>(ucmd.getServerTime().time_since_epoch()).count());
+		key = (uint32_t)((uint32_t)key ^ duration_cast<milliseconds>(ucmd->getServerTime().time_since_epoch()).count());
 		const UserMovementInput& mFromInput = fromCmd->getMovement();
-		UserMovementInput& mInput = ucmd.getMovement();
+		UserMovementInput& mInput = ucmd->getMovement();
 		const UserActionInput& aFromInput = fromCmd->getAction();
-		UserActionInput& aInput = ucmd.getAction();
+		UserActionInput& aInput = ucmd->getAction();
 
 		const netAngles_t& fromAngles = mFromInput.getAngles();
 
@@ -56,11 +56,11 @@ void SerializableUsercmd::LoadDelta(MSG& msg, const ISerializableMessage* from, 
 void SerializableUsercmd::SaveDelta(MSG& msg, const ISerializableMessage* from, intptr_t key)
 {
 	const SerializableUsercmd* fromCmdSer = static_cast<const SerializableUsercmd*>(from);
-	const usercmd_t* fromCmd = &fromCmdSer->ucmd;
+	const usercmd_t* fromCmd = fromCmdSer->ucmd;
 
 	using namespace ticks;
 	// use exact same values that are sent over the network (milliseconds)
-	time32 = (uint32_t)duration_cast<milliseconds>(ucmd.getServerTime().time_since_epoch()).count();
+	time32 = (uint32_t)duration_cast<milliseconds>(ucmd->getServerTime().time_since_epoch()).count();
 
 	// use milliseconds to be able to send the correct value over the network
 	const uint32_t deltaTime = time32 - fromCmdSer->time32;
@@ -77,9 +77,9 @@ void SerializableUsercmd::SaveDelta(MSG& msg, const ISerializableMessage* from, 
 	}
 
 	const UserMovementInput& mFromInput = fromCmd->getMovement();
-	UserMovementInput& mInput = ucmd.getMovement();
+	UserMovementInput& mInput = ucmd->getMovement();
 	const UserActionInput& aFromInput = fromCmd->getAction();
-	UserActionInput& aInput = ucmd.getAction();
+	UserActionInput& aInput = ucmd->getAction();
 
 	const netAngles_t& fromAngles = mFromInput.getAngles();
 	const netAngles_t& angles = mInput.getAngles();
