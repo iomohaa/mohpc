@@ -68,4 +68,6 @@ namespace Network
 	};
 	using UserGameInputModulePtr = SharedPtr<UserGameInputModule>;
 }
+
+MOHPC_FUNCTIONLIST_TEMPLATE(MOHPC_NET_TEMPLATE, MOHPC_NET_EXPORTS, Network::ClientHandlers::UserInput);
 }

@@ -112,4 +112,7 @@ namespace Network
 	using ServerGameStatePtr = SharedPtr<ServerGameState>;
 	using ConstServerGameStatePtr = SharedPtr<const ServerGameState>;
 }
+
+MOHPC_FUNCTIONLIST_TEMPLATE(MOHPC_NET_TEMPLATE, MOHPC_NET_EXPORTS, Network::ClientHandlers::GameStateParsed);
+MOHPC_FUNCTIONLIST_TEMPLATE(MOHPC_NET_TEMPLATE, MOHPC_NET_EXPORTS, Network::ClientHandlers::Configstring);
 }

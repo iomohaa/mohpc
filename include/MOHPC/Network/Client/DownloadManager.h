@@ -151,4 +151,7 @@ namespace Network
 		};
 	}
 }
+
+MOHPC_FUNCTIONLIST_TEMPLATE(MOHPC_NET_TEMPLATE, MOHPC_NET_EXPORTS, Network::DownloadHandlers::StartDownload);
+MOHPC_FUNCTIONLIST_TEMPLATE(MOHPC_NET_TEMPLATE, MOHPC_NET_EXPORTS, Network::DownloadHandlers::Receive);
 }

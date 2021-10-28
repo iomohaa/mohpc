@@ -1,5 +1,6 @@
 #pragma once
 
+#include "UtilityGlobal.h"
 #include <vector>
 #include <functional>
 
@@ -79,58 +80,31 @@ namespace MOHPC
 			fnHandle_t id;
 
 		public:
-			FnStorage(uint32_t inId, FunctionType&& inFunc)
-				: func(std::forward<FunctionType>(inFunc))
-				, id(inId)
-			{}
+			FnStorage(uint32_t inId, FunctionType&& inFunc);
 
-			FnStorage(FnStorage&& other) = default;
-			FnStorage& operator=(FnStorage&& other) = default;
+			FnStorage(FnStorage&& other);
+			FnStorage& operator=(FnStorage&& other);
 			// Non-copyable
 			FnStorage(const FnStorage& other) = delete;
 			FnStorage& operator=(const FnStorage& other) = delete;
 		};
-
-	private:
-		std::vector<FnStorage> functionList;
-		fnHandle_t cid;
-
 	public:
-		FunctionList()
-			: cid(0)
-		{}
+		FunctionList();
+		~FunctionList();
 
 		/**
 		 * Add a function to the function list.
 		 *
 		 * @param func The function to add.
 		 */
-		fnHandle_t add(FunctionType&& func)
-		{
-			// Add the function and return the id
-			functionList.emplace_back(++cid, std::forward<FunctionType>(func));
-
-			// Return the handle
-			return cid;
-		}
+		fnHandle_t add(FunctionType&& func);
 
 		/**
 		 * Remove a function from the function list.
 		 *
 		 * @param handle Handle of the function that was returned by add().
 		 */
-		void remove(fnHandle_t handle)
-		{
-			for(auto it = functionList.begin(); it != functionList.end(); ++it)
-			{
-				const FnStorage& fn = *it;
-				if (fn.id == handle)
-				{
-					functionList.erase(it);
-					return;
-				}
-			}
-		}
+		void remove(fnHandle_t handle);
 
 		/**
 		 * Broadcast to all functions.
@@ -138,13 +112,78 @@ namespace MOHPC
 		 * @param ...args List of arguments
 		 */
 		template<typename...Args>
-		void broadcast(Args&&... args) const
+		void broadcast(Args&&... args) const;
+
+	private:
+		std::vector<FnStorage> functionList;
+		fnHandle_t cid;
+	};
+
+	template<typename T>
+	FunctionList<T>::FunctionList()
+		: cid(0)
+	{}
+
+	template<typename T>
+	FunctionList<T>::~FunctionList()
+	{}
+
+	template<typename T>
+	FunctionList<T>::FnStorage::FnStorage(uint32_t inId, FunctionType&& inFunc)
+		: func(std::forward<FunctionType>(inFunc))
+		, id(inId)
+	{}
+
+	template<typename T>
+	FunctionList<T>::FnStorage::FnStorage(FnStorage&& other)
+		: func(std::move(other.func))
+		, id(other.id)
+	{}
+
+	template<typename T>
+	typename FunctionList<T>::FnStorage& FunctionList<T>::FnStorage::operator=(FnStorage&& other)
+	{
+		func = std::move(other.func);
+		id = other.id;
+		return *this;
+	}
+
+	template<typename T>
+	fnHandle_t FunctionList<T>::add(FunctionType&& func)
+	{
+		// Add the function and return the id
+		functionList.emplace_back(++cid, std::forward<FunctionType>(func));
+
+		// Return the handle
+		return cid;
+	}
+
+	template<typename T>
+	void FunctionList<T>::remove(fnHandle_t handle)
+	{
+		for (auto it = functionList.begin(); it != functionList.end(); ++it)
 		{
-			// Call all registered functions
-			for (auto it = functionList.begin(); it != functionList.end(); ++it)
+			const FnStorage& fn = *it;
+			if (fn.id == handle)
 			{
-				it->func(std::forward<Args>(args)...);
+				functionList.erase(it);
+				return;
 			}
 		}
-	};
+	}
+
+	template<typename T>
+	template<typename...Args>
+	void FunctionList<T>::broadcast(Args&&... args) const
+	{
+		// Call all registered functions
+		for (auto it = functionList.begin(); it != functionList.end(); ++it)
+		{
+			it->func(std::forward<Args>(args)...);
+		}
+	}
+
+#define MOHPC_FUNCTIONLIST_TEMPLATE(template_def, exports_def, type) \
+	template_def template exports_def fnHandle_t FunctionList<type>::add(type::Type&& other); \
+	template_def template exports_def void FunctionList<type>::remove(fnHandle_t handle)
 }
