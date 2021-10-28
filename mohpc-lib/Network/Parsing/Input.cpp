@@ -110,7 +110,7 @@ public:
 	void writeAllCommands(MSG& msg, const CmdGetterFunc& cmdGetter, size_t count, uint32_t key) const
 	{
 		const usercmd_t nullcmd;
-		const usercmd_t* oldcmd = &nullcmd;
+		SerializableUsercmd oldCmdRead(*const_cast<usercmd_t*>(&nullcmd));
 
 		// write all the commands, including the predicted command
 		// first cmd is the most recent command
@@ -118,11 +118,10 @@ public:
 		{
 			const usercmd_t& cmd = cmdGetter(i - 1);
 			// write a delta of the command by using the old
-			SerializableUsercmd oldCmdRead(*const_cast<usercmd_t*>(oldcmd));
 			SerializableUsercmd inputCmd(const_cast<usercmd_t&>(cmd));
 			msg.WriteDeltaClass(&oldCmdRead, &inputCmd, key);
 
-			oldcmd = &cmd;
+			oldCmdRead = inputCmd;
 		}
 	}
 };
