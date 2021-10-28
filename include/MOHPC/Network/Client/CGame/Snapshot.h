@@ -62,6 +62,11 @@ namespace Network
 			 */
 			struct Configstring : public HandlerNotifyBase<void(csNum_t csNum, const char* configString)> {};
 
+			/**
+			 * Called after the snapshot was parsed.
+			 */
+			struct SnapshotParsed : public HandlerNotifyBase<void()> {};
+
 			/** This is called after all configstrings have been parsed. */
 			struct ProcessedConfigstrings : public HandlerNotifyBase<void()> {};
 		}
@@ -111,6 +116,7 @@ namespace Network
 				FunctionList<Handlers::EntityModified> entityModifiedHandler;
 				FunctionList<Handlers::Configstring> configstringModifiedHandler;
 				FunctionList<Handlers::ProcessedConfigstrings> processedConfigStringsHandler;
+				FunctionList<Handlers::SnapshotParsed> snapshotParsedHandler;
 			};
 
 		public:
@@ -248,4 +254,11 @@ namespace Network
 		}
 	}
 }
+
+MOHPC_FUNCTIONLIST_TEMPLATE(MOHPC_NET_TEMPLATE, MOHPC_NET_EXPORTS, Network::CGame::Handlers::EntityAdded);
+MOHPC_FUNCTIONLIST_TEMPLATE(MOHPC_NET_TEMPLATE, MOHPC_NET_EXPORTS, Network::CGame::Handlers::EntityRemoved);
+MOHPC_FUNCTIONLIST_TEMPLATE(MOHPC_NET_TEMPLATE, MOHPC_NET_EXPORTS, Network::CGame::Handlers::EntityModified);
+MOHPC_FUNCTIONLIST_TEMPLATE(MOHPC_NET_TEMPLATE, MOHPC_NET_EXPORTS, Network::CGame::Handlers::Configstring);
+MOHPC_FUNCTIONLIST_TEMPLATE(MOHPC_NET_TEMPLATE, MOHPC_NET_EXPORTS, Network::CGame::Handlers::ProcessedConfigstrings);
+MOHPC_FUNCTIONLIST_TEMPLATE(MOHPC_NET_TEMPLATE, MOHPC_NET_EXPORTS, Network::CGame::Handlers::SnapshotParsed);
 }

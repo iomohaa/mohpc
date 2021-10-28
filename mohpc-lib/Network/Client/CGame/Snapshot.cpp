@@ -165,6 +165,7 @@ void SnapshotProcessor::processSnapshots(tickTime_t simulatedRemoteTime)
 		latestSnapshotNum = n;
 	}
 
+	SnapshotInfo* prevSnap = snap;
 	SnapshotInfo* foundSnap;
 	while (!this->snap)
 	{
@@ -224,6 +225,10 @@ void SnapshotProcessor::processSnapshots(tickTime_t simulatedRemoteTime)
 	assert(this->snap);
 	if (!snap) {
 		throw CGSnapshotError::NullSnapshot();
+	}
+
+	if (prevSnap != this->snap) {
+		handlers().snapshotParsedHandler.broadcast();
 	}
 
 	if (simulatedRemoteTime < time_cast<tickTime_t>(snap->getServerTime())) {
@@ -293,7 +298,7 @@ void SnapshotProcessor::setNextSnap(SnapshotInfo* newSnap)
 	if (snap->getServerTime() < clientTime->getRemoteStartTime()) {
 		nextFrameTeleport = true;
 	}
-
+	
 	// sort out solid entities
 	//buildSolidList();
 }
