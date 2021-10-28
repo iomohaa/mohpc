@@ -285,7 +285,7 @@ namespace MOHPC
         a += c;
         c = enc1key[b];
         b = enc1key[a];
-        a = len;
+        a = (uint8_t)len;
         c ^= b;
         enc1key[260] = a;
         c ^= a;
