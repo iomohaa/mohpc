@@ -72,27 +72,38 @@ Sprite::~Sprite()
 }
 
 Emitter::Emitter()
+	: bIsEmitter(false)
+	, flags((emitterFlags_e)0)
+	, spawnType(EST_None)
+	, accel{ 0.f }
+	, radialVelocity{ 0.f }
+	, originOffsetBase{ 0.f }
+	, originOffsetAmplitude{ 0.f }
+	, anglesOffsetBase{ 0.f }
+	, anglesOffsetAmplitude{ 0.f }
+	, randVelocityBase{ 0.f }
+	, randVelocityAmplitude{ 0.f }
+	, randAVelocityBase{ 0.f }
+	, randAVelocityAmplitude{ 0.f }
+	, count(1)
+	, life(0.f)
+	, randomLife(0.f)
+	, color{ 1.f }
+	, alpha(1.f)
+	, scaleRate(0.f)
+	, scaleMin(0.f)
+	, scaleMax(0.f)
+	, scale(1.f)
+	, fadeInTime(0.f)
+	, fadeDelay(0.f)
+	, startTime(0.f)
+	, sphereRadius(0.f)
+	, coneHeight(0.f)
+	, spawnRate(0.f)
+	, forwardVelocity(0.f)
+	, dlight{ 0.f }
+	, lightRadius(0.f)
 {
-	bIsEmitter = false;
-	flags = (emitterFlags_e)0;
-	spawnType = EST_None;
-	count = 1;
-	life = 0.f;
-	randomLife = 0.f;
-	startTime = 0.f;
-	color[0] = color[1] = color[2] = 1.f;
-	alpha = 1.f;
-	scaleRate = 0.f;
-	scaleMin = 0.f;
-	scaleMax = 0.f;
-	scale = 1.f;
-	fadeInTime = 0.f;
-	fadeDelay = 0.f;
-	sphereRadius = 0.f;
-	coneHeight = 0.f;
-	spawnRate = 0.f;
-	forwardVelocity = 0.f;
-	lightRadius = 0.f;
 }
 
 const char* MOHPC::Emitter::GetEmitterName() const
