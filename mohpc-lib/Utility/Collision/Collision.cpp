@@ -2058,7 +2058,7 @@ void CollisionWorld::BoxTrace(trace_t * results, const vec3r_t start, const vec3
 	// check for position test special case
 	//
 	if (start[0] == end[0] && start[1] == end[1] && start[2] == end[2]) {
-		if (model) {
+		if (cmod) {
 			CollisionWorld::TestInLeaf(&tw, &cmod->leaf);
 		}
 		else {
@@ -2083,7 +2083,7 @@ void CollisionWorld::BoxTrace(trace_t * results, const vec3r_t start, const vec3
 		//
 		// general sweeping through world
 		//
-		if (model) {
+		if (cmod) {
 			CollisionWorld::TraceToLeaf(&tw, &cmod->leaf);
 		}
 		else {
