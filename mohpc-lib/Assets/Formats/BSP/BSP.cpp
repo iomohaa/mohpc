@@ -829,26 +829,29 @@ void BSPReader::LoadShaders(const BSPFile::GameLump* GameLump, std::vector<BSPDa
 
 void BSPReader::LoadLightmaps(const BSPFile::GameLump* GameLump, std::vector<BSPData::Lightmap>& lightmaps)
 {
-	if (!GameLump->length) {
+	if (GameLump->length % lightmapMemSize) {
 		throw BSPError::FunnyLumpSize("lightmaps");
 	}
 
 	const size_t numLightmaps = GameLump->length / lightmapMemSize;
-	lightmaps.resize(numLightmaps);
-
-	const uint8_t* buf = (uint8_t*)GameLump->buffer;
-	for (size_t i = 0; i < numLightmaps; i++)
+	if (numLightmaps)
 	{
-		Lightmap& lightmap = lightmaps[i];
+		lightmaps.resize(numLightmaps);
 
-		const uint8_t* buf_p = buf + i * lightmapMemSize;
-
-		const size_t numPixels = lightmapSize * lightmapSize;
-		for (size_t j = 0; j < numPixels; j++)
+		const uint8_t* buf = (uint8_t*)GameLump->buffer;
+		for (size_t i = 0; i < numLightmaps; i++)
 		{
-			lightmap.color[j][0] = buf_p[j * 3 + 0];
-			lightmap.color[j][1] = buf_p[j * 3 + 1];
-			lightmap.color[j][2] = buf_p[j * 3 + 2];
+			Lightmap& lightmap = lightmaps[i];
+
+			const uint8_t* buf_p = buf + i * lightmapMemSize;
+
+			const size_t numPixels = lightmapSize * lightmapSize;
+			for (size_t j = 0; j < numPixels; j++)
+			{
+				lightmap.color[j][0] = buf_p[j * 3 + 0];
+				lightmap.color[j][1] = buf_p[j * 3 + 1];
+				lightmap.color[j][2] = buf_p[j * 3 + 2];
+			}
 		}
 	}
 }
