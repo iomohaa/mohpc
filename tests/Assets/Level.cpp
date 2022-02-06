@@ -97,21 +97,26 @@ int main(int argc, const char* argv[])
 	MOHPC::DCLPtr DCLBT = AM->readAsset<MOHPC::DCLReader>("maps/e1l1.dcl");
 
 	//MOHPC::BSPPtr Asset = AM->readAsset<MOHPC::BSP>("/maps/dm/mp_stadt_dm.bsp");
-	MOHPC::BSPPtr Asset = AM->readAsset<MOHPC::BSPReader>("maps/e1l1.bsp");
+	MOHPC::BSPPtr Asset = AM->readAsset<MOHPC::BSPReader>("maps/void.bsp");
 	testAsset(Asset);
+	Asset = AM->readAsset<MOHPC::BSPReader>("maps/e1l1.bsp");
+	testAsset(Asset);
+	traceTest(Asset);
 	Asset = AM->readAsset<MOHPC::BSPReader>("maps/dm/mohdm6.bsp");
 	testAsset(Asset);
 }
 
 void testAsset(const MOHPC::BSPPtr& Asset)
 {
-	traceTest(Asset);
 	leafTesting(Asset);
 	groupTesting(Asset);
 
 	MOHPC::BSPCollisionPtr bspCollision = MOHPC::BSPCollision::create(Asset);
-	MOHPC::BSPData::TerrainCollide collision;
-	bspCollision->GenerateTerrainCollide(Asset->GetTerrainPatch(0), collision);
+	if (Asset->GetNumTerrainPatches())
+	{
+		MOHPC::BSPData::TerrainCollide collision;
+		bspCollision->GenerateTerrainCollide(Asset->GetTerrainPatch(0), collision);
+	}
 }
 
 void traceTest(const MOHPC::BSPPtr& Asset)
