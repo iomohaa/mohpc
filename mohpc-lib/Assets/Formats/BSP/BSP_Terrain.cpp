@@ -453,7 +453,7 @@ void BSPReader::TR_ReleaseTri(const TerrainPatch *patch, TerrainPatchDrawInfo& i
 		terraInt ptNum = pTri->iPt[i];
 
 		trVerts[ptNum].nRef--;
-		if (trVerts[ptNum].nRef-- == 1)
+		if (!trVerts[ptNum].nRef)
 		{
 			TR_ReleaseVert(patch, info, ptNum);
 		}
@@ -523,7 +523,7 @@ void BSPReader::TR_SplitTri(terraInt iSplit, terraInt iNewPt, terraInt iLeft, te
 	TerrainTri *pSplit = &trTris[iSplit];
 
 	TerrainTri *pLeft;
-	if (iRight)
+	if (iLeft)
 	{
 		pLeft = &trTris[iLeft];
 	}
@@ -633,13 +633,6 @@ void BSPReader::TR_SplitTri(terraInt iSplit, terraInt iNewPt, terraInt iLeft, te
 			trTris[pSplit->iRight].iLeft = iRight;
 		}
 	}
-
-	pSplit->iLeftChild = iLeft;
-	pSplit->iRightChild = iRight;
-	trTris[iLeft].iParent = iSplit;
-	trTris[iRight].iParent = iSplit;
-
-	TR_DemoteInAncestry(pSplit->patch, *pSplit->info, iSplit);
 }
 
 void BSPReader::TR_ForceSplit(terraInt iTri)
@@ -694,6 +687,13 @@ void BSPReader::TR_ForceSplit(terraInt iTri)
 		}
 
 		TR_SplitTri(iBase, iNewBasePt, iBaseLeft, iBaseRight, iTriRight, iTriLeft);
+
+		pBase->iLeftChild = iBaseLeft;
+		pBase->iRightChild = iBaseRight;
+		trTris[iBaseLeft].iParent = iBase;
+		trTris[iBaseRight].iParent = iBase;
+
+		TR_DemoteInAncestry(pBase->patch, *pBase->info, iBase);
 	}
 
 	if (flags & 8)
@@ -706,6 +706,13 @@ void BSPReader::TR_ForceSplit(terraInt iTri)
 	}
 
 	TR_SplitTri(iTri, iNewPt, iTriLeft, iTriRight, iBaseRight, iBaseLeft);
+
+	pBase->iLeftChild = iTriLeft;
+	pBase->iRightChild = iTriRight;
+	trTris[iTriLeft].iParent = iTri;
+	trTris[iTriRight].iParent = iTri;
+
+	TR_DemoteInAncestry(pBase->patch, *pBase->info, iTri);
 }
 
 void BSPReader::TR_ForceMerge(terraInt iTri)
@@ -759,7 +766,7 @@ void BSPReader::TR_ForceMerge(terraInt iTri)
 
 		TR_ReleaseTri(pTri->patch, *pTri->info, pTri->iRightChild);
 
-		pTri->iRightChild = 0;
+		pTri->iLeftChild = 0;
 		trTris[pTri->iParent].nSplit--;
 	}
 
