@@ -19,10 +19,10 @@ bool FileHelpers::FillGameDirectory(FileCategoryManager& categoryManager, PakFil
 	FileCategory* categoryAA = categoryManager.createCategory("AA");
 	FileCategory* categorySH = categoryManager.createCategory("SH");
 	FileCategory* categoryBT = categoryManager.createCategory("BT");
-	FileCategory* categoryAA_111 = categoryManager.createCategory(categoryAA, "AA_111");
-	FileCategory* categorySH_211 = categoryManager.createCategory(categorySH, "SH_211");
-	FileCategory* categorySH_215 = categoryManager.createCategory(categorySH, "SH_215");
-	FileCategory* categoryBT_240 = categoryManager.createCategory(categoryBT, "BT_240");
+	FileCategory* categoryAA_110 = categoryManager.createCategory(categoryAA, "AA-110");
+	FileCategory* categorySH_211 = categoryManager.createCategory(categorySH, "SH-211");
+	FileCategory* categorySH_215 = categoryManager.createCategory(categorySH, "SH-215");
+	FileCategory* categoryBT_240 = categoryManager.createCategory(categoryBT, "BT-240");
 
 	const pathCategory_t gameDirs[] =
 	{
@@ -39,11 +39,12 @@ bool FileHelpers::FillGameDirectory(FileCategoryManager& categoryManager, PakFil
 		{ "main/Pak3.pk3", categoryAA },
 		{ "main/Pak4.pk3", categoryAA },
 		{ "main/Pak5.pk3", categoryAA },
-		{ "main/pak6.pk3", categoryAA_111 },
+		{ "main/pak6.pk3", categoryAA_110 },
 		{ "mainta/pak1.pk3", categorySH },
 		{ "mainta/pak2.pk3", categorySH },
 		{ "mainta/pak3.pk3", categorySH_211 },
 		{ "mainta/pak4.pk3", categorySH_215 },
+		{ "mainta/pak5.pk3", categorySH_215 },
 		{ "maintt/pak1.pk3", categoryBT },
 		{ "maintt/pak2.pk3", categoryBT },
 		{ "maintt/pak3.pk3", categoryBT_240 },
