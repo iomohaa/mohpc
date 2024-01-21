@@ -875,6 +875,10 @@ void CollisionWorld::TestBoxInBrush(traceWork_t* tw, collisionBrush_t* brush) {
 
 			// find the closest point on the capsule to the plane
 			t = DotProduct(plane->normal, sphere.offset);
+			if (t < 0)
+			{
+				t = -t;
+			}
 
 			// adjust the plane distance apropriately for radius
 			dist = t + plane->dist + sphere.radius;
