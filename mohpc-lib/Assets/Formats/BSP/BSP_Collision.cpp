@@ -518,5 +518,6 @@ void BSPCollision::TR_PickTerrainSquareMode(BSPData::TerrainCollideSquare* squar
 	else if (square->eMode == 5 || square->eMode == 6)
 	{
 		Vec4Copy(square->plane[1], square->plane[0]);
+        square->plane[0][3] = square->plane[1][3];
 	}
 }
