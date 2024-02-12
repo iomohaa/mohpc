@@ -296,153 +296,88 @@ float CollisionWorld::CheckTerrainTriSphere(float x0, float y0, int iPlane)
 	switch (eMode)
 	{
 	case 3:
-		if (d1 > 64) {
-			bFitsX = false;
-		}
-		else {
-			bFitsX = true;
-		}
-		if (d2 > 64) {
-			bFitsY = false;
-		}
-		else {
-			bFitsY = true;
-		}
+        bFitsX = d1 <= 64;
+        bFitsY = d2 <= 64;
+        bFitsDiag = d1 >= 64 - d2;
 
-		if (d1 < 64 - d2) {
-			bFitsDiag = false;
-		}
-		else {
-			bFitsDiag = true;
-		}
-		iX[0] = 1;
-		iX[1] = 1;
-		iX[2] = 1;
-		iY[0] = 0;
-		iY[1] = 1;
-		iY[2] = 0;
+        iX[0] = 1;
+        iX[1] = 0;
+        iX[2] = 1;
+        iY[0] = 1;
+        iY[1] = 1;
+        iY[2] = 0;
 		break;
 	case 4:
-		if (d1 < 0) {
-			bFitsX = false;
-		}
-		else {
-			bFitsX = true;
-		}
-		if (d2 > 64) {
-			bFitsY = false;
-		}
-		else {
-			bFitsY = true;
-		}
+        bFitsX = d1 >= 0;
+        bFitsY = d2 <= 64;
+        bFitsDiag = d1 <= d2;
 
-		if (d1 > d2) {
-			bFitsDiag = false;
-		}
-		else {
-			bFitsDiag = true;
-		}
-		iX[0] = 0;
-		iX[1] = 1;
-		iX[2] = 1;
-		iY[0] = 1;
-		iY[1] = 0;
-		iY[2] = 0;
+        iX[0] = 0;
+        iX[1] = 1;
+        iX[2] = 0;
+        iY[0] = 1;
+        iY[1] = 1;
+        iY[2] = 0;
 		break;
 	case 5:
-		if (d1 > 64) {
-			bFitsX = false;
-		}
-		else {
-			bFitsX = true;
-		}
-		if (d2 < 0) {
-			bFitsY = false;
-		}
-		else {
-			bFitsY = true;
-		}
+        bFitsX = d1 <= 64;
+        bFitsY = d2 >= 0;
+        bFitsDiag = d1 >= d2;
 
-		if (d1 < d2) {
-			bFitsDiag = false;
-		}
-		else {
-			bFitsDiag = true;
-		}
-		iX[0] = 1;
-		iX[1] = 0;
-		iX[2] = 0;
-		iY[0] = 0;
-		iY[1] = 1;
-		iY[2] = 1;
+        iX[0] = 1;
+        iX[1] = 0;
+        iX[2] = 1;
+        iY[0] = 0;
+        iY[1] = 0;
+        iY[2] = 1;
 		break;
 	case 6:
-		if (d1 < 0) {
-			bFitsX = false;
-		}
-		else {
-			bFitsX = true;
-		}
-		if (d2 < 0) {
-			bFitsY = false;
-		}
-		else {
-			bFitsY = true;
-		}
+        bFitsX = d1 >= 0;
+        bFitsY = d2 >= 0;
+        bFitsDiag = d1 <= 64 - d2;
 
-		if (d1 > 64 - d2) {
-			bFitsDiag = false;
-		}
-		else {
-			bFitsDiag = true;
-		}
-		iX[0] = 0;
-		iX[1] = 0;
-		iX[2] = 0;
-		iY[0] = 1;
-		iY[1] = 0;
-		iY[2] = 1;
+        iX[0] = 0;
+        iX[1] = 1;
+        iX[2] = 0;
+        iY[0] = 0;
+        iY[1] = 0;
+        iY[2] = 1;
 		break;
 	default:
 		return 0;
 	}
 
-	if (bFitsX)
-	{
-		if (bFitsY)
-		{
-			if (bFitsDiag) {
-				return fSpherePlane;
-			}
-			else {
-				return CollisionWorld::CheckTerrainTriSphereEdge(plane, x0, y0, iY[0], iX[1], iY[1], iY[2]);
-			}
-		}
-		else if (bFitsDiag) {
-			return CollisionWorld::CheckTerrainTriSphereEdge(plane, x0, y0, iX[0], iX[2], iY[0], iX[1]);
-		}
-		else {
-			return CollisionWorld::CheckTerrainTriSphereCorner(plane, x0, y0, iY[0], iX[1]);
-		}
-	}
-	else if (bFitsY)
-	{
-		if (bFitsDiag) {
-			return CollisionWorld::CheckTerrainTriSphereEdge(plane, x0, y0, iX[0], iX[2], iY[1], iY[2]);
-		}
-		else {
-			return CollisionWorld::CheckTerrainTriSphereCorner(plane, x0, y0, iY[1], iY[2]);
-		}
-	}
-	else
-	{
-		if (bFitsDiag) {
-			return CollisionWorld::CheckTerrainTriSphereCorner(plane, x0, y0, iX[0], iX[2]);
-		}
-		else {
-			return this->g_trace.tw->trace.fraction;
-		}
-	}
+    if (bFitsX && bFitsY) {
+        if (bFitsDiag) {
+            return fSpherePlane;
+        }
+
+        return CheckTerrainTriSphereEdge(plane, x0, y0, iX[1], iY[1], iX[2], iY[2]);
+    }
+    
+    if (bFitsX && !bFitsY) {
+        if (bFitsDiag) {
+            return CheckTerrainTriSphereEdge(plane, x0, y0, iX[0], iY[0], iX[1], iY[1]);
+        }
+
+        return CheckTerrainTriSphereCorner(plane, x0, y0, iX[1], iY[1]);
+    }
+
+    if (!bFitsX && bFitsY) {
+        if (bFitsDiag) {
+            return CheckTerrainTriSphereEdge(plane, x0, y0, iX[0], iY[0], iX[2], iY[2]);
+        }
+
+        return CheckTerrainTriSphereCorner(plane, x0, y0, iX[2], iY[2]);
+    }
+
+    if (!bFitsX && !bFitsY) {
+        if (bFitsDiag) {
+            return CheckTerrainTriSphereCorner(plane, x0, y0, iX[0], iY[0]);
+        }
+    }
+
+    return g_trace.tw->trace.fraction;
 }
 
 /*
