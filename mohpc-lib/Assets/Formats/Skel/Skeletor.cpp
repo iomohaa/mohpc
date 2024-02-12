@@ -127,9 +127,9 @@ void SkeletonAnimation::GetDeltaOverTime(float time1, float time2, vec3r_t delta
 
 	if (frameNum1 < frameNum2)
 	{
-		delta[0] = m_frame[frameNum1 % numFrames].delta[0];
-		delta[1] = m_frame[frameNum1 % numFrames].delta[1];
-		delta[2] = m_frame[frameNum1 % numFrames].delta[2];
+		delta[0] = m_frame[frameNum1 % numFrames].delta[0] * d;
+		delta[1] = m_frame[frameNum1 % numFrames].delta[1] * d;
+		delta[2] = m_frame[frameNum1 % numFrames].delta[2] * d;
 
 		for (currFrame = frameNum1 + 1; currFrame < frameNum2; currFrame++)
 		{
