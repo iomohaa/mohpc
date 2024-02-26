@@ -1448,17 +1448,17 @@ void CollisionWorld::TraceThroughBrush(traceWork_t * tw, const collisionBrush_t 
 					return;
 				}
 			}
-		}
 
-		if ((leaveFrac2 < 1.0) && (leadside2->surfaceFlags & SURF_BACKSIDE)) {
-			if (leaveFrac2 < tw->trace.fraction) {
-				if (CollisionWorld::TraceThroughFence(tw, brush, leadside2, leaveFrac)) {
-					tw->trace.fraction = leaveFrac2;
-					tw->trace.plane = *clipplane2;
-					tw->trace.surfaceFlags = leadside2->surfaceFlags;
-					tw->trace.shaderNum = leadside2->shaderNum;
-					tw->trace.contents = brush->contents;
-					return;
+			if ((leaveFrac2 < 1.0) && (leadside2->surfaceFlags & SURF_BACKSIDE)) {
+				if (leaveFrac2 < tw->trace.fraction) {
+					if (CollisionWorld::TraceThroughFence(tw, brush, leadside2, leaveFrac)) {
+						tw->trace.fraction = leaveFrac2;
+						tw->trace.plane = *clipplane2;
+						tw->trace.surfaceFlags = leadside2->surfaceFlags;
+						tw->trace.shaderNum = leadside2->shaderNum;
+						tw->trace.contents = brush->contents;
+						return;
+					}
 				}
 			}
 		}
