@@ -528,7 +528,7 @@ void TIKIReader::ParseAnimations(dloaddef_t* ld)
 					if (strHelpers::find(token, "}"))
 					{
 						if (!depth) {
-							break;
+							continue;
 						}
 
 						depth--;
