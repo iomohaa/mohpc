@@ -34,7 +34,22 @@ int main(int argc, const char* argv[])
 
 			MOHPC::CDKey::Verifier verifier(MOHPC::CDKey::productType_e::MOHAA);
 			assert(verifier.verifyKey(CDKey));
-		}
+        }
+
+        {
+            MOHPC::CDKey::ProductKeyGenerator generator(MOHPC::CDKey::productType_e::MOHAAS);
+            generator.generate(CDKey);
+
+            outStream << "SH: ";
+            copyKey(CDKey, 4, outStream);
+            copyKey(CDKey + 4, 7, outStream);
+            copyKey(CDKey + 11, 7, outStream);
+            copyKey(CDKey + 18, 4, outStream, false);
+            outStream << std::endl;
+
+            MOHPC::CDKey::Verifier verifier(MOHPC::CDKey::productType_e::MOHAAS);
+            assert(verifier.verifyKey(CDKey));
+        }
 
 		{
 			MOHPC::CDKey::ProductKeyExGenerator generator(MOHPC::CDKey::productTypeExtended_e::MOHAAB);
