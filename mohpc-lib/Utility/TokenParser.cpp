@@ -233,10 +233,12 @@ bool TokenParser::AtComment()
 		return true;
 	}
 
+#if 0
 	if (*script_p == TOKENCOMMENT2)
 	{
 		return true;
 	}
+#endif
 
 	// Two or more character comment specifiers
 	if ((script_p + 1) >= end_p)
