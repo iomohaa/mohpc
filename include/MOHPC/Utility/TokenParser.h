@@ -11,6 +11,7 @@
 //#define TOKENNULL			('\0')
 #define TOKENSPACE			(' ')
 #define TOKENSPECIAL		('$')
+#define TOKENCOMMA			(',')
 
 #define	MAXTOKEN	512
 

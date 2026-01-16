@@ -207,7 +207,7 @@ void TokenParser::SkipWhiteSpace(bool crossline)
 	//
 	CheckOverflow();
 
-	while (*script_p <= TOKENSPACE)
+	while (*script_p <= TOKENSPACE || *script_p == TOKENCOMMA)
 	{
 		if (*script_p++ == TOKENEOL)
 		{
@@ -534,7 +534,7 @@ const char* TokenParser::GrabNextToken(bool crossline)
 	}
 
 	token.clear();
-	while ((*script_p > TOKENSPACE) && !AtComment())
+	while ((*script_p > TOKENSPACE) && (*script_p != TOKENCOMMA) && !AtComment())
 	{
 		if ((*script_p == '\\') && (script_p < (end_p - 1)))
 		{
