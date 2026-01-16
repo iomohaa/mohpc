@@ -310,7 +310,7 @@ namespace MOHPC
 			if (isDiff)
 			{
 				T val = ReadNumber<T>(bits);
-				XORType(val, key);
+				val = XORType(val, key);
 				return val;
 			}
 			return a;
