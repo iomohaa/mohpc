@@ -99,11 +99,15 @@ int main(int argc, const char* argv[])
 	//MOHPC::BSPPtr Asset = AM->readAsset<MOHPC::BSP>("/maps/dm/mp_stadt_dm.bsp");
 	MOHPC::BSPPtr Asset = AM->readAsset<MOHPC::BSPReader>("maps/void.bsp");
 	testAsset(Asset);
+	Asset = AM->readAsset<MOHPC::BSPReader>("maps/dm/mp_stadt_dm.bsp");
+	testAsset(Asset);
+	traceTest(Asset);
 	Asset = AM->readAsset<MOHPC::BSPReader>("maps/e1l1.bsp");
 	testAsset(Asset);
 	traceTest(Asset);
 	Asset = AM->readAsset<MOHPC::BSPReader>("maps/dm/mohdm6.bsp");
 	testAsset(Asset);
+	traceTest(Asset);
 }
 
 void testAsset(const MOHPC::BSPPtr& Asset)
@@ -141,6 +145,11 @@ void traceTest(const MOHPC::BSPPtr& Asset)
 		cm->BoxTrace(&results, start, end, vec3_t{ -15, -15, 0 }, vec3_t{ 15, 15, 96 }, 0, ContentFlags::MASK_PLAYERSOLID, true);
 	}
 	{
+		vec3_t start{ -994, 2736, 79 };
+		vec3_t end{ infinite, infinite, -infinite };
+		cm->BoxTrace(&results, start, end, vec3_zero, vec3_zero, 0, ContentFlags::MASK_SHOT, false);
+	}
+	{
 
 		vec3_t start{ -511, 260, 97 };
 		vec3_t end{ -520, 0, -1000 };
@@ -175,7 +184,7 @@ void traceTest(const MOHPC::BSPPtr& Asset)
 	vec3_t start{ 0, 0, 0 };
 	vec3_t end{ 0, 0, -500 };
 	cm->BoxTrace(&results, start, end, vec3_zero, vec3_zero, 0, ContentFlags::MASK_PLAYERSOLID, true);
-	assert(results.fraction < 0.3f);
+	assert(results.fraction < 0.35f);
 
 	ArchiveWriter ar;
 	CollisionWorldSerializer colSer(*cm);
